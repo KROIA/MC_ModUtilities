@@ -9,7 +9,7 @@ import java.util.UUID;
 public class ClientInteraction {
 
 
-    public static void printToConsole(UUID playerUUID, String msg)
+    public static void printToClientConsole(UUID playerUUID, String msg)
     {
         ServerPlayer player = getOnlinePlayer(playerUUID);
         if(player == null)
