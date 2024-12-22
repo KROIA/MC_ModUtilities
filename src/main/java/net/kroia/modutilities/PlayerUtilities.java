@@ -4,9 +4,11 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.PlayerList;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
-public class ClientInteraction {
+public class PlayerUtilities {
 
 
     public static void printToClientConsole(UUID playerUUID, String msg)
@@ -62,5 +64,23 @@ public class ClientInteraction {
         // Get the player list and fetch the player by UUID
         PlayerList playerList = server.getPlayerList();
         return playerList.getPlayerByName(name); // Returns null if the player is not online
+    }
+
+
+    public static Map<UUID, String> getUUIDToNameMap()
+    {
+        Map<UUID, String> uuidToNameMap = new HashMap<>();
+        MinecraftServer server = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
+
+        if (server == null) {
+            throw new IllegalStateException("Server instance is null. Are you calling this from the server_sender?");
+        }
+
+        PlayerList playerList = server.getPlayerList();
+        for(ServerPlayer player : playerList.getPlayers())
+        {
+            uuidToNameMap.put(player.getUUID(), player.getName().getString());
+        }
+        return uuidToNameMap;
     }
 }
