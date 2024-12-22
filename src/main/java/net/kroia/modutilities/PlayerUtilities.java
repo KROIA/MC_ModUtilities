@@ -33,6 +33,13 @@ public class PlayerUtilities {
             player.sendSystemMessage(net.minecraft.network.chat.Component.literal(msg));
         }
     }
+    public static void printToClientConsole(String userName, String msg)
+    {
+        ServerPlayer player = getOnlinePlayer(userName);
+        if(player == null)
+            return;
+        player.sendSystemMessage(net.minecraft.network.chat.Component.literal(msg));
+    }
 
     public static ServerPlayer getOnlinePlayer(UUID uuid)
     {
