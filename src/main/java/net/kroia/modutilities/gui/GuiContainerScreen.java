@@ -32,7 +32,7 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
         gui.init();
     }
 
-    public abstract void initGui(Gui gui);
+    protected abstract void initGui(Gui gui);
 
     @Override
     public boolean isPauseScreen() {

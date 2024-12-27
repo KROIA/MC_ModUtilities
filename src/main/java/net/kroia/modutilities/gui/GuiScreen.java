@@ -28,7 +28,7 @@ public abstract class GuiScreen extends Screen {
         gui.init();
     }
 
-    public abstract void initGui(Gui gui);
+    protected abstract void initGui(Gui gui);
 
     @Override
     public boolean isPauseScreen() {
