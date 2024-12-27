@@ -561,6 +561,23 @@ public abstract class GuiElement {
         bounds.height = height;
         layoutChangedInternal();
     }
+    public int getTop()
+    {
+        return bounds.y;
+    }
+    public int getBottom()
+    {
+        return bounds.y+bounds.height;
+    }
+    public int getLeft()
+    {
+        return bounds.x;
+    }
+    public int getRight()
+    {
+        return bounds.x+bounds.width;
+    }
+
     public Rectangle getBounds()
     {
         return bounds;
