@@ -65,7 +65,7 @@ public class HorizontalListView extends ListView {
     protected void setScrollBarBounds(Button scrollBarButton)
     {
         // Render scrollbar
-        int scrollbarWidth = (int) ((float)(getWidth()) / (float) allObjectSize * (float)getWidth())-outlineThickness;
+        int scrollbarWidth = Math.min((int) ((float)(getWidth()) / (float) allObjectSize * (float)getWidth()), getWidth())-outlineThickness;
         int scrollbarX = (int) ((float)scrollOffset / (float) allObjectSize * (float)getWidth())+outlineThickness;
         scrollBarButton.setBounds(scrollbarX, getHeight() - scrollBarThickness, scrollbarWidth, scrollBarThickness);
     }

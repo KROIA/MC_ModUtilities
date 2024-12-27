@@ -149,9 +149,13 @@ public abstract class ListView extends GuiElement{
     {
         if (delta > 0 && scrollOffset > 0) {
             scrollOffset-=scrolSpeed; // Scroll up
+            if(scrollOffset < 0)
+                scrollOffset = 0;
             updateElementPositions();
         } else if (delta < 0 && scrollOffset < allObjectSize - getContentDimension2()) {
             scrollOffset+=scrolSpeed; // Scroll down
+            if(scrollOffset > allObjectSize - getContentDimension2())
+                scrollOffset = allObjectSize - getContentDimension2();
             updateElementPositions();
         }
         return true;

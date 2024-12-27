@@ -77,7 +77,7 @@ public class Label extends GuiElement {
         int width = getWidth() - padding*2;
         int height = getHeight()-padding*2;
 
-        textPos.y = (height-textHeight)/2 + y;
+        textPos.y = Math.round(((float)height-(float)textHeight)/2.f) + y;
         switch(layoutType)
         {
             case CENTER:

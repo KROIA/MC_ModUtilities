@@ -39,7 +39,7 @@ public class VerticalListView extends ListView {
     protected void setScrollBarBounds(Button scrollBarButton)
     {
         // Render scrollbar
-        int scrollbarHeight = (int) ((float)(getHeight()) / (float) allObjectSize * (float)getHeight())-outlineThickness;
+        int scrollbarHeight = Math.min((int) ((float)(getHeight()) / (float) allObjectSize * (float)getHeight()), getHeight())-outlineThickness;
         int scrollbarY = (int) ((float)scrollOffset / (float) allObjectSize * (float)getHeight())+outlineThickness;
         scrollBarButton.setBounds(getWidth() - scrollBarThickness, scrollbarY, scrollBarThickness, scrollbarHeight);
     }

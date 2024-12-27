@@ -20,6 +20,8 @@ public class TextBox extends GuiElement {
     private int currentCursorPos = 0;
     private int cursorBlinkCounter = 0;
     private boolean cursorVisible = false;
+
+    Runnable textChangedFromUser = null;
     public TextBox(int x, int y, int width) {
         super(x, y, width, Label.DEFAULT_HEIGHT);
         textLabel = new Label("");
@@ -72,6 +74,10 @@ public class TextBox extends GuiElement {
     }
     public int getFocusedBackgroundColor() {
         return focusedBackgroundColor;
+    }
+
+    public void onTextChanged(Runnable textChangedFromUser) {
+        this.textChangedFromUser = textChangedFromUser;
     }
 
     public String getText() {
@@ -212,6 +218,7 @@ public class TextBox extends GuiElement {
                         currentCursorPos = textToCursor.length();
                         text = textToCursor + textAfterCursor;
                         updateTextLabel();
+                        emitTextChanged();
                         return true;
                     }
                     else
@@ -220,6 +227,7 @@ public class TextBox extends GuiElement {
                         text = textToCursor + textAfterCursor;
                         currentCursorPos = 0;
                         updateTextLabel();
+                        emitTextChanged();
                         return true;
                     }
                 }
@@ -233,6 +241,7 @@ public class TextBox extends GuiElement {
                         currentCursorPos = textToCursor.length();
                         text = textToCursor + textAfterCursor;
                         updateTextLabel();
+                        emitTextChanged();
                         return true;
                     }
                 }
@@ -259,6 +268,7 @@ public class TextBox extends GuiElement {
                         textAfterCursor = textAfterCursor.substring(nextSpace);
                         text = textToCursor + textAfterCursor;
                         updateTextLabel();
+                        emitTextChanged();
                         return true;
                     }
                     else
@@ -266,6 +276,7 @@ public class TextBox extends GuiElement {
                         textAfterCursor = "";
                         text = textToCursor + textAfterCursor;
                         updateTextLabel();
+                        emitTextChanged();
                         return true;
                     }
                 }
@@ -278,6 +289,7 @@ public class TextBox extends GuiElement {
                         textAfterCursor = textAfterCursor.substring(1);
                         text = textToCursor + textAfterCursor;
                         updateTextLabel();
+                        emitTextChanged();
                         return true;
                     }
                 }
@@ -369,6 +381,7 @@ public class TextBox extends GuiElement {
             text = text.substring(0, currentCursorPos) + codePoint + text.substring(currentCursorPos);
             currentCursorPos++;
             updateTextLabel();
+            emitTextChanged();
             return true;
         }
         return false;
@@ -376,6 +389,11 @@ public class TextBox extends GuiElement {
     private void updateTextLabel()
     {
         textLabel.setText(text);
+    }
+    private void emitTextChanged()
+    {
+        if(textChangedFromUser != null)
+            textChangedFromUser.run();
     }
     private boolean canConsume(char codePoint)
     {

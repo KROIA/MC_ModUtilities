@@ -3,6 +3,8 @@ package net.kroia.modutilities.gui;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import org.lwjgl.glfw.GLFW;
+
 public abstract class GuiScreen extends Screen {
 
     protected final Gui gui;
@@ -75,6 +77,12 @@ public abstract class GuiScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        // Check for F3 Key
+        if(keyCode == GLFW.GLFW_KEY_F3) {
+            enableGizmos = !enableGizmos;
+            return true;
+        }
+
         boolean ret = gui.keyPressed(keyCode, scanCode, modifiers);
         if(ret)
             return true;
