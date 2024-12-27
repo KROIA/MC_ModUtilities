@@ -491,11 +491,19 @@ public abstract class GuiElement {
     public int getY() {
         return bounds.y;
     }
+    public Point getPosition()
+    {
+        return new Point(bounds.x, bounds.y);
+    }
     public int getWidth() {
         return bounds.width;
     }
     public int getHeight() {
         return bounds.height;
+    }
+    public Point getSize()
+    {
+        return new Point(bounds.width, bounds.height);
     }
     public void setX(int x) {
         bounds.x = x;
@@ -505,12 +513,36 @@ public abstract class GuiElement {
         bounds.y = y;
         layoutChangedInternal();
     }
+    public void setPosition(int x, int y)
+    {
+        bounds.x = x;
+        bounds.y = y;
+        layoutChangedInternal();
+    }
+    public void setPosition(Point pos)
+    {
+        bounds.x = pos.x;
+        bounds.y = pos.y;
+        layoutChangedInternal();
+    }
     public void setWidth(int width) {
         bounds.width = width;
         layoutChangedInternal();
     }
     public void setHeight(int height) {
         bounds.height = height;
+        layoutChangedInternal();
+    }
+    public void setSize(int width, int height)
+    {
+        bounds.width = width;
+        bounds.height = height;
+        layoutChangedInternal();
+    }
+    public void setSize(Point size)
+    {
+        bounds.width = size.x;
+        bounds.height = size.y;
         layoutChangedInternal();
     }
     public void setBounts(Rectangle rect)
