@@ -10,13 +10,16 @@ import java.util.UUID;
 
 public class PlayerUtilities {
 
-
-    public static void printToClientConsole(UUID playerUUID, String msg)
+    public static void printToClientConsole(ServerPlayer player, String msg)
     {
-        ServerPlayer player = getOnlinePlayer(playerUUID);
         if(player == null)
             return;
         player.sendSystemMessage(net.minecraft.network.chat.Component.literal(msg));
+    }
+    public static void printToClientConsole(UUID playerUUID, String msg)
+    {
+        ServerPlayer player = getOnlinePlayer(playerUUID);
+        printToClientConsole(player, msg);
     }
     public static void printToClientConsole(String msg)
     {

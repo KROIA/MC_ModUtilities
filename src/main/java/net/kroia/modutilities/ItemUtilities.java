@@ -24,7 +24,6 @@ public class ItemUtilities {
     }
     public static String getNormalizedItemID(String maybeNotCompleteItemID)
     {
-        
         ItemStack itemStack = createItemStackFromId(maybeNotCompleteItemID,1);
         if(itemStack == null) {
             return null;
@@ -33,7 +32,11 @@ public class ItemUtilities {
             return null;
         }
         // Get the item's ResourceLocation
-        ResourceLocation itemLocation = ForgeRegistries.ITEMS.getKey(itemStack.getItem());
+        return getItemID(itemStack.getItem());
+    }
+    public static String getItemID(Item item)
+    {
+        ResourceLocation itemLocation = ForgeRegistries.ITEMS.getKey(item);
         return itemLocation.toString();
     }
 }
