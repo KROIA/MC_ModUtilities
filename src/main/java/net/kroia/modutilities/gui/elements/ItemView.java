@@ -10,7 +10,7 @@ public class ItemView extends GuiElement {
     ItemStack itemStack;
     Point itemPos = new Point(0,0);
     public ItemView() {
-        super();
+        super(0,0,DEFAULT_WIDTH,DEFAULT_WIDTH);
     }
     public ItemView(int x, int y, int width, int height) {
         super(x, y, width, height);
