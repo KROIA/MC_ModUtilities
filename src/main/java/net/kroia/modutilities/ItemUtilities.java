@@ -24,6 +24,7 @@ public class ItemUtilities {
     }
     public static String getNormalizedItemID(String maybeNotCompleteItemID)
     {
+        
         ItemStack itemStack = createItemStackFromId(maybeNotCompleteItemID,1);
         if(itemStack == null) {
             return null;
