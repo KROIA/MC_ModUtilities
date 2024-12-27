@@ -29,10 +29,11 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     @Override
     public final void init() {
         super.init();
+        updateLayout(gui);
         gui.init();
     }
 
-    protected abstract void initGui(Gui gui);
+    protected abstract void updateLayout(Gui gui);
 
     @Override
     public boolean isPauseScreen() {
