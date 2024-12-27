@@ -7,6 +7,9 @@ import java.util.ArrayList;
 public abstract class ListView extends GuiElement{
     protected class ScrollContainer extends GuiElement
     {
+        public ScrollContainer() {
+            super();
+        }
         public ScrollContainer(int x, int y, int width, int height) {
             super(x, y, width, height);
         }
@@ -79,13 +82,24 @@ public abstract class ListView extends GuiElement{
 
     protected int scrollBarDragStartMouse = 0;
     protected int scrollBarBackgroundColor = 0xff444444;
-    public ListView(int x, int y, int width, int height) {
-        super(x, y, width, height);
-        scrollBarButton = new Button(0,0,0,0,"");
+
+    public ListView() {
+        super();
+        scrollBarButton = new Button("");
 
         scrollBarButton.setOnDown(this::onScrollBarDragging);
         scrollBarButton.setOnFallingEdge(this::onScrllBarFallingEdge);
-        scrollContainer = new ScrollContainer(0,0,0,0);
+        scrollContainer = new ScrollContainer();
+        super.addChild(scrollBarButton);
+        super.addChild(scrollContainer);
+    }
+    public ListView(int x, int y, int width, int height) {
+        super(x, y, width, height);
+        scrollBarButton = new Button("");
+
+        scrollBarButton.setOnDown(this::onScrollBarDragging);
+        scrollBarButton.setOnFallingEdge(this::onScrllBarFallingEdge);
+        scrollContainer = new ScrollContainer();
         super.addChild(scrollBarButton);
         super.addChild(scrollContainer);
     }

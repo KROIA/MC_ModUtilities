@@ -28,6 +28,14 @@ public class Button extends GuiElement {
         label.setLayoutType(LayoutType.CENTER);
         addChild(label);
     }
+    public Button(String text, Runnable onFallingEdge) {
+        this(text);
+        this.onFallingEdge = onFallingEdge;
+    }
+    public Button(int x, int y, int width, int height, String text, Runnable onFallingEdge) {
+        this(x, y, width, height, text);
+        this.onFallingEdge = onFallingEdge;
+    }
     public void setLabel(String text)
     {
         label.setText(text);

@@ -7,6 +7,9 @@ public class Frame extends GuiElement {
 
 
 
+    public Frame() {
+        super();
+    }
     public Frame(int x, int y, int width, int height) {
         super(x, y, width, height);
     }

@@ -4,6 +4,11 @@ import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.elements.base.ListView;
 
 public class HorizontalListView extends ListView {
+
+    public HorizontalListView() {
+        super();
+        scrollContainer.setBounds(0, 0, 0, 0);
+    }
     public HorizontalListView(int x, int y, int width, int height) {
         super(x, y, width, height);
         scrollContainer.setBounds(0, 0, width, height-scrollBarThickness);

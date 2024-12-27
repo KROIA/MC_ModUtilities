@@ -32,6 +32,9 @@ public class TextBox extends GuiElement {
         textLabel.setText(text);
         addChild(textLabel);
     }
+    public TextBox() {
+        this(0,0,100);
+    }
 
     public void setAllowNumbers(boolean allowNumbers, boolean allowDecimal) {
         this.allowNumbers = allowNumbers;
@@ -76,7 +79,7 @@ public class TextBox extends GuiElement {
         return focusedBackgroundColor;
     }
 
-    public void onTextChanged(Runnable textChangedFromUser) {
+    public void setOnTextChanged(Runnable textChangedFromUser) {
         this.textChangedFromUser = textChangedFromUser;
     }
 
