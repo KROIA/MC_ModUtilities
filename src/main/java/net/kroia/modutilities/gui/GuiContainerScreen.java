@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui;
 
+import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
@@ -34,6 +35,13 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     }
 
     protected abstract void updateLayout(Gui gui);
+
+    protected void addElement(GuiElement element) {
+        gui.addElement(element);
+    }
+    protected void removeElement(GuiElement element) {
+        gui.removeElement(element);
+    }
 
     @Override
     public boolean isPauseScreen() {
