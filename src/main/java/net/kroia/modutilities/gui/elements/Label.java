@@ -6,7 +6,7 @@ import net.kroia.modutilities.gui.geometry.Point;
 public class Label extends GuiElement {
 
     public static final int DEFAULT_HEIGHT = 15;
-    private LayoutType layoutType = LayoutType.LEFT;
+    private Alignment layoutType = Alignment.LEFT;
     private String text;
     private int padding = GuiElement.DEFAULT_PADDING;
     private int textColor = GuiElement.DEFAULT_TEXT_COLOR;
@@ -31,12 +31,12 @@ public class Label extends GuiElement {
         return text;
     }
 
-    public void setLayoutType(LayoutType layoutType)
+    public void setLayoutType(Alignment layoutType)
     {
         this.layoutType = layoutType;
         layoutChangedInternal();
     }
-    public LayoutType getLayoutType()
+    public Alignment getLayoutType()
     {
         return layoutType;
     }

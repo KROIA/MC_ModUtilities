@@ -4,71 +4,84 @@ import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.elements.base.ListView;
 
 public class VerticalListView extends ListView {
+    public VerticalListView() {
+        super();
+        scrollContainer.setBounds(1, 1, 0, 0);
+    }
     public VerticalListView(int x, int y, int width, int height) {
         super(x, y, width, height);
-        scrollContainer.setBounds(0, 0, width - scrollbarThickness, height);
+        scrollContainer.setBounds(1, 1, width - scrollbarThickness-2, height-2);
     }
 
     @Override
     protected void renderBackground() {
         if(enableBackground)
             renderBackgroundColor();
-        drawRect(getWidth()- scrollbarThickness, 0, scrollbarThickness, getHeight(), scrollbarBackgroundColor);
+        drawRect(scrollbarButton.getLeft(), 0, scrollbarButton.getWidth(), getHeight(), scrollbarBackgroundColor);
         if(enableOutline)
             renderOutline();
     }
     @Override
     protected int getContentDimension2()
     {
-        return getHeight();
+        return getHeight()-2*outlineThickness;
     }
     @Override
     protected void layoutChanged() {
-        scrollContainer.setBounds(0, 0, getWidth() - scrollbarThickness, getHeight());
+        scrollContainer.setBounds(1, 1, getWidth() - scrollbarThickness-2, getHeight()-2);
         childsChanged();
+        setScrollBarBounds();
     }
     protected void childsChanged()
     {
-        allObjectSize = padding*2;
+        int minPos = 0;
+        int maxPos = 0;
+        //allObjectSize = getLayout()!=null?getLayout().padding*2:0;
+        int spacing = getLayout()!=null?getLayout().spacing:0;
         for(GuiElement child : getChilds())
         {
-            allObjectSize += child.getHeight()+spacing;
+            minPos = Math.min(minPos, child.getTop());
+            maxPos = Math.max(maxPos, child.getBottom());
+            //allObjectSize += child.getHeight()+spacing;
         }
+        allObjectSize = maxPos-minPos;
     }
     @Override
     protected void setScrollBarBounds()
     {
 
         // Render scrollbar
-        int scrollbarHeight = getHeight()-outlineThickness*2;
+        int scrollbarHeight = getContentDimension2();
         int scrollbarY = outlineThickness;
         if(allObjectSize > 0)
         {
-            scrollbarHeight = Math.min((int) ((float)(getHeight()) / (float) allObjectSize * (float)getHeight()), getHeight())-outlineThickness*2;
-            scrollbarY = (int) ((float)scrollOffset / (float) allObjectSize * (float)getHeight())+outlineThickness;
+            int height = getContentDimension2();
+            scrollbarHeight = Math.min(Math.round(map(scrollContainer.getHeight(), 0, allObjectSize, 0, height)),height);
+            scrollbarY = Math.min(Math.round(map(scrollOffset, 0, allObjectSize, 0, height) + outlineThickness), height-scrollbarHeight+outlineThickness);
         }
 
-        scrollbarButton.setBounds(getWidth() - scrollbarThickness-1, scrollbarY, scrollbarThickness+1, scrollbarHeight);
+        scrollbarButton.setBounds(getWidth() - scrollbarThickness, scrollbarY, scrollbarThickness, scrollbarHeight);
     }
 
     @Override
     public void addChild(GuiElement el)
     {
-        allObjectSize += el.getHeight();
-        scrollOffset = Math.max(Math.min(scrollOffset, allObjectSize - getContentDimension2()+1), 0);
+        //allObjectSize += el.getHeight();
+        scrollOffset = Math.max(Math.min(scrollOffset, allObjectSize - getContentDimension2()), 0);
         super.addChild(el);
     }
     @Override
     public void removeChild(GuiElement el)
     {
-        allObjectSize -= el.getHeight();
-        scrollOffset = Math.max(Math.min(scrollOffset, allObjectSize - getContentDimension2()+1), 0);
+        //allObjectSize -= el.getHeight();
+        scrollOffset = Math.max(Math.min(scrollOffset, allObjectSize - getContentDimension2()), 0);
         super.removeChild(el);
     }
     @Override
     protected void updateElementPositions()
     {
-        int y = padding;
+        int y = getLayout()!=null?getLayout().padding:0;
+        int spacing = getLayout()!=null?getLayout().spacing:0;
         for(GuiElement child : getChilds())
         {
             child.setY(y - scrollOffset);
@@ -88,7 +101,7 @@ public class VerticalListView extends ListView {
         int delta = (getMouseY() - scrollbarDragStartMouse)*allObjectSize/getHeight();
         scrollbarDragStartMouse = getMouseY();
 
-        scrollOffset = Math.max(Math.min(scrollOffset + delta, allObjectSize - getContentDimension2()+1), 0);
+        scrollOffset = Math.max(Math.min(scrollOffset + delta, allObjectSize - getContentDimension2()), 0);
         updateElementPositions();
         setScrollBarBounds();
     }

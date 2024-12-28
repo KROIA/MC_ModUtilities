@@ -1,17 +1,22 @@
 package net.kroia.modutilities.gui.elements.base;
 
 import net.kroia.modutilities.gui.elements.Button;
+import net.kroia.modutilities.gui.layout.Layout;
+import net.minecraft.client.gui.GuiGraphics;
 
 import java.util.ArrayList;
 
 public abstract class ListView extends GuiElement{
     protected class ScrollContainer extends GuiElement
     {
-        public ScrollContainer() {
+        private final ListView parentListView;
+        public ScrollContainer(ListView parentListView) {
             super();
+            this.parentListView = parentListView;
         }
-        public ScrollContainer(int x, int y, int width, int height) {
+        public ScrollContainer(int x, int y, int width, int height, ListView parentListView) {
             super(x, y, width, height);
+            this.parentListView = parentListView;
         }
 
         @Override
@@ -26,19 +31,22 @@ public abstract class ListView extends GuiElement{
 
         @Override
         protected void layoutChanged() {
-
+            parentListView.childsChanged();
         }
+
+        /*@Override
+        public void layoutChangedInternal() {
+            super.layoutChangedInternal();
+            super.getBounds().height = getHeight();
+        }*/
+
         @Override
         public void renderBackgroundInternal()
         {
             if(!isVisible())
                 return;
             enableScissor();
-            renderBackground();
-
-            for (GuiElement child : getChilds()) {
-                child.renderBackgroundInternal();
-            }
+            super.renderBackgroundInternal();
             disableScissor();
         }
         @Override
@@ -46,15 +54,9 @@ public abstract class ListView extends GuiElement{
         {
             if(!isVisible())
                 return;
-
             enableScissor();
-            render();
-
-            for (GuiElement child : getChilds()) {
-                child.renderInternal();
-            }
+            super.renderInternal();
             disableScissor();
-
         }
         @Override
         public void renderGizmosInternal()
@@ -62,12 +64,10 @@ public abstract class ListView extends GuiElement{
             if(!isVisible())
                 return;
             enableScissor();
-            renderGizmos();
-            for (GuiElement child : getChilds()) {
-                child.renderGizmosInternal();
-            }
+            super.renderGizmosInternal();
             disableScissor();
         }
+
     }
 
     protected int scrollOffset = 0;
@@ -77,9 +77,6 @@ public abstract class ListView extends GuiElement{
     protected int scrollbarThickness = 5;
     protected final Button scrollbarButton;
     protected final ScrollContainer scrollContainer;
-    protected int spacing = 0;
-    protected int padding = 0;
-
     protected int scrollbarDragStartMouse = 0;
     protected int scrollbarBackgroundColor = 0xff444444;
 
@@ -89,7 +86,7 @@ public abstract class ListView extends GuiElement{
 
         scrollbarButton.setOnDown(this::onScrollBarDragging);
         scrollbarButton.setOnFallingEdge(this::onScrllBarFallingEdge);
-        scrollContainer = new ScrollContainer();
+        scrollContainer = new ScrollContainer(this);
         super.addChild(scrollbarButton);
         super.addChild(scrollContainer);
     }
@@ -99,7 +96,7 @@ public abstract class ListView extends GuiElement{
 
         scrollbarButton.setOnDown(this::onScrollBarDragging);
         scrollbarButton.setOnFallingEdge(this::onScrllBarFallingEdge);
-        scrollContainer = new ScrollContainer();
+        scrollContainer = new ScrollContainer(this);
         super.addChild(scrollbarButton);
         super.addChild(scrollContainer);
     }
@@ -177,22 +174,26 @@ public abstract class ListView extends GuiElement{
             setScrollBarBounds();
         } else if (delta < 0 && scrollOffset < allObjectSize - getContentDimension2()) {
             scrollOffset+=scrolSpeed; // Scroll down
-            if(scrollOffset > allObjectSize - getContentDimension2()+1)
-                scrollOffset = allObjectSize - getContentDimension2()+1;
+            if(scrollOffset > allObjectSize - getContentDimension2())
+                scrollOffset = allObjectSize - getContentDimension2();
             updateElementPositions();
             setScrollBarBounds();
         }
         return true;
     }
 
+
     @Override
-    public void relayout(int padding, int spacing, LayoutDirection direction, boolean stretchX, boolean stretchY)
+    public void setLayout(Layout layout)
     {
-        this.padding = padding;
-        this.spacing = spacing;
-        scrollContainer.relayout(padding, spacing, direction, stretchX, stretchY);
-        setScrollBarBounds();
+        scrollContainer.setLayout(layout);
     }
+    @Override
+    public Layout getLayout()
+    {
+        return scrollContainer.getLayout();
+    }
+
 
 
     protected abstract void updateElementPositions();

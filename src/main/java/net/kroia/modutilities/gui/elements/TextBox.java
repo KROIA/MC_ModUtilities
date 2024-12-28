@@ -2,7 +2,6 @@ package net.kroia.modutilities.gui.elements;
 
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import org.lwjgl.glfw.GLFW;
-import org.w3c.dom.Text;
 
 public class TextBox extends GuiElement {
 
@@ -26,7 +25,7 @@ public class TextBox extends GuiElement {
         super(x, y, width, Label.DEFAULT_HEIGHT);
         textLabel = new Label("");
         textLabel.setBounds(0, 0, width, Label.DEFAULT_HEIGHT);
-        textLabel.setLayoutType(LayoutType.LEFT);
+        textLabel.setLayoutType(Alignment.LEFT);
 
         addChild(textLabel);
         textLabel.setText(text);

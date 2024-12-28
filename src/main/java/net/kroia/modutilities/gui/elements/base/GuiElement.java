@@ -4,6 +4,7 @@ import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.GuiTexture;
 import net.kroia.modutilities.gui.geometry.Point;
 import net.kroia.modutilities.gui.geometry.Rectangle;
+import net.kroia.modutilities.gui.layout.Layout;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -20,16 +21,11 @@ import java.util.Optional;
 
 public abstract class GuiElement {
 
-    public enum LayoutType
+    public enum Alignment
     {
         CENTER,
         LEFT,
         RIGHT
-    }
-    public enum LayoutDirection
-    {
-        HORIZONTAL,
-        VERTICAL
     }
     public static int DEFAULT_PADDING = 1;
     public static int DEFAULT_TEXT_COLOR = 0xFFFFFF;
@@ -53,6 +49,8 @@ public abstract class GuiElement {
     protected boolean enableOutline = true;
     protected int outlineThickness = 1;
 
+    protected Layout layout = null;
+
     public GuiElement() {
         this(0, 0, 0, 0);
     }
@@ -73,6 +71,15 @@ public abstract class GuiElement {
             child.init();
         }
         layoutChangedInternal();
+    }
+
+    public void setLayout(Layout layout)
+    {
+        this.layout = layout;
+    }
+    public Layout getLayout()
+    {
+        return layout;
     }
 
     public Gui getRoot() {
@@ -267,10 +274,10 @@ public abstract class GuiElement {
     protected abstract void layoutChanged();
     public void layoutChangedInternal()
     {
-        //if(root == null)
-        //    return;
-        //if(!root.isInitialized())
-        //    return;
+        if(layout != null) {
+            if(layout.enabled)
+                layout.apply(this);
+        }
         layoutChanged();
         for (GuiElement child : childs) {
             child.layoutChangedInternal();
@@ -462,12 +469,14 @@ public abstract class GuiElement {
         el.setRoot(root);
         el.setParent(this, rootParent);
         childs.add(el);
+        layoutChangedInternal();
     }
     public void removeChild(GuiElement el)
     {
         el.setRoot(null);
         el.setParent(null, el);
         childs.remove(el);
+        layoutChangedInternal();
     }
     public void removeChilds()
     {
@@ -477,6 +486,7 @@ public abstract class GuiElement {
             child.setParent(null, child);
         }
         childs.clear();
+        layoutChangedInternal();
     }
     public ArrayList<GuiElement> getChilds()
     {
@@ -603,7 +613,7 @@ public abstract class GuiElement {
         return frame;
     }
 
-    public void relayout(int padding, int spacing, LayoutDirection direction)
+    /*public void relayout(int padding, int spacing, LayoutDirection direction)
     {
         relayout(padding, spacing, direction, false, false);
     }
@@ -658,7 +668,7 @@ public abstract class GuiElement {
             }
             y += child.getHeight() + spacing;
         }
-    }
+    }*/
 
 
 
@@ -865,5 +875,10 @@ public abstract class GuiElement {
     public void playLocalSound(SoundEvent sound)
     {
         playLocalSound(sound, 1.0F, 1.0F);
+    }
+
+    public static float map(float value, float start1, float stop1, float start2, float stop2)
+    {
+        return start2 + (stop2 - start2) * ((value - start1) / (stop1 - start1));
     }
 }
