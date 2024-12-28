@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui;
 
+import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -33,6 +34,19 @@ public abstract class GuiScreen extends Screen {
 
     protected abstract void updateLayout(Gui gui);
 
+    protected void addElement(GuiElement element) {
+        gui.addElement(element);
+    }
+    protected void removeElement(GuiElement element) {
+        gui.removeElement(element);
+    }
+
+    protected int getWidth() {
+        return width;
+    }
+    protected int getHeight() {
+        return height;
+    }
     @Override
     public boolean isPauseScreen() {
         return false;
@@ -86,8 +100,15 @@ public abstract class GuiScreen extends Screen {
         boolean ret = gui.keyPressed(keyCode, scanCode, modifiers);
         if(ret)
             return true;
-        if(gui.getFocusedElement() == null)
-            return super.keyPressed(keyCode, scanCode, modifiers);
+        if(gui.getFocusedElement() == null) {
+            ret = super.keyPressed(keyCode, scanCode, modifiers);
+            if(ret)
+                return true;
+        }
+        if(keyCode == GLFW.GLFW_KEY_E) {
+            onClose();
+            return true;
+        }
         return true;
     }
 

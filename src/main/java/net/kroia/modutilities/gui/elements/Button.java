@@ -41,6 +41,15 @@ public class Button extends GuiElement {
         label.setText(text);
     }
 
+    public void setLayoutType(LayoutType layoutType)
+    {
+        label.setLayoutType(layoutType);
+    }
+    public LayoutType getLayoutType()
+    {
+        return label.getLayoutType();
+    }
+
     public void setOnFallingEdge(Runnable onFallingEdge)
     {
         this.onFallingEdge = onFallingEdge;

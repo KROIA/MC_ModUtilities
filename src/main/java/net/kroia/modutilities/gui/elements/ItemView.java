@@ -11,18 +11,26 @@ public class ItemView extends GuiElement {
     Point itemPos = new Point(0,0);
     public ItemView() {
         super(0,0,DEFAULT_WIDTH,DEFAULT_WIDTH);
+        setEnableBackground(false);
+        setEnableOutline(false);
     }
     public ItemView(int x, int y, int width, int height) {
         super(x, y, width, height);
+        setEnableBackground(false);
+        setEnableOutline(false);
     }
 
     public ItemView(ItemStack itemStack) {
-        super();
+        super(0,0,DEFAULT_WIDTH,DEFAULT_WIDTH);
         this.itemStack = itemStack;
+        setEnableBackground(false);
+        setEnableOutline(false);
     }
     public ItemView(int x, int y, int width, int height, ItemStack itemStack) {
         super(x, y, width, height);
         this.itemStack = itemStack;
+        setEnableBackground(false);
+        setEnableOutline(false);
     }
     public void setItemStack(ItemStack itemStack) {
         this.itemStack = itemStack;

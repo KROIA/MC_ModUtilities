@@ -44,6 +44,13 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
         gui.removeElement(element);
     }
 
+    protected int getWidth() {
+        return width;
+    }
+    protected int getHeight() {
+        return height;
+    }
+
     @Override
     public boolean isPauseScreen() {
         return false;

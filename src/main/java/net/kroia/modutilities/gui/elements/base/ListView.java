@@ -74,33 +74,33 @@ public abstract class ListView extends GuiElement{
     protected int allObjectSize = 0;
 
     protected int scrolSpeed = 5;
-    protected int scrollBarThickness = 5;
-    protected final Button scrollBarButton;
+    protected int scrollbarThickness = 5;
+    protected final Button scrollbarButton;
     protected final ScrollContainer scrollContainer;
     protected int spacing = 0;
     protected int padding = 0;
 
-    protected int scrollBarDragStartMouse = 0;
-    protected int scrollBarBackgroundColor = 0xff444444;
+    protected int scrollbarDragStartMouse = 0;
+    protected int scrollbarBackgroundColor = 0xff444444;
 
     public ListView() {
         super();
-        scrollBarButton = new Button("");
+        scrollbarButton = new Button("");
 
-        scrollBarButton.setOnDown(this::onScrollBarDragging);
-        scrollBarButton.setOnFallingEdge(this::onScrllBarFallingEdge);
+        scrollbarButton.setOnDown(this::onScrollBarDragging);
+        scrollbarButton.setOnFallingEdge(this::onScrllBarFallingEdge);
         scrollContainer = new ScrollContainer();
-        super.addChild(scrollBarButton);
+        super.addChild(scrollbarButton);
         super.addChild(scrollContainer);
     }
     public ListView(int x, int y, int width, int height) {
         super(x, y, width, height);
-        scrollBarButton = new Button("");
+        scrollbarButton = new Button("");
 
-        scrollBarButton.setOnDown(this::onScrollBarDragging);
-        scrollBarButton.setOnFallingEdge(this::onScrllBarFallingEdge);
+        scrollbarButton.setOnDown(this::onScrollBarDragging);
+        scrollbarButton.setOnFallingEdge(this::onScrllBarFallingEdge);
         scrollContainer = new ScrollContainer();
-        super.addChild(scrollBarButton);
+        super.addChild(scrollbarButton);
         super.addChild(scrollContainer);
     }
 
@@ -112,22 +112,27 @@ public abstract class ListView extends GuiElement{
     {
         return this.scrolSpeed;
     }
-    public void setScrollBarBackgroundColor(int color)
+    public void setScrollbarBackgroundColor(int color)
     {
-        this.scrollBarBackgroundColor = color;
+        this.scrollbarBackgroundColor = color;
     }
-    public int getScrollBarBackgroundColor()
+    public int getScrollbarBackgroundColor()
     {
-        return this.scrollBarBackgroundColor;
+        return this.scrollbarBackgroundColor;
+    }
+
+    public int getScrollbarThickness()
+    {
+        return scrollbarThickness;
     }
 
     protected abstract int getContentDimension2();
-    protected abstract void setScrollBarBounds(Button scrollBarButton);
+    protected abstract void setScrollBarBounds();
 
     @Override
     protected void render() {
-        if(allObjectSize != 0)
-            setScrollBarBounds(scrollBarButton);
+        //if(allObjectSize != 0)
+
     }
 
     @Override
@@ -135,12 +140,14 @@ public abstract class ListView extends GuiElement{
     {
         scrollContainer.addChild(el);
         updateElementPositions();
+        setScrollBarBounds();
     }
     @Override
     public void removeChild(GuiElement el)
     {
         scrollContainer.removeChild(el);
         updateElementPositions();
+        setScrollBarBounds();
     }
 
     @Override
@@ -149,6 +156,7 @@ public abstract class ListView extends GuiElement{
         allObjectSize = 0;
         scrollContainer.removeChilds();
         updateElementPositions();
+        setScrollBarBounds();
     }
     @Override
     public ArrayList<GuiElement> getChilds()
@@ -166,11 +174,13 @@ public abstract class ListView extends GuiElement{
             if(scrollOffset < 0)
                 scrollOffset = 0;
             updateElementPositions();
+            setScrollBarBounds();
         } else if (delta < 0 && scrollOffset < allObjectSize - getContentDimension2()) {
             scrollOffset+=scrolSpeed; // Scroll down
-            if(scrollOffset > allObjectSize - getContentDimension2())
-                scrollOffset = allObjectSize - getContentDimension2();
+            if(scrollOffset > allObjectSize - getContentDimension2()+1)
+                scrollOffset = allObjectSize - getContentDimension2()+1;
             updateElementPositions();
+            setScrollBarBounds();
         }
         return true;
     }
@@ -181,6 +191,7 @@ public abstract class ListView extends GuiElement{
         this.padding = padding;
         this.spacing = spacing;
         scrollContainer.relayout(padding, spacing, direction, stretchX, stretchY);
+        setScrollBarBounds();
     }
 
 
