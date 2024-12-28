@@ -40,33 +40,7 @@ public abstract class ListView extends GuiElement{
             super.getBounds().height = getHeight();
         }*/
 
-        @Override
-        public void renderBackgroundInternal()
-        {
-            if(!isVisible())
-                return;
-            enableScissor();
-            super.renderBackgroundInternal();
-            disableScissor();
-        }
-        @Override
-        public void renderInternal()
-        {
-            if(!isVisible())
-                return;
-            enableScissor();
-            super.renderInternal();
-            disableScissor();
-        }
-        @Override
-        public void renderGizmosInternal()
-        {
-            if(!isVisible())
-                return;
-            enableScissor();
-            super.renderGizmosInternal();
-            disableScissor();
-        }
+
 
     }
 
@@ -192,6 +166,34 @@ public abstract class ListView extends GuiElement{
     public Layout getLayout()
     {
         return scrollContainer.getLayout();
+    }
+
+    @Override
+    public void renderBackgroundInternal()
+    {
+        if(!isVisible())
+            return;
+        enableScissor();
+        super.renderBackgroundInternal();
+        disableScissor();
+    }
+    @Override
+    public void renderInternal()
+    {
+        if(!isVisible())
+            return;
+        enableScissor();
+        super.renderInternal();
+        disableScissor();
+    }
+    @Override
+    public void renderGizmosInternal()
+    {
+        if(!isVisible())
+            return;
+        enableScissor();
+        super.renderGizmosInternal();
+        disableScissor();
     }
 
 

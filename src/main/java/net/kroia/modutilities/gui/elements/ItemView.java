@@ -7,8 +7,10 @@ import net.minecraft.world.item.ItemStack;
 public class ItemView extends GuiElement {
     public static final int DEFAULT_WIDTH = 16;
 
-    ItemStack itemStack;
-    Point itemPos = new Point(0,0);
+    private boolean showCount = false;
+    private boolean showTooltip = true;
+    protected ItemStack itemStack;
+    protected Point itemPos = new Point(0,0);
     public ItemView() {
         super(0,0,DEFAULT_WIDTH,DEFAULT_WIDTH);
         setEnableBackground(false);
@@ -37,12 +39,29 @@ public class ItemView extends GuiElement {
     }
 
 
+    public void setShowCount(boolean showCount) {
+        this.showCount = showCount;
+    }
+    public boolean isShowCount() {
+        return showCount;
+    }
+    public void setShowTooltip(boolean showTooltip) {
+        this.showTooltip = showTooltip;
+    }
+    public boolean isShowTooltip() {
+        return showTooltip;
+    }
     @Override
     protected void render() {
         if(itemStack == null)
             return;
 
-        drawItem(itemStack, itemPos);
+        if(showCount)
+            drawItemWithDecoration(itemStack, itemPos, itemStack.getCount());
+        else
+            drawItem(itemStack, itemPos);
+        if(showTooltip && isMouseOver())
+            drawTooltip(itemStack, getMousePos());
     }
 
     @Override

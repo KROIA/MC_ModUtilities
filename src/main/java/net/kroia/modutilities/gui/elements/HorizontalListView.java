@@ -11,7 +11,7 @@ public class HorizontalListView extends ListView {
     }
     public HorizontalListView(int x, int y, int width, int height) {
         super(x, y, width, height);
-        scrollContainer.setBounds(1,1, width, height- scrollbarThickness-2);
+        scrollContainer.setBounds(1,1, width, height- scrollbarThickness-1);
     }
 
 
@@ -32,19 +32,32 @@ public class HorizontalListView extends ListView {
 
     @Override
     protected void layoutChanged() {
-        scrollContainer.setBounds(1, 1, getWidth()-2, getHeight()- scrollbarThickness-2);
+        scrollContainer.setSize(getWidth()-2, getHeight()- scrollbarThickness-1);
         childsChanged();
         setScrollBarBounds();
+        updateElementPositions();
     }
 
     protected void childsChanged()
     {
-        allObjectSize = getLayout()!=null?getLayout().padding*2:0;
+        /*allObjectSize = getLayout()!=null?getLayout().padding*2:0;
         int spacing = getLayout()!=null?getLayout().spacing:0;
         for(GuiElement child : getChilds())
         {
             allObjectSize += child.getWidth()+spacing;
         }
+        scrollOffset = Math.max(Math.min(scrollOffset, allObjectSize - getContentDimension2()), 0);*/
+        int minPos = 0;
+        int maxPos = 0;
+        //allObjectSize = getLayout()!=null?getLayout().padding*2:0;
+        int spacing = getLayout()!=null?getLayout().spacing:0;
+        for(GuiElement child : getChilds())
+        {
+            minPos = Math.min(minPos, child.getLeft());
+            maxPos = Math.max(maxPos, child.getRight());
+            //allObjectSize += child.getHeight()+spacing;
+        }
+        allObjectSize = maxPos-minPos;
         scrollOffset = Math.max(Math.min(scrollOffset, allObjectSize - getContentDimension2()), 0);
     }
 
@@ -57,7 +70,7 @@ public class HorizontalListView extends ListView {
         if(allObjectSize > 0)
         {
             int width = getContentDimension2();
-            scrollbarWidth = Math.min(Math.round(map(scrollContainer.getWidth(), 0, allObjectSize, 0, width)),width);
+            scrollbarWidth = Math.min(Math.round(map(getContentDimension2(), 0, allObjectSize, 0, width)),width);
             scrollbarX = Math.min(Math.round(map(scrollOffset, 0, allObjectSize, 0, width) + outlineThickness), width-scrollbarWidth+outlineThickness);
         }
         scrollbarButton.setBounds(scrollbarX, getHeight() - scrollbarThickness, scrollbarWidth, scrollbarThickness);
@@ -80,13 +93,15 @@ public class HorizontalListView extends ListView {
     @Override
     protected void updateElementPositions()
     {
-        int x = getLayout()!=null?getLayout().padding:0;
+        /*int x = getLayout()!=null?getLayout().padding:0;
         int spacing = getLayout()!=null?getLayout().spacing:0;
         for(GuiElement child : getChilds())
         {
             child.setX(x - scrollOffset);
             x += child.getWidth()+spacing;
-        }
+        }*/
+        scrollContainer.setX(-scrollOffset+1);
+        scrollContainer.setWidth(allObjectSize);
     }
 
 

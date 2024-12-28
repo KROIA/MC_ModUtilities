@@ -10,7 +10,7 @@ public class VerticalListView extends ListView {
     }
     public VerticalListView(int x, int y, int width, int height) {
         super(x, y, width, height);
-        scrollContainer.setBounds(1, 1, width - scrollbarThickness-2, height-2);
+        scrollContainer.setBounds(1,1,width - scrollbarThickness-1, height-2);
     }
 
     @Override
@@ -28,9 +28,10 @@ public class VerticalListView extends ListView {
     }
     @Override
     protected void layoutChanged() {
-        scrollContainer.setBounds(1, 1, getWidth() - scrollbarThickness-2, getHeight()-2);
+        scrollContainer.setSize(getWidth() - scrollbarThickness-1, getHeight()-2);
         childsChanged();
         setScrollBarBounds();
+        updateElementPositions();
     }
     protected void childsChanged()
     {
@@ -45,6 +46,7 @@ public class VerticalListView extends ListView {
             //allObjectSize += child.getHeight()+spacing;
         }
         allObjectSize = maxPos-minPos;
+        scrollOffset = Math.max(Math.min(scrollOffset, allObjectSize - getContentDimension2()), 0);
     }
     @Override
     protected void setScrollBarBounds()
@@ -56,7 +58,7 @@ public class VerticalListView extends ListView {
         if(allObjectSize > 0)
         {
             int height = getContentDimension2();
-            scrollbarHeight = Math.min(Math.round(map(scrollContainer.getHeight(), 0, allObjectSize, 0, height)),height);
+            scrollbarHeight = Math.min(Math.round(map(getContentDimension2(), 0, allObjectSize, 0, height)),height);
             scrollbarY = Math.min(Math.round(map(scrollOffset, 0, allObjectSize, 0, height) + outlineThickness), height-scrollbarHeight+outlineThickness);
         }
 
@@ -80,13 +82,16 @@ public class VerticalListView extends ListView {
     @Override
     protected void updateElementPositions()
     {
-        int y = getLayout()!=null?getLayout().padding:0;
+        /*int y = getLayout()!=null?getLayout().padding:0;
         int spacing = getLayout()!=null?getLayout().spacing:0;
         for(GuiElement child : getChilds())
         {
             child.setY(y - scrollOffset);
             y += child.getHeight()+spacing;
-        }
+        }*/
+        scrollContainer.setY(-scrollOffset+1);
+        scrollContainer.setHeight(allObjectSize);
+
     }
 
     @Override

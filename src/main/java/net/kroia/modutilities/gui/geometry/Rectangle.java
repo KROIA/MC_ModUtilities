@@ -13,6 +13,12 @@ public class Rectangle {
         this.width = width;
         this.height = height;
     }
+    public Rectangle(Rectangle other) {
+        this.x = other.x;
+        this.y = other.y;
+        this.width = other.width;
+        this.height = other.height;
+    }
 
     public void render(GuiGraphics graphics, int color) {
         graphics.fill(x, y, x + width, y + height, color);

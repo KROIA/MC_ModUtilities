@@ -18,14 +18,14 @@ public class Button extends GuiElement {
     public Button(String text) {
         super();
         label = new Label(text);
-        label.setLayoutType(Alignment.CENTER);
+        label.setAlignment(Alignment.CENTER);
         addChild(label);
     }
     public Button(int x, int y, int width, int height, String text) {
         super(x, y, width, height);
         label = new Label(text);
         label.setBounds(0,0,width,height);
-        label.setLayoutType(Alignment.CENTER);
+        label.setAlignment(Alignment.CENTER);
         addChild(label);
     }
     public Button(String text, Runnable onFallingEdge) {
@@ -43,11 +43,11 @@ public class Button extends GuiElement {
 
     public void setLayoutType(Alignment layoutType)
     {
-        label.setLayoutType(layoutType);
+        label.setAlignment(layoutType);
     }
     public Alignment getLayoutType()
     {
-        return label.getLayoutType();
+        return label.getAlignment();
     }
 
     public void setOnFallingEdge(Runnable onFallingEdge)

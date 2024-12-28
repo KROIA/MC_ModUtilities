@@ -2,11 +2,12 @@ package net.kroia.modutilities.gui.elements;
 
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Point;
+import net.kroia.modutilities.gui.geometry.Rectangle;
 
 public class Label extends GuiElement {
 
     public static final int DEFAULT_HEIGHT = 15;
-    private Alignment layoutType = Alignment.LEFT;
+    private Alignment alignment = Alignment.LEFT;
     private String text;
     private int padding = GuiElement.DEFAULT_PADDING;
     private int textColor = GuiElement.DEFAULT_TEXT_COLOR;
@@ -31,14 +32,14 @@ public class Label extends GuiElement {
         return text;
     }
 
-    public void setLayoutType(Alignment layoutType)
+    public void setAlignment(Alignment alignment)
     {
-        this.layoutType = layoutType;
+        this.alignment = alignment;
         layoutChangedInternal();
     }
-    public Alignment getLayoutType()
+    public Alignment getAlignment()
     {
-        return layoutType;
+        return alignment;
     }
     public void setPadding(int padding)
     {
@@ -77,23 +78,10 @@ public class Label extends GuiElement {
         int width = getWidth() - padding*2;
         int height = getHeight()-padding*2;
 
-        textPos.y = Math.round(((float)height-(float)textHeight)/2.f) + y;
-        switch(layoutType)
-        {
-            case CENTER:
-            {
-                textPos.x = (width-textWidth)/2 + x;
-                break;
-            }
-            case LEFT:
-            {
-                textPos.x = x;
-                break;
-            }
-            case RIGHT:
-            {
-                textPos.x = x + width - textWidth;
-            }
-        }
+        Rectangle bounds = new Rectangle(0,0, textWidth, textHeight);
+        bounds = getAlignedBounds(bounds, alignment, x, y, width, height);
+
+        textPos.x = bounds.x;
+        textPos.y = bounds.y;
     }
 }

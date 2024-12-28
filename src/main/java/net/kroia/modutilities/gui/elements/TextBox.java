@@ -20,12 +20,14 @@ public class TextBox extends GuiElement {
     private int cursorBlinkCounter = 0;
     private boolean cursorVisible = false;
 
+    private int marginX = 4;
+
     Runnable textChangedFromUser = null;
     public TextBox(int x, int y, int width) {
         super(x, y, width, Label.DEFAULT_HEIGHT);
         textLabel = new Label("");
-        textLabel.setBounds(0, 0, width, Label.DEFAULT_HEIGHT);
-        textLabel.setLayoutType(Alignment.LEFT);
+        textLabel.setBounds(marginX, 0, width-2*marginX, Label.DEFAULT_HEIGHT);
+        textLabel.setAlignment(Alignment.LEFT);
 
         addChild(textLabel);
         textLabel.setText(text);
@@ -102,18 +104,23 @@ public class TextBox extends GuiElement {
 
     public void setText(String text) {
         this.text = text;
-        setAllowLetters(true);
-        setAllowNumbers(true, true);
+        //setAllowLetters(true);
+        //setAllowNumbers(true, true);
         currentCursorPos = text.length();
         updateTextLabel();
     }
     public void setText(double value) {
-        setAllowLetters(false);
+        //setAllowLetters(false);
         setAllowNumbers(true, true);
         setText(String.valueOf(value));
     }
     public void setText(int value) {
-        setAllowLetters(false);
+        //setAllowLetters(false);
+        setAllowNumbers(true, false);
+        setText(String.valueOf(value));
+    }
+    public void setText(long value) {
+        //setAllowLetters(false);
         setAllowNumbers(true, false);
         setText(String.valueOf(value));
     }
@@ -143,7 +150,7 @@ public class TextBox extends GuiElement {
                 cursorVisible = !cursorVisible;
             }
             if(cursorVisible) {
-                int cursorX = textLabel.getFont().width(text.substring(0, currentCursorPos));
+                int cursorX = textLabel.getFont().width(text.substring(0, currentCursorPos)) + textLabel.getX();
                 drawRect(cursorX+1, 3,1, getHeight()-6, cursorColor);
                 drawRect(cursorX, 2,3, 1, cursorColor);
                 drawRect(cursorX, getHeight()-4,3, 1, cursorColor);
@@ -153,7 +160,7 @@ public class TextBox extends GuiElement {
 
     @Override
     protected void layoutChanged() {
-        textLabel.setBounds(0, 0, getWidth(), getHeight());
+        textLabel.setBounds(marginX, 0, getWidth()-2*marginX, getHeight());
     }
 
     @Override
@@ -367,7 +374,7 @@ public class TextBox extends GuiElement {
             }
         }
 
-        return false;
+        return true;
     }
 
     @Override

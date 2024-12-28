@@ -25,8 +25,18 @@ public abstract class GuiElement {
     {
         CENTER,
         LEFT,
-        RIGHT
+        RIGHT,
+        TOP,
+        BOTTOM,
+        TOP_LEFT,
+        TOP_RIGHT,
+        BOTTOM_LEFT,
+        BOTTOM_RIGHT
+
+
     }
+
+
     public static int DEFAULT_PADDING = 1;
     public static int DEFAULT_TEXT_COLOR = 0xFFFFFF;
     public static int DEFAULT_BACKGROUND_COLOR = 0xAA888888;
@@ -441,11 +451,19 @@ public abstract class GuiElement {
     public int getMouseY() {
         return root.getMousePosY()-globalPositon.y;
     }
+    public Point getMousePos()
+    {
+        return new Point(getMouseX(), getMouseY());
+    }
     public int getMouseXGlobal() {
         return root.getMousePosX();
     }
     public int getMouseYGlobal() {
         return root.getMousePosY();
+    }
+    public Point getMousePosGlobal()
+    {
+        return new Point(getMouseXGlobal(), getMouseYGlobal());
     }
     public float getPartialTick() {
         return root.getPartialTick();
@@ -555,7 +573,7 @@ public abstract class GuiElement {
         bounds.height = size.y;
         layoutChangedInternal();
     }
-    public void setBounts(Rectangle rect)
+    public void setBounds(Rectangle rect)
     {
         bounds.x = rect.x;
         bounds.y = rect.y;
@@ -611,6 +629,56 @@ public abstract class GuiElement {
                 frame.height = childFrame.y+childFrame.height-frame.y;
         }
         return frame;
+    }
+
+    public void applyAlignment(Alignment alignment, int x, int y, int width, int height) {
+        Rectangle bounds = getAlignedBounds(getBounds(), alignment, x, y, width, height);
+        setBounds(bounds);
+    }
+    public static Rectangle getAlignedBounds(Rectangle inputBounds, Alignment alignment, int x, int y, int width, int height) {
+        Rectangle bounds = new Rectangle(inputBounds);
+
+        int xCenter = x+(width - bounds.width) / 2;
+        int yCenter = y+(height - bounds.height) / 2;
+        switch (alignment) {
+            case CENTER:
+                bounds.x = xCenter;
+                bounds.y = yCenter;
+                break;
+            case LEFT:
+                bounds.x = x;
+                bounds.y = yCenter;
+                break;
+            case RIGHT:
+                bounds.x = width - bounds.width+x;
+                bounds.y = yCenter;
+                break;
+            case TOP:
+                bounds.x = xCenter;
+                bounds.y = y;
+                break;
+            case BOTTOM:
+                bounds.x = xCenter;
+                bounds.y = height - bounds.height+y;
+                break;
+            case TOP_LEFT:
+                bounds.x = x;
+                bounds.y = y;
+                break;
+            case TOP_RIGHT:
+                bounds.x = width - bounds.width+x;
+                bounds.y = y;
+                break;
+            case BOTTOM_LEFT:
+                bounds.x = x;
+                bounds.y = height - bounds.height+y;
+                break;
+            case BOTTOM_RIGHT:
+                bounds.x = width - bounds.width+x;
+                bounds.y = height - bounds.height+y;
+                break;
+        }
+        return bounds;
     }
 
     /*public void relayout(int padding, int spacing, LayoutDirection direction)
@@ -843,6 +911,15 @@ public abstract class GuiElement {
     public void drawTooltip(List<Component> textComponents, Optional<TooltipComponent> tooltipComponent, ItemStack stack, Point pos)
     {
         drawTooltip(textComponents, tooltipComponent, stack, pos.x, pos.y);
+    }
+
+    public void drawTooltip(ItemStack stack, int x, int y)
+    {
+        root.drawTooltip(stack, x,y);
+    }
+    public void drawTooltip(ItemStack stack, Point pos)
+    {
+        drawTooltip(stack, pos.x, pos.y);
     }
 
     public void drawFrame(int x, int y, int width, int height, int color, int thickness)

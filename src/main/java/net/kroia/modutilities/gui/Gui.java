@@ -241,6 +241,10 @@ public class Gui {
     {
         graphics.renderTooltip(getFont(), textComponents, tooltipComponent, stack, x,y);
     }
+    public void drawTooltip(ItemStack pStack, int x, int y)
+    {
+        graphics.renderTooltip(getFont(), pStack, x, y);
+    }
 
     public void drawItem(ItemStack item, int x, int y, int seed)
     {
