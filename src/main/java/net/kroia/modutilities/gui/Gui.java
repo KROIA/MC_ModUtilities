@@ -1,11 +1,17 @@
 package net.kroia.modutilities.gui;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.*;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
+import net.kroia.modutilities.gui.elements.base.Vertex;
+import net.kroia.modutilities.gui.elements.base.VertexBuffer;
+import net.kroia.modutilities.gui.geometry.Point;
 import net.kroia.modutilities.gui.geometry.Rectangle;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.network.chat.Component;
@@ -14,6 +20,9 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.inventory.tooltip.TooltipComponent;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.Vec3;
+import org.joml.Matrix4f;
+import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,6 +34,7 @@ public class Gui {
     protected Screen parent;
     protected int mousePosX, mousePosY;
     protected float partialTick;
+    private Rectangle globalScissorArea = null;
 
     protected GuiElement focusedElement = null;
 
@@ -205,17 +215,83 @@ public class Gui {
     // Drawing primitives
     public void drawText(String text, int x, int y, int color)
     {
-        graphics.drawString(getFont(), text, x, y, color);
+        // Split text by new line
+        String[] lines = text.split("\n");
+        for(int i = 0; i < lines.length; i++)
+        {
+            graphics.drawString(getFont(), lines[i], x, y + i*getFont().lineHeight, color);
+        }
     }
     public void drawText(Component text, int x, int y, int color)
     {
-        graphics.drawString(getFont(), text, x, y, color);
+        // Split text by new line
+        String[] lines = text.getString().split("\n");
+        for(int i = 0; i < lines.length; i++)
+        {
+            graphics.drawString(getFont(), lines[i], x, y + i*getFont().lineHeight, color);
+        }
     }
     public void drawText(Component text, int x, int y, int color, boolean dropShadow)
     {
-        graphics.drawString(getFont(), text, x, y, color, dropShadow);
+        // Split text by new line
+        String[] lines = text.getString().split("\n");
+        for(int i = 0; i < lines.length; i++)
+        {
+            graphics.drawString(getFont(), lines[i], x, y + i*getFont().lineHeight, color, dropShadow);
+        }
     }
 
+
+    public void drawLine(int x1, int y1, int x2, int y2, float thickness,  int color)
+    {
+        class PointF
+        {
+            public float x;
+            public float y;
+            public PointF(float x, float y)
+            {
+                this.x = x;
+                this.y = y;
+            }
+        }
+
+        int red = (color >> 16) & 0xFF;
+        int green = (color >> 8) & 0xFF;
+        int blue = color & 0xFF;
+        int alpha = (color >> 24) & 0xFF;
+
+        PointF direction = new PointF(x2-x1, y2-y1);
+        float length = (float)Math.sqrt(direction.x*direction.x + direction.y*direction.y);
+        if(length < 0.0001F)
+            return;
+        PointF unitDirection = new PointF(direction.x/length, direction.y/length);
+        PointF normal = new PointF(-unitDirection.y, unitDirection.x);
+        PointF offset = new PointF(thickness/2*normal.x, thickness/2*normal.y);
+
+        PointF p1 = new PointF(x1+offset.x, y1+offset.y);
+        PointF p2 = new PointF(x2+offset.x, y2+offset.y);
+        PointF p3 = new PointF(x2-offset.x, y2-offset.y);
+        PointF p4 = new PointF(x1-offset.x, y1-offset.y);
+
+
+        Matrix4f matrix4f = graphics.pose().last().pose();
+        VertexConsumer vertexconsumer = graphics.bufferSource().getBuffer(RenderType.gui());
+        vertexconsumer.vertex(matrix4f, (float)p1.x, (float)p1.y, (float)0).color(red, green, blue, alpha).endVertex();
+        vertexconsumer.vertex(matrix4f, (float)p2.x, (float)p2.y, (float)0).color(red, green, blue, alpha).endVertex();
+        vertexconsumer.vertex(matrix4f, (float)p3.x, (float)p3.y, (float)0).color(red, green, blue, alpha).endVertex();
+        vertexconsumer.vertex(matrix4f, (float)p4.x, (float)p4.y, (float)0).color(red, green, blue, alpha).endVertex();
+        graphics.flush();
+    }
+    public void drawVertexBuffer_QUADS(VertexBuffer buffer) {
+        Matrix4f matrix4f = graphics.pose().last().pose();
+        RenderType renderType = RenderType.debugQuads();
+        VertexConsumer vertexconsumer = graphics.bufferSource().getBuffer(renderType);
+        for(Vertex vertex : buffer.getVertices())
+        {
+            vertexconsumer.vertex(matrix4f, vertex.x, vertex.y, 0).color(vertex.red, vertex.green, vertex.blue, vertex.alpha).endVertex();
+        }
+        graphics.flush();
+    }
     public void drawRect(int x,int y, int width, int height, int color)
     {
         graphics.fill(x,y,width+x,height+y,color);
@@ -235,14 +311,35 @@ public class Gui {
     }
     public void drawTooltip(Component tooltip, int x, int y)
     {
+        if(isScissorEnabled())
+        {
+            scissorPause();
+            graphics.renderTooltip(getFont(), tooltip, x,y);
+            scissorResume();
+            return;
+        }
         graphics.renderTooltip(getFont(), tooltip, x,y);
     }
     public void drawTooltip(List<Component> textComponents, Optional<TooltipComponent> tooltipComponent, ItemStack stack, int x, int y)
     {
+        if(isScissorEnabled())
+        {
+            scissorPause();
+            graphics.renderTooltip(getFont(), textComponents, tooltipComponent, stack, x,y);
+            scissorResume();
+            return;
+        }
         graphics.renderTooltip(getFont(), textComponents, tooltipComponent, stack, x,y);
     }
     public void drawTooltip(ItemStack pStack, int x, int y)
     {
+        if(isScissorEnabled())
+        {
+            scissorPause();
+            graphics.renderTooltip(getFont(), pStack, x, y);
+            scissorResume();
+            return;
+        }
         graphics.renderTooltip(getFont(), pStack, x, y);
     }
 
@@ -306,6 +403,7 @@ public class Gui {
     }
     public void enableScissor(Rectangle rect)
     {
+        globalScissorArea = rect;
         //int guiScale = (int)getGuiScale();
         int x1 = rect.x;
         int y1 = rect.y;
@@ -316,7 +414,27 @@ public class Gui {
     }
     public void disableScissor()
     {
+        globalScissorArea = null;
         graphics.disableScissor();
+    }
+    public boolean isScissorEnabled()
+    {
+        return globalScissorArea != null;
+    }
+    public Rectangle getScissorArea()
+    {
+        return globalScissorArea;
+    }
+    public void scissorPause()
+    {
+        graphics.disableScissor();
+    }
+    public void scissorResume()
+    {
+        if(globalScissorArea != null)
+        {
+            enableScissor(globalScissorArea);
+        }
     }
 
     public static void playLocalSound(SoundEvent sound, float volume, float pitch)

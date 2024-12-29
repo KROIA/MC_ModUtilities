@@ -61,6 +61,8 @@ public abstract class GuiElement {
 
     protected Layout layout = null;
 
+
+
     public GuiElement() {
         this(0, 0, 0, 0);
     }
@@ -167,6 +169,12 @@ public abstract class GuiElement {
     public int getOutlineColor() {
         return outlineColor;
     }
+    public int setOutlineThickness(int outlineThickness) {
+        return this.outlineThickness = outlineThickness;
+    }
+    public int getOutlineThickness() {
+        return outlineThickness;
+    }
     public void setEnableBackground(boolean enableBackground) {
         this.enableBackground = enableBackground;
     }
@@ -251,18 +259,6 @@ public abstract class GuiElement {
 
     protected void enableGlobalScissor(Rectangle area)
     {
-        // Calculate the scissor box
-        /*int scale = (int) Minecraft.getInstance().getWindow().getGuiScale(); // Get GUI scale
-        int scissorX = area.x * scale;
-        int windowHeight = Minecraft.getInstance().getWindow().getHeight();
-        int scissorY = windowHeight - ((area.y+area.height)*scale);
-        int scissorWidth = area.width * scale;
-        int scissorHeight = area.height * scale;
-
-        // Enable scissor test
-        //RenderSystem.assertOnRenderThread(); // Ensure we are on the render thread
-        GL11.glEnable(GL11.GL_SCISSOR_TEST);
-        GL11.glScissor(scissorX, scissorY, scissorWidth, scissorHeight);*/
         root.enableScissor(area);
     }
     protected void enableScissor(Rectangle area)
@@ -284,6 +280,8 @@ public abstract class GuiElement {
     protected abstract void layoutChanged();
     public void layoutChangedInternal()
     {
+        if(getGui() == null)
+            return;
         if(layout != null) {
             if(layout.enabled)
                 layout.apply(this);
@@ -790,6 +788,30 @@ public abstract class GuiElement {
     {
         drawText(text, pos.x, pos.y, 0xFFFFFF, dropShadow);
     }
+
+
+    public void drawLine(int x1, int y1, int x2, int y2, float thickness, int color)
+    {
+        root.drawLine(x1,y1,x2,y2,thickness, color);
+    }
+    public void drawLine(Point start, Point end, float thickness,int color)
+    {
+        drawLine(start.x, start.y, end.x, end.y, thickness, color);
+    }
+    public void drawLine(Point start, Point end, float thickness)
+    {
+        drawLine(start.x, start.y, end.x, end.y, thickness, 0xFFFFFFFF);
+    }
+    public void drawLine(Point start, Point end)
+    {
+        drawLine(start.x, start.y, end.x, end.y, 1, 0xFFFFFFFF);
+    }
+
+    public void drawVertexBuffer_QUADS(VertexBuffer buffer)
+    {
+        root.drawVertexBuffer_QUADS(buffer);
+    }
+
 
 
     public void drawRect(int x,int y, int width, int height, int color)
