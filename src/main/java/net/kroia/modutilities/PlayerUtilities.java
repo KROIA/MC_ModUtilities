@@ -23,7 +23,7 @@ public class PlayerUtilities {
     }
     public static void printToClientConsole(String msg)
     {
-        MinecraftServer server = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
+        MinecraftServer server = UtilitiesPlatform.getServer();
 
         if (server == null) {
             throw new IllegalStateException("Server instance is null. Are you calling this from the server_sender?");
@@ -50,7 +50,7 @@ public class PlayerUtilities {
             return null;
 
         // Get the Minecraft server_sender instance
-        MinecraftServer server = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
+        MinecraftServer server = UtilitiesPlatform.getServer();
 
         if (server == null) {
             throw new IllegalStateException("Server instance is null. Are you calling this from the server_sender?");
@@ -65,7 +65,7 @@ public class PlayerUtilities {
         if(name == null)
             return null;
         // Get the Minecraft server_sender instance
-        MinecraftServer server = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
+        MinecraftServer server = UtilitiesPlatform.getServer();
 
         if (server == null) {
             throw new IllegalStateException("Server instance is null. Are you calling this from the server_sender?");
@@ -80,7 +80,7 @@ public class PlayerUtilities {
     public static Map<UUID, String> getUUIDToNameMap()
     {
         Map<UUID, String> uuidToNameMap = new HashMap<>();
-        MinecraftServer server = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
+        MinecraftServer server = UtilitiesPlatform.getServer();
 
         if (server == null) {
             throw new IllegalStateException("Server instance is null. Are you calling this from the server_sender?");

@@ -53,4 +53,7 @@ public class ItemSelectionScreen extends GuiScreen {
         itemSelectionView.setBounds((width - menuWidth) / 2, 10, menuWidth, getHeight()-40);
         backButton.setBounds((width - menuWidth) / 2, getHeight() - 30, menuWidth, 20);
     }
+    public void sortItems() {
+        itemSelectionView.sortItems();
+    }
 }

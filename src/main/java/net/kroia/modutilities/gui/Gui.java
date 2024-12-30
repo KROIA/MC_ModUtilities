@@ -1,32 +1,24 @@
 package net.kroia.modutilities.gui;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.elements.base.Vertex;
 import net.kroia.modutilities.gui.elements.base.VertexBuffer;
-import net.kroia.modutilities.gui.geometry.Point;
 import net.kroia.modutilities.gui.geometry.Rectangle;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.inventory.tooltip.TooltipComponent;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
-import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
 
 public class Gui {
 
@@ -86,7 +78,11 @@ public class Gui {
     {
         if(parent == null)
             return false;
-        return parent.getMinecraft() != null;
+        if(parent instanceof GuiScreen guiScreen)
+            return guiScreen.isInitialized();
+        if(parent instanceof GuiContainerScreen guiContainerScreen)
+            return guiContainerScreen.isInitialized();
+        return false;
     }
 
     public void addElement(GuiElement element)
@@ -320,29 +316,17 @@ public class Gui {
         }
         graphics.renderTooltip(getFont(), tooltip, x,y);
     }
-    public void drawTooltip(List<Component> textComponents, Optional<TooltipComponent> tooltipComponent, ItemStack stack, int x, int y)
+    public void drawTooltip(ItemStack stack, int x, int y)
     {
         if(isScissorEnabled())
         {
             scissorPause();
-            graphics.renderTooltip(getFont(), textComponents, tooltipComponent, stack, x,y);
+            graphics.renderTooltip(getFont(), stack, x,y);
             scissorResume();
             return;
         }
-        graphics.renderTooltip(getFont(), textComponents, tooltipComponent, stack, x,y);
+        graphics.renderTooltip(getFont(), stack, x,y);
     }
-    public void drawTooltip(ItemStack pStack, int x, int y)
-    {
-        if(isScissorEnabled())
-        {
-            scissorPause();
-            graphics.renderTooltip(getFont(), pStack, x, y);
-            scissorResume();
-            return;
-        }
-        graphics.renderTooltip(getFont(), pStack, x, y);
-    }
-
     public void drawItem(ItemStack item, int x, int y, int seed)
     {
         graphics.renderItem(item, x, y, seed);

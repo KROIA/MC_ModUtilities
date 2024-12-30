@@ -14,7 +14,7 @@ public abstract class GuiScreen extends Screen {
         super(pTitle);
         this.gui = new Gui(this);
     }
-
+    protected boolean isInitialized = false;
     public void setEnableGizmos(boolean enableGizmos) {
         this.enableGizmos = enableGizmos;
     }
@@ -28,8 +28,16 @@ public abstract class GuiScreen extends Screen {
     @Override
     public final void init() {
         super.init();
-        updateLayout(gui);
         gui.init();
+        updateLayout(gui);
+    }
+    @Override
+    protected void rebuildWidgets() {
+        super.rebuildWidgets();
+    }
+    public boolean isInitialized()
+    {
+        return isInitialized;
     }
 
     protected abstract void updateLayout(Gui gui);
@@ -54,6 +62,11 @@ public abstract class GuiScreen extends Screen {
 
     @Override
     public void renderBackground(GuiGraphics guiGraphics) {
+        if(this.minecraft == null)
+        {
+            return;
+        }
+
         super.renderBackground(guiGraphics);
         gui.renderBackground(guiGraphics);
     }

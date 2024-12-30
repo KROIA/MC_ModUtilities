@@ -9,6 +9,7 @@ import net.kroia.modutilities.gui.GuiTexture;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.minecraft.ChatFormatting;
 import net.minecraft.Util;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.MenuAccess;
@@ -22,17 +23,14 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
-import javax.annotation.Nullable;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
 import static net.minecraft.client.gui.screens.Screen.getTooltipFromItem;
 
-@OnlyIn(Dist.CLIENT)
+
 public class ContainerView<T extends AbstractContainerMenu> extends GuiElement implements MenuAccess<T> {
 
     private static final float SNAPBACK_SPEED = 100.0F;
@@ -46,15 +44,15 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
     protected final T menu;
     protected final Component playerInventoryTitle;
     protected final Component title;
-    @Nullable
+
     protected Slot hoveredSlot;
-    @Nullable
+
     private Slot clickedSlot;
-    @Nullable
+
     private Slot snapbackEnd;
-    @Nullable
+
     private Slot quickdropSlot;
-    @Nullable
+
     private Slot lastClickSlot;
     private boolean isSplittingStack;
     private ItemStack draggingItem;
@@ -95,6 +93,22 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
         this.titleLabelY = 6;
         this.inventoryLabelX = 8;
         this.inventoryLabelY = pBackgroundTexture.getHeight() - 94;
+    }
+
+    private boolean isSameInventory(Slot pSlot, Slot pOtherSlot) {
+        return pSlot != null && pOtherSlot != null && pSlot.container == pOtherSlot.container;
+    }
+    private boolean isActiveAndMatches(KeyMapping key, int keySym, int scanCode) {
+        if(key.matches(keySym, scanCode)) {
+            return key.isDefault();
+        }
+        return false;
+    }
+    private boolean isActiveAndMatches(KeyMapping key, int mouseButton) {
+        if(key.matchesMouse(mouseButton)) {
+            return key.isDefault();
+        }
+        return false;
     }
 
     @Override
@@ -191,7 +205,7 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
     protected void renderTooltip(int pX, int pY) {
         if (this.menu.getCarried().isEmpty() && this.hoveredSlot != null && this.hoveredSlot.hasItem()) {
             ItemStack itemstack = this.hoveredSlot.getItem();
-            drawTooltip(this.getTooltipFromContainerItem(itemstack), itemstack.getTooltipImage(), itemstack, pX, pY);
+            drawTooltip(itemstack, pX, pY);
         }
 
     }
@@ -293,7 +307,6 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
 
     }
 
-    @Nullable
     private Slot findSlot(double pMouseX, double pMouseY) {
         for(int i = 0; i < this.menu.slots.size(); ++i) {
             Slot slot = (Slot)this.menu.slots.get(i);
@@ -309,8 +322,7 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
     public boolean mouseClickedOverElement(int pButton) {
         int pMouseX = getMouseX();
         int pMouseY = getMouseY();
-        InputConstants.Key mouseKey = InputConstants.Type.MOUSE.getOrCreate(pButton);
-        boolean flag = minecraft.options.keyPickItem.isActiveAndMatches(mouseKey);
+        boolean flag = isActiveAndMatches(minecraft.options.keyPickItem, pButton);
         Slot slot = this.findSlot(pMouseX, pMouseY);
         long i = Util.getMillis();
         this.doubleclick = this.lastClickSlot == slot && i - this.lastClickTime < 250L && this.lastClickButton == pButton;
@@ -350,7 +362,7 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
                     }
                 } else if (!this.isQuickCrafting) {
                     if (this.menu.getCarried().isEmpty()) {
-                        if (minecraft.options.keyPickItem.isActiveAndMatches(mouseKey)) {
+                        if (isActiveAndMatches(minecraft.options.keyPickItem, pButton)) {
                             this.slotClicked(slot, l, pButton, ClickType.CLONE);
                         } else {
                             boolean flag2 = l != -999 && (InputConstants.isKeyDown(minecraft.getWindow().getWindow(), 340) || InputConstants.isKeyDown(minecraft.getWindow().getWindow(), 344));
@@ -374,7 +386,7 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
                             this.quickCraftingType = 0;
                         } else if (pButton == 1) {
                             this.quickCraftingType = 1;
-                        } else if (minecraft.options.keyPickItem.isActiveAndMatches(mouseKey)) {
+                        } else if (isActiveAndMatches(minecraft.options.keyPickItem, pButton)) {
                             this.quickCraftingType = 2;
                         }
                     }
@@ -459,7 +471,6 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
             flag = false;
         }
 
-        InputConstants.Key mouseKey = InputConstants.Type.MOUSE.getOrCreate(pButton);
         int k = -1;
         if (slot != null) {
             k = slot.index;
@@ -478,7 +489,11 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
 
                     while(var14.hasNext()) {
                         slot1 = (Slot)var14.next();
-                        if (slot1 != null && slot1.mayPickup(minecraft.player) && slot1.hasItem() && slot1.isSameInventory(slot) && AbstractContainerMenu.canItemQuickReplace(slot1, this.lastQuickMoved, true)) {
+                        if (slot1 != null &&
+                                slot1.mayPickup(minecraft.player) &&
+                                slot1.hasItem() &&
+                                isSameInventory(slot1, slot) &&
+                                AbstractContainerMenu.canItemQuickReplace(slot1, this.lastQuickMoved, true)) {
                             this.slotClicked(slot1, slot1.index, pButton, ClickType.QUICK_MOVE);
                         }
                     }
@@ -546,7 +561,7 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
 
                 this.slotClicked((Slot)null, -999, AbstractContainerMenu.getQuickcraftMask(2, this.quickCraftingType), ClickType.QUICK_CRAFT);
             } else if (!this.menu.getCarried().isEmpty()) {
-                if (minecraft.options.keyPickItem.isActiveAndMatches(mouseKey)) {
+                if (isActiveAndMatches(minecraft.options.keyPickItem,pButton)) {
                     this.slotClicked(slot, k, pButton, ClickType.CLONE);
                 } else {
                     flag1 = k != -999 && (InputConstants.isKeyDown(minecraft.getWindow().getWindow(), 340) || InputConstants.isKeyDown(minecraft.getWindow().getWindow(), 344));
@@ -594,24 +609,23 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
     }
 
     public boolean keyPressed(int pKeyCode, int pScanCode, int pModifiers) {
-        InputConstants.Key mouseKey = InputConstants.getKey(pKeyCode, pScanCode);
         if (super.keyPressed(pKeyCode, pScanCode, pModifiers)) {
             return true;
-        } else if (this.minecraft.options.keyInventory.isActiveAndMatches(mouseKey)) {
+        } else if (isActiveAndMatches(this.minecraft.options.keyInventory, pKeyCode, pScanCode)) {
             if(getGui().getFocusedElement() == null)
                 this.onClose();
             return true;
         } else {
             boolean handled = this.checkHotbarKeyPressed(pKeyCode, pScanCode);
             if (this.hoveredSlot != null && this.hoveredSlot.hasItem()) {
-                if (this.minecraft.options.keyPickItem.isActiveAndMatches(mouseKey)) {
+                if (isActiveAndMatches(this.minecraft.options.keyPickItem, pKeyCode, pScanCode)) {
                     this.slotClicked(this.hoveredSlot, this.hoveredSlot.index, 0, ClickType.CLONE);
                     handled = true;
-                } else if (this.minecraft.options.keyDrop.isActiveAndMatches(mouseKey)) {
+                } else if (isActiveAndMatches(this.minecraft.options.keyDrop, pKeyCode, pScanCode)) {
                     this.slotClicked(this.hoveredSlot, this.hoveredSlot.index, Screen.hasControlDown() ? 1 : 0, ClickType.THROW);
                     handled = true;
                 }
-            } else if (this.minecraft.options.keyDrop.isActiveAndMatches(mouseKey)) {
+            } else if (isActiveAndMatches(this.minecraft.options.keyDrop, pKeyCode, pScanCode)) {
                 handled = true;
             }
 
@@ -621,13 +635,13 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
 
     protected boolean checkHotbarKeyPressed(int pKeyCode, int pScanCode) {
         if (this.menu.getCarried().isEmpty() && this.hoveredSlot != null) {
-            if (this.minecraft.options.keySwapOffhand.isActiveAndMatches(InputConstants.getKey(pKeyCode, pScanCode))) {
+            if (isActiveAndMatches(this.minecraft.options.keySwapOffhand, pKeyCode, pScanCode)) {
                 this.slotClicked(this.hoveredSlot, this.hoveredSlot.index, 40, ClickType.SWAP);
                 return true;
             }
 
             for(int i = 0; i < 9; ++i) {
-                if (this.minecraft.options.keyHotbarSlots[i].isActiveAndMatches(InputConstants.getKey(pKeyCode, pScanCode))) {
+                if (isActiveAndMatches(this.minecraft.options.keyHotbarSlots[i],pKeyCode, pScanCode)) {
                     this.slotClicked(this.hoveredSlot, this.hoveredSlot.index, i, ClickType.SWAP);
                     return true;
                 }

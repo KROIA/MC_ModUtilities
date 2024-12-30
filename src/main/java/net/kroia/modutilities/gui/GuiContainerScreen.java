@@ -13,6 +13,7 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
 
     protected final Gui gui;
     protected boolean enableGizmos = false;
+    protected boolean isInitialized = false;
     public GuiContainerScreen(T pMenu, Inventory pPlayerInventory, Component pTitle) {
         super(pMenu, pPlayerInventory, pTitle);
         this.gui = new Gui(this);
@@ -31,8 +32,17 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     @Override
     public final void init() {
         super.init();
-        updateLayout(gui);
         gui.init();
+        updateLayout(gui);
+    }
+    @Override
+    protected void rebuildWidgets() {
+        super.rebuildWidgets();
+    }
+
+    public boolean isInitialized()
+    {
+        return isInitialized;
     }
 
     protected abstract void updateLayout(Gui gui);

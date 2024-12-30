@@ -1,69 +1,49 @@
 package net.kroia.modutilities.networking;
 
+import dev.architectury.networking.NetworkManager;
+import dev.architectury.platform.Platform;
+import dev.architectury.utils.Env;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.world.entity.player.Player;
+import org.apache.logging.log4j.core.jmx.Server;
+
+import java.util.Objects;
 import java.util.function.Supplier;
 
-public class NetworkPacket {
-
-    public NetworkPacket()
-    {
-
+public abstract class NetworkPacket implements INetworkPacket {
+    public NetworkPacket() {
+        super();
     }
-    public NetworkPacket(FriendlyByteBuf buf)
-    {
+
+    public NetworkPacket(FriendlyByteBuf buf) {
+        super();
         this.fromBytes(buf);
     }
 
-
-    public void toBytes(FriendlyByteBuf buf) {
-
+    protected void handleOnClient() {
     }
-
-    public void fromBytes(FriendlyByteBuf buf)
-    {
-
+    protected void handleOnServer(ServerPlayer sender) {
     }
+    @Override
+    public void receive(Supplier<NetworkManager.PacketContext> contextSupplier) {
+        NetworkManager.PacketContext context = (NetworkManager.PacketContext)contextSupplier.get();
+        // Check if is client
+        Env env = context.getEnvironment();
+        if(env == Env.CLIENT) {
+            Minecraft.getInstance().submit(this::handleOnClient);
 
-    protected void handleOnServer(ServerPlayer sender)
-    {
-
-    }
-    protected void handleOnClient()
-    {
-
-    }
-
-
-    // Since MC 1.20.2
-    /*public void handle(CustomPayloadEvent.Context context)
-    {
-        if(context.isClientSide())
-        {
-            handleOnClient();
+        } else if(env == Env.SERVER) {
+            Player sender = context.getPlayer();
+            if(sender instanceof ServerPlayer serverPlayer) {
+                Objects.requireNonNull(serverPlayer.getServer()).submit(() -> {
+                    this.handleOnServer(serverPlayer);
+                });
+            }
         }
-        else
-        {
-            handleOnServer(context.getSender());
-        }
-        context.setPacketHandled(true);
-    }*/
 
-    // Before MC 1.20.2
-    public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
-        // Check if on server_sender or client
-        if(contextSupplier.get().getDirection().getReceptionSide().isClient()) {
-            handleOnClient();
-            context.setPacketHandled(true);
-            return;
-        }
-        context.enqueueWork(() -> {
-            // HERE WE ARE ON THE SERVER!
-            // Update client-side data
-            handleOnServer(context.getSender());
-        });
-        context.setPacketHandled(true);
     }
 }

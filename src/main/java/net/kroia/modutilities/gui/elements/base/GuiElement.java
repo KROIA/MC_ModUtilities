@@ -921,18 +921,8 @@ public abstract class GuiElement {
     {
         root.drawTooltip(tooltip, x,y);
     }
-    public void drawTooltip(Component tooltip, Point pos)
-    {
+    public void drawTooltip(Component tooltip, Point pos) {
         drawTooltip(tooltip, pos.x, pos.y);
-    }
-
-    public void drawTooltip(List<Component> textComponents, Optional<TooltipComponent> tooltipComponent, ItemStack stack, int x, int y)
-    {
-        root.drawTooltip(textComponents, tooltipComponent, stack, x,y);
-    }
-    public void drawTooltip(List<Component> textComponents, Optional<TooltipComponent> tooltipComponent, ItemStack stack, Point pos)
-    {
-        drawTooltip(textComponents, tooltipComponent, stack, pos.x, pos.y);
     }
 
     public void drawTooltip(ItemStack stack, int x, int y)

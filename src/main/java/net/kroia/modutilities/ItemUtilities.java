@@ -1,17 +1,15 @@
 package net.kroia.modutilities;
 
-import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.level.block.Block;
-import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.stream.Stream;
 
 public class ItemUtilities {
     public static ItemStack createItemStackFromId(String itemId)
@@ -23,11 +21,11 @@ public class ItemUtilities {
         if(itemId == null) {
             return ItemStack.EMPTY;
         }
-        ResourceLocation resourceLocation = new ResourceLocation(itemId); // "minecraft:diamond"
-        Item item = ForgeRegistries.ITEMS.getValue(resourceLocation); // Get the item from the registry
+        ItemStack itemStack = UtilitiesPlatform.getItemStack(itemId); // Get the item from the item ID
 
-        if (item != null) {
-            return new ItemStack(item, amount); // Create an ItemStack with the specified amount
+        if (itemStack != null) {
+            itemStack.setCount(amount); // Set the item stack's count to the specified amount
+            return itemStack; // Return the item stack
         }
 
         return ItemStack.EMPTY; // Return an empty stack if the item is not found
@@ -46,25 +44,26 @@ public class ItemUtilities {
     }
     public static String getItemID(Item item)
     {
-        ResourceLocation itemLocation = ForgeRegistries.ITEMS.getKey(item);
-        return itemLocation.toString();
+        return UtilitiesPlatform.getItemID(item);
     }
 
     public static ArrayList<String> getAllItemIDs()
     {
         ArrayList<String> itemIDs = new ArrayList<>();
-        for(Item item : ForgeRegistries.ITEMS)
+        HashMap<String, ItemStack> itemTable = UtilitiesPlatform.getAllItems();
+        for(String itemID : itemTable.keySet())
         {
-            itemIDs.add(getItemID(item));
+            itemIDs.add(itemID);
         }
         return itemIDs;
     }
     public static ArrayList<ItemStack> getAllItems()
     {
         ArrayList<ItemStack> items = new ArrayList<>();
-        for(Item item : ForgeRegistries.ITEMS)
+        HashMap<String, ItemStack> itemTable = UtilitiesPlatform.getAllItems();
+        for(ItemStack stack : itemTable.values())
         {
-            items.add(new ItemStack(item));
+            items.add(stack);
         }
         return items;
     }
@@ -72,33 +71,58 @@ public class ItemUtilities {
     public static ArrayList<String> getAllItemIDs(String tag)
     {
         ArrayList<String> itemIDs = new ArrayList<>();
-        for(Item item : ForgeRegistries.ITEMS)
+        HashMap<String, ItemStack> itemTable = UtilitiesPlatform.getAllItems();
+        for(var entry : itemTable.entrySet())
         {
-            if(isInTag(item, tag))
+            if(isInTag(entry.getValue().getItem(), tag))
             {
-                itemIDs.add(getItemID(item));
+                itemIDs.add(entry.getKey());
             }
         }
         return itemIDs;
     }
-    public static ArrayList<String> getAllItemIDs(ArrayList<String> tags)
+    public static ArrayList<String> getAllItemIDs(ArrayList<String> tags, ArrayList<String> containsInID)
     {
         ArrayList<String> itemIDs = new ArrayList<>();
         HashMap<String, TagKey<Item>> tagMap = new HashMap<>();
+        HashMap<String, ItemStack> itemTable = UtilitiesPlatform.getAllItems();
+        String modTag = "";
+        switch(UtilitiesPlatform.getPlatformType())
+        {
+            case FABRIC:
+                modTag = "c:";
+                break;
+            case FORGE:
+                modTag = "forge:";
+                break;
+            case QUILT:
+                modTag = "quilt:";
+                break;
+        }
         for(String tag : tags)
         {
-            tagMap.put("forge:"+tag, TagKey.create(Registries.ITEM, new ResourceLocation("forge:"+tag)));
+            tagMap.put(modTag+tag, TagKey.create(Registries.ITEM, new ResourceLocation(modTag+tag)));
             tagMap.put("minecraft:"+tag, TagKey.create(Registries.ITEM, new ResourceLocation("minecraft:"+tag)));
         }
-        for(Item item : ForgeRegistries.ITEMS)
+        for(ItemStack stack : itemTable.values())
         {
-            if(item.builtInRegistryHolder().tags().anyMatch(tagMap::containsValue))
+            Item item = stack.getItem();
+            String itemName = getItemID(item);
+            if(item.builtInRegistryHolder().tags().anyMatch(tagMap::containsValue) ||
+                    containsInID.contains(itemName))
             {
-                itemIDs.add(getItemID(item));
+                itemIDs.add(itemName);
             }
-            if(getItemID(item).compareTo("minecraft:diamond") == 0)
-            {
-                System.out.println("Item is in tag: "+item.builtInRegistryHolder().tags().anyMatch(tagMap::containsValue));
+
+            HashMap<String, TagKey<Item>> tagMap2 = new HashMap<>();
+            tagMap2.put("c:foods", TagKey.create(Registries.ITEM, new ResourceLocation("c:foods")));
+            if(item.builtInRegistryHolder().tags().anyMatch(tagMap2::containsValue)) {
+                StringBuilder tagNames = new StringBuilder();
+                Stream<TagKey<Item>> _tags = item.builtInRegistryHolder().tags();
+                for (TagKey<Item> tag : _tags.toArray(TagKey[]::new)) {
+                    tagNames.append(tag.toString()).append(" ");
+                }
+                System.out.println("Item: " + itemName + " tag: " + tagNames.toString());
             }
         }
         return itemIDs;

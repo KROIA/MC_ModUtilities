@@ -12,6 +12,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -49,7 +50,7 @@ public class ItemSelectionView extends GuiElement {
         }
     }
 
-    private final Set<ItemStack> allowedItems;
+    private final ArrayList<ItemStack> allowedItems;
     private final Consumer<String> onItemSelected;
 
     private final Label searchLabel;
@@ -63,7 +64,7 @@ public class ItemSelectionView extends GuiElement {
     public ItemSelectionView(ArrayList<String> allowedItemsIDs, Consumer<String> onItemSelected) {
         this.onItemSelected = onItemSelected;
 
-        this.allowedItems = new HashSet<>();
+        this.allowedItems = new ArrayList<>();
         for(String itemId : allowedItemsIDs) {
             this.allowedItems.add(ItemUtilities.createItemStackFromId(itemId));
         }
@@ -135,5 +136,9 @@ public class ItemSelectionView extends GuiElement {
         }
         listView.getLayout().enabled = true;
         listView.layoutChangedInternal();
+    }
+
+    public void sortItems() {
+        allowedItems.sort(Comparator.comparing(a -> a.getHoverName().getString()));
     }
 }

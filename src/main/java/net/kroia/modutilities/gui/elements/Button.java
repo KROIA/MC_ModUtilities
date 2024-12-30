@@ -114,7 +114,7 @@ public class Button extends GuiElement {
     protected boolean mouseClickedOverElement(int buttton)
     {
         if(!isPressed) {
-            playLocalSound(SoundEvents.UI_BUTTON_CLICK.get(),0.5F);
+            playLocalSound(SoundEvents.UI_BUTTON_CLICK.value(),0.5F);
             if(onFallingEdge != null) {
                 onFallingEdge.run();
             }
