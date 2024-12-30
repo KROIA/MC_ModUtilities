@@ -77,6 +77,7 @@ public abstract class GuiScreen extends Screen {
         gui.setPartialTick(pPartialTick);
         this.renderBackground(pGuiGraphics);
         gui.render(pGuiGraphics);
+        gui.renderTooltip(pGuiGraphics);
         if(enableGizmos)
             gui.renderGizmos();
     }

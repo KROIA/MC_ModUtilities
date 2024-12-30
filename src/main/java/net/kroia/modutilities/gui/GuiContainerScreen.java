@@ -77,6 +77,7 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
         gui.setPartialTick(pPartialTick);
         gui.renderBackground(pGuiGraphics);
         gui.render(pGuiGraphics);
+        gui.renderTooltip(pGuiGraphics);
         if(enableGizmos)
             gui.renderGizmos();
     }

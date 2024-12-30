@@ -96,7 +96,7 @@ public class ItemUtilities {
                 modTag = "forge:";
                 break;
             case QUILT:
-                modTag = "quilt:";
+                modTag = "c:";
                 break;
         }
         for(String tag : tags)
@@ -116,7 +116,8 @@ public class ItemUtilities {
 
             HashMap<String, TagKey<Item>> tagMap2 = new HashMap<>();
             tagMap2.put("c:foods", TagKey.create(Registries.ITEM, new ResourceLocation("c:foods")));
-            if(item.builtInRegistryHolder().tags().anyMatch(tagMap2::containsValue)) {
+            //if(item.builtInRegistryHolder().tags().anyMatch(tagMap2::containsValue))
+            {
                 StringBuilder tagNames = new StringBuilder();
                 Stream<TagKey<Item>> _tags = item.builtInRegistryHolder().tags();
                 for (TagKey<Item> tag : _tags.toArray(TagKey[]::new)) {

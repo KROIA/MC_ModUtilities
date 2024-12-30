@@ -62,6 +62,15 @@ public abstract class GuiElement {
     protected Layout layout = null;
 
 
+    private class TooltipLaterData
+    {
+        public int x,y;
+        public ItemStack item;
+        public Component component;
+    }
+    private ArrayList<TooltipLaterData> drawTooltipLater = new ArrayList<>();
+
+
 
     public GuiElement() {
         this(0, 0, 0, 0);
@@ -241,6 +250,29 @@ public abstract class GuiElement {
         graphics.pose().popPose();
 
     }
+    public void renderTooltipInternal()
+    {
+        if(!isVisible())
+            return;
+        GuiGraphics graphics = root.getGraphics();
+        graphics.pose().pushPose();
+        graphics.pose().translate((float)getX(), (float)getY(), 0.0F);
+        //enableScissor();
+        for(TooltipLaterData data : drawTooltipLater)
+        {
+            if(data.item != null)
+                drawTooltip(data.item, new Point(data.x, data.y));
+            else if(data.component != null)
+                drawText(data.component, new Point(data.x, data.y));
+        }
+        drawTooltipLater.clear();
+        //disableScissor();
+        for (GuiElement child : childs) {
+            child.renderTooltipInternal();
+        }
+        graphics.pose().popPose();
+
+    }
     public void renderGizmosInternal()
     {
         if(!isVisible())
@@ -275,6 +307,14 @@ public abstract class GuiElement {
         // Disable scissor test
         //GL11.glDisable(GL11.GL_SCISSOR_TEST);
         root.disableScissor();
+    }
+    protected void scissorPause()
+    {
+        root.scissorPause();
+    }
+    protected void scissorResume()
+    {
+        root.scissorResume();
     }
 
     protected abstract void layoutChanged();
@@ -932,6 +972,31 @@ public abstract class GuiElement {
     public void drawTooltip(ItemStack stack, Point pos)
     {
         drawTooltip(stack, pos.x, pos.y);
+    }
+
+    public void drawTooltipLater(ItemStack stack, int x, int y)
+    {
+        TooltipLaterData data = new TooltipLaterData();
+        data.x = x;
+        data.y = y;
+        data.item = stack;
+        drawTooltipLater.add(data);
+    }
+    public void drawTooltipLater(ItemStack stack, Point pos)
+    {
+        drawTooltipLater(stack, pos.x, pos.y);
+    }
+    public void drawTooltipLater(Component component, int x, int y)
+    {
+        TooltipLaterData data = new TooltipLaterData();
+        data.x = x;
+        data.y = y;
+        data.component = component;
+        drawTooltipLater.add(data);
+    }
+    public void drawTooltipLater(Component component, Point pos)
+    {
+        drawTooltipLater(component, pos.x, pos.y);
     }
 
     public void drawFrame(int x, int y, int width, int height, int color, int thickness)

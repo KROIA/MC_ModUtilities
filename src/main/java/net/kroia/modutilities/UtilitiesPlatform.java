@@ -23,6 +23,7 @@ public class UtilitiesPlatform {
 
     public static void setPlatform(PlatformAbstraction platform) {
         UtilitiesPlatform.platform = platform;
+        System.out.println("UtilitiesPlatform set to: " + platform.getPlatformType().name());
     }
 
 

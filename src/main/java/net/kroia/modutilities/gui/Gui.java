@@ -135,6 +135,14 @@ public class Gui {
             element.renderInternal();
         }
     }
+    public void renderTooltip(GuiGraphics pGuiGraphics)
+    {
+        this.graphics = pGuiGraphics;
+        for(GuiElement element : elements)
+        {
+            element.renderTooltipInternal();
+        }
+    }
     public void renderGizmos()
     {
         for(GuiElement element : elements)
@@ -310,7 +318,9 @@ public class Gui {
         if(isScissorEnabled())
         {
             scissorPause();
+            //pushPose();
             graphics.renderTooltip(getFont(), tooltip, x,y);
+            //popPose();
             scissorResume();
             return;
         }
@@ -321,7 +331,10 @@ public class Gui {
         if(isScissorEnabled())
         {
             scissorPause();
+            //pushPose();
+            //graphics.pose().translate(0.0D, 0.0D, (double)(200));
             graphics.renderTooltip(getFont(), stack, x,y);
+            //popPose();
             scissorResume();
             return;
         }
@@ -339,15 +352,15 @@ public class Gui {
         {
             // Render item count
             String s = String.valueOf(count);
-            graphics.pose().pushPose();
+            pushPose();
             graphics.pose().translate(0.0D, 0.0D, (double)(200));
             drawText(s, x + 19 - 2 - getFont().width(s), y + 6 + 3, 16777215);
-            graphics.pose().popPose();
+            popPose();
         }
     }
     public void drawItemWithDecoration(ItemStack item, int x, int y, int z, int seed)
     {
-        graphics.pose().pushPose();
+        pushPose();
         graphics.pose().translate(0.0D, 0.0D, (double)(z));
         graphics.renderItem(item, x, y, seed);
         int count = item.getCount();
@@ -355,12 +368,12 @@ public class Gui {
         {
             // Render item count
             String s = String.valueOf(count);
-            graphics.pose().pushPose();
+            pushPose();
             graphics.pose().translate(0.0D, 0.0D, (double)(200));
             drawText(s, x + 19 - 2 - getFont().width(s), y + 6 + 3, 16777215);
-            graphics.pose().popPose();
+            popPose();
         }
-        graphics.pose().popPose();
+        popPose();
     }
 
     public void drawTexture(ResourceLocation texture, int x, int y, int width, int height, int uOffset, int vOffset)
@@ -419,6 +432,14 @@ public class Gui {
         {
             enableScissor(globalScissorArea);
         }
+    }
+    public void pushPose()
+    {
+        graphics.pose().pushPose();
+    }
+    public void popPose()
+    {
+        graphics.pose().popPose();
     }
 
     public static void playLocalSound(SoundEvent sound, float volume, float pitch)
