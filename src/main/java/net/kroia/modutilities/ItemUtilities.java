@@ -42,6 +42,14 @@ public class ItemUtilities {
         // Get the item's ResourceLocation
         return getItemID(itemStack.getItem());
     }
+    public static String getItemName(Item item)
+    {
+        return item.toString();
+    }
+    public static String getItemName(String itemID)
+    {
+        return getItemName(createItemStackFromId(itemID).getItem());
+    }
     public static String getItemID(Item item)
     {
         return UtilitiesPlatform.getItemID(item);
