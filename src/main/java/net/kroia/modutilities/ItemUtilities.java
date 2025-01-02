@@ -122,7 +122,7 @@ public class ItemUtilities {
                 itemIDs.add(itemName);
             }
 
-            HashMap<String, TagKey<Item>> tagMap2 = new HashMap<>();
+            /*HashMap<String, TagKey<Item>> tagMap2 = new HashMap<>();
             tagMap2.put("c:foods", TagKey.create(Registries.ITEM, new ResourceLocation("c:foods")));
             //if(item.builtInRegistryHolder().tags().anyMatch(tagMap2::containsValue))
             {
@@ -132,7 +132,7 @@ public class ItemUtilities {
                     tagNames.append(tag.toString()).append(" ");
                 }
                 System.out.println("Item: " + itemName + " tag: " + tagNames.toString());
-            }
+            }*/
         }
         return itemIDs;
     }

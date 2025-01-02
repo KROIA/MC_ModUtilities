@@ -139,6 +139,11 @@ public class ItemSelectionView extends GuiElement {
     }
 
     public void sortItems() {
-        allowedItems.sort(Comparator.comparing(a -> a.getHoverName().getString()));
+        // Sort items with an reordered name, so that the first char is a the end and the last char is at the beginning
+        allowedItems.sort(Comparator.comparing(stack -> {
+            String name = stack.getHoverName().getString();
+            return new StringBuilder(name).reverse().toString();
+        }));
+        updateFilter();
     }
 }
