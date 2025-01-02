@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "modutilities",
+  "version": "${version}",
+  "name": "ModUtilities",
+  "description": "Utilities for modding",
+  "authors": [
+    "Alex Krieg"
+  ],
+  "contact": {
+    "homepage": "https://fabricmc.net/",
+    "sources": "https://github.com/FabricMC/fabric-example-mod"
+  },
+  "license": "MIT",
+  "icon": "assets/modutilities/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "net.kroia.fabric.ModUtilitiesFabric"
+    ],
+    "client": [
+      "net.kroia.fabric.client.ModUtilitiesFabricClient"
+    ]
+  },
+  "mixins": [
+    "modutilities.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.16.9",
+    "minecraft": "~1.20.1",
+    "java": ">=17",
+    "architectury": ">=9.2.14",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "another-mod": "*"
+  }
+}
