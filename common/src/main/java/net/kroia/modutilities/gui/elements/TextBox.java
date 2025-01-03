@@ -3,6 +3,8 @@ package net.kroia.modutilities.gui.elements;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import org.lwjgl.glfw.GLFW;
 
+import java.util.function.Consumer;
+
 public class TextBox extends GuiElement {
 
     String text = "";
@@ -22,7 +24,7 @@ public class TextBox extends GuiElement {
 
     private int marginX = 4;
 
-    Runnable textChangedFromUser = null;
+    Consumer<String> textChangedFromUser = null;
     public TextBox(int x, int y, int width) {
         super(x, y, width, Label.DEFAULT_HEIGHT);
         textLabel = new Label("");
@@ -80,7 +82,7 @@ public class TextBox extends GuiElement {
         return focusedBackgroundColor;
     }
 
-    public void setOnTextChanged(Runnable textChangedFromUser) {
+    public void setOnTextChanged(Consumer<String> textChangedFromUser) {
         this.textChangedFromUser = textChangedFromUser;
     }
 
@@ -97,6 +99,13 @@ public class TextBox extends GuiElement {
     public int getInt() {
         try {
             return Integer.parseInt(text);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+    public long getLong() {
+        try {
+            return Long.parseLong(text);
         } catch (NumberFormatException e) {
             return 0;
         }
@@ -402,7 +411,7 @@ public class TextBox extends GuiElement {
     private void emitTextChanged()
     {
         if(textChangedFromUser != null)
-            textChangedFromUser.run();
+            textChangedFromUser.accept(getText());
     }
     private boolean canConsume(char codePoint)
     {

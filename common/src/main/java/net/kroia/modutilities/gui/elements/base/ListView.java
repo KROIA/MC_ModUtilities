@@ -97,6 +97,15 @@ public abstract class ListView extends GuiElement{
         return scrollbarThickness;
     }
 
+    public int getContainerWidth()
+    {
+        return scrollContainer.getWidth();
+    }
+    public int getContainerHeight()
+    {
+        return scrollContainer.getHeight();
+    }
+
     protected abstract int getContentDimension2();
     protected abstract void setScrollBarBounds();
 

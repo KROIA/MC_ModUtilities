@@ -87,7 +87,7 @@ public class ItemSelectionView extends GuiElement {
         addChild(listView);
         //addChild(backButton);
 
-        updateFilter();
+        updateFilter(searchField.getText());
     }
 
     public void setAllowedItems(ArrayList<String> allowedItemsIDs) {
@@ -95,7 +95,7 @@ public class ItemSelectionView extends GuiElement {
         for(String itemId : allowedItemsIDs) {
             allowedItems.add(ItemUtilities.createItemStackFromId(itemId));
         }
-        updateFilter();
+        updateFilter(searchField.getText());
     }
 
     @Override
@@ -117,8 +117,7 @@ public class ItemSelectionView extends GuiElement {
         itemsLabel.setText(text);
     }
 
-    private void updateFilter() {
-        String filter = searchField.getText();
+    private void updateFilter(String filter) {
         listView.removeChilds();
         listView.getLayout().enabled = false;
         if (filter.isEmpty()) {
@@ -144,6 +143,6 @@ public class ItemSelectionView extends GuiElement {
             String name = stack.getHoverName().getString();
             return new StringBuilder(name).reverse().toString();
         }));
-        updateFilter();
+        updateFilter(searchField.getText());
     }
 }

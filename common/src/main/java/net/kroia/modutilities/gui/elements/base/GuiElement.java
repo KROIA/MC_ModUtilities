@@ -60,6 +60,7 @@ public abstract class GuiElement {
     protected int outlineThickness = 1;
 
     protected Layout layout = null;
+    private boolean isRelayoutingThis = false;
 
 
     private class TooltipLaterData
@@ -320,13 +321,18 @@ public abstract class GuiElement {
     protected abstract void layoutChanged();
     public void layoutChangedInternal()
     {
+        if(isRelayoutingThis)
+            return;
         if(getGui() == null)
             return;
         if(layout != null) {
             if(layout.enabled)
                 layout.apply(this);
         }
+        isRelayoutingThis = true;
         layoutChanged();
+        isRelayoutingThis = false;
+
         for (GuiElement child : childs) {
             child.layoutChangedInternal();
         }
@@ -667,6 +673,15 @@ public abstract class GuiElement {
                 frame.height = childFrame.y+childFrame.height-frame.y;
         }
         return frame;
+    }
+
+    public int getTextWidth(String text)
+    {
+        return getFont().width(text);
+    }
+    public int getTextHeight()
+    {
+        return getFont().lineHeight;
     }
 
     public void applyAlignment(Alignment alignment, int x, int y, int width, int height) {

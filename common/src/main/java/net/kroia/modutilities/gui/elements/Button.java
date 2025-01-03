@@ -15,6 +15,9 @@ public class Button extends GuiElement {
     Runnable onFallingEdge = null;
     Runnable onRisingEdge = null;
     Runnable onDown = null;
+    boolean isClickable = true;
+    int triggerButton = 0;
+
     public Button(String text) {
         super();
         label = new Label(text);
@@ -87,6 +90,26 @@ public class Button extends GuiElement {
     {
         return this.colorPressed;
     }
+    public boolean isClickable()
+    {
+        return isClickable;
+    }
+    public void setClickable(boolean clickable)
+    {
+        isClickable = clickable;
+    }
+    public void setTriggerButton(int button)
+    {
+        triggerButton = button;
+    }
+    public int getTriggerButton()
+    {
+        return triggerButton;
+    }
+    public boolean isPressed()
+    {
+        return isPressed;
+    }
 
     @Override
     protected void renderBackground() {
@@ -111,8 +134,11 @@ public class Button extends GuiElement {
     }
 
     @Override
-    protected boolean mouseClickedOverElement(int buttton)
+    protected boolean mouseClickedOverElement(int button)
     {
+        if(!isClickable || triggerButton != button)
+            return false;
+
         if(!isPressed) {
             playLocalSound(SoundEvents.UI_BUTTON_CLICK.value(),0.5F);
             if(onFallingEdge != null) {
@@ -126,6 +152,8 @@ public class Button extends GuiElement {
     @Override
     protected boolean mouseDragged(int button, double deltaX, double deltaY)
     {
+        if(!isClickable || triggerButton != button)
+            return false;
         if(isPressed)
         {
             if(onDown != null) {
@@ -139,6 +167,8 @@ public class Button extends GuiElement {
     @Override
     protected void mouseReleased(int button)
     {
+        if(!isClickable || triggerButton != button)
+            return;
         if(isPressed){
             //playLocalSound(SoundEvents.UI_BUTTON_CLICK.get(),0.5F, 0.9F);
             if(onRisingEdge != null)
