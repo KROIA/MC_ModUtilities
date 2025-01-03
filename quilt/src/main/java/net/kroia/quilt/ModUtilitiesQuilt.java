@@ -1,19 +1,23 @@
 package net.kroia.quilt;
 
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.UtilitiesPlatform;
 import org.quiltmc.loader.api.ModContainer;
 import org.quiltmc.qsl.base.api.entrypoint.ModInitializer;
-
-import net.kroia.modutilities.ModUtilitiesMod;
+import org.quiltmc.qsl.lifecycle.api.event.ServerLifecycleEvents;
 
 public final class ModUtilitiesQuilt implements ModInitializer {
     @Override
     public void onInitialize(ModContainer mod) {
         // Run our common setup.
         UtilitiesPlatform.setPlatform(new UtilitiesPlatformQuilt());
-        ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+        ServerLifecycleEvents.STARTING.register(server -> {
+            ModUtilitiesMod.LOGGER.info("[QuiltSetup] SERVER STARTING");
             UtilitiesPlatformQuilt.setServer(server);
+        });
+        ServerLifecycleEvents.STOPPED.register(server -> {
+            ModUtilitiesMod.LOGGER.info("[QuiltSetup] SERVER STOPPED");
+            UtilitiesPlatformQuilt.setServer(null);
         });
         ModUtilitiesMod.init();
     }

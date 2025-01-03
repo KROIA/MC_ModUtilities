@@ -18,9 +18,7 @@
     "main": [
       "net.kroia.fabric.ModUtilitiesFabric"
     ],
-    "client": [
-      "net.kroia.fabric.client.ModUtilitiesFabricClient"
-    ]
+    "client": []
   },
   "mixins": [
     "modutilities.mixins.json"

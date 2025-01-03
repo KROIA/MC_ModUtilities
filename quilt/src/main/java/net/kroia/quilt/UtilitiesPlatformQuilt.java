@@ -1,5 +1,6 @@
 package net.kroia.quilt;
 
+import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.PlatformAbstraction;
 import net.kroia.modutilities.UtilitiesPlatform;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -17,6 +18,13 @@ public class UtilitiesPlatformQuilt implements PlatformAbstraction {
 
     public static void setServer(MinecraftServer server) {
         minecraftServer = server;
+        if(minecraftServer != null)
+        {
+            ModUtilitiesMod.LOGGER.info("[QuiltSetup] SERVER INSTANCE SET");
+        }
+        else {
+            ModUtilitiesMod.LOGGER.info("[QuiltSetup] SERVER INSTANCE CLEARED");
+        }
     }
     @Override
     public ItemStack getItemStack(String itemID) {
@@ -43,7 +51,7 @@ public class UtilitiesPlatformQuilt implements PlatformAbstraction {
     @Override
     public MinecraftServer getServer() {
         if (minecraftServer == null) {
-            throw new IllegalStateException("MinecraftServer is not yet initialized.");
+            throw new IllegalStateException(ModUtilitiesMod.MOD_ID+" MinecraftServer is not yet initialized.");
         }
         return minecraftServer;
     }

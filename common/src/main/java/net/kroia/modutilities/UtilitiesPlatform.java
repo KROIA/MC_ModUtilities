@@ -16,14 +16,14 @@ public class UtilitiesPlatform {
 
     public static PlatformAbstraction getPlatform() {
         if (platform == null) {
-            throw new IllegalStateException("UtilitiesPlatform not set");
+            throw new IllegalStateException(ModUtilitiesMod.MOD_ID+" Platform not set!");
         }
         return platform;
     }
 
     public static void setPlatform(PlatformAbstraction platform) {
         UtilitiesPlatform.platform = platform;
-        System.out.println("UtilitiesPlatform set to: " + platform.getPlatformType().name());
+        ModUtilitiesMod.LOGGER.info("UtilitiesPlatform set to: " + platform.getPlatformType().name());
     }
 
 
