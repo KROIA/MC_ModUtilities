@@ -177,12 +177,12 @@ public class TextBox extends GuiElement {
     {
         setFocused();
         // Get cursor position
-        double mouseX = getMouseX();
+        double mouseX = getMouseX()-textLabel.getX();
         int cursorPos = 0;
         for (int i = 0; i < text.length(); i++) {
             String subString = text.substring(0, i);
             int textWidth = textLabel.getFont().width(subString);
-            if(textWidth > mouseX)
+            if(textWidth >= mouseX)
             {
                 break;
             }

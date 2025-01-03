@@ -18,6 +18,8 @@ public class CheckBox extends GuiElement {
     final Rectangle checkBoxRect = new Rectangle(0,0,0,0);
     final Rectangle checkBoxCheckedRect = new Rectangle(0,0,0,0);
     int triggerButton = 0;
+    int checkBoxFrameColor = 0xff000000;
+    int checkBoxCheckedColor = 0xff000000;
     public CheckBox(String text) {
         super();
         label = new Label(text);
@@ -87,6 +89,22 @@ public class CheckBox extends GuiElement {
     {
         this.colorHover = color;
     }
+    public int getCheckBoxFrameColor()
+    {
+        return checkBoxFrameColor;
+    }
+    public void setCheckBoxFrameColor(int color)
+    {
+        checkBoxFrameColor = color;
+    }
+    public int getCheckBoxCheckedColor()
+    {
+        return checkBoxCheckedColor;
+    }
+    public void setCheckBoxCheckedColor(int color)
+    {
+        checkBoxCheckedColor = color;
+    }
 
     @Override
     protected void renderBackground() {
@@ -94,14 +112,14 @@ public class CheckBox extends GuiElement {
         {
             drawRect(checkBoxRect.x, checkBoxRect.y, checkBoxRect.width, checkBoxRect.height, colorHover);
         }
-        drawFrame(checkBoxRect.x, checkBoxRect.y, checkBoxRect.width, checkBoxRect.height, 0xff000000, 1);
+        drawFrame(checkBoxRect.x, checkBoxRect.y, checkBoxRect.width, checkBoxRect.height, checkBoxFrameColor, 1);
     }
 
     @Override
     protected void render() {
         if(isChecked)
         {
-            drawRect(checkBoxCheckedRect.x, checkBoxCheckedRect.y, checkBoxCheckedRect.width, checkBoxCheckedRect.height, 0xff000000);
+            drawRect(checkBoxCheckedRect.x, checkBoxCheckedRect.y, checkBoxCheckedRect.width, checkBoxCheckedRect.height, checkBoxCheckedColor);
         }
         if(!isCheckable)
         {
