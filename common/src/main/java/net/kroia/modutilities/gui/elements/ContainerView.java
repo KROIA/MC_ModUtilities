@@ -194,7 +194,7 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
     }
 
     public void renderSlotHighlight(int p_281453_, int p_281915_, int p_283504_, int color) {
-        drawRect(p_281453_, p_281915_, p_281453_ + 16, p_281915_ + 16, color);
+        drawRect(p_281453_, p_281915_, 16, 16, color);
     }
 
     protected void renderTooltip(int pX, int pY) {

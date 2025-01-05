@@ -106,7 +106,7 @@ public class Graphics {
     public void blit(ResourceLocation atlasLocation, int x, int y, int uOffset, int vOffset, int width, int height)
     {
         RenderSystem.setShaderTexture(0, atlasLocation);
-        Screen.blit(graphics, x, y, uOffset, vOffset, width, height, width, height); // mc<=1.19.4
+        Screen.blit(graphics, x, y, uOffset, vOffset, width, height); // mc<=1.19.4
         //graphics.blit(atlasLocation, x, y, uOffset, vOffset, width, height);
     }
     public void blit(ResourceLocation atlasLocation, int x, int y, float uOffset, float vOffset, int width, int height, int textureWidth, int textureHeight)
