@@ -21,7 +21,7 @@ import java.util.ArrayList;
 
 public class Gui {
 
-    protected Graphics graphics;
+    protected final Graphics graphics;
     protected Screen parent;
     protected int mousePosX, mousePosY;
     protected float partialTick;
@@ -34,6 +34,7 @@ public class Gui {
     public Gui(Screen parent)
     {
         this.parent = parent;
+        graphics = new Graphics(parent);
     }
     public void init()
     {
