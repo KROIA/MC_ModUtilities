@@ -2,7 +2,6 @@ package net.kroia.modutilities.gui.elements.base;
 
 import net.kroia.modutilities.gui.elements.Button;
 import net.kroia.modutilities.gui.layout.Layout;
-import net.minecraft.client.gui.GuiGraphics;
 
 import java.util.ArrayList;
 

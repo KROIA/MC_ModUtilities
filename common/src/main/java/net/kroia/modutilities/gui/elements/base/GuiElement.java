@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui.elements.base;
 
+import net.kroia.modutilities.gui.Graphics;
 import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.GuiTexture;
 import net.kroia.modutilities.gui.geometry.Point;
@@ -7,17 +8,13 @@ import net.kroia.modutilities.gui.geometry.Rectangle;
 import net.kroia.modutilities.gui.layout.Layout;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvent;
-import net.minecraft.world.inventory.tooltip.TooltipComponent;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
 
 public abstract class GuiElement {
 
@@ -224,40 +221,40 @@ public abstract class GuiElement {
     {
         if(!isVisible())
             return;
-        GuiGraphics graphics = root.getGraphics();
-        graphics.pose().pushPose();
-        graphics.pose().translate((float)getX(), (float)getY(), 0.0F);
+        Graphics graphics = root.getGraphics();
+        graphics.pushPose();
+        graphics.translate((float)getX(), (float)getY(), 0.0F);
         //enableScissor();
         renderBackground();
         //disableScissor();
         for (GuiElement child : childs) {
             child.renderBackgroundInternal();
         }
-        graphics.pose().popPose();
+        graphics.popPose();
     }
     public void renderInternal()
     {
         if(!isVisible())
             return;
-        GuiGraphics graphics = root.getGraphics();
-        graphics.pose().pushPose();
-        graphics.pose().translate((float)getX(), (float)getY(), 0.0F);
+        Graphics graphics = root.getGraphics();
+        graphics.pushPose();
+        graphics.translate((float)getX(), (float)getY(), 0.0F);
         //enableScissor();
         render();
         //disableScissor();
         for (GuiElement child : childs) {
             child.renderInternal();
         }
-        graphics.pose().popPose();
+        graphics.popPose();
 
     }
     public void renderTooltipInternal()
     {
         if(!isVisible())
             return;
-        GuiGraphics graphics = root.getGraphics();
-        graphics.pose().pushPose();
-        graphics.pose().translate((float)getX(), (float)getY(), 0.0F);
+        Graphics graphics = root.getGraphics();
+        graphics.pushPose();
+        graphics.translate((float)getX(), (float)getY(), 0.0F);
         //enableScissor();
         for(TooltipLaterData data : drawTooltipLater)
         {
@@ -271,23 +268,23 @@ public abstract class GuiElement {
         for (GuiElement child : childs) {
             child.renderTooltipInternal();
         }
-        graphics.pose().popPose();
+        graphics.popPose();
 
     }
     public void renderGizmosInternal()
     {
         if(!isVisible())
             return;
-        GuiGraphics graphics = root.getGraphics();
-        graphics.pose().pushPose();
-        graphics.pose().translate((float)getX(), (float)getY(), 0.0F);
+        Graphics graphics = root.getGraphics();
+        graphics.pushPose();
+        graphics.translate((float)getX(), (float)getY(), 0.0F);
         //enableScissor();
         renderGizmos();
         //disableScissor();
         for (GuiElement child : childs) {
             child.renderGizmosInternal();
         }
-        graphics.pose().popPose();
+        graphics.popPose();
     }
 
     protected void enableGlobalScissor(Rectangle area)
@@ -469,17 +466,17 @@ public abstract class GuiElement {
 
 
 
-    public GuiGraphics getGraphics() {
+    public Graphics getGraphics() {
         return root.getGraphics();
     }
     public void graphicsPosePush() {
-        root.getGraphics().pose().pushPose();
+        root.getGraphics().pushPose();
     }
     public void graphicsPosePop() {
-        root.getGraphics().pose().popPose();
+        root.getGraphics().popPose();
     }
     public void graphicsTranslate(float x, float y, float z) {
-        root.getGraphics().pose().translate(x, y, z);
+        root.getGraphics().translate(x, y, z);
     }
     public Gui getGui()
     {

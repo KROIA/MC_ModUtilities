@@ -7,7 +7,6 @@ import net.kroia.modutilities.gui.elements.base.VertexBuffer;
 import net.kroia.modutilities.gui.geometry.Rectangle;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
@@ -22,7 +21,7 @@ import java.util.ArrayList;
 
 public class Gui {
 
-    protected GuiGraphics graphics;
+    protected final Graphics graphics;
     protected Screen parent;
     protected int mousePosX, mousePosY;
     protected float partialTick;
@@ -35,6 +34,7 @@ public class Gui {
     public Gui(Screen parent)
     {
         this.parent = parent;
+        this.graphics = new Graphics(parent);
     }
     public void init()
     {
@@ -45,7 +45,7 @@ public class Gui {
     }
 
 
-    public GuiGraphics getGraphics()
+    public Graphics getGraphics()
     {
         return this.graphics;
     }
@@ -119,25 +119,22 @@ public class Gui {
     {
         this.partialTick = partialTick;
     }
-    public void renderBackground(GuiGraphics pGuiGraphics)
+    public void renderBackground()
     {
-        this.graphics = pGuiGraphics;
         for(GuiElement element : elements)
         {
             element.renderBackgroundInternal();
         }
     }
-    public void render(GuiGraphics pGuiGraphics)
+    public void render()
     {
-        this.graphics = pGuiGraphics;
         for(GuiElement element : elements)
         {
             element.renderInternal();
         }
     }
-    public void renderTooltip(GuiGraphics pGuiGraphics)
+    public void renderTooltip()
     {
-        this.graphics = pGuiGraphics;
         for(GuiElement element : elements)
         {
             element.renderTooltipInternal();
@@ -278,8 +275,9 @@ public class Gui {
         PointF p4 = new PointF(x1-offset.x, y1-offset.y);
 
 
-        Matrix4f matrix4f = graphics.pose().last().pose();
-        VertexConsumer vertexconsumer = graphics.bufferSource().getBuffer(RenderType.gui());
+        Matrix4f matrix4f = graphics.getLastPoseMatrix();
+        //VertexConsumer vertexconsumer = graphics.bufferSource().getBuffer(RenderType.gui()); // mc>=1.20.1
+        VertexConsumer vertexconsumer = graphics.bufferSource().getBuffer(RenderType.debugQuads()); // mc<=1.19.4
         vertexconsumer.vertex(matrix4f, (float)p1.x, (float)p1.y, (float)0).color(red, green, blue, alpha).endVertex();
         vertexconsumer.vertex(matrix4f, (float)p2.x, (float)p2.y, (float)0).color(red, green, blue, alpha).endVertex();
         vertexconsumer.vertex(matrix4f, (float)p3.x, (float)p3.y, (float)0).color(red, green, blue, alpha).endVertex();
@@ -287,7 +285,7 @@ public class Gui {
         graphics.flush();
     }
     public void drawVertexBuffer_QUADS(VertexBuffer buffer) {
-        Matrix4f matrix4f = graphics.pose().last().pose();
+        Matrix4f matrix4f = graphics.getLastPoseMatrix();
         RenderType renderType = RenderType.debugQuads();
         VertexConsumer vertexconsumer = graphics.bufferSource().getBuffer(renderType);
         for(Vertex vertex : buffer.getVertices())
@@ -353,7 +351,7 @@ public class Gui {
             // Render item count
             String s = String.valueOf(count);
             pushPose();
-            graphics.pose().translate(0.0D, 0.0D, (double)(200));
+            graphics.translate(0.0D, 0.0D, (double)(200));
             drawText(s, x + 19 - 2 - getFont().width(s), y + 6 + 3, 16777215);
             popPose();
         }
@@ -361,7 +359,7 @@ public class Gui {
     public void drawItemWithDecoration(ItemStack item, int x, int y, int z, int seed)
     {
         pushPose();
-        graphics.pose().translate(0.0D, 0.0D, (double)(z));
+        graphics.translate(0.0D, 0.0D, (double)(z));
         graphics.renderItem(item, x, y, seed);
         int count = item.getCount();
         if(count > 1)
@@ -369,7 +367,7 @@ public class Gui {
             // Render item count
             String s = String.valueOf(count);
             pushPose();
-            graphics.pose().translate(0.0D, 0.0D, (double)(200));
+            graphics.translate(0.0D, 0.0D, (double)(200));
             drawText(s, x + 19 - 2 - getFont().width(s), y + 6 + 3, 16777215);
             popPose();
         }
@@ -435,11 +433,11 @@ public class Gui {
     }
     public void pushPose()
     {
-        graphics.pose().pushPose();
+        graphics.pushPose();
     }
     public void popPose()
     {
-        graphics.pose().popPose();
+        graphics.popPose();
     }
 
     public static void playLocalSound(SoundEvent sound, float volume, float pitch)

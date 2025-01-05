@@ -1,7 +1,8 @@
 package net.kroia.modutilities.gui;
 
 import net.kroia.modutilities.gui.elements.base.GuiElement;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphics; // mc>=1.20.1
+//import com.mojang.blaze3d.vertex.PoseStack; // mc<=1.19.4
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
@@ -60,27 +61,58 @@ public abstract class GuiScreen extends Screen {
         return false;
     }
 
+
+
+    // mc>=1.20.1
     @Override
     public void renderBackground(GuiGraphics guiGraphics) {
         if(this.minecraft == null)
         {
             return;
         }
-
+        gui.getGraphics().setGraphics(guiGraphics);
         super.renderBackground(guiGraphics);
-        gui.renderBackground(guiGraphics);
+        gui.renderBackground();
     }
 
     @Override
     public void render(GuiGraphics pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) {
+        gui.getGraphics().setGraphics(pGuiGraphics);
         gui.setMousePos(pMouseX, pMouseY);
         gui.setPartialTick(pPartialTick);
         this.renderBackground(pGuiGraphics);
-        gui.render(pGuiGraphics);
-        gui.renderTooltip(pGuiGraphics);
+        gui.render();
+        gui.renderTooltip();
         if(enableGizmos)
             gui.renderGizmos();
     }
+
+
+    /*
+    // mc<=1.19.4
+    @Override
+    public void renderBackground(PoseStack guiGraphics) {
+        if(this.minecraft == null)
+        {
+            return;
+        }
+        gui.getGraphics().setGraphics(guiGraphics);
+        super.renderBackground(guiGraphics);
+        gui.renderBackground();
+    }
+
+    @Override
+    public void render(PoseStack pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) {
+        gui.getGraphics().setGraphics(pGuiGraphics);
+        gui.setMousePos(pMouseX, pMouseY);
+        gui.setPartialTick(pPartialTick);
+        this.renderBackground(pGuiGraphics);
+        gui.render();
+        gui.renderTooltip();
+        if(enableGizmos)
+            gui.renderGizmos();
+    }
+    */
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
