@@ -1,7 +1,10 @@
 package net.kroia.modutilities.gui;
 
+
 import net.kroia.modutilities.gui.elements.base.GuiElement;
-import net.minecraft.client.gui.GuiGraphics;
+//import net.minecraft.client.gui.GuiGraphics; // mc>=1.20.1
+import com.mojang.blaze3d.vertex.PoseStack; // mc<=1.19.4
+
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
@@ -66,21 +69,48 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
         return false;
     }
 
+    /*
+    // mc>=1.20.1
     @Override
     protected void renderBg(GuiGraphics guiGraphics, float pPartialTick, int pMouseX, int pMouseY) {
+        gui.getGraphics().setGraphics(guiGraphics);
         renderBackground(guiGraphics);
         gui.setMousePos(pMouseX, pMouseY);
         gui.setPartialTick(pPartialTick);
-        gui.renderBackground(guiGraphics);
+        gui.renderBackground();
     }
 
     @Override
     public void render(GuiGraphics pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) {
+        gui.getGraphics().setGraphics(pGuiGraphics);
         renderBg(pGuiGraphics, pPartialTick, pMouseX, pMouseY);
         gui.setMousePos(pMouseX, pMouseY);
         gui.setPartialTick(pPartialTick);
-        gui.render(pGuiGraphics);
-        gui.renderTooltip(pGuiGraphics);
+        gui.render();
+        gui.renderTooltip();
+        if(enableGizmos)
+            gui.renderGizmos();
+    }
+    */
+
+    // mc<=1.19.4
+    @Override
+    protected void renderBg(PoseStack guiGraphics, float pPartialTick, int pMouseX, int pMouseY) {
+        gui.getGraphics().setGraphics(guiGraphics);
+        renderBackground(guiGraphics);
+        gui.setMousePos(pMouseX, pMouseY);
+        gui.setPartialTick(pPartialTick);
+        gui.renderBackground();
+    }
+
+    @Override
+    public void render(PoseStack pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) {
+        gui.getGraphics().setGraphics(pGuiGraphics);
+        renderBg(pGuiGraphics, pPartialTick, pMouseX, pMouseY);
+        gui.setMousePos(pMouseX, pMouseY);
+        gui.setPartialTick(pPartialTick);
+        gui.render();
+        gui.renderTooltip();
         if(enableGizmos)
             gui.renderGizmos();
     }

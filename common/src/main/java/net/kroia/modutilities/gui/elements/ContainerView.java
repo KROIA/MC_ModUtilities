@@ -28,9 +28,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-import static net.minecraft.client.gui.screens.Screen.getTooltipFromItem;
-
-
 public class ContainerView<T extends AbstractContainerMenu> extends GuiElement implements MenuAccess<T> {
 
     private static final float SNAPBACK_SPEED = 100.0F;
@@ -145,9 +142,7 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
                 this.hoveredSlot = slot;
                 j2 = slot.x;
                 k2 = slot.y;
-                if (this.hoveredSlot.isHighlightable()) {
-                    renderSlotHighlight(j2, k2, 0, this.getSlotColor(k));
-                }
+                renderSlotHighlight(j2, k2, 0, this.getSlotColor(k));
             }
         }
 
@@ -199,7 +194,7 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
     }
 
     public void renderSlotHighlight(int p_281453_, int p_281915_, int p_283504_, int color) {
-        drawGradient(RenderType.guiOverlay(), p_281453_, p_281915_, p_281453_ + 16, p_281915_ + 16, color, color, p_283504_);
+        drawRect(p_281453_, p_281915_, p_281453_ + 16, p_281915_ + 16, color);
     }
 
     protected void renderTooltip(int pX, int pY) {
@@ -208,10 +203,6 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
             drawTooltip(itemstack, pX, pY);
         }
 
-    }
-
-    protected List<Component> getTooltipFromContainerItem(ItemStack pStack) {
-        return getTooltipFromItem(minecraft, pStack);
     }
 
     private void renderFloatingItem(ItemStack pStack, int pX, int pY, String pText) {
@@ -237,24 +228,23 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
         ItemStack itemstack1 = this.menu.getCarried();
         String s = null;
         if (pSlot == this.clickedSlot && !this.draggingItem.isEmpty() && this.isSplittingStack && !itemstack.isEmpty()) {
-            itemstack = itemstack.copyWithCount(itemstack.getCount() / 2);
+            itemstack = itemstack.copy();
+            itemstack.setCount(itemstack.getCount() / 2);
         } else if (this.isQuickCrafting && this.quickCraftSlots.contains(pSlot) && !itemstack1.isEmpty()) {
             if (this.quickCraftSlots.size() == 1) {
                 return;
             }
 
             if (AbstractContainerMenu.canItemQuickReplace(pSlot, itemstack1, true) && this.menu.canDragTo(pSlot)) {
+                itemstack = itemstack1.copy();
                 flag = true;
-                int k = Math.min(itemstack1.getMaxStackSize(), pSlot.getMaxStackSize(itemstack1));
-                int l = pSlot.getItem().isEmpty() ? 0 : pSlot.getItem().getCount();
-                int i1 = AbstractContainerMenu.getQuickCraftPlaceCount(this.quickCraftSlots, this.quickCraftingType, itemstack1) + l;
-                if (i1 > k) {
-                    i1 = k;
+                AbstractContainerMenu.getQuickCraftSlotCount(this.quickCraftSlots, this.quickCraftingType, itemstack, pSlot.getItem().isEmpty() ? 0 : pSlot.getItem().getCount());
+                int k = Math.min(itemstack.getMaxStackSize(), pSlot.getMaxStackSize(itemstack));
+                if (itemstack.getCount() > k) {
                     String var10000 = ChatFormatting.YELLOW.toString();
                     s = var10000 + k;
+                    itemstack.setCount(k);
                 }
-
-                itemstack = itemstack1.copyWithCount(i1);
             } else {
                 this.quickCraftSlots.remove(pSlot);
                 this.recalculateQuickCraftRemaining();
@@ -293,18 +283,21 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
             } else {
                 this.quickCraftingRemainder = itemstack.getCount();
 
+                ItemStack itemstack1;
                 int i;
-                int k;
-                for(Iterator var2 = this.quickCraftSlots.iterator(); var2.hasNext(); this.quickCraftingRemainder -= k - i) {
+                for(Iterator var2 = this.quickCraftSlots.iterator(); var2.hasNext(); this.quickCraftingRemainder -= itemstack1.getCount() - i) {
                     Slot slot = (Slot)var2.next();
-                    ItemStack itemstack1 = slot.getItem();
-                    i = itemstack1.isEmpty() ? 0 : itemstack1.getCount();
-                    int j = Math.min(itemstack.getMaxStackSize(), slot.getMaxStackSize(itemstack));
-                    k = Math.min(AbstractContainerMenu.getQuickCraftPlaceCount(this.quickCraftSlots, this.quickCraftingType, itemstack) + i, j);
+                    itemstack1 = itemstack.copy();
+                    ItemStack itemstack2 = slot.getItem();
+                    i = itemstack2.isEmpty() ? 0 : itemstack2.getCount();
+                    AbstractContainerMenu.getQuickCraftSlotCount(this.quickCraftSlots, this.quickCraftingType, itemstack1, i);
+                    int j = Math.min(itemstack1.getMaxStackSize(), slot.getMaxStackSize(itemstack1));
+                    if (itemstack1.getCount() > j) {
+                        itemstack1.setCount(j);
+                    }
                 }
             }
         }
-
     }
 
     private Slot findSlot(double pMouseX, double pMouseY) {

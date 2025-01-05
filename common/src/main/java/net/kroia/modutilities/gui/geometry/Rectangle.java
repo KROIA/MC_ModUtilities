@@ -1,6 +1,5 @@
 package net.kroia.modutilities.gui.geometry;
 
-import net.minecraft.client.gui.GuiGraphics;
 
 public class Rectangle {
     public int x;
@@ -18,10 +17,6 @@ public class Rectangle {
         this.y = other.y;
         this.width = other.width;
         this.height = other.height;
-    }
-
-    public void render(GuiGraphics graphics, int color) {
-        graphics.fill(x, y, x + width, y + height, color);
     }
 
     public boolean contains(double posX, double posY) {
