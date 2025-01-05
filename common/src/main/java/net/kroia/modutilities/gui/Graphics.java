@@ -93,16 +93,43 @@ public class Graphics {
     }
     public void renderItem(ItemStack itemStack, int x, int y)
     {
-        ItemRenderer itemRenderer = Minecraft.getInstance().getItemRenderer(); // mc<=1.19.4
-        itemRenderer.renderGuiItem(itemStack, x, y); // mc<=1.19.3
-        //itemRenderer.renderGuiItem(graphics, itemStack, x, y); // mc=1.19.4
+        // mc<=1.19.3
+        ItemRenderer itemRenderer = Minecraft.getInstance().getItemRenderer();
+        // Get current transformation matrix for x and y pos offset
+        Matrix4f matrix = graphics.last().pose();
+        int xOffset = (int) matrix.m30();
+        int yOffset = (int) matrix.m31();
+        itemRenderer.renderGuiItem(itemStack, x+xOffset, y+yOffset);
+
+
+
+        /*
+        // mc=1.19.4
+        ItemRenderer itemRenderer = Minecraft.getInstance().getItemRenderer();
+        itemRenderer.renderGuiItem(graphics, itemStack, x, y);
+        */
+
+
+
         //graphics.renderItem(itemStack, x, y); // mc>=1.20.1
     }
     public void renderItem(ItemStack itemStack, int x, int y, int seed)
     {
-        ItemRenderer itemRenderer = Minecraft.getInstance().getItemRenderer(); // mc<=1.19.4
-        itemRenderer.renderGuiItem(itemStack, x, y); // mc<=1.19.3
-        //itemRenderer.renderGuiItem(graphics, itemStack, x, y); // mc=1.19.4
+        // mc<=1.19.3
+        ItemRenderer itemRenderer = Minecraft.getInstance().getItemRenderer();
+        // Get current transformation matrix for x and y pos offset
+        Matrix4f matrix = graphics.last().pose();
+        int xOffset = (int) matrix.m30();
+        int yOffset = (int) matrix.m31();
+        itemRenderer.renderGuiItem(itemStack, x+xOffset, y+yOffset);
+
+
+        /*
+        // mc=1.19.4
+        ItemRenderer itemRenderer = Minecraft.getInstance().getItemRenderer();
+        itemRenderer.renderGuiItem(graphics, itemStack, x, y);
+        */
+
         //graphics.renderItem(itemStack, x, y, seed); // mc>=1.20.1
     }
 

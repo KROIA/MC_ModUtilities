@@ -278,7 +278,7 @@ public class Gui {
         Matrix4f matrix4f = graphics.getLastPoseMatrix();
         //VertexConsumer vertexconsumer = graphics.bufferSource().getBuffer(RenderType.gui()); // mc>=1.20.1
         //VertexConsumer vertexconsumer = graphics.bufferSource().getBuffer(RenderType.debugQuads()); // mc<=1.19.4
-        VertexConsumer vertexconsumer = graphics.bufferSource().getBuffer(RenderType.lines()); // mc<=1.19.3
+        VertexConsumer vertexconsumer = graphics.bufferSource().getBuffer(RenderType.solid()); // mc<=1.19.3
         vertexconsumer.vertex(matrix4f, (float)p1.x, (float)p1.y, (float)0).color(red, green, blue, alpha).endVertex();
         vertexconsumer.vertex(matrix4f, (float)p2.x, (float)p2.y, (float)0).color(red, green, blue, alpha).endVertex();
         vertexconsumer.vertex(matrix4f, (float)p3.x, (float)p3.y, (float)0).color(red, green, blue, alpha).endVertex();
@@ -288,13 +288,33 @@ public class Gui {
     public void drawVertexBuffer_QUADS(VertexBuffer buffer) {
         Matrix4f matrix4f = graphics.getLastPoseMatrix();
         //RenderType renderType = RenderType.debugQuads();// mc>=1.19.4
-        RenderType renderType = RenderType.lines();// mc<=1.19.3
+        RenderType renderType = RenderType.solid();// mc<=1.19.3
+        /*
         VertexConsumer vertexconsumer = graphics.bufferSource().getBuffer(renderType);
-        for(Vertex vertex : buffer.getVertices())
+        for(Vertex vertex : buffer.getVertices()) // mc>=1.19.4
         {
             vertexconsumer.vertex(matrix4f, vertex.x, vertex.y, 0).color(vertex.red, vertex.green, vertex.blue, vertex.alpha).endVertex();
         }
         graphics.flush();
+        */
+
+        // mc<=1.19.3
+        // Colors dont work for some reason =(
+        ArrayList<Vertex> vertices = buffer.getVertices();
+        int lightmapUV = 15728880; // Bright lighting
+        for(int i = 0; i < vertices.size(); i+=4)
+        {
+            Vertex vertex1 = vertices.get(i);
+            Vertex vertex2 = vertices.get(i+1);
+            Vertex vertex3 = vertices.get(i+2);
+            Vertex vertex4 = vertices.get(i+3);
+            VertexConsumer vertexconsumer = graphics.bufferSource().getBuffer(renderType);
+            vertexconsumer.vertex(matrix4f, vertex1.x, vertex1.y, 0).color(vertex1.red, vertex1.green, vertex1.blue, vertex1.alpha).uv(0,0).uv2(lightmapUV).normal(0,0,1).endVertex();
+            vertexconsumer.vertex(matrix4f, vertex2.x, vertex2.y, 0).color(vertex2.red, vertex2.green, vertex2.blue, vertex2.alpha).uv(0,0).uv2(lightmapUV).normal(0,0,1).endVertex();
+            vertexconsumer.vertex(matrix4f, vertex3.x, vertex3.y, 0).color(vertex3.red, vertex3.green, vertex3.blue, vertex3.alpha).uv(0,0).uv2(lightmapUV).normal(0,0,1).endVertex();
+            vertexconsumer.vertex(matrix4f, vertex4.x, vertex4.y, 0).color(vertex4.red, vertex4.green, vertex4.blue, vertex4.alpha).uv(0,0).uv2(lightmapUV).normal(0,0,1).endVertex();
+            graphics.flush();
+        }
     }
     public void drawRect(int x,int y, int width, int height, int color)
     {
