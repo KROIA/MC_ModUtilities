@@ -72,18 +72,23 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
 
     // mc>=1.20.1
     @Override
-    protected void renderBg(GuiGraphics guiGraphics, float pPartialTick, int pMouseX, int pMouseY) {
+    public void renderBackground(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         gui.getGraphics().setGraphics(guiGraphics);
-        renderBackground(guiGraphics);
-        gui.setMousePos(pMouseX, pMouseY);
-        gui.setPartialTick(pPartialTick);
+        super.renderBackground(guiGraphics, mouseX, mouseY, partialTick);
+        gui.setMousePos(mouseX, mouseY);
+        gui.setPartialTick(partialTick);
         gui.renderBackground();
+    }
+    @Override
+    protected void renderBg(GuiGraphics guiGraphics, float partialTick, int mouseX, int mouseY)
+    {
+
     }
 
     @Override
     public void render(GuiGraphics pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) {
         gui.getGraphics().setGraphics(pGuiGraphics);
-        renderBg(pGuiGraphics, pPartialTick, pMouseX, pMouseY);
+        renderBackground(pGuiGraphics, pMouseX, pMouseY, pPartialTick);
         gui.setMousePos(pMouseX, pMouseY);
         gui.setPartialTick(pPartialTick);
         gui.render();
@@ -134,8 +139,8 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        return gui.mouseScrolled(mouseX, mouseY, delta);
+    public boolean mouseScrolled(double mouseX, double mouseY, double deltaX, double scrollY) {
+        return gui.mouseScrolled(mouseX, mouseY, deltaX);
     }
 
     @Override

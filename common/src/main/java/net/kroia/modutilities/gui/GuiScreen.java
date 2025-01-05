@@ -65,13 +65,9 @@ public abstract class GuiScreen extends Screen {
 
     // mc>=1.20.1
     @Override
-    public void renderBackground(GuiGraphics guiGraphics) {
-        if(this.minecraft == null)
-        {
-            return;
-        }
+    public void renderBackground(GuiGraphics guiGraphics, int pMouseX, int pMouseY, float pPartialTick) {
         gui.getGraphics().setGraphics(guiGraphics);
-        super.renderBackground(guiGraphics);
+        super.renderBackground(guiGraphics, pMouseX, pMouseY, pPartialTick);
         gui.renderBackground();
     }
 
@@ -80,7 +76,7 @@ public abstract class GuiScreen extends Screen {
         gui.getGraphics().setGraphics(pGuiGraphics);
         gui.setMousePos(pMouseX, pMouseY);
         gui.setPartialTick(pPartialTick);
-        this.renderBackground(pGuiGraphics);
+        this.renderBackground(pGuiGraphics, pMouseX, pMouseY, pPartialTick);
         gui.render();
         gui.renderTooltip();
         if(enableGizmos)
@@ -131,8 +127,8 @@ public abstract class GuiScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        return gui.mouseScrolled(mouseX, mouseY, delta);
+    public boolean mouseScrolled(double mouseX, double mouseY, double deltaX, double scrollY) {
+        return gui.mouseScrolled(mouseX, mouseY, deltaX);
     }
 
     @Override
