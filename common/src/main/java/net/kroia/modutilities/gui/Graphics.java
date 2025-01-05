@@ -2,6 +2,10 @@ package net.kroia.modutilities.gui;
 
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.math.Matrix4f;
+import com.mojang.math.Quaternion;
+import com.mojang.math.Vector3f;
+import com.mojang.math.Vector4f;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 //import net.minecraft.client.gui.GuiGraphics; // mc>=1.20.1
@@ -14,9 +18,12 @@ import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import org.joml.Matrix4f;
+import org.apache.commons.lang3.tuple.Triple;
+
 
 import java.awt.*;
+import java.nio.FloatBuffer;
+import java.util.Deque;
 
 public class Graphics {
 
@@ -93,6 +100,16 @@ public class Graphics {
     }
     public void renderItem(ItemStack itemStack, int x, int y)
     {
+        // mc<=1.19.2
+        ItemRenderer itemRenderer = Minecraft.getInstance().getItemRenderer();
+        // Get current transformation matrix for x and y pos offset
+        Matrix4f matrix = graphics.last().pose();
+        Vector3f translation = new Vector3f(0,0,0);
+        getTranslation(matrix, translation);
+        itemRenderer.renderGuiItem(itemStack, x+(int)translation.x(), y+(int)translation.y());
+
+
+        /*
         // mc<=1.19.3
         ItemRenderer itemRenderer = Minecraft.getInstance().getItemRenderer();
         // Get current transformation matrix for x and y pos offset
@@ -100,7 +117,7 @@ public class Graphics {
         int xOffset = (int) matrix.m30();
         int yOffset = (int) matrix.m31();
         itemRenderer.renderGuiItem(itemStack, x+xOffset, y+yOffset);
-
+        */
 
 
         /*
@@ -115,14 +132,25 @@ public class Graphics {
     }
     public void renderItem(ItemStack itemStack, int x, int y, int seed)
     {
-        // mc<=1.19.3
+        // mc<=1.19.2
+        ItemRenderer itemRenderer = Minecraft.getInstance().getItemRenderer();
+        // Get current transformation matrix for x and y pos offset
+       // Triple<Quaternion, Vector3f, Quaternion> triple = graphics.last().pose().svdDecompose();
+        Matrix4f matrix = graphics.last().pose();
+        Vector3f translation = new Vector3f(0,0,0);
+        getTranslation(matrix, translation);
+        itemRenderer.renderGuiItem(itemStack, x+(int)translation.x(), y+(int)translation.y());
+
+
+        /*
+        // mc=1.19.3
         ItemRenderer itemRenderer = Minecraft.getInstance().getItemRenderer();
         // Get current transformation matrix for x and y pos offset
         Matrix4f matrix = graphics.last().pose();
         int xOffset = (int) matrix.m30();
         int yOffset = (int) matrix.m31();
         itemRenderer.renderGuiItem(itemStack, x+xOffset, y+yOffset);
-
+        */
 
         /*
         // mc=1.19.4
@@ -217,6 +245,14 @@ public class Graphics {
     {
         Minecraft.getInstance().renderBuffers().bufferSource().endBatch(); // mc<=1.19.4
         //graphics.flush(); // mc>=1.20.1
+    }
+
+
+    public static void getTranslation(Matrix4f matrix, Vector3f translation)
+    {
+        FloatBuffer buffer = FloatBuffer.allocate(16);
+        matrix.store(buffer);
+        translation.set(buffer.get(12), buffer.get(13), buffer.get(14));
     }
 
 }

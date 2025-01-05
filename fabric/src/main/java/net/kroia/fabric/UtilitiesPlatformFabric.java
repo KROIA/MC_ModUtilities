@@ -3,9 +3,10 @@ package net.kroia.fabric;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.PlatformAbstraction;
 import net.kroia.modutilities.UtilitiesPlatform;
-import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
@@ -26,21 +27,24 @@ public class UtilitiesPlatformFabric implements PlatformAbstraction {
     }
     @Override
     public ItemStack getItemStack(String itemID) {
-        Item item = BuiltInRegistries.ITEM.get(new ResourceLocation(itemID));
+        Registry<Item> itemRegistry = Registry.ITEM;
+        Item item = itemRegistry.get(new ResourceLocation(itemID));
         return item != null ? new ItemStack(item) : ItemStack.EMPTY;
     }
 
     @Override
     public String getItemID(Item item) {
-        return BuiltInRegistries.ITEM.getKey(item).toString();
+        Registry<Item> itemRegistry = Registry.ITEM;
+        return itemRegistry.getKey(item).toString();
     }
 
     @Override
     public HashMap<String, ItemStack> getAllItems() {
         HashMap<String, ItemStack> itemsMap = new HashMap<>();
+        Registry<Item> itemRegistry = Registry.ITEM;
 
-        for (Item item : BuiltInRegistries.ITEM) {
-            itemsMap.put(getItemID(item), new ItemStack(item));
+        for (Item item : itemRegistry) {
+            itemsMap.put(itemRegistry.getKey(item).toString(), new ItemStack(item));
         }
 
         return itemsMap;

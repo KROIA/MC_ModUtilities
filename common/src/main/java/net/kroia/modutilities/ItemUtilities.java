@@ -1,6 +1,6 @@
 package net.kroia.modutilities;
 
-import net.minecraft.core.registries.Registries;
+import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
@@ -9,7 +9,6 @@ import net.minecraft.world.item.Items;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.stream.Stream;
 
 public class ItemUtilities {
     public static ItemStack createItemStackFromId(String itemId)
@@ -107,11 +106,25 @@ public class ItemUtilities {
                 modTag = "c:";
                 break;
         }
+
+
+
+        // mc<=1.19.2
+        Registry<Item> itemRegistry = Registry.ITEM;
+        for(String tag : tags)
+        {
+            tagMap.put(modTag+tag,  TagKey.create(itemRegistry.key(), new ResourceLocation(modTag+tag)));
+            tagMap.put("minecraft:"+tag, TagKey.create(itemRegistry.key(), new ResourceLocation("minecraft:"+tag)));
+        }
+
+        /*
+        // mc>=1.19.3
         for(String tag : tags)
         {
             tagMap.put(modTag+tag, TagKey.create(Registries.ITEM, new ResourceLocation(modTag+tag)));
             tagMap.put("minecraft:"+tag, TagKey.create(Registries.ITEM, new ResourceLocation("minecraft:"+tag)));
         }
+        */
         for(ItemStack stack : itemTable.values())
         {
             Item item = stack.getItem();
@@ -137,10 +150,20 @@ public class ItemUtilities {
         return itemIDs;
     }
     private static boolean isInTag(Item item, String tagId) {
+        // mc<=1.19.2
+        Registry<Item> itemRegistry = Registry.ITEM;
+        TagKey<Item> tag = TagKey.create(itemRegistry.key(), new ResourceLocation(tagId));
+
+        // Check if the item is in the tag
+        return item.builtInRegistryHolder().is(tag);
+
+        /*
+        // mc>=1.19.3
         // Create a TagKey for the specified tag
         TagKey<Item> tag = TagKey.create(Registries.ITEM, new ResourceLocation(tagId));
 
         // Check if the item is in the tag
         return item.builtInRegistryHolder().is(tag);
+        */
     }
 }

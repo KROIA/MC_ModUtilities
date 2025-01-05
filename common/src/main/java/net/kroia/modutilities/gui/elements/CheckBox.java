@@ -159,7 +159,8 @@ public class CheckBox extends GuiElement {
         if(hitboxRect.contains(getMouseX(),getMouseY()))
         {
             isChecked = !isChecked;
-            playLocalSound(SoundEvents.UI_BUTTON_CLICK.value(),0.5F);
+            playLocalSound(SoundEvents.UI_BUTTON_CLICK,0.5F); // mc<=1.19.2
+            //playLocalSound(SoundEvents.UI_BUTTON_CLICK.value(),0.5F); // mc>=1.19.3
             if(onStateChanged != null)
             {
                 onStateChanged.run();

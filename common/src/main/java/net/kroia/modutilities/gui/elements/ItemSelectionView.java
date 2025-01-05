@@ -1,20 +1,14 @@
 package net.kroia.modutilities.gui.elements;
 
 import net.kroia.modutilities.ItemUtilities;
-import net.kroia.modutilities.gui.Gui;
-import net.kroia.modutilities.gui.GuiScreen;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.elements.base.ListView;
 import net.kroia.modutilities.gui.layout.LayoutGrid;
-import net.kroia.modutilities.gui.screens.ItemSelectionScreen;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.function.Consumer;
 
 public class ItemSelectionView extends GuiElement {
@@ -42,8 +36,8 @@ public class ItemSelectionView extends GuiElement {
         @Override
         public boolean mouseClickedOverElement(int button) {
             if (button == 0) {
-                onItemSelected.accept(BuiltInRegistries.ITEM.getKey(itemStack.getItem()).toString());
-                //minecraft.setScreen(parentScreen);
+                String itemID = ItemUtilities.getItemID(itemStack.getItem());
+                onItemSelected.accept(itemID);
                 return true;
             }
             return false;

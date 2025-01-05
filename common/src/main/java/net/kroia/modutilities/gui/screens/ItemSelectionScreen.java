@@ -4,16 +4,9 @@ import net.kroia.modutilities.ItemUtilities;
 import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.GuiScreen;
 import net.kroia.modutilities.gui.elements.*;
-import net.kroia.modutilities.gui.elements.base.GuiElement;
-import net.kroia.modutilities.gui.elements.base.ListView;
-import net.kroia.modutilities.gui.layout.LayoutGrid;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.function.Consumer;
 
 public class ItemSelectionScreen extends GuiScreen {

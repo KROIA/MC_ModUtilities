@@ -4,6 +4,7 @@ import net.kroia.modutilities.PlatformAbstraction;
 import net.kroia.modutilities.UtilitiesPlatform;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.registries.ForgeRegistries;

@@ -140,7 +140,8 @@ public class Button extends GuiElement {
             return false;
 
         if(!isPressed) {
-            playLocalSound(SoundEvents.UI_BUTTON_CLICK.value(),0.5F);
+            playLocalSound(SoundEvents.UI_BUTTON_CLICK,0.5F); // mc<=1.19.2
+            //playLocalSound(SoundEvents.UI_BUTTON_CLICK.value(),0.5F); // mc>=1.19.3
             if(onFallingEdge != null) {
                 onFallingEdge.run();
             }

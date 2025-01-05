@@ -150,13 +150,14 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
         //MinecraftForge.EVENT_BUS.post(new ContainerScreenEvent.Render.Foreground(this, getGraphics(), pMouseX, pMouseY));
         ItemStack itemstack = this.draggingItem.isEmpty() ? this.menu.getCarried() : this.draggingItem;
         if (!itemstack.isEmpty()) {
-            //int l1 = true;
             j2 = this.draggingItem.isEmpty() ? 8 : 16;
             String s = null;
             if (!this.draggingItem.isEmpty() && this.isSplittingStack) {
-                itemstack = itemstack.copyWithCount(Mth.ceil((float)itemstack.getCount() / 2.0F));
+                itemstack = itemstack.copy();
+                itemstack.setCount(Mth.ceil((float)itemstack.getCount() / 2.0F));
             } else if (this.isQuickCrafting && this.quickCraftSlots.size() > 1) {
-                itemstack = itemstack.copyWithCount(this.quickCraftingRemainder);
+                itemstack = itemstack.copy();
+                itemstack.setCount(this.quickCraftingRemainder);
                 if (itemstack.isEmpty()) {
                     s = ChatFormatting.YELLOW + "0";
                 }
