@@ -67,15 +67,18 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     }
 
     @Override
-    protected void renderBg(GuiGraphics guiGraphics, float v, int i, int i1) {
-
+    protected void renderBg(GuiGraphics guiGraphics, float pPartialTick, int pMouseX, int pMouseY) {
+        renderBackground(guiGraphics);
+        gui.setMousePos(pMouseX, pMouseY);
+        gui.setPartialTick(pPartialTick);
+        gui.renderBackground(guiGraphics);
     }
 
     @Override
     public void render(GuiGraphics pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) {
+        renderBg(pGuiGraphics, pPartialTick, pMouseX, pMouseY);
         gui.setMousePos(pMouseX, pMouseY);
         gui.setPartialTick(pPartialTick);
-        gui.renderBackground(pGuiGraphics);
         gui.render(pGuiGraphics);
         gui.renderTooltip(pGuiGraphics);
         if(enableGizmos)
