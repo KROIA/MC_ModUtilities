@@ -42,8 +42,8 @@ public class ItemSelectionView extends GuiElement {
         @Override
         public boolean mouseClickedOverElement(int button) {
             if (button == 0) {
-                onItemSelected.accept(BuiltInRegistries.ITEM.getKey(itemStack.getItem()).toString());
-                //minecraft.setScreen(parentScreen);
+                String itemID = ItemUtilities.getItemID(itemStack.getItem());
+                onItemSelected.accept(itemID);
                 return true;
             }
             return false;
