@@ -959,14 +959,22 @@ public abstract class GuiElement {
     {
         drawTexture(sprite, area.x, area.y, area.width, area.height, blitOffset);
     }
+
+    /*
+    // mc>=1.19.4
     public void drawTexture(TextureAtlasSprite sprite, int x, int y, int width, int height, int blitOffset, float red, float green, float blue, float alpha)
     {
         root.drawTexture(sprite, x, y, width, height, blitOffset, red, green, blue, alpha);
     }
+    */
+
+    /*
+    // mc>=1.19.4
     public void drawTexture(TextureAtlasSprite sprite, Rectangle area, int blitOffset, float red, float green, float blue, float alpha)
     {
         drawTexture(sprite, area.x, area.y, area.width, area.height, blitOffset, red, green, blue, alpha);
     }
+    */
 
 
     public void drawTooltip(Component tooltip, int x, int y)

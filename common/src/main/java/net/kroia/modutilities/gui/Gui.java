@@ -277,7 +277,8 @@ public class Gui {
 
         Matrix4f matrix4f = graphics.getLastPoseMatrix();
         //VertexConsumer vertexconsumer = graphics.bufferSource().getBuffer(RenderType.gui()); // mc>=1.20.1
-        VertexConsumer vertexconsumer = graphics.bufferSource().getBuffer(RenderType.debugQuads()); // mc<=1.19.4
+        //VertexConsumer vertexconsumer = graphics.bufferSource().getBuffer(RenderType.debugQuads()); // mc<=1.19.4
+        VertexConsumer vertexconsumer = graphics.bufferSource().getBuffer(RenderType.lines()); // mc<=1.19.3
         vertexconsumer.vertex(matrix4f, (float)p1.x, (float)p1.y, (float)0).color(red, green, blue, alpha).endVertex();
         vertexconsumer.vertex(matrix4f, (float)p2.x, (float)p2.y, (float)0).color(red, green, blue, alpha).endVertex();
         vertexconsumer.vertex(matrix4f, (float)p3.x, (float)p3.y, (float)0).color(red, green, blue, alpha).endVertex();
@@ -286,7 +287,8 @@ public class Gui {
     }
     public void drawVertexBuffer_QUADS(VertexBuffer buffer) {
         Matrix4f matrix4f = graphics.getLastPoseMatrix();
-        RenderType renderType = RenderType.debugQuads();
+        //RenderType renderType = RenderType.debugQuads();// mc>=1.19.4
+        RenderType renderType = RenderType.lines();// mc<=1.19.3
         VertexConsumer vertexconsumer = graphics.bufferSource().getBuffer(renderType);
         for(Vertex vertex : buffer.getVertices())
         {
@@ -309,7 +311,15 @@ public class Gui {
     }
     public void drawOutline(int x, int y, int width, int height, int color)
     {
-        graphics.renderOutline(x,y,width,height,color);
+        int thickness = 1;
+        // Horizontal
+        drawRect(x, y, width, thickness, color);
+        drawRect(x, y+height-thickness, width, thickness, color);
+
+        // Vertical
+        drawRect(x, y+thickness, thickness, height-2*thickness, color);
+        drawRect(x+width-thickness, y+thickness, thickness, height-2*thickness, color);
+        //graphics.renderOutline(x,y,width,height,color); // mc>=1.19.4
     }
     public void drawTooltip(Component tooltip, int x, int y)
     {
@@ -382,10 +392,14 @@ public class Gui {
     {
         graphics.blit(x, y, blitOffset, width, height, sprite);
     }
+
+    /*
+    // mc>=1.19.4
     public void drawTexture(TextureAtlasSprite sprite, int x, int y, int width, int height, int blitOffset, float red, float green, float blue, float alpha)
     {
         graphics.blit(x, y, blitOffset, width, height, sprite, red, green, blue, alpha);
     }
+    */
 
     public static ResourceLocation createResourceLocation(String modID, String path)
     {

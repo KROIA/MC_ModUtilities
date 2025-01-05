@@ -74,11 +74,13 @@ public class Graphics {
         Screen.fill(graphics, x1, y1, x2, y2, colorFrom); // mc<=1.19.4
         //graphics.fillGradient(renderType, x1, y1, x2, y2, colorFrom, colorTo, z); // mc>=1.20.1
     }
+    /*
+    // mc>=1.19.4
     public void renderOutline(int x1, int y1, int width, int height, int color)
     {
-        Screen.renderOutline(graphics, x1, y1, width, height, color); // mc<=1.19.4
+        Screen.renderOutline(graphics, x1, y1, width, height, color); // mc=1.19.4
         //graphics.renderOutline(x1, y1, width, height, color); // mc>=1.20.1
-    }
+    }*/
     public void renderTooltip(Font font, Component text, int x, int y)
     {
         screen.renderTooltip(graphics, text, x, y); // mc<=1.19.4
@@ -92,13 +94,15 @@ public class Graphics {
     public void renderItem(ItemStack itemStack, int x, int y)
     {
         ItemRenderer itemRenderer = Minecraft.getInstance().getItemRenderer(); // mc<=1.19.4
-        itemRenderer.renderGuiItem(graphics, itemStack, x, y); // mc<=1.19.4
+        itemRenderer.renderGuiItem(itemStack, x, y); // mc<=1.19.3
+        //itemRenderer.renderGuiItem(graphics, itemStack, x, y); // mc=1.19.4
         //graphics.renderItem(itemStack, x, y); // mc>=1.20.1
     }
     public void renderItem(ItemStack itemStack, int x, int y, int seed)
     {
         ItemRenderer itemRenderer = Minecraft.getInstance().getItemRenderer(); // mc<=1.19.4
-        itemRenderer.renderGuiItem(graphics, itemStack, x, y); // mc<=1.19.4
+        itemRenderer.renderGuiItem(itemStack, x, y); // mc<=1.19.3
+        //itemRenderer.renderGuiItem(graphics, itemStack, x, y); // mc=1.19.4
         //graphics.renderItem(itemStack, x, y, seed); // mc>=1.20.1
     }
 
@@ -106,7 +110,8 @@ public class Graphics {
     public void blit(ResourceLocation atlasLocation, int x, int y, int uOffset, int vOffset, int width, int height)
     {
         RenderSystem.setShaderTexture(0, atlasLocation);
-        Screen.blit(graphics, x, y, uOffset, vOffset, width, height); // mc<=1.19.4
+        screen.blit(graphics, x, y, uOffset, vOffset, width, height); // mc<=1.19.3
+        //Screen.blit(graphics, x, y, uOffset, vOffset, width, height); // mc=1.19.4
         //graphics.blit(atlasLocation, x, y, uOffset, vOffset, width, height);
     }
     public void blit(ResourceLocation atlasLocation, int x, int y, float uOffset, float vOffset, int width, int height, int textureWidth, int textureHeight)
@@ -120,11 +125,15 @@ public class Graphics {
         Screen.blit(graphics, x, y, blitOffset, width, height, sprite); // mc<=1.19.4
         //graphics.blit(x, y, blitOffset, width, height, sprite); // mc>=1.20.1
     }
+
+    /*
+    // mc>=1.19.4
     public void blit(int x, int y, int blitOffset, int width, int height, TextureAtlasSprite sprite, float red, float green, float blue, float alpha)
     {
         Screen.blit(graphics, x, y, blitOffset, width, height, sprite, red, green, blue, alpha); // mc<=1.19.4
         //graphics.blit(x, y, blitOffset, width, height, sprite, red, green, blue, alpha); // mc>=1.20.1
     }
+    */
 
     public void enableScissor(int minX, int minY, int maxX, int maxY)
     {
