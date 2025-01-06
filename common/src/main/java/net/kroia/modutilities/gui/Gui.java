@@ -276,12 +276,11 @@ public class Gui {
 
 
         Matrix4f matrix4f = graphics.getLastPoseMatrix();
-        //VertexConsumer vertexconsumer = graphics.bufferSource().getBuffer(RenderType.gui()); // mc>=1.20.1
-        VertexConsumer vertexconsumer = graphics.bufferSource().getBuffer(RenderType.debugQuads()); // mc<=1.19.4
-        vertexconsumer.vertex(matrix4f, (float)p1.x, (float)p1.y, (float)0).color(red, green, blue, alpha).endVertex();
-        vertexconsumer.vertex(matrix4f, (float)p2.x, (float)p2.y, (float)0).color(red, green, blue, alpha).endVertex();
-        vertexconsumer.vertex(matrix4f, (float)p3.x, (float)p3.y, (float)0).color(red, green, blue, alpha).endVertex();
-        vertexconsumer.vertex(matrix4f, (float)p4.x, (float)p4.y, (float)0).color(red, green, blue, alpha).endVertex();
+        VertexConsumer vertexconsumer = graphics.bufferSource().getBuffer(RenderType.debugQuads());
+        vertexconsumer.addVertex(matrix4f, (float)p1.x, (float)p1.y, (float)0).setColor(red, green, blue, alpha);
+        vertexconsumer.addVertex(matrix4f, (float)p2.x, (float)p2.y, (float)0).setColor(red, green, blue, alpha);
+        vertexconsumer.addVertex(matrix4f, (float)p3.x, (float)p3.y, (float)0).setColor(red, green, blue, alpha);
+        vertexconsumer.addVertex(matrix4f, (float)p4.x, (float)p4.y, (float)0).setColor(red, green, blue, alpha);
         graphics.flush();
     }
     public void drawVertexBuffer_QUADS(VertexBuffer buffer) {
@@ -290,7 +289,7 @@ public class Gui {
         VertexConsumer vertexconsumer = graphics.bufferSource().getBuffer(renderType);
         for(Vertex vertex : buffer.getVertices())
         {
-            vertexconsumer.vertex(matrix4f, vertex.x, vertex.y, 0).color(vertex.red, vertex.green, vertex.blue, vertex.alpha).endVertex();
+            vertexconsumer.addVertex(matrix4f, vertex.x, vertex.y, 0).setColor(vertex.red, vertex.green, vertex.blue, vertex.alpha);
         }
         graphics.flush();
     }
@@ -389,8 +388,7 @@ public class Gui {
 
     public static ResourceLocation createResourceLocation(String modID, String path)
     {
-        return new ResourceLocation(modID, path);
-        //return ResourceLocation.fromNamespaceAndPath(modID, path);
+        return ResourceLocation.fromNamespaceAndPath(modID, path);
     }
     public static double getGuiScale()
     {

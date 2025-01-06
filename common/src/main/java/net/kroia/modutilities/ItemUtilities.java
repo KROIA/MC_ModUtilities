@@ -109,8 +109,8 @@ public class ItemUtilities {
         }
         for(String tag : tags)
         {
-            tagMap.put(modTag+tag, TagKey.create(Registries.ITEM, new ResourceLocation(modTag+tag)));
-            tagMap.put("minecraft:"+tag, TagKey.create(Registries.ITEM, new ResourceLocation("minecraft:"+tag)));
+            tagMap.put(modTag+tag, TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, modTag+tag)));
+            tagMap.put("minecraft:"+tag, TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID,"minecraft:"+tag)));
         }
         for(ItemStack stack : itemTable.values())
         {
@@ -138,7 +138,7 @@ public class ItemUtilities {
     }
     private static boolean isInTag(Item item, String tagId) {
         // Create a TagKey for the specified tag
-        TagKey<Item> tag = TagKey.create(Registries.ITEM, new ResourceLocation(tagId));
+        TagKey<Item> tag = TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID,tagId));
 
         // Check if the item is in the tag
         return item.builtInRegistryHolder().is(tag);

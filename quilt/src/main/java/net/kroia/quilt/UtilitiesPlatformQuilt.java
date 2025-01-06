@@ -28,7 +28,9 @@ public class UtilitiesPlatformQuilt implements PlatformAbstraction {
     }
     @Override
     public ItemStack getItemStack(String itemID) {
-        Item item = BuiltInRegistries.ITEM.get(new ResourceLocation(itemID));
+        String namespace = itemID.split(":")[0];
+        String path = itemID.split(":")[1];
+        Item item = BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(namespace, path));
         return item != null ? new ItemStack(item) : ItemStack.EMPTY;
     }
 
