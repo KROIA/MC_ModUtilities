@@ -1,6 +1,7 @@
 package net.kroia.quilt;
 
 import net.fabricmc.api.ModInitializer;
+//import org.quiltmc.qsl.base.api.entrypoint.ModInitializer;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.UtilitiesPlatform;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
