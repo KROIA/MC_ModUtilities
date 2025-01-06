@@ -10,7 +10,8 @@ public class UtilitiesPlatform {
     public enum Type {
         FABRIC,
         FORGE,
-        QUILT
+        QUILT,
+        NEOFORGE
     }
     private static PlatformAbstraction platform;
 
