@@ -1,4 +1,4 @@
-package net.kroia.fabric;
+package net.modutilities.neoforge;
 
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.PlatformAbstraction;
@@ -8,20 +8,21 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.fml.event.lifecycle.FMLDedicatedServerSetupEvent;
 
 import java.util.HashMap;
 
-public class UtilitiesPlatformFabric implements PlatformAbstraction {
+public class UtilitiesPlatformNeoForge implements PlatformAbstraction {
 
     private static MinecraftServer minecraftServer;
     public static void setServer(MinecraftServer server) {
         minecraftServer = server;
         if(minecraftServer != null)
         {
-            ModUtilitiesMod.LOGGER.info("[FabricSetup] SERVER INSTANCE SET");
+            ModUtilitiesMod.LOGGER.info("[NeoForgeSetup] SERVER INSTANCE SET");
         }
         else {
-            ModUtilitiesMod.LOGGER.info("[FabricSetup] SERVER INSTANCE CLEARED");
+            ModUtilitiesMod.LOGGER.info("[NeoForgeSetup] SERVER INSTANCE CLEARED");
         }
     }
     @Override
@@ -55,8 +56,7 @@ public class UtilitiesPlatformFabric implements PlatformAbstraction {
     }
 
     @Override
-    public UtilitiesPlatform.Type getPlatformType()
-    {
-        return UtilitiesPlatform.Type.FABRIC;
+    public UtilitiesPlatform.Type getPlatformType() {
+        return UtilitiesPlatform.Type.NEOFORGE;
     }
 }

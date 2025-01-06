@@ -1,0 +1,38 @@
+modLoader = "javafml"
+loaderVersion = "[2,)"
+#issueTrackerURL = ""
+license = "Insert License Here"
+
+[[mods]]
+modId = "modutilities"
+version = "${version}"
+displayName = "Modutilities"
+authors = "Alex Krieg"
+description = '''
+Utilities for modding
+'''
+#logoFile = ""
+
+[[dependencies.modutilities]]
+modId = "neoforge"
+type = "required"
+versionRange = "[20.6,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.modutilities]]
+modId = "minecraft"
+type = "required"
+versionRange = "[1.20.6,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.modutilities]]
+modId = "architectury"
+type = "required"
+versionRange = "[12.1.4,)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[mixins]]
+config = "modutilities.mixins.json"

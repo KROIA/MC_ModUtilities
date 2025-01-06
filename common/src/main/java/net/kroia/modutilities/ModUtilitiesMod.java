@@ -1,5 +1,7 @@
 package net.kroia.modutilities;
 
+import dev.architectury.event.events.common.LifecycleEvent;
+import net.minecraft.server.MinecraftServer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
