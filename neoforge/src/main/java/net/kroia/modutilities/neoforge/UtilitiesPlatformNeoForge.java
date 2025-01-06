@@ -1,4 +1,4 @@
-package net.modutilities.neoforge;
+package net.kroia.modutilities.neoforge;
 
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.PlatformAbstraction;

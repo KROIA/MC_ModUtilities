@@ -1,4 +1,4 @@
-package net.modutilities.neoforge;
+package net.kroia.modutilities.neoforge;
 
 import dev.architectury.event.events.common.LifecycleEvent;
 import net.kroia.modutilities.UtilitiesPlatform;
