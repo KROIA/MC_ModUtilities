@@ -140,7 +140,7 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double deltaX, double scrollY) {
-        return gui.mouseScrolled(mouseX, mouseY, deltaX);
+        return gui.mouseScrolled(mouseX, mouseY, scrollY);
     }
 
     @Override
