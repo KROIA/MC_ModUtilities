@@ -842,10 +842,14 @@ public abstract class GuiElement {
     }
 
 
+    /*
+    // mc>=1.21.2 Don't know how to implement this yet
+    // todo: implement this
     public void drawLine(int x1, int y1, int x2, int y2, float thickness, int color)
     {
         root.drawLine(x1,y1,x2,y2,thickness, color);
     }
+
     public void drawLine(Point start, Point end, float thickness,int color)
     {
         drawLine(start.x, start.y, end.x, end.y, thickness, color);
@@ -863,6 +867,7 @@ public abstract class GuiElement {
     {
         root.drawVertexBuffer_QUADS(buffer);
     }
+    */
 
 
 
@@ -959,14 +964,20 @@ public abstract class GuiElement {
     {
         drawTexture(sprite, area.x, area.y, area.width, area.height, blitOffset);
     }
+
+    /*
+    // mc>=1.21.2 Don't know how to implement this yet
+    // todo: implement this
     public void drawTexture(TextureAtlasSprite sprite, int x, int y, int width, int height, int blitOffset, float red, float green, float blue, float alpha)
     {
         root.drawTexture(sprite, x, y, width, height, blitOffset, red, green, blue, alpha);
     }
+
     public void drawTexture(TextureAtlasSprite sprite, Rectangle area, int blitOffset, float red, float green, float blue, float alpha)
     {
         drawTexture(sprite, area.x, area.y, area.width, area.height, blitOffset, red, green, blue, alpha);
     }
+    */
 
 
     public void drawTooltip(Component tooltip, int x, int y)

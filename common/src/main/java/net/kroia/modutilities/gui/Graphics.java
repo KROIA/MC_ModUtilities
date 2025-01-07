@@ -110,24 +110,31 @@ public class Graphics {
     {
         //RenderSystem.setShaderTexture(0, atlasLocation);
         //Screen.blit(graphics, x, y, uOffset, vOffset, width, height, width, height); // mc<=1.19.4
-        graphics.blit(atlasLocation, x, y, uOffset, vOffset, width, height);
+        //graphics.blit(atlasLocation, x, y, uOffset, vOffset, width, height); // mc<=1.21.1
+        blit(atlasLocation, x,y,uOffset,vOffset,width,height,width,height); // mc>=1.21.2
     }
     public void blit(ResourceLocation atlasLocation, int x, int y, float uOffset, float vOffset, int width, int height, int textureWidth, int textureHeight)
     {
         //RenderSystem.setShaderTexture(0, atlasLocation);
         //Screen.blit(graphics, x, y, uOffset, vOffset, width, height, textureWidth, textureHeight); // mc<=1.19.4
-        graphics.blit(atlasLocation, x, y, uOffset, vOffset, width, height, textureWidth, textureHeight); // mc>=1.20.1
+        //graphics.blit(atlasLocation, x, y, uOffset, vOffset, width, height, textureWidth, textureHeight); // mc>=1.20.1
+        graphics.blit(RenderType::guiTextured, atlasLocation, x, y, uOffset, vOffset, width, height, textureWidth, textureHeight); // mc>=1.21.2
     }
     public void blit(int x, int y, int blitOffset, int width, int height, TextureAtlasSprite sprite)
     {
         //Screen.blit(graphics, x, y, blitOffset, width, height, sprite); // mc<=1.19.4
-        graphics.blit(x, y, blitOffset, width, height, sprite); // mc>=1.20.1
+        //graphics.blit(x, y, blitOffset, width, height, sprite); // mc>=1.20.1
+        graphics.blitSprite(RenderType::guiTextured,sprite.atlasLocation(),x, y, blitOffset, width, height); // mc>=1.21.2
     }
+
+    /*
+     // mc>=1.21.2 Don't know how to implement this yet
+     // todo: implement this
     public void blit(int x, int y, int blitOffset, int width, int height, TextureAtlasSprite sprite, float red, float green, float blue, float alpha)
     {
         //Screen.blit(graphics, x, y, blitOffset, width, height, sprite, red, green, blue, alpha); // mc<=1.19.4
         graphics.blit(x, y, blitOffset, width, height, sprite, red, green, blue, alpha); // mc>=1.20.1
-    }
+    }*/
 
     public void enableScissor(int minX, int minY, int maxX, int maxY)
     {
@@ -175,11 +182,14 @@ public class Graphics {
         return graphics.pose().last().pose(); // mc>=1.20.1
     }
 
+    /*
+    // mc>=1.21.2 Don't know how to implement this yet
+    // todo: implement this
     public MultiBufferSource.BufferSource bufferSource()
     {
         //return Minecraft.getInstance().renderBuffers().bufferSource(); // mc<=1.19.4
         return graphics.bufferSource(); // mc>=1.20.1
-    }
+    }*/
     public void flush()
     {
         //Minecraft.getInstance().renderBuffers().bufferSource().endBatch(); // mc<=1.19.4

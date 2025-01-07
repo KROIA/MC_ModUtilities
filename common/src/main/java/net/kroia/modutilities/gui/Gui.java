@@ -243,6 +243,9 @@ public class Gui {
     }
 
 
+    /*
+    // mc>=1.21.2 Don't know how to implement this yet
+    // todo: implement this
     public void drawLine(int x1, int y1, int x2, int y2, float thickness,  int color)
     {
         class PointF
@@ -293,6 +296,7 @@ public class Gui {
         }
         graphics.flush();
     }
+    */
     public void drawRect(int x,int y, int width, int height, int color)
     {
         graphics.fill(x,y,width+x,height+y,color);
@@ -381,10 +385,15 @@ public class Gui {
     {
         graphics.blit(x, y, blitOffset, width, height, sprite);
     }
+
+    /*
+    // mc>=1.21.2 Don't know how to implement this yet
+    // todo: implement this
     public void drawTexture(TextureAtlasSprite sprite, int x, int y, int width, int height, int blitOffset, float red, float green, float blue, float alpha)
     {
         graphics.blit(x, y, blitOffset, width, height, sprite, red, green, blue, alpha);
     }
+    */
 
     public static ResourceLocation createResourceLocation(String modID, String path)
     {

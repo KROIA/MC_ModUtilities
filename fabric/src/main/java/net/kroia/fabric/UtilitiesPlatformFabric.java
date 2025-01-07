@@ -10,6 +10,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.HashMap;
+import java.util.Objects;
 
 public class UtilitiesPlatformFabric implements PlatformAbstraction {
 
@@ -28,8 +29,8 @@ public class UtilitiesPlatformFabric implements PlatformAbstraction {
     public ItemStack getItemStack(String itemID) {
         String namespace = itemID.split(":")[0];
         String path = itemID.split(":")[1];
-        Item item = BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(namespace, path));
-        return new ItemStack(item);
+        ResourceLocation resourceLocation = ResourceLocation.fromNamespaceAndPath(namespace, path);
+        return new ItemStack(Objects.requireNonNull(BuiltInRegistries.ITEM.get(resourceLocation).orElse(null)));
     }
 
     @Override
