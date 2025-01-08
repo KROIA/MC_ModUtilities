@@ -28,6 +28,9 @@ public class UtilitiesPlatformNeoForge implements PlatformAbstraction {
     }
     @Override
     public ItemStack getItemStack(String itemID) {
+        if(itemID.indexOf(":") == -1) {
+            itemID = "minecraft:"+itemID;
+        }
         String namespace = itemID.split(":")[0];
         String path = itemID.split(":")[1];
         ResourceLocation resourceLocation = ResourceLocation.fromNamespaceAndPath(namespace, path);

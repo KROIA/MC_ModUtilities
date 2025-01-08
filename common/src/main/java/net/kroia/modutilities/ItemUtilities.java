@@ -32,6 +32,13 @@ public class ItemUtilities {
     }
     public static String getNormalizedItemID(String maybeNotCompleteItemID)
     {
+        if(maybeNotCompleteItemID == null) {
+            return null;
+        }
+        if(maybeNotCompleteItemID.contains(":")) {
+            return maybeNotCompleteItemID;
+        }
+        maybeNotCompleteItemID = "minecraft:"+maybeNotCompleteItemID;
         ItemStack itemStack = createItemStackFromId(maybeNotCompleteItemID,1);
         if(itemStack == null) {
             return null;
