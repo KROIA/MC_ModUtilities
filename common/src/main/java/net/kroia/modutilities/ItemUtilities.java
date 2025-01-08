@@ -21,6 +21,10 @@ public class ItemUtilities {
         if(itemId == null) {
             return ItemStack.EMPTY;
         }
+        if(itemId.indexOf(":") == -1) {
+            itemId = "minecraft:"+itemId;
+        }
+
         ItemStack itemStack = UtilitiesPlatform.getItemStack(itemId); // Get the item from the item ID
 
         if (itemStack != null) {
@@ -32,8 +36,11 @@ public class ItemUtilities {
     }
     public static String getNormalizedItemID(String maybeNotCompleteItemID)
     {
+        if(maybeNotCompleteItemID == null) {
+            return null;
+        }
         ItemStack itemStack = createItemStackFromId(maybeNotCompleteItemID,1);
-        if(itemStack == null) {
+        if(itemStack == itemStack.EMPTY) {
             return null;
         }
         if(itemStack.getItem() == Items.AIR) {
