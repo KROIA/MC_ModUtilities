@@ -15,10 +15,7 @@ Fabric and Forge do both include this mod so you don't need it as a dependency.
 
 # Downloads
 
-<!--
-[CurseForge](https://www.curseforge.com/minecraft/mc-mods/stockmarket)
--->
-
+[CurseForge](https://www.curseforge.com/minecraft/mc-mods/kroiautilities)
 | Minecraft | Quilt |
 |-----------|-------|
 | ![Minecraft Version](https://img.shields.io/badge/Minecraft-1.20.6-green)    | [![Version](https://img.shields.io/badge/v1.0.0-green)][1.0.0-quilt-1.20.6]  |
