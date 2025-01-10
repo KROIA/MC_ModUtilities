@@ -16,7 +16,7 @@ public final class ModUtilitiesNeoForge {
         });
         LifecycleEvent.SERVER_STOPPED.register(server -> {
             ModUtilitiesMod.LOGGER.info("[NeoForgeSetup] SERVER_STOPPED");
-            UtilitiesPlatformNeoForge.setServer(server);
+            UtilitiesPlatformNeoForge.setServer(null);
         });
 
 
