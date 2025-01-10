@@ -9,6 +9,10 @@ Fabric and Forge do both include this mod so you don't need it as a dependency.
 - Helperfunctions for intaracting with items and players
 - GUI Library to create the GUI-Screens in a better way than default minecraft offers
 
+# Dependencies
+- [Architectury API](https://www.curseforge.com/minecraft/mc-mods/architectury-api)
+- [Quilted Fabric API](https://www.curseforge.com/minecraft/mc-mods/qsl)
+
 # Downloads
 
 <!--
