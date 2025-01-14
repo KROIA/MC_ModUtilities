@@ -77,6 +77,8 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
 
     public final GuiTexture background_texture;
 
+    private Runnable onCloseEvent;
+
     public ContainerView(T pMenu, Inventory pPlayerInventory, Component pTitle, GuiTexture pBackgroundTexture) {
         super(0, 0, pBackgroundTexture.getWidth(), pBackgroundTexture.getHeight());
         this.background_texture = pBackgroundTexture;
@@ -192,6 +194,10 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
     @Override
     protected void layoutChanged() {
 
+    }
+
+    public void setOnCloseEvent(Runnable pOnCloseEvent) {
+        onCloseEvent = pOnCloseEvent;
     }
 
     public void renderSlotHighlight(int pX, int pY, int pBlitOffset) {
@@ -688,6 +694,8 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
     }
 
     public void onClose() {
+        if(onCloseEvent != null)
+            onCloseEvent.run();
         this.minecraft.player.closeContainer();
         //super.onClose();
     }
