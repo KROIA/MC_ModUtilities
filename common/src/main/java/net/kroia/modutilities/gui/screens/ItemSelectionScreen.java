@@ -7,6 +7,7 @@ import net.kroia.modutilities.gui.elements.*;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.elements.base.ListView;
 import net.kroia.modutilities.gui.layout.LayoutGrid;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
@@ -22,16 +23,16 @@ public class ItemSelectionScreen extends GuiScreen {
     private static final Component CANCEL_BUTTON = Component.translatable("gui.modutilities.cancel");
 
     private static final int menuWidth = 200;
-    private final GuiScreen parentScreen;
+    private final Screen parentScreen;
     private final Button backButton;
     private final ItemSelectionView itemSelectionView;
 
 
 
-    public ItemSelectionScreen(GuiScreen parentScreen, Consumer<String> onItemSelected) {
+    public ItemSelectionScreen(Screen parentScreen, Consumer<String> onItemSelected) {
         this(parentScreen, ItemUtilities.getAllItemIDs(), onItemSelected);
     }
-    public ItemSelectionScreen(GuiScreen parentScreen, ArrayList<String> allowedItemsIDs, Consumer<String> onItemSelected) {
+    public ItemSelectionScreen(Screen parentScreen, ArrayList<String> allowedItemsIDs, Consumer<String> onItemSelected) {
         super(TITLE);
         this.parentScreen = parentScreen;
 
