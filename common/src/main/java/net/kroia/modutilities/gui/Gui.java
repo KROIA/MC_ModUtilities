@@ -18,6 +18,7 @@ import net.minecraft.world.item.ItemStack;
 import org.joml.Matrix4f;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class Gui {
 
@@ -323,6 +324,26 @@ public class Gui {
             return;
         }
         graphics.renderTooltip(getFont(), tooltip, x,y);
+    }
+    public void drawTooltip(String tooltip, int x, int y)
+    {
+        List<Component> tooltipList = new ArrayList<>();
+        // split by newline
+        String[] lines = tooltip.split("\n");
+        for(String line : lines)
+        {
+            tooltipList.add(Component.nullToEmpty(line));
+        }
+        if(isScissorEnabled())
+        {
+            scissorPause();
+            //pushPose();
+            graphics.renderTooltip(getFont(), tooltipList, x,y);
+            //popPose();
+            scissorResume();
+            return;
+        }
+        graphics.renderTooltip(getFont(), tooltipList, x,y);
     }
     public void drawTooltip(ItemStack stack, int x, int y)
     {
