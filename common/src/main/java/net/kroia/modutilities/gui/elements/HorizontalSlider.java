@@ -44,7 +44,6 @@ public class HorizontalSlider extends Slider {
     @Override
     protected void sliderMovedToPos(int x, int y) {
         int width = getWidth();
-        int height = getHeight();
         double value = (double)x / (double)(width - sliderBounds.width);
         setSliderValue(value);
     }

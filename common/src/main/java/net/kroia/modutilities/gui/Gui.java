@@ -317,9 +317,7 @@ public class Gui {
         if(isScissorEnabled())
         {
             scissorPause();
-            //pushPose();
             graphics.renderTooltip(getFont(), tooltip, x,y);
-            //popPose();
             scissorResume();
             return;
         }
@@ -337,9 +335,7 @@ public class Gui {
         if(isScissorEnabled())
         {
             scissorPause();
-            //pushPose();
             graphics.renderTooltip(getFont(), tooltipList, x,y);
-            //popPose();
             scissorResume();
             return;
         }
@@ -350,10 +346,7 @@ public class Gui {
         if(isScissorEnabled())
         {
             scissorPause();
-            //pushPose();
-            //graphics.pose().translate(0.0D, 0.0D, (double)(200));
             graphics.renderTooltip(getFont(), stack, x,y);
-            //popPose();
             scissorResume();
             return;
         }
@@ -420,7 +413,6 @@ public class Gui {
     public void enableScissor(Rectangle rect)
     {
         globalScissorArea = rect;
-        //int guiScale = (int)getGuiScale();
         int x1 = rect.x;
         int y1 = rect.y;
         int x2 = (rect.x+rect.width);

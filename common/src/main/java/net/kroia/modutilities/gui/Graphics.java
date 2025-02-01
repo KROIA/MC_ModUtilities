@@ -1,23 +1,17 @@
 package net.kroia.modutilities.gui;
 
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics; // mc>=1.20.1
 //import com.mojang.blaze3d.vertex.PoseStack; // mc<=1.19.4
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.entity.ItemRenderer;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.inventory.tooltip.TooltipComponent;
 import net.minecraft.world.item.ItemStack;
 import org.joml.Matrix4f;
-
-import java.awt.*;
 import java.util.List;
 import java.util.Optional;
 
@@ -42,18 +36,6 @@ public class Graphics {
     {
         return graphics;
     }
-
-
-    /*
-    public void setGraphics(PoseStack graphics)
-    {
-        this.graphics = graphics;
-    }
-    public PoseStack getGraphics()
-    {
-        return graphics;
-    }
-    */
 
     public void drawString(Font font, String text, int x, int y, int color)
     {

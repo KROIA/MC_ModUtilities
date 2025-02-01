@@ -225,9 +225,7 @@ public abstract class GuiElement {
         Graphics graphics = root.getGraphics();
         graphics.pushPose();
         graphics.translate((float)getX(), (float)getY(), 0.0F);
-        //enableScissor();
         renderBackground();
-        //disableScissor();
         for (GuiElement child : childs) {
             child.renderBackgroundInternal();
         }
@@ -240,9 +238,7 @@ public abstract class GuiElement {
         Graphics graphics = root.getGraphics();
         graphics.pushPose();
         graphics.translate((float)getX(), (float)getY(), 0.0F);
-        //enableScissor();
         render();
-        //disableScissor();
         for (GuiElement child : childs) {
             child.renderInternal();
         }
@@ -256,7 +252,6 @@ public abstract class GuiElement {
         Graphics graphics = root.getGraphics();
         graphics.pushPose();
         graphics.translate((float)getX(), (float)getY(), 0.0F);
-        //enableScissor();
         for(TooltipLaterData data : drawTooltipLater)
         {
             if(data.item != null)
@@ -267,7 +262,6 @@ public abstract class GuiElement {
                 drawText(data.customString, new Point(data.x, data.y));
         }
         drawTooltipLater.clear();
-        //disableScissor();
         for (GuiElement child : childs) {
             child.renderTooltipInternal();
         }
@@ -281,9 +275,7 @@ public abstract class GuiElement {
         Graphics graphics = root.getGraphics();
         graphics.pushPose();
         graphics.translate((float)getX(), (float)getY(), 0.0F);
-        //enableScissor();
         renderGizmos();
-        //disableScissor();
         for (GuiElement child : childs) {
             child.renderGizmosInternal();
         }
@@ -305,8 +297,6 @@ public abstract class GuiElement {
 
     protected void disableScissor()
     {
-        // Disable scissor test
-        //GL11.glDisable(GL11.GL_SCISSOR_TEST);
         root.disableScissor();
     }
     protected void scissorPause()
@@ -747,64 +737,6 @@ public abstract class GuiElement {
         }
         return bounds;
     }
-
-    /*public void relayout(int padding, int spacing, LayoutDirection direction)
-    {
-        relayout(padding, spacing, direction, false, false);
-    }
-    public void relayout(int padding, int spacing, LayoutDirection direction, boolean stretch)
-    {
-        relayout(padding, spacing, direction, stretch, stretch);
-    }
-    public void relayout(int padding, int spacing, LayoutDirection direction, boolean stretchX, boolean stretchY)
-    {
-        switch (direction)
-        {
-            case HORIZONTAL:
-                relayoutHorizontal(padding, spacing, stretchX, stretchY);
-                break;
-            case VERTICAL:
-                relayoutVertical(padding, spacing,stretchX, stretchY);
-                break;
-        }
-    }
-    private void relayoutHorizontal(int padding, int spacing, boolean stretchX, boolean stretchY)
-    {
-        if(childs.isEmpty())
-            return;
-        int x = padding;
-        int width = (getWidth()-padding*2+spacing)/childs.size() - spacing;
-        for (GuiElement child : childs) {
-            child.setX(x);
-            child.setY(padding);
-            if(stretchX) {
-                child.setWidth(width);
-            }
-            if(stretchY) {
-                child.setHeight(getHeight()-2*padding);
-            }
-            x += child.getWidth() + spacing;
-        }
-    }
-    private void relayoutVertical(int padding, int spacing, boolean stretchX, boolean stretchY)
-    {
-        if(childs.isEmpty())
-            return;
-        int y = padding;
-        int height = (getHeight()-padding*2+spacing)/childs.size()-spacing;
-        for (GuiElement child : childs) {
-            child.setX(padding);
-            child.setY(y);
-            if(stretchX) {
-                child.setWidth(getWidth()-2*padding);
-            }
-            if(stretchY) {
-                child.setHeight(height);
-            }
-            y += child.getHeight() + spacing;
-        }
-    }*/
-
 
 
     public void drawText(String text, int x, int y, int color)
