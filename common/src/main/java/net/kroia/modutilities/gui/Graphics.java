@@ -28,18 +28,6 @@ public class Graphics {
     {
         this.screen = screen;
     }
-
-
-    /*
-    public void setGraphics(GuiGraphics graphics)
-    {
-        this.graphics = graphics;
-    }
-    public GuiGraphics getGraphics()
-    {
-        return graphics;
-    }
-    */
     public void setGraphics(PoseStack graphics)
     {
         this.graphics = graphics;
@@ -184,3 +172,4 @@ public class Graphics {
     }
 
 }
+

@@ -13,13 +13,16 @@ public class CloseButton extends Button{
         line1 = new VertexBuffer();
         line2 = new VertexBuffer();
 
+        super.setIdleColor(0xFFf55a42);
+        super.setHoverColor(0xFFe03d24);
+        super.setPressedColor(0xFFde2b10);
+        super.setOutlineColor(0xFFde2510);
+        super.setSize(20,20);
     }
 
     @Override
     public void render(){
         // Draw cross
-        /*drawLine(0, 0, getWidth()*2, getHeight()*2, 0xFFFFFFFF);
-        drawLine(getWidth(), 0, 0, getHeight(), 0xFF000000);*/
         drawVertexBuffer_QUADS(line1);
         drawVertexBuffer_QUADS(line2);
     }
