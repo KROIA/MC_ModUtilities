@@ -17,6 +17,8 @@ import net.minecraft.world.item.ItemStack;
 import org.joml.Matrix4f;
 
 import java.awt.*;
+import java.util.List;
+import java.util.Optional;
 
 public class Graphics {
 
@@ -28,18 +30,6 @@ public class Graphics {
     {
         this.screen = screen;
     }
-
-
-    /*
-    public void setGraphics(GuiGraphics graphics)
-    {
-        this.graphics = graphics;
-    }
-    public GuiGraphics getGraphics()
-    {
-        return graphics;
-    }
-    */
     public void setGraphics(PoseStack graphics)
     {
         this.graphics = graphics;
@@ -85,6 +75,11 @@ public class Graphics {
     {
         screen.renderTooltip(graphics, text, x, y); // mc<=1.19.4
         //graphics.renderTooltip(font, text, x, y); // mc>=1.20.1
+    }
+    public void renderTooltip(Font font, List<Component> lines, int x, int y)
+    {
+        screen.renderTooltip(graphics, lines, Optional.empty(), x, y); // mc<=1.19.4
+        //graphics.renderTooltip(font, lines, Optional.empty(), x, y); // mc>=1.20.1
     }
     public void renderTooltip(Font font, ItemStack itemStack, int x, int y)
     {
@@ -220,3 +215,4 @@ public class Graphics {
     }
 
 }
+
