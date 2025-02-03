@@ -16,11 +16,11 @@ public class CloseButton extends Button{
         xLabel = new Label("x");
         xLabel.setAlignment(Alignment.CENTER);
 
-        setIdleColor(0xFFf55a42);
-        setHoverColor(0xFFe03d24);
-        setPressedColor(0xFFde2b10);
-        setOutlineColor(0xFFde2510);
-        setSize(20,20);
+        super.setIdleColor(0xFFf55a42);
+        super.setHoverColor(0xFFe03d24);
+        super.setPressedColor(0xFFde2b10);
+        super.setOutlineColor(0xFFde2510);
+        super.setSize(20,20);
     }
 
     @Override

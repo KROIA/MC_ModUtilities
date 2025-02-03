@@ -113,23 +113,18 @@ public class TextBox extends GuiElement {
 
     public void setText(String text) {
         this.text = text;
-        //setAllowLetters(true);
-        //setAllowNumbers(true, true);
         currentCursorPos = text.length();
         updateTextLabel();
     }
     public void setText(double value) {
-        //setAllowLetters(false);
         setAllowNumbers(true, true);
         setText(String.valueOf(value));
     }
     public void setText(int value) {
-        //setAllowLetters(false);
         setAllowNumbers(true, false);
         setText(String.valueOf(value));
     }
     public void setText(long value) {
-        //setAllowLetters(false);
         setAllowNumbers(true, false);
         setText(String.valueOf(value));
     }
