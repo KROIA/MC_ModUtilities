@@ -65,6 +65,7 @@ public abstract class GuiElement {
         public int x,y;
         public ItemStack item;
         public Component component;
+        public String customString;
     }
     private ArrayList<TooltipLaterData> drawTooltipLater = new ArrayList<>();
 
@@ -224,9 +225,7 @@ public abstract class GuiElement {
         Graphics graphics = root.getGraphics();
         graphics.pushPose();
         graphics.translate((float)getX(), (float)getY(), 0.0F);
-        //enableScissor();
         renderBackground();
-        //disableScissor();
         for (GuiElement child : childs) {
             child.renderBackgroundInternal();
         }
@@ -239,9 +238,7 @@ public abstract class GuiElement {
         Graphics graphics = root.getGraphics();
         graphics.pushPose();
         graphics.translate((float)getX(), (float)getY(), 0.0F);
-        //enableScissor();
         render();
-        //disableScissor();
         for (GuiElement child : childs) {
             child.renderInternal();
         }
@@ -255,16 +252,16 @@ public abstract class GuiElement {
         Graphics graphics = root.getGraphics();
         graphics.pushPose();
         graphics.translate((float)getX(), (float)getY(), 0.0F);
-        //enableScissor();
         for(TooltipLaterData data : drawTooltipLater)
         {
             if(data.item != null)
                 drawTooltip(data.item, new Point(data.x, data.y));
             else if(data.component != null)
                 drawText(data.component, new Point(data.x, data.y));
+            else if(data.customString != null)
+                drawText(data.customString, new Point(data.x, data.y));
         }
         drawTooltipLater.clear();
-        //disableScissor();
         for (GuiElement child : childs) {
             child.renderTooltipInternal();
         }
@@ -278,9 +275,7 @@ public abstract class GuiElement {
         Graphics graphics = root.getGraphics();
         graphics.pushPose();
         graphics.translate((float)getX(), (float)getY(), 0.0F);
-        //enableScissor();
         renderGizmos();
-        //disableScissor();
         for (GuiElement child : childs) {
             child.renderGizmosInternal();
         }
@@ -302,8 +297,6 @@ public abstract class GuiElement {
 
     protected void disableScissor()
     {
-        // Disable scissor test
-        //GL11.glDisable(GL11.GL_SCISSOR_TEST);
         root.disableScissor();
     }
     protected void scissorPause()
@@ -395,6 +388,8 @@ public abstract class GuiElement {
     }
     public boolean mouseClickedInternal(int button, boolean isOverParent)
     {
+        if(!isEnabled)
+            return false;
         isOverParent &= isMouseOver();
         boolean consumed = false;
         for(GuiElement child : childs)
@@ -404,12 +399,14 @@ public abstract class GuiElement {
             }
         }
         mouseClicked(button);
-        if(isOverParent && !consumed)
+        if (isOverParent && !consumed)
             return mouseClickedOverElement(button);
         return consumed;
     }
     public boolean mouseReleasedInternal(int button, boolean isOverParent)
     {
+        if(!isEnabled)
+            return false;
         isOverParent &= isMouseOver();
         boolean consumed = false;
         for(GuiElement child : childs)
@@ -417,13 +414,17 @@ public abstract class GuiElement {
             if(child.mouseReleasedInternal(button, isOverParent && !consumed))
                 consumed = true;
         }
+
         mouseReleased(button);
-        if(isOverParent && !consumed)
+        if (isOverParent && !consumed)
             return mouseReleasedOverElement(button);
+
         return consumed;
     }
     public boolean mouseDraggedInternal(int button, double deltaX, double deltaY)
     {
+        if(!isEnabled)
+            return false;
         for(GuiElement child : childs)
         {
             if(child.mouseDraggedInternal(button, deltaX, deltaY))
@@ -433,6 +434,8 @@ public abstract class GuiElement {
     }
     public boolean mouseScrolledInternal(double delta, boolean isOverParent)
     {
+        if(!isEnabled)
+            return false;
         isOverParent &= isMouseOver();
         boolean consumed = false;
         for(GuiElement child : childs)
@@ -441,12 +444,14 @@ public abstract class GuiElement {
                 consumed = true;
         }
         mouseScrolled(delta);
-        if(isOverParent && !consumed)
+        if (isOverParent && !consumed)
             return mouseScrolledOverElement(delta);
         return consumed;
     }
     public boolean keyPressedInternal(int keyCode, int scanCode, int modifiers)
     {
+        if(!isEnabled)
+            return false;
         for(GuiElement child : childs)
         {
             if(child.keyPressedInternal(keyCode, scanCode, modifiers))
@@ -456,9 +461,11 @@ public abstract class GuiElement {
     }
     public boolean charTypedInternal(char codePoint, int modifiers)
     {
+        if(!isEnabled)
+            return false;
         for(GuiElement child : childs)
         {
-            if(child.charTypedInternal(codePoint, modifiers))
+            if(child.isEnabled() && child.charTypedInternal(codePoint, modifiers))
                 return true;
         }
         return charTyped(codePoint, modifiers);
@@ -731,64 +738,6 @@ public abstract class GuiElement {
         return bounds;
     }
 
-    /*public void relayout(int padding, int spacing, LayoutDirection direction)
-    {
-        relayout(padding, spacing, direction, false, false);
-    }
-    public void relayout(int padding, int spacing, LayoutDirection direction, boolean stretch)
-    {
-        relayout(padding, spacing, direction, stretch, stretch);
-    }
-    public void relayout(int padding, int spacing, LayoutDirection direction, boolean stretchX, boolean stretchY)
-    {
-        switch (direction)
-        {
-            case HORIZONTAL:
-                relayoutHorizontal(padding, spacing, stretchX, stretchY);
-                break;
-            case VERTICAL:
-                relayoutVertical(padding, spacing,stretchX, stretchY);
-                break;
-        }
-    }
-    private void relayoutHorizontal(int padding, int spacing, boolean stretchX, boolean stretchY)
-    {
-        if(childs.isEmpty())
-            return;
-        int x = padding;
-        int width = (getWidth()-padding*2+spacing)/childs.size() - spacing;
-        for (GuiElement child : childs) {
-            child.setX(x);
-            child.setY(padding);
-            if(stretchX) {
-                child.setWidth(width);
-            }
-            if(stretchY) {
-                child.setHeight(getHeight()-2*padding);
-            }
-            x += child.getWidth() + spacing;
-        }
-    }
-    private void relayoutVertical(int padding, int spacing, boolean stretchX, boolean stretchY)
-    {
-        if(childs.isEmpty())
-            return;
-        int y = padding;
-        int height = (getHeight()-padding*2+spacing)/childs.size()-spacing;
-        for (GuiElement child : childs) {
-            child.setX(padding);
-            child.setY(y);
-            if(stretchX) {
-                child.setWidth(getWidth()-2*padding);
-            }
-            if(stretchY) {
-                child.setHeight(height);
-            }
-            y += child.getHeight() + spacing;
-        }
-    }*/
-
-
 
     public void drawText(String text, int x, int y, int color)
     {
@@ -986,6 +935,15 @@ public abstract class GuiElement {
         drawTooltip(stack, pos.x, pos.y);
     }
 
+    public void drawTooltip(String msg, int x, int y)
+    {
+        root.drawTooltip(msg, x,y);
+    }
+    public void drawTooltip(String msg, Point pos)
+    {
+        drawTooltip(msg, pos.x, pos.y);
+    }
+
     public void drawTooltipLater(ItemStack stack, int x, int y)
     {
         TooltipLaterData data = new TooltipLaterData();
@@ -1009,6 +967,19 @@ public abstract class GuiElement {
     public void drawTooltipLater(Component component, Point pos)
     {
         drawTooltipLater(component, pos.x, pos.y);
+    }
+
+    public void drawTooltipLater(String tooltip, int x, int y)
+    {
+        TooltipLaterData data = new TooltipLaterData();
+        data.x = x;
+        data.y = y;
+        data.customString = tooltip;
+        drawTooltipLater.add(data);
+    }
+    public void drawTooltipLater(String tooltip, Point pos)
+    {
+        drawTooltipLater(tooltip, pos.x, pos.y);
     }
 
     public void drawFrame(int x, int y, int width, int height, int color, int thickness)

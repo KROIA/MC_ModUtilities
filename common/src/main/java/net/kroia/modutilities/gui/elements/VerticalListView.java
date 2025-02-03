@@ -37,13 +37,11 @@ public class VerticalListView extends ListView {
     {
         int minPos = 0;
         int maxPos = 0;
-        //allObjectSize = getLayout()!=null?getLayout().padding*2:0;
         int spacing = getLayout()!=null?getLayout().spacing:0;
         for(GuiElement child : getChilds())
         {
             minPos = Math.min(minPos, child.getTop());
             maxPos = Math.max(maxPos, child.getBottom());
-            //allObjectSize += child.getHeight()+spacing;
         }
         allObjectSize = maxPos-minPos;
         scrollOffset = Math.max(Math.min(scrollOffset, allObjectSize - getContentDimension2()), 0);
@@ -51,7 +49,6 @@ public class VerticalListView extends ListView {
     @Override
     protected void setScrollBarBounds()
     {
-
         // Render scrollbar
         int scrollbarHeight = getContentDimension2();
         int scrollbarY = outlineThickness;
@@ -68,30 +65,20 @@ public class VerticalListView extends ListView {
     @Override
     public void addChild(GuiElement el)
     {
-        //allObjectSize += el.getHeight();
         scrollOffset = Math.max(Math.min(scrollOffset, allObjectSize - getContentDimension2()), 0);
         super.addChild(el);
     }
     @Override
     public void removeChild(GuiElement el)
     {
-        //allObjectSize -= el.getHeight();
         scrollOffset = Math.max(Math.min(scrollOffset, allObjectSize - getContentDimension2()), 0);
         super.removeChild(el);
     }
     @Override
     protected void updateElementPositions()
     {
-        /*int y = getLayout()!=null?getLayout().padding:0;
-        int spacing = getLayout()!=null?getLayout().spacing:0;
-        for(GuiElement child : getChilds())
-        {
-            child.setY(y - scrollOffset);
-            y += child.getHeight()+spacing;
-        }*/
         scrollContainer.setY(-scrollOffset+1);
         scrollContainer.setHeight(allObjectSize);
-
     }
 
     @Override

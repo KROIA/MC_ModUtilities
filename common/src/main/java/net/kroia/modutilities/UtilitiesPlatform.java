@@ -11,7 +11,6 @@ public class UtilitiesPlatform {
         FABRIC,
         FORGE,
         QUILT,
-
         NEOFORGE
     }
     private static PlatformAbstraction platform;
