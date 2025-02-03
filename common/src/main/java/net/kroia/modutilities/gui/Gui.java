@@ -18,6 +18,7 @@ import net.minecraft.world.item.ItemStack;
 import org.joml.Matrix4f;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class Gui {
 
@@ -315,23 +316,36 @@ public class Gui {
         if(isScissorEnabled())
         {
             scissorPause();
-            //pushPose();
             graphics.renderTooltip(getFont(), tooltip, x,y);
-            //popPose();
             scissorResume();
             return;
         }
         graphics.renderTooltip(getFont(), tooltip, x,y);
+    }
+    public void drawTooltip(String tooltip, int x, int y)
+    {
+        List<Component> tooltipList = new ArrayList<>();
+        // split by newline
+        String[] lines = tooltip.split("\n");
+        for(String line : lines)
+        {
+            tooltipList.add(Component.nullToEmpty(line));
+        }
+        if(isScissorEnabled())
+        {
+            scissorPause();
+            graphics.renderTooltip(getFont(), tooltipList, x,y);
+            scissorResume();
+            return;
+        }
+        graphics.renderTooltip(getFont(), tooltipList, x,y);
     }
     public void drawTooltip(ItemStack stack, int x, int y)
     {
         if(isScissorEnabled())
         {
             scissorPause();
-            //pushPose();
-            //graphics.pose().translate(0.0D, 0.0D, (double)(200));
             graphics.renderTooltip(getFont(), stack, x,y);
-            //popPose();
             scissorResume();
             return;
         }
@@ -397,7 +411,6 @@ public class Gui {
     public void enableScissor(Rectangle rect)
     {
         globalScissorArea = rect;
-        //int guiScale = (int)getGuiScale();
         int x1 = rect.x;
         int y1 = rect.y;
         int x2 = (rect.x+rect.width);
