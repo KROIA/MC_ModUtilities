@@ -2,8 +2,6 @@ package net.kroia.modutilities.gui.elements;
 
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Point;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.world.item.ItemStack;
 
 public class ItemView extends GuiElement {
@@ -64,9 +62,6 @@ public class ItemView extends GuiElement {
             drawItem(itemStack, itemPos);
         if(showTooltip && isMouseOver()) {
             drawTooltipLater(itemStack, getMousePos());
-            //scissorPause();
-            //drawText(Screen.getTooltipFromItem(Minecraft.getInstance(), itemStack).get(0).getString(), getMousePos().x+12, getMousePos().y -12);
-            //scissorResume();
         }
     }
 
