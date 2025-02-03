@@ -108,6 +108,7 @@ public class CheckBox extends GuiElement {
 
     @Override
     protected void renderBackground() {
+        super.renderBackground();
         if(hitboxRect.contains(getMouseX(),getMouseY()))
         {
             drawRect(checkBoxRect.x, checkBoxRect.y, checkBoxRect.width, checkBoxRect.height, colorHover);

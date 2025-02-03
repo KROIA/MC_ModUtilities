@@ -141,18 +141,6 @@ public class ItemUtilities {
             {
                 itemIDs.add(itemName);
             }
-
-            /*HashMap<String, TagKey<Item>> tagMap2 = new HashMap<>();
-            tagMap2.put("c:foods", TagKey.create(Registries.ITEM, new ResourceLocation("c:foods")));
-            //if(item.builtInRegistryHolder().tags().anyMatch(tagMap2::containsValue))
-            {
-                StringBuilder tagNames = new StringBuilder();
-                Stream<TagKey<Item>> _tags = item.builtInRegistryHolder().tags();
-                for (TagKey<Item> tag : _tags.toArray(TagKey[]::new)) {
-                    tagNames.append(tag.toString()).append(" ");
-                }
-                System.out.println("Item: " + itemName + " tag: " + tagNames.toString());
-            }*/
         }
         return itemIDs;
     }

@@ -171,7 +171,6 @@ public class Button extends GuiElement {
         if(!isClickable || triggerButton != button)
             return;
         if(isPressed){
-            //playLocalSound(SoundEvents.UI_BUTTON_CLICK.get(),0.5F, 0.9F);
             if(onRisingEdge != null)
                 onRisingEdge.run();
         }
