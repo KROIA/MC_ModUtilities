@@ -354,11 +354,11 @@ public class Gui {
     }
     public void drawItem(ItemStack item, int x, int y, int seed)
     {
-        graphics.renderItem(item, x, y, seed);
+        graphics.renderItem(item, getFont(), x, y, seed);
     }
     public void drawItemWithDecoration(ItemStack item, int x, int y, int seed)
     {
-        graphics.renderItem(item, x, y, seed);
+        graphics.renderItem(item, getFont(), x, y, seed);
         int count = item.getCount();
         if(count > 1)
         {
@@ -374,7 +374,7 @@ public class Gui {
     {
         pushPose();
         graphics.translate(0.0D, 0.0D, (double)(z));
-        graphics.renderItem(item, x, y, seed);
+        graphics.renderItem(item, getFont(), x, y, seed);
         int count = item.getCount();
         if(count > 1)
         {

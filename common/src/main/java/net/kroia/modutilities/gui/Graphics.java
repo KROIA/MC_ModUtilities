@@ -82,17 +82,19 @@ public class Graphics {
         //screen.renderTooltip(graphics, screen.getTooltipFromItem(itemStack), itemStack.getTooltipImage(), x, y); // mc<=1.19.4
         graphics.renderTooltip(font, itemStack, x, y); // mc>=1.20.1
     }
-    public void renderItem(ItemStack itemStack, int x, int y)
+    public void renderItem(ItemStack itemStack, Font font, int x, int y)
     {
         //ItemRenderer itemRenderer = Minecraft.getInstance().getItemRenderer(); // mc<=1.19.4
         //itemRenderer.renderGuiItem(graphics, itemStack, x, y); // mc<=1.19.4
         graphics.renderItem(itemStack, x, y); // mc>=1.20.1
+        graphics.renderItemDecorations(font, itemStack, x, y); // mc>=1.20.1
     }
-    public void renderItem(ItemStack itemStack, int x, int y, int seed)
+    public void renderItem(ItemStack itemStack, Font font, int x, int y, int seed)
     {
         //ItemRenderer itemRenderer = Minecraft.getInstance().getItemRenderer(); // mc<=1.19.4
         //itemRenderer.renderGuiItem(graphics, itemStack, x, y); // mc<=1.19.4
         graphics.renderItem(itemStack, x, y, seed); // mc>=1.20.1
+        graphics.renderItemDecorations(font, itemStack, x, y); // mc>=1.20.1
     }
 
 
