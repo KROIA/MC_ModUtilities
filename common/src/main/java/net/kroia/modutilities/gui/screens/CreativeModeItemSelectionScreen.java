@@ -6,24 +6,23 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.flag.FeatureFlagSet;
 import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.Slot;
-import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Objects;
 import java.util.function.Consumer;
 
 public class CreativeModeItemSelectionScreen extends CreativeModeInventoryScreen {
-    Consumer<ItemStack> onItemClicked;
-    public CreativeModeItemSelectionScreen(Player player, FeatureFlagSet enabledFeatures, boolean displayOperatorCreativeTab, Consumer<ItemStack> onItemClicked) {
+    private final Consumer<ItemStack> onItemClicked;
+    private final Runnable onClosed;
+    public CreativeModeItemSelectionScreen(Player player, FeatureFlagSet enabledFeatures, boolean displayOperatorCreativeTab, Consumer<ItemStack> onItemClicked, Runnable onClosed) {
         super(player, enabledFeatures, displayOperatorCreativeTab);
         this.onItemClicked = onItemClicked;
-        //CreativeModeTabs.tryRebuildTabContents(enabledFeatures, true, player.level().registryAccess());
+        this.onClosed = onClosed;
     }
-    public CreativeModeItemSelectionScreen(Consumer<ItemStack> onItemClicked) {
+    public CreativeModeItemSelectionScreen(Consumer<ItemStack> onItemClicked, Runnable onClosed) {
         super(Minecraft.getInstance().player, Minecraft.getInstance().player.level().enabledFeatures(), false);
         this.onItemClicked = onItemClicked;
-        //CreativeModeTabs.tryRebuildTabContents(Minecraft.getInstance().player.level().enabledFeatures(), true, Minecraft.getInstance().player.level().registryAccess());
+        this.onClosed = onClosed;
     }
 
     @Override
@@ -39,6 +38,15 @@ public class CreativeModeItemSelectionScreen extends CreativeModeInventoryScreen
                     onItemClicked.accept(stack);
                 }
             }
+        }
+    }
+
+    @Override
+    public void onClose() {
+        super.onClose();
+        if(onClosed != null)
+        {
+            onClosed.run();
         }
     }
 }
