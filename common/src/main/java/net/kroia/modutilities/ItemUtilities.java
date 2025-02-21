@@ -63,43 +63,50 @@ public class ItemUtilities {
 
     public static ArrayList<String> getAllItemIDs()
     {
-        ArrayList<String> itemIDs = new ArrayList<>();
-        HashMap<String, ItemStack> itemTable = UtilitiesPlatform.getAllItems();
-        for(String itemID : itemTable.keySet())
+        ArrayList<ItemStack> items = UtilitiesPlatform.getAllItems();
+        HashMap<String, ItemStack> itemTable = new HashMap<>();
+        for(ItemStack stack : items)
         {
-            itemIDs.add(itemID);
+            itemTable.put(getItemID(stack.getItem()), stack);
         }
-        return itemIDs;
+        return new ArrayList<>(itemTable.keySet());
     }
     public static ArrayList<ItemStack> getAllItems()
     {
-        ArrayList<ItemStack> items = new ArrayList<>();
-        HashMap<String, ItemStack> itemTable = UtilitiesPlatform.getAllItems();
-        for(ItemStack stack : itemTable.values())
-        {
-            items.add(stack);
-        }
-        return items;
+        return UtilitiesPlatform.getAllItems();
     }
 
     public static ArrayList<String> getAllItemIDs(String tag)
     {
         ArrayList<String> itemIDs = new ArrayList<>();
-        HashMap<String, ItemStack> itemTable = UtilitiesPlatform.getAllItems();
-        for(var entry : itemTable.entrySet())
+        ArrayList<ItemStack> items = UtilitiesPlatform.getAllItems();
+        for(ItemStack stack : items)
         {
-            if(isInTag(entry.getValue().getItem(), tag))
+            if(isInTag(stack.getItem(), tag))
             {
-                itemIDs.add(entry.getKey());
+                itemIDs.add(getItemID(stack.getItem()));
             }
         }
         return itemIDs;
+    }
+    public static ArrayList<ItemStack> getAllItems(String tag)
+    {
+        ArrayList<ItemStack> items = new ArrayList<>();
+        ArrayList<ItemStack> itemTable = UtilitiesPlatform.getAllItems();
+        for(ItemStack stack : itemTable)
+        {
+            if(isInTag(stack.getItem(), tag))
+            {
+                items.add(stack);
+            }
+        }
+        return items;
     }
     public static ArrayList<String> getAllItemIDs(ArrayList<String> tags, ArrayList<String> containsInID)
     {
         ArrayList<String> itemIDs = new ArrayList<>();
         HashMap<String, TagKey<Item>> tagMap = new HashMap<>();
-        HashMap<String, ItemStack> itemTable = UtilitiesPlatform.getAllItems();
+        ArrayList<ItemStack> itemTable = UtilitiesPlatform.getAllItems();
         String modTag = "";
         switch(UtilitiesPlatform.getPlatformType())
         {
@@ -118,7 +125,7 @@ public class ItemUtilities {
             tagMap.put(modTag+tag, TagKey.create(Registries.ITEM, new ResourceLocation(modTag+tag)));
             tagMap.put("minecraft:"+tag, TagKey.create(Registries.ITEM, new ResourceLocation("minecraft:"+tag)));
         }
-        for(ItemStack stack : itemTable.values())
+        for(ItemStack stack : itemTable)
         {
             Item item = stack.getItem();
             String itemName = getItemID(item);
@@ -129,6 +136,41 @@ public class ItemUtilities {
             }
         }
         return itemIDs;
+    }
+    public static ArrayList<ItemStack> getAllItems(ArrayList<String> tags, ArrayList<String> containsInID)
+    {
+        ArrayList<ItemStack> items = new ArrayList<>();
+        HashMap<String, TagKey<Item>> tagMap = new HashMap<>();
+        ArrayList<ItemStack> itemTable = UtilitiesPlatform.getAllItems();
+        String modTag = "";
+        switch(UtilitiesPlatform.getPlatformType())
+        {
+            case FABRIC:
+                modTag = "c:";
+                break;
+            case FORGE:
+                modTag = "forge:";
+                break;
+            case QUILT:
+                modTag = "c:";
+                break;
+        }
+        for(String tag : tags)
+        {
+            tagMap.put(modTag+tag, TagKey.create(Registries.ITEM, new ResourceLocation(modTag+tag)));
+            tagMap.put("minecraft:"+tag, TagKey.create(Registries.ITEM, new ResourceLocation("minecraft:"+tag)));
+        }
+        for(ItemStack stack : itemTable)
+        {
+            Item item = stack.getItem();
+            String itemName = getItemID(item);
+            if(item.builtInRegistryHolder().tags().anyMatch(tagMap::containsValue) ||
+                    containsInID.contains(itemName))
+            {
+                items.add(stack);
+            }
+        }
+        return items;
     }
     private static boolean isInTag(Item item, String tagId) {
         // Create a TagKey for the specified tag

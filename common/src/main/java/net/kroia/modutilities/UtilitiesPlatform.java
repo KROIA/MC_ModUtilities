@@ -4,6 +4,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 
 public class UtilitiesPlatform {
@@ -36,7 +37,7 @@ public class UtilitiesPlatform {
         return getPlatform().getItemID(item);
     }
 
-    public static HashMap<String, ItemStack> getAllItems() {
+    public static ArrayList<ItemStack> getAllItems() {
         return getPlatform().getAllItems();
     }
     public static MinecraftServer getServer() {

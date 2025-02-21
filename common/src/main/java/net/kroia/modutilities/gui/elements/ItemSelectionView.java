@@ -35,8 +35,7 @@ public class ItemSelectionView extends GuiElement {
         @Override
         public boolean mouseClickedOverElement(int button) {
             if (button == 0) {
-                String itemID = ItemUtilities.getItemID(itemStack.getItem());
-                onItemSelected.accept(itemID);
+                onItemSelected.accept(itemStack);
                 return true;
             }
             return false;
@@ -44,23 +43,21 @@ public class ItemSelectionView extends GuiElement {
     }
 
     private final ArrayList<ItemStack> allowedItems;
-    private final Consumer<String> onItemSelected;
+    private final Consumer<ItemStack> onItemSelected;
 
     private final Label searchLabel;
     private final Label itemsLabel;
     private final TextBox searchField;
     private final ListView listView;
     private final LayoutGrid layoutGrid;
-    public ItemSelectionView(Consumer<String> onItemSelected) {
-        this(ItemUtilities.getAllItemIDs(), onItemSelected);
+    public ItemSelectionView(Consumer<ItemStack> onItemSelected) {
+        this(ItemUtilities.getAllItems(), onItemSelected);
     }
-    public ItemSelectionView(ArrayList<String> allowedItemsIDs, Consumer<String> onItemSelected) {
+    public ItemSelectionView(ArrayList<ItemStack> allowedItemsIDs, Consumer<ItemStack> onItemSelected) {
         this.onItemSelected = onItemSelected;
 
         this.allowedItems = new ArrayList<>();
-        for(String itemId : allowedItemsIDs) {
-            this.allowedItems.add(ItemUtilities.createItemStackFromId(itemId));
-        }
+        this.allowedItems.addAll(allowedItemsIDs);
 
         searchLabel = new Label(SEARCH_LABEL.getString());
         searchLabel.setAlignment(GuiElement.Alignment.RIGHT);
@@ -80,11 +77,9 @@ public class ItemSelectionView extends GuiElement {
         updateFilter(searchField.getText());
     }
 
-    public void setAllowedItems(ArrayList<String> allowedItemsIDs) {
+    public void setAllowedItems(ArrayList<ItemStack> allowedItemsIDs) {
         allowedItems.clear();
-        for(String itemId : allowedItemsIDs) {
-            allowedItems.add(ItemUtilities.createItemStackFromId(itemId));
-        }
+        allowedItems.addAll(allowedItemsIDs);
         updateFilter(searchField.getText());
     }
 
