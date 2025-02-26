@@ -11,11 +11,44 @@ import java.util.Comparator;
 import java.util.function.Consumer;
 
 public class ItemSelectionView extends GuiElement {
+    public interface Sorter
+    {
+        public abstract void apply(ArrayList<ItemStack> items);
+    }
+    public interface Filter
+    {
+        public abstract boolean apply(ItemStack stack);
+    }
+
+    public static final class NameSorter implements Sorter
+    {
+        @Override
+        public void apply(ArrayList<ItemStack> items) {
+            items.sort(Comparator.comparing(stack -> {
+                String name = stack.getHoverName().getString();
+                return new StringBuilder(name).reverse().toString();
+            }));
+        }
+    }
+    public static final class SearchFilter implements Filter
+    {
+        private final ItemSelectionView view;
+        public SearchFilter(ItemSelectionView view)
+        {
+            this.view = view;
+        }
+        @Override
+        public boolean apply(ItemStack stack) {
+            String name = stack.getHoverName().getString().toLowerCase();
+            return name.contains(view.getSearchText());
+        }
+    }
 
     private static final Component SEARCH_LABEL = Component.translatable("gui.modutilities.search");
     private static final Component ITEMS_LABEL = Component.translatable("gui.modutilities.items");
 
-
+    private Sorter sorter = new NameSorter();
+    private Filter filter = new SearchFilter(this);
 
     private class ItemButton extends ItemView {
 
@@ -64,7 +97,7 @@ public class ItemSelectionView extends GuiElement {
         itemsLabel = new Label(ITEMS_LABEL.getString());
         itemsLabel.setAlignment(GuiElement.Alignment.BOTTOM);
         searchField = new TextBox();
-        searchField.setOnTextChanged(this::updateFilter);
+        searchField.setOnTextChanged((s)->updateFilter());
         listView = new VerticalListView();
         layoutGrid = new LayoutGrid(1, 0, false, false,0,getWidth()/20, GuiElement.Alignment.TOP);
         listView.setLayout(layoutGrid);
@@ -74,14 +107,47 @@ public class ItemSelectionView extends GuiElement {
         addChild(searchField);
         addChild(listView);
 
-        updateFilter(searchField.getText());
+        sortItems();
+        updateFilter();
     }
 
-    public void setAllowedItems(ArrayList<ItemStack> allowedItemsIDs) {
+    public void setItems(ArrayList<ItemStack> allowedItemsIDs) {
         allowedItems.clear();
         allowedItems.addAll(allowedItemsIDs);
-        updateFilter(searchField.getText());
+        sortItems();
+        updateFilter();
     }
+    public void addItem(ItemStack stack) {
+        allowedItems.add(stack);
+        sortItems();
+        updateFilter();
+    }
+    public void addItems(ArrayList<ItemStack> stacks) {
+        allowedItems.addAll(stacks);
+        sortItems();
+        updateFilter();
+    }
+    public void removeItem(ItemStack stack) {
+        allowedItems.remove(stack);
+        updateFilter();
+    }
+    public void removeItems(ArrayList<ItemStack> stacks) {
+        allowedItems.removeAll(stacks);
+        updateFilter();
+    }
+    public void clearItems() {
+        allowedItems.clear();
+        updateFilter();
+    }
+    public void setSorter(Sorter sorter) {
+        this.sorter = sorter;
+        sortItems();
+    }
+    public void setFilter(Filter filter) {
+        this.filter = filter;
+        updateFilter();
+    }
+
 
     @Override
     protected void render() {
@@ -98,14 +164,29 @@ public class ItemSelectionView extends GuiElement {
         listView.setBounds(0, 40, width, getHeight()-40);
     }
 
+    public String getSearchText() {
+        return searchField.getText();
+    }
+
     public void setItemLabelText(String text) {
         itemsLabel.setText(text);
     }
 
-    private void updateFilter(String filter) {
+    private void updateFilter() {
         listView.removeChilds();
         listView.getLayout().enabled = false;
-        if (filter.isEmpty()) {
+
+        if(filter != null)
+        {
+            for(ItemStack stack : allowedItems)
+            {
+                if(filter.apply(stack))
+                {
+                    listView.addChild(new ItemButton(stack));
+                }
+            }
+        }
+        /*if (filter.isEmpty()) {
             for (ItemStack stack : allowedItems) {
                 listView.addChild(new ItemSelectionView.ItemButton(stack));
             }
@@ -117,17 +198,21 @@ public class ItemSelectionView extends GuiElement {
                     listView.addChild(new ItemSelectionView.ItemButton(stack));
                 }
             }
-        }
+        }*/
         listView.getLayout().enabled = true;
         listView.layoutChangedInternal();
     }
 
     public void sortItems() {
-        // Sort items with an reordered name, so that the first char is a the end and the last char is at the beginning
+
+        if(sorter != null)
+            sorter.apply(allowedItems);
+
+        /*// Sort items with an reordered name, so that the first char is a the end and the last char is at the beginning
         allowedItems.sort(Comparator.comparing(stack -> {
             String name = stack.getHoverName().getString();
             return new StringBuilder(name).reverse().toString();
         }));
-        updateFilter(searchField.getText());
+        updateFilter(searchField.getText());*/
     }
 }
