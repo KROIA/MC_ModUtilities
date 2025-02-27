@@ -4,6 +4,7 @@ import net.kroia.modutilities.ItemUtilities;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.elements.base.ListView;
 import net.kroia.modutilities.gui.layout.LayoutGrid;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import java.util.ArrayList;
@@ -25,8 +26,17 @@ public class ItemSelectionView extends GuiElement {
         @Override
         public void apply(ArrayList<ItemStack> items) {
             items.sort(Comparator.comparing(stack -> {
-                String name = stack.getHoverName().getString();
-                return new StringBuilder(name).reverse().toString();
+                return stack.getHoverName().getString();
+            }));
+        }
+    }
+    public static class SorterByIntID implements ItemSelectionView.Sorter {
+        @Override
+        public void apply(ArrayList<ItemStack> items) {
+
+            items.sort(Comparator.comparing(stack -> {
+                // Compare item id index
+                return BuiltInRegistries.ITEM.getId(stack.getItem());
             }));
         }
     }
@@ -43,6 +53,9 @@ public class ItemSelectionView extends GuiElement {
             return name.contains(view.getSearchText());
         }
     }
+
+
+
 
     private static final Component SEARCH_LABEL = Component.translatable("gui.modutilities.search");
     private static final Component ITEMS_LABEL = Component.translatable("gui.modutilities.items");
@@ -108,24 +121,20 @@ public class ItemSelectionView extends GuiElement {
         addChild(listView);
 
         sortItems();
-        updateFilter();
     }
 
     public void setItems(ArrayList<ItemStack> allowedItemsIDs) {
         allowedItems.clear();
         allowedItems.addAll(allowedItemsIDs);
         sortItems();
-        updateFilter();
     }
     public void addItem(ItemStack stack) {
         allowedItems.add(stack);
         sortItems();
-        updateFilter();
     }
     public void addItems(ArrayList<ItemStack> stacks) {
         allowedItems.addAll(stacks);
         sortItems();
-        updateFilter();
     }
     public void removeItem(ItemStack stack) {
         allowedItems.remove(stack);
@@ -186,33 +195,15 @@ public class ItemSelectionView extends GuiElement {
                 }
             }
         }
-        /*if (filter.isEmpty()) {
-            for (ItemStack stack : allowedItems) {
-                listView.addChild(new ItemSelectionView.ItemButton(stack));
-            }
-        } else {
-            String lowerFilter = filter.toLowerCase();
-            for (ItemStack stack : allowedItems) {
-                String name = stack.getHoverName().getString().toLowerCase();
-                if (name.contains(lowerFilter)) {
-                    listView.addChild(new ItemSelectionView.ItemButton(stack));
-                }
-            }
-        }*/
         listView.getLayout().enabled = true;
         listView.layoutChangedInternal();
     }
 
     public void sortItems() {
 
-        if(sorter != null)
+        if(sorter != null) {
             sorter.apply(allowedItems);
-
-        /*// Sort items with an reordered name, so that the first char is a the end and the last char is at the beginning
-        allowedItems.sort(Comparator.comparing(stack -> {
-            String name = stack.getHoverName().getString();
-            return new StringBuilder(name).reverse().toString();
-        }));
-        updateFilter(searchField.getText());*/
+            updateFilter();
+        }
     }
 }

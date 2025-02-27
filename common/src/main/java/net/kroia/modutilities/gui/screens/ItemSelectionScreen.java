@@ -49,4 +49,9 @@ public class ItemSelectionScreen extends GuiScreen {
     public void sortItems() {
         itemSelectionView.sortItems();
     }
+    public ItemSelectionView getItemSelectionView() {
+        return itemSelectionView;
+    }
+
+
 }
