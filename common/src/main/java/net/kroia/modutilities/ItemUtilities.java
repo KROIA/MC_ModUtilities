@@ -2,10 +2,14 @@ package net.kroia.modutilities;
 
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.TagKey;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -178,5 +182,24 @@ public class ItemUtilities {
 
         // Check if the item is in the tag
         return item.builtInRegistryHolder().is(tag);
+    }
+
+
+    /**
+     * Drops the specified item stack at the player's position.
+     * @param player the player who will drop the item
+     * @param stack the item stack to be dropped
+     */
+    public static void dropItemAtPlayer(ServerPlayer player, ItemStack stack) {
+        if (player == null || stack == null || stack.isEmpty()) {
+            return;
+        }
+
+        Level level = player.level();
+        Vec3 position = player.position().add(0, 1, 0); // Drop item slightly above the player
+
+        ItemEntity itemEntity = new ItemEntity(level, position.x, position.y, position.z, stack);
+        itemEntity.setDefaultPickUpDelay(); // Set default pickup delay
+        level.addFreshEntity(itemEntity); // Add the item entity to the world
     }
 }

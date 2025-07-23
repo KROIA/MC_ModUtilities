@@ -3,6 +3,8 @@ package net.kroia.modutilities;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.PlayerList;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -93,4 +95,39 @@ public class PlayerUtilities {
         }
         return uuidToNameMap;
     }
+
+    /**
+     * Adds the given item stack to the player's inventory.
+     * It trys to add the item stack to the player's inventory until it is full or the stack is empty.
+     * @param player the player whose inventory will be modified
+     * @param stack of items to be placed in the inventory
+     * @return remaining amount that did not fit in the inventory
+     */
+    public static int addToPlayerInventory(ServerPlayer player, ItemStack stack)
+    {
+        if(player == null || stack == null || stack.isEmpty())
+            return 0;
+        int remainingAmount = stack.getCount();;
+        int maxStackSize = stack.getMaxStackSize();
+        ItemStack stackCpy = stack.copy();
+        Inventory inventory = player.getInventory();
+        while(remainingAmount > 0)
+        {
+            int stackSize = Math.min(remainingAmount, maxStackSize);
+            stackCpy.setCount(stackSize);
+            // Try to add the item to the inventory
+            int slotIndex = inventory.getFreeSlot();
+            if(slotIndex >= 0) {
+                inventory.setItem(slotIndex, stackCpy.copy());
+                remainingAmount -= stackSize; // Decrease the requested amount
+            }
+            else {
+                break;
+            }
+        }
+        stack.setCount(remainingAmount); // Update the original stack with the remaining amount
+        return remainingAmount;
+    }
+
+
 }
