@@ -1,8 +1,8 @@
-package net.kroia.modutilities.settings;
+package net.kroia.modutilities.setting;
+
+import net.kroia.modutilities.event.DataEvent;
 
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 
@@ -18,7 +18,7 @@ public class Setting<T> {
     private final T defaultValue;
     private final Type type;
     private final String name;
-    private final List<Consumer<T>> listeners = new ArrayList<>();
+    private final DataEvent<T> event = new DataEvent<>();
 
     public Setting(String name, T initialValue, Type type) {
         this.name = name;
@@ -46,11 +46,11 @@ public class Setting<T> {
     }
 
     public void addListener(Consumer<T> listener) {
-        listeners.add(listener);
+        event.addListener(listener);
     }
 
     public void removeListener(Consumer<T> listener) {
-        listeners.remove(listener);
+        event.removeListener(listener);
     }
 
     public void setToDefaultValue() {
@@ -59,9 +59,7 @@ public class Setting<T> {
 
 
     private void notifyListeners() {
-        for (Consumer<T> listener : listeners) {
-            listener.accept(value);
-        }
+        event.notifyListeners(value);
     }
 
     @Override

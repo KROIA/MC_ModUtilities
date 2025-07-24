@@ -1,4 +1,4 @@
-package net.kroia.modutilities.settings;
+package net.kroia.modutilities.setting;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -16,7 +16,7 @@ public class SettingsStore {
         saveToFile(groups, file);
     }
 
-    // Saves multiple settings groups into a JSON file
+    // Saves multiple setting groups into a JSON file
     public void saveToFile(List<SettingsGroup> groups, File file) throws IOException {
         JsonObject root = new JsonObject();
 

@@ -1,4 +1,4 @@
-package net.kroia.modutilities.settings;
+package net.kroia.modutilities.setting;
 
 
 import java.util.ArrayList;
@@ -61,8 +61,8 @@ public abstract class ModSettings {
     }
     public boolean loadSettings()
     {
-        String path = getSettingsFilePath();
         SettingsStore store = new SettingsStore();
+        String path = getSettingsFilePath() + "/" + getSettingsFileName();
         try {
             store.loadFromFile(allGroups,path);
         } catch (Exception e) {

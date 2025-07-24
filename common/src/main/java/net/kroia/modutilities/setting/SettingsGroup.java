@@ -1,4 +1,4 @@
-package net.kroia.modutilities.settings;
+package net.kroia.modutilities.setting;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
