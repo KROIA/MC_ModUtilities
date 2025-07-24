@@ -6,6 +6,7 @@ import net.minecraft.server.players.PlayerList;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -76,6 +77,35 @@ public class PlayerUtilities {
         // Get the player list and fetch the player by UUID
         PlayerList playerList = server.getPlayerList();
         return playerList.getPlayerByName(name); // Returns null if the player is not online
+    }
+
+    public static ArrayList<ServerPlayer> getOnlinePlayers()
+    {
+        MinecraftServer server = UtilitiesPlatform.getServer();
+
+        if (server == null) {
+            throw new IllegalStateException("Server instance is null. Are you calling this from the server_sender?");
+        }
+
+        PlayerList playerList = server.getPlayerList();
+        return new ArrayList<>(playerList.getPlayers());
+    }
+
+    public static ArrayList<String> getOnlinePlayerNames()
+    {
+        ArrayList<String> playerNames = new ArrayList<>();
+        MinecraftServer server = UtilitiesPlatform.getServer();
+
+        if (server == null) {
+            throw new IllegalStateException("Server instance is null. Are you calling this from the server_sender?");
+        }
+
+        PlayerList playerList = server.getPlayerList();
+        for(ServerPlayer player : playerList.getPlayers())
+        {
+            playerNames.add(player.getName().getString());
+        }
+        return playerNames;
     }
 
 

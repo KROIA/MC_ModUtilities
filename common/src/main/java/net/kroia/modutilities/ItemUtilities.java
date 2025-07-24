@@ -1,10 +1,17 @@
 package net.kroia.modutilities;
 
+import dev.architectury.platform.Platform;
+import dev.architectury.utils.Env;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.searchtree.SearchRegistry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.flag.FeatureFlags;
+import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -13,6 +20,8 @@ import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
 
 public class ItemUtilities {
     public static ItemStack createItemStackFromId(String itemId)
@@ -183,6 +192,55 @@ public class ItemUtilities {
         // Check if the item is in the tag
         return item.builtInRegistryHolder().is(tag);
     }
+
+
+    /**
+     *  Searches for items in the creative inventory based on the provided search text.
+     * @param searchText The text to search for in item names.
+     * @return A list of ItemStacks that match the search criteria.
+     */
+    public static List<ItemStack> getSearchCreativeItems(String searchText)
+    {
+        CreativeModeTabs.tryRebuildTabContents(FeatureFlags.DEFAULT_FLAGS, true, UtilitiesPlatform.getRegistryAccess());
+        var searchTree = Minecraft.getInstance().getSearchTree(SearchRegistry.CREATIVE_NAMES);
+        return searchTree.search(searchText.toLowerCase(Locale.ROOT));
+    }
+
+
+    /**
+     * Searches for items in the creative inventory based on the provided search text and a specific search key.
+     * @param searchText The text to search for in item names.
+     * @param key The search key to use for the search.
+     * @return A list of ItemStacks that match the search criteria.
+     */
+    public static List<ItemStack> getSearchItems(String searchText, SearchRegistry.Key<ItemStack> key)
+    {
+        CreativeModeTabs.tryRebuildTabContents(FeatureFlags.DEFAULT_FLAGS, true, UtilitiesPlatform.getRegistryAccess());
+        var searchTree = Minecraft.getInstance().getSearchTree(key);
+        return searchTree.search(searchText.toLowerCase(Locale.ROOT));
+    }
+
+
+    /**
+     * Extracts the search text from an item ID.
+     * @param itemID The item ID to extract the search text from.
+     * @return The search text extracted from the item ID, or an empty string if the item ID is null or empty.
+     */
+    public static String getSearchTextFromItemID(String itemID)
+    {
+        if(itemID == null || itemID.isEmpty())
+            return "";
+        String[] parts = itemID.split(":");
+        String secondPart = itemID;
+        if(parts.length > 1)
+        {
+            secondPart = parts[parts.length-1];
+        }
+        // Replace "_" with " " in the second part of the ID
+        secondPart = secondPart.replace("_", " ");
+        return secondPart; // Return the part after the colon
+    }
+
 
 
     /**
