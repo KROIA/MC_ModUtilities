@@ -59,7 +59,7 @@ public class ItemUtilities {
             return null;
         }
         // Get the item's ResourceLocation
-        return getItemID(itemStack.getItem());
+        return getItemIDStr(itemStack.getItem());
     }
     public static String getItemName(Item item)
     {
@@ -69,18 +69,18 @@ public class ItemUtilities {
     {
         return getItemName(createItemStackFromId(itemID).getItem());
     }
-    public static String getItemID(Item item)
+    public static String getItemIDStr(Item item)
     {
-        return UtilitiesPlatform.getItemID(item);
+        return UtilitiesPlatform.getItemIDStr(item);
     }
 
-    public static ArrayList<String> getAllItemIDs()
+    public static ArrayList<String> getAllItemIDStrs()
     {
         ArrayList<ItemStack> items = UtilitiesPlatform.getAllItems();
         HashMap<String, ItemStack> itemTable = new HashMap<>();
         for(ItemStack stack : items)
         {
-            itemTable.put(getItemID(stack.getItem()), stack);
+            itemTable.put(getItemIDStr(stack.getItem()), stack);
         }
         return new ArrayList<>(itemTable.keySet());
     }
@@ -89,7 +89,7 @@ public class ItemUtilities {
         return UtilitiesPlatform.getAllItems();
     }
 
-    public static ArrayList<String> getAllItemIDs(String tag)
+    public static ArrayList<String> getAllItemIDStrs(String tag)
     {
         ArrayList<String> itemIDs = new ArrayList<>();
         ArrayList<ItemStack> items = UtilitiesPlatform.getAllItems();
@@ -97,7 +97,7 @@ public class ItemUtilities {
         {
             if(isInTag(stack.getItem(), tag))
             {
-                itemIDs.add(getItemID(stack.getItem()));
+                itemIDs.add(getItemIDStr(stack.getItem()));
             }
         }
         return itemIDs;
@@ -115,7 +115,7 @@ public class ItemUtilities {
         }
         return items;
     }
-    public static ArrayList<String> getAllItemIDs(ArrayList<String> tags, ArrayList<String> containsInID)
+    public static ArrayList<String> getAllItemIDStrs(ArrayList<String> tags, ArrayList<String> containsInID)
     {
         ArrayList<String> itemIDs = new ArrayList<>();
         HashMap<String, TagKey<Item>> tagMap = new HashMap<>();
@@ -141,7 +141,7 @@ public class ItemUtilities {
         for(ItemStack stack : itemTable)
         {
             Item item = stack.getItem();
-            String itemName = getItemID(item);
+            String itemName = getItemIDStr(item);
             if(item.builtInRegistryHolder().tags().anyMatch(tagMap::containsValue) ||
                     containsInID.contains(itemName))
             {
@@ -176,7 +176,7 @@ public class ItemUtilities {
         for(ItemStack stack : itemTable)
         {
             Item item = stack.getItem();
-            String itemName = getItemID(item);
+            String itemName = getItemIDStr(item);
             if(item.builtInRegistryHolder().tags().anyMatch(tagMap::containsValue) ||
                     containsInID.contains(itemName))
             {

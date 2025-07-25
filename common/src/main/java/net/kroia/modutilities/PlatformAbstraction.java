@@ -8,8 +8,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 public interface PlatformAbstraction {
-    ItemStack getItemStack(String itemID);
-    String getItemID(Item item);
+    ItemStack getItemStack(String itemIDStr);
+    String getItemIDStr(Item item);
     ArrayList<ItemStack> getAllItems();
     MinecraftServer getServer();
     UtilitiesPlatform.Type getPlatformType();

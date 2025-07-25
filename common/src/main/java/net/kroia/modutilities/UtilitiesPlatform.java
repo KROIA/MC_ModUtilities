@@ -58,8 +58,8 @@ public class UtilitiesPlatform {
         return getPlatform().getItemStack(itemID);
     }
 
-    public static String getItemID(Item item) {
-        return getPlatform().getItemID(item);
+    public static String getItemIDStr(Item item) {
+        return getPlatform().getItemIDStr(item);
     }
 
     public static ArrayList<ItemStack> getAllItems() {

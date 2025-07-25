@@ -34,7 +34,7 @@ public class UtilitiesPlatformQuilt implements PlatformAbstraction {
     }
 
     @Override
-    public String getItemID(Item item) {
+    public String getItemIDStr(Item item) {
         return BuiltInRegistries.ITEM.getKey(item).toString();
     }
 

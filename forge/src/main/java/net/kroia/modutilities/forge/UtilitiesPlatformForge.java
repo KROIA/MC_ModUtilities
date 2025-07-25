@@ -21,7 +21,7 @@ public class UtilitiesPlatformForge implements PlatformAbstraction {
     }
 
     @Override
-    public String getItemID(Item item) {
+    public String getItemIDStr(Item item) {
         return Objects.requireNonNull(ForgeRegistries.ITEMS.getKey(item)).toString();
     }
 
