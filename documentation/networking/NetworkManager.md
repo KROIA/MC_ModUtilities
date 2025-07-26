@@ -31,14 +31,14 @@ public class MyExampleModNetworking extends NetworkManager {
     public void setupClientReceiverPackets()
     {
         // Register packets
-        register(SimpleDataPacketToClient.class, SimpleDataPacketToClient::toBytes, SimpleDataPacketToClient::new, SimpleDataPacketToClient::receive);
+        register(SimpleDataPacketToClient.class, SimpleDataPacketToClient::encode, SimpleDataPacketToClient::new, SimpleDataPacketToClient::receive);
     }
 
     @Override
     public void setupServerReceiverPackets()
     {
         // Register packets
-        register(SimpleDataPacketToServer.class, SimpleDataPacketToServer::toBytes, SimpleDataPacketToServer::new, SimpleDataPacketToServer::receive);
+        register(SimpleDataPacketToServer.class, SimpleDataPacketToServer::encode, SimpleDataPacketToServer::new, SimpleDataPacketToServer::receive);
     }
 }
 

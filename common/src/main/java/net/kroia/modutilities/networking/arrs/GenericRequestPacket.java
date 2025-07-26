@@ -1,6 +1,7 @@
 package net.kroia.modutilities.networking.arrs;
 
 
+import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.networking.NetworkPacket;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
@@ -45,7 +46,7 @@ public final class GenericRequestPacket extends NetworkPacket
     }
 
     @Override
-    public void toBytes(FriendlyByteBuf buf) {
+    public void encode(FriendlyByteBuf buf) {
         buf.writeUUID(requestID);
         buf.writeUtf(requestTypeID);
         byte[] bytes = Arrays.copyOf(data.asByteBuf().array(), data.asByteBuf().readableBytes());
@@ -53,7 +54,7 @@ public final class GenericRequestPacket extends NetworkPacket
     }
 
     @Override
-    public void fromBytes(FriendlyByteBuf buf) {
+    public void decode(FriendlyByteBuf buf) {
         this.requestID = buf.readUUID();
         this.requestTypeID = buf.readUtf();
 
@@ -81,7 +82,14 @@ public final class GenericRequestPacket extends NetworkPacket
         }
 
         FriendlyByteBuf responseData = new FriendlyByteBuf(io.netty.buffer.Unpooled.buffer());
-        request.decodeHandleEncodeOnClient(data, responseData);
+        try {
+            request.decodeHandleEncodeOnClient(data, responseData);
+        }
+        catch (Exception e) {
+            // Handle any exceptions that may occur during decoding/encoding
+            ModUtilitiesMod.LOGGER.error("Error handling GenericRequestPacket: " + e.getMessage(), e);
+            return; // Exit if an error occurs
+        }
 
         sendResponse(new GenericResponsePacket(requestID, requestTypeID, responseData));
     }
@@ -94,7 +102,14 @@ public final class GenericRequestPacket extends NetworkPacket
         }
 
         FriendlyByteBuf responseData = new FriendlyByteBuf(io.netty.buffer.Unpooled.buffer());
-        request.decodeHandleEncodeOnServer(data, responseData, sender);
+        try {
+            request.decodeHandleEncodeOnServer(data, responseData, sender);
+        }
+        catch (Exception e) {
+            // Handle any exceptions that may occur during decoding/encoding
+            ModUtilitiesMod.LOGGER.error("Error handling GenericRequestPacket: " + e.getMessage(), e);
+            return; // Exit if an error occurs
+        }
 
         sendResponse(new GenericResponsePacket(requestID, requestTypeID, responseData));
     }

@@ -44,7 +44,7 @@ public abstract class NetworkPacket implements INetworkPacket {
      */
     public NetworkPacket(FriendlyByteBuf buf) {
         super();
-        this.fromBytes(buf);
+        this.decode(buf);
     }
 
 

@@ -44,8 +44,8 @@ public class AsynchronousRequestResponseSystem {
         }
 
         // Register packets for ARRS
-        networkManager.register(GenericRequestPacket.class, GenericRequestPacket::toBytes, GenericRequestPacket::new, GenericRequestPacket::receive);
-        networkManager.register(GenericResponsePacket.class, GenericResponsePacket::toBytes, GenericResponsePacket::new, GenericResponsePacket::receive);
+        networkManager.register(GenericRequestPacket.class, GenericRequestPacket::encode, GenericRequestPacket::new, GenericRequestPacket::receive);
+        networkManager.register(GenericResponsePacket.class, GenericResponsePacket::encode, GenericResponsePacket::new, GenericResponsePacket::receive);
     }
 
 

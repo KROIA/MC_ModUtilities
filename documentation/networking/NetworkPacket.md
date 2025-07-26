@@ -49,13 +49,13 @@ public class SimpleDataPacketToClient extends NetworkPacket {
 
     // Fill the data we want to send in the "buf"
     @Override
-    public void toBytes(FriendlyByteBuf buf) {
+    public void encode(FriendlyByteBuf buf) {
         buf.writeInt(value);
     }
 
     // Read the received "buf" and save the data back to the members
     @Override
-    public void fromBytes(FriendlyByteBuf buf) {
+    public void decode(FriendlyByteBuf buf) {
         value = buf.readInt();
     }
 }
@@ -95,13 +95,13 @@ public class SimpleDataPacketToServer extends NetworkPacket {
 
     // Fill the data we want to send in the "buf"
     @Override
-    public void toBytes(FriendlyByteBuf buf) {
+    public void encode(FriendlyByteBuf buf) {
         buf.writeInt(value);
     }
 
     // Read the received "buf" and save the data back to the members
     @Override
-    public void fromBytes(FriendlyByteBuf buf) {
+    public void decode(FriendlyByteBuf buf) {
         value = buf.readInt();
     }
 }

@@ -1,5 +1,6 @@
 package net.kroia.modutilities.networking.arrs;
 
+import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.networking.NetworkPacket;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
@@ -42,7 +43,7 @@ public final class GenericResponsePacket extends NetworkPacket
     }
 
     @Override
-    public void toBytes(FriendlyByteBuf buf) {
+    public void encode(FriendlyByteBuf buf) {
         buf.writeUUID(requestID);
         buf.writeUtf(requestTypeID);
         byte[] bytes = Arrays.copyOf(data.asByteBuf().array(), data.asByteBuf().readableBytes());
@@ -50,7 +51,7 @@ public final class GenericResponsePacket extends NetworkPacket
     }
 
     @Override
-    public void fromBytes(FriendlyByteBuf buf) {
+    public void decode(FriendlyByteBuf buf) {
         this.requestID = buf.readUUID();
         this.requestTypeID = buf.readUtf();
         int length = buf.readableBytes();
@@ -71,11 +72,25 @@ public final class GenericResponsePacket extends NetworkPacket
 
     @Override
     protected void handleOnClient() {
+        try{
         AsynchronousRequestResponseSystem.processResponseOnClient(this);
+        }
+        catch (Exception e) {
+            // Handle any exceptions that may occur during decoding/encoding
+            ModUtilitiesMod.LOGGER.error("Error processing GenericResponsePacket on client: " + e.getMessage(), e);
+            return; // Exit if an error occurs
+        }
     }
 
     @Override
     protected void handleOnServer(ServerPlayer sender) {
-        AsynchronousRequestResponseSystem.processResponseOnServer(this, sender);
+        try {
+            AsynchronousRequestResponseSystem.processResponseOnServer(this, sender);
+        }
+        catch (Exception e) {
+            // Handle any exceptions that may occur during decoding/encoding
+            ModUtilitiesMod.LOGGER.error("Error processing GenericResponsePacket on server: " + e.getMessage(), e);
+            return; // Exit if an error occurs
+        }
     }
 }
