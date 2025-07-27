@@ -67,7 +67,7 @@ public class Signal {
         }
     }
 
-    public void clearListeners() {
+    public void removeListeners() {
         listeners.clear();
     }
 

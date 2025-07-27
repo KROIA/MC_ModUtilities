@@ -67,7 +67,7 @@ public class DataEvent<T> {
         }
     }
 
-    public void clearListeners() {
+    public void removeListeners() {
         listeners.clear();
     }
 
