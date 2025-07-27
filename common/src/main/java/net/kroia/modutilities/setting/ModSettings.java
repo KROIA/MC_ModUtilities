@@ -1,77 +1,74 @@
 package net.kroia.modutilities.setting;
 
 
+import net.minecraft.world.item.enchantment.ThornsEnchantment;
+
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-public abstract class ModSettings {
+public class ModSettings {
 
-    public static Consumer<String> errorLogger = System.err::println;
-    public static Consumer<String> infoLogger = System.out::println;
+    public Consumer<String> errorLogger = System.err::println;
+    public BiConsumer<String, Throwable> errorLoggerThrowable = (error, throwable) -> {
+        if (errorLogger != null) {
+            errorLogger.accept(error + "\nError: " + throwable.getMessage() + "\n" + Arrays.toString(throwable.getStackTrace()));
+        }
+    };
+    public Consumer<String> infoLogger = System.out::println;
     private final List<SettingsGroup> allGroups = new ArrayList<>();
-    private String settingsFileName;
-
-
-    private String name;
-
-    public static void setLogger(Consumer<String> errorLogger, Consumer<String> infoLogger) {
-        ModSettings.errorLogger = errorLogger;
-        ModSettings.infoLogger = infoLogger;
-
-        SettingsGroup.errorLogger = errorLogger;
-        Setting.errorLogger = errorLogger;
-    }
+    //private String settingsFileName;
+    private final String name;
 
     public ModSettings(String name) {
-        this(name, "settings.json");
-    }
-    public ModSettings(String name, String settingsFileName) {
         this.name = name;
-        if(settingsFileName != null && !settingsFileName.isEmpty()) {
-            this.settingsFileName = settingsFileName;
-        }
     }
+
+    public void setLogger(Consumer<String> errorLogger, Consumer<String> infoLogger) {
+        this.errorLogger = errorLogger;
+        this.infoLogger = infoLogger;
+    }
+    public void setLogger(Consumer<String> errorLogger, BiConsumer<String, Throwable>errorLoggerThrowable, Consumer<String> infoLogger) {
+        this.errorLogger = errorLogger;
+        this.errorLoggerThrowable = errorLoggerThrowable;
+        this.infoLogger = infoLogger;
+    }
+
     protected <T extends SettingsGroup> T createGroup(T group) {
         assert allGroups != null;
         allGroups.add(group);
         return group;
     }
 
-    public String getSettingsFileName() {
-        return settingsFileName;
-    }
-    abstract public String getSettingsFilePath();
-
-    public boolean saveSettings()
+    public boolean saveSettings(String filePath)
     {
         SettingsStore store = new SettingsStore();
-        String path = getSettingsFilePath() + "/" + getSettingsFileName();
         try {
-            store.saveToFile(allGroups, path);
+            store.saveToFile(allGroups, filePath);
         }
         catch (Exception e) {
-            if(errorLogger != null)
-                errorLogger.accept("Failed to save "+name+" to path: " + path + "\nError:\n" + e.getMessage());
+            if(errorLoggerThrowable != null)
+                errorLoggerThrowable.accept("Failed to save "+name+" to path: " + filePath + "\nError:\n" + e.getMessage(), e);
             return false;
         }
         if(infoLogger != null)
-            infoLogger.accept(name+" saved to JSON file: " + path);
+            infoLogger.accept(name+" saved to JSON file: " + filePath);
         return true;
     }
-    public boolean loadSettings()
+    public boolean loadSettings(String filePath)
     {
         SettingsStore store = new SettingsStore();
-        String path = getSettingsFilePath() + "/" + getSettingsFileName();
         try {
-            store.loadFromFile(allGroups,path);
+            store.loadFromFile(allGroups, filePath);
         } catch (Exception e) {
-            if(errorLogger != null)
-                errorLogger.accept("Failed to load "+name+" from path: " +path + "\nError:\n" + e.getMessage());
+            if(errorLoggerThrowable != null)
+                errorLoggerThrowable.accept("Failed to load "+name+" from path: " +filePath + "\nError:\n" + e.getMessage(), e);
             return false;
         }
         if(infoLogger != null)
-            infoLogger.accept(name+" loaded from JSON file: " + path);
+            infoLogger.accept(name+" loaded from JSON file: " + filePath);
         return true;
     }
 }

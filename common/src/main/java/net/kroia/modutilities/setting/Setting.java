@@ -1,6 +1,8 @@
 package net.kroia.modutilities.setting;
 
+import com.google.gson.JsonElement;
 import net.kroia.modutilities.event.DataEvent;
+import net.kroia.modutilities.setting.parser.CustomJsonParser;
 
 import java.lang.reflect.Type;
 import java.util.Objects;
@@ -13,18 +15,26 @@ import java.util.function.Consumer;
  * @param <T> the type of the setting value
  */
 public class Setting<T> {
-    public static Consumer<String> errorLogger = System.err::println;
     private T value;
     private final T defaultValue;
     private final Type type;
     private final String name;
     private final DataEvent<T> event = new DataEvent<>();
+    private final CustomJsonParser<T> customJsonParser;
 
     public Setting(String name, T initialValue, Type type) {
         this.name = name;
         this.defaultValue = initialValue;
         this.value = initialValue;
         this.type = type;
+        this.customJsonParser = null; // No custom parser by default
+    }
+    public Setting(String name, T initialValue, Type type, CustomJsonParser<T> customJsonParser) {
+        this.name = name;
+        this.defaultValue = initialValue;
+        this.value = initialValue;
+        this.type = type;
+        this.customJsonParser = customJsonParser;
     }
 
     public T get() {
@@ -60,6 +70,22 @@ public class Setting<T> {
 
     private void notifyListeners() {
         event.notifyListeners(value);
+    }
+
+    public T getDefaultValue() {
+        return defaultValue;
+    }
+    public CustomJsonParser<T> getCustomJsonParser() {
+        return customJsonParser;
+    }
+    public T getCustomParsedToData(JsonElement json)
+    {
+        assert customJsonParser != null;
+        return customJsonParser.fromJson(json);
+    }
+    public JsonElement getCustomParsedToJson() {
+        assert customJsonParser != null;
+        return customJsonParser.toJson(value);
     }
 
     @Override

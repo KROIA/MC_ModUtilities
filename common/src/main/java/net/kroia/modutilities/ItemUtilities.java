@@ -24,6 +24,22 @@ import java.util.List;
 import java.util.Locale;
 
 public class ItemUtilities {
+
+    private static class ItemCache
+    {
+        private List<ItemStack> creativeItemCache;
+
+        public List<ItemStack> getCreativeItemCache()
+        {
+            if(creativeItemCache == null)
+            {
+                creativeItemCache = CreativeItemsGenerator.generateAllCreativeItems(UtilitiesPlatform.getRegistryAccess());
+            }
+            return creativeItemCache;
+        }
+    }
+    private static final ItemCache itemCache = new ItemCache();
+
     public static ItemStack createItemStackFromId(String itemId)
     {
         return createItemStackFromId(itemId, 1);
@@ -201,9 +217,19 @@ public class ItemUtilities {
      */
     public static List<ItemStack> getSearchCreativeItems(String searchText)
     {
-        CreativeModeTabs.tryRebuildTabContents(FeatureFlags.DEFAULT_FLAGS, true, UtilitiesPlatform.getRegistryAccess());
-        var searchTree = Minecraft.getInstance().getSearchTree(SearchRegistry.CREATIVE_NAMES);
-        return searchTree.search(searchText.toLowerCase(Locale.ROOT));
+        //CreativeModeTabs.tryRebuildTabContents(FeatureFlags.DEFAULT_FLAGS, true, UtilitiesPlatform.getRegistryAccess());
+        //var searchTree = Minecraft.getInstance().getSearchTree(SearchRegistry.CREATIVE_NAMES);
+        //return searchTree.search(searchText.toLowerCase(Locale.ROOT));
+        List<ItemStack> creativeItems = itemCache.getCreativeItemCache();
+        List<ItemStack> searchResults = new ArrayList<>();
+        String lowerSearchText = searchText.toLowerCase(Locale.ROOT);
+        for (ItemStack itemStack : creativeItems) {
+            String itemName = itemStack.getHoverName().getString().toLowerCase(Locale.ROOT);
+            if (itemName.contains(lowerSearchText)) {
+                searchResults.add(itemStack);
+            }
+        }
+        return searchResults;
     }
 
 
@@ -213,12 +239,12 @@ public class ItemUtilities {
      * @param key The search key to use for the search.
      * @return A list of ItemStacks that match the search criteria.
      */
-    public static List<ItemStack> getSearchItems(String searchText, SearchRegistry.Key<ItemStack> key)
+    /*public static List<ItemStack> getSearchItems(String searchText, SearchRegistry.Key<ItemStack> key)
     {
         CreativeModeTabs.tryRebuildTabContents(FeatureFlags.DEFAULT_FLAGS, true, UtilitiesPlatform.getRegistryAccess());
         var searchTree = Minecraft.getInstance().getSearchTree(key);
         return searchTree.search(searchText.toLowerCase(Locale.ROOT));
-    }
+    }*/
 
 
     /**

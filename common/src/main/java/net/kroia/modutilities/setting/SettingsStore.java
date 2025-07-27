@@ -4,12 +4,15 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import net.kroia.modutilities.setting.parser.CustomJsonParser;
 
 import java.io.*;
 import java.util.List;
 
 public class SettingsStore {
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
+
+
 
     public void saveToFile(List<SettingsGroup> groups, String filePath) throws IOException {
         File file = new File(filePath);
@@ -18,54 +21,18 @@ public class SettingsStore {
 
     // Saves multiple setting groups into a JSON file
     public void saveToFile(List<SettingsGroup> groups, File file) throws IOException {
-        JsonObject root = new JsonObject();
-
-        for (SettingsGroup group : groups) {
-            JsonObject groupJson = new JsonObject();
-            for (Setting<?> setting : group.getAllSettings()) {
-                JsonElement valueJson = gson.toJsonTree(setting.get());
-                groupJson.add(setting.getName(), valueJson);
-            }
-            root.add(group.getName(), groupJson);
-        }
+        JsonElement json = toJson(groups);
 
         try (Writer writer = new FileWriter(file)) {
-            gson.toJson(root, writer);
+            gson.toJson(json, writer);
         }
     }
 
-    public String toJsonString(List<SettingsGroup> groups) {
-        JsonObject root = new JsonObject();
-
-        for (SettingsGroup group : groups) {
-            JsonObject groupJson = new JsonObject();
-            for (Setting<?> setting : group.getAllSettings()) {
-                JsonElement valueJson = gson.toJsonTree(setting.get());
-                groupJson.add(setting.getName(), valueJson);
-            }
-            root.add(group.getName(), groupJson);
-        }
-
-        return gson.toJson(root);
-    }
-
-    public String toJsonString(SettingsGroup group) {
-        JsonObject groupJson = new JsonObject();
-        for (Setting<?> setting : group.getAllSettings()) {
-            JsonElement valueJson = gson.toJsonTree(setting.get());
-            groupJson.add(setting.getName(), valueJson);
-        }
-        return gson.toJson(groupJson);
-    }
-
-
+    // Loads setting values from a file into existing groups
     public void loadFromFile(List<SettingsGroup> groups, String filePath) throws IOException {
         File file = new File(filePath);
         loadFromFile(groups, file);
     }
-
-
-    // Loads setting values from a file into existing groups
     public void loadFromFile(List<SettingsGroup> groups, File file) throws IOException {
         if (!file.exists()) return;
 
@@ -73,8 +40,19 @@ public class SettingsStore {
         try (Reader reader = new FileReader(file)) {
             root = gson.fromJson(reader, JsonObject.class);
         }
+        catch(FileNotFoundException e) {
+            throw new IOException("Settings file not found: " + file.getAbsolutePath(), e);
+        }
+        catch (Exception e) {
+            throw new IOException("Failed to read settings from file: " + file.getAbsolutePath(), e);
+        }
+        if (root == null) {
+            throw new IOException("Failed to parse settings file: " + file.getAbsolutePath());
+        }
+        fromJson(groups, root);
 
-        for (SettingsGroup group : groups) {
+
+        /*for (SettingsGroup group : groups) {
             JsonObject groupJson = root.getAsJsonObject(group.getName());
             if (groupJson == null) continue;
 
@@ -87,8 +65,95 @@ public class SettingsStore {
                     setValueWithCast(setting, value);
                 }
             }
-        }
+        }*/
     }
+
+    public String toJsonString(List<SettingsGroup> groups) {
+        JsonElement json = toJson(groups);
+        return gson.toJson(json);
+    }
+
+    public String toJsonString(SettingsGroup group) {
+        JsonElement json = toJson(group);
+        return gson.toJson(json);
+    }
+
+    public JsonElement toJson(SettingsGroup group)
+    {
+        JsonObject groupJson = new JsonObject();
+        for (Setting<?> setting : group.getAllSettings()) {
+            JsonElement valueJson = null;
+            CustomJsonParser<?> customParser = setting.getCustomJsonParser();
+            if (customParser != null) {
+                valueJson = setting.getCustomParsedToJson();
+            } else {
+                valueJson = gson.toJsonTree(setting.get());
+            }
+            groupJson.add(setting.getName(), valueJson);
+        }
+        return groupJson;
+    }
+    public JsonElement toJson(List<SettingsGroup> groups) {
+        JsonObject root = new JsonObject();
+
+        for (SettingsGroup group : groups) {
+            JsonElement groupJson = toJson(group);
+            root.add(group.getName(), groupJson);
+        }
+        return root;
+    }
+
+    public SettingsGroup fromJson(SettingsGroup loader, JsonElement json)
+    {
+        if(json == null || !json.isJsonObject()) {
+            throw new IllegalArgumentException("Invalid JSON element for SettingsGroup");
+        }
+        JsonObject root = json.getAsJsonObject();
+
+        JsonObject groupJson = root.getAsJsonObject();
+        if (groupJson == null)
+            throw new IllegalArgumentException("SettingsGroup not found in JSON: " + loader.getName());
+
+
+        for (Setting<?> setting : loader.getAllSettings()) {
+            JsonElement valueJson = groupJson.get(setting.getName());
+            if (valueJson != null && !valueJson.isJsonNull()) {
+                CustomJsonParser<?> customParser = setting.getCustomJsonParser();
+                Object value;
+                if (customParser != null) {
+                    value = setting.getCustomParsedToData(valueJson);
+                } else {
+                    value = gson.fromJson(valueJson, setting.getType());
+                }
+
+                // Type-safe cast using getType()
+                setValueWithCast(setting, value);
+            }
+        }
+        return loader;
+    }
+
+    public List<SettingsGroup> fromJson(List<SettingsGroup> groups, JsonElement json) {
+        if(json == null || !json.isJsonObject()) {
+            throw new IllegalArgumentException("Invalid JSON element for SettingsGroup list");
+        }
+        JsonObject root = json.getAsJsonObject();
+        for( SettingsGroup group : groups) {
+            JsonElement groupJson = root.get(group.getName());
+            if (groupJson != null && groupJson.isJsonObject()) {
+                fromJson(group, groupJson);
+            } else {
+                throw new IllegalArgumentException("SettingsGroup not found in JSON: " + group.getName());
+            }
+        }
+        return groups;
+    }
+
+
+
+
+
+
 
     @SuppressWarnings("unchecked")
     private <T> void setValueWithCast(Setting<?> setting, Object value) {

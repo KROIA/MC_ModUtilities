@@ -38,14 +38,29 @@ public class UtilitiesPlatform {
     }
 
     public static RegistryAccess getRegistryAccess() {
-        Minecraft mc = Minecraft.getInstance();
+        if(isClient())
+        {
+            Minecraft mc = Minecraft.getInstance();
+            if(mc.level != null) {
+                return mc.level.registryAccess();
+            }
+        }
+        if(isServer())
+        {
+            MinecraftServer server = getServer();
+            if(server != null) {
+                return server.registryAccess();
+            }
+        }
+        return null;
+        /*Minecraft mc = Minecraft.getInstance();
         if (mc.level != null) {
             return mc.level.registryAccess();
         } else if (mc.player != null) {
             return mc.player.connection.registryAccess();
         } else {
             return (RegistryAccess) BuiltInRegistries.REGISTRY.asLookup(); // fallback read-only registry
-        }
+        }*/
     }
 
     public static void setPlatform(PlatformAbstraction platform) {
