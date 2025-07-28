@@ -175,36 +175,6 @@ public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
             stack.setTag(tag);
             return stack;
         }
-        /*@Override
-        public boolean save(CompoundTag tag) {
-            tag.put("stack", stack.save(new CompoundTag()));
-            CompoundTag enchantmentsTag = new CompoundTag();
-            for(EnchantmentData enchantment : enchantments)
-            {
-                CompoundTag enchantmentTag = new CompoundTag();
-                enchantment.save(enchantmentTag);
-                enchantmentsTag.put(enchantment.enchantmentID, enchantmentTag);
-            }
-            tag.put("StoredEnchantments", enchantmentsTag);
-            return true;
-        }
-
-        @Override
-        public boolean load(CompoundTag tag) {
-            stack = ItemStack.of(tag.getCompound("stack"));
-            CompoundTag enchantmentsTag = tag.getCompound("StoredEnchantments");
-            enchantments = new EnchantmentData[enchantmentsTag.size()];
-            int i = 0;
-            for(String key : enchantmentsTag.getAllKeys())
-            {
-                CompoundTag enchantmentTag = enchantmentsTag.getCompound(key);
-                EnchantmentData enchantment = new EnchantmentData();
-                enchantment.load(enchantmentTag);
-                enchantments[i] = enchantment;
-                i++;
-            }
-            return true;
-        }*/
 
         JsonElement toJson()
         {
