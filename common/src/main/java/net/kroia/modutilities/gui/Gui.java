@@ -136,10 +136,13 @@ public class Gui {
     }
     public void renderTooltip()
     {
+        pushPose();
+        translate(0, 0, 200); // Ensure tooltip is rendered on top
         for(GuiElement element : elements)
         {
             element.renderTooltipInternal();
         }
+        popPose();
     }
     public void renderGizmos()
     {
@@ -443,6 +446,15 @@ public class Gui {
         {
             enableScissor(globalScissorArea);
         }
+    }
+
+    public void translate(float x, float y, float z)
+    {
+        graphics.translate(x, y, z);
+    }
+    public void translate(double x, double y, double z)
+    {
+        graphics.translate(x, y, z);
     }
     public void pushPose()
     {

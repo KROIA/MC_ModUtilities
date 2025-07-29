@@ -15,6 +15,7 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
+import java.util.function.Supplier;
 
 public abstract class GuiElement {
 
@@ -29,12 +30,12 @@ public abstract class GuiElement {
         TOP_RIGHT,
         BOTTOM_LEFT,
         BOTTOM_RIGHT
-
-
     }
 
 
     public static int DEFAULT_PADDING = 1;
+    public static int DEFAULT_TOOLTIP_BACKGROUND_PADDING = 2;
+    public static int DEFAULT_TOOLTIP_BACKGROUND_COLOR = 0xBB555555;
     public static int DEFAULT_TEXT_COLOR = 0xFFFFFF;
     public static int DEFAULT_BACKGROUND_COLOR = 0xAA888888;
     public static int DEFAULT_FOCUSED_BACKGROUND_COLOR = 0xAA666666;
@@ -58,6 +59,11 @@ public abstract class GuiElement {
 
     protected Layout layout = null;
     private boolean isRelayoutingThis = false;
+    private Supplier<String> hoverTooltipSupplier = null;
+
+    private int tooltipBackgroundColor = DEFAULT_TOOLTIP_BACKGROUND_COLOR;
+    private int tooltipBackgroundPadding = DEFAULT_TOOLTIP_BACKGROUND_PADDING;
+    private Alignment tooltipMousePositionAlingment = Alignment.TOP_LEFT;
 
 
     private class TooltipLaterData
@@ -66,6 +72,10 @@ public abstract class GuiElement {
         public ItemStack item;
         public Component component;
         public String customString;
+        public boolean createBackground = true;
+        public int backgroundColor = tooltipBackgroundColor;
+        public int backgroundPadding = tooltipBackgroundPadding;
+        public Alignment alignment = tooltipMousePositionAlingment;
     }
     private ArrayList<TooltipLaterData> drawTooltipLater = new ArrayList<>();
 
@@ -196,6 +206,29 @@ public abstract class GuiElement {
         return enableOutline;
     }
 
+    public void setHoverTooltipSupplier(Supplier<String> hoverTooltipSupplier)
+    {
+        this.hoverTooltipSupplier = hoverTooltipSupplier;
+    }
+    public void setTooltipBackgroundColor(int tooltipBackgroundColor) {
+        this.tooltipBackgroundColor = tooltipBackgroundColor;
+    }
+    public int getTooltipBackgroundColor() {
+        return tooltipBackgroundColor;
+    }
+    public void setTooltipBackgroundPadding(int toolripBackgroundPadding) {
+        this.tooltipBackgroundPadding = toolripBackgroundPadding;
+    }
+    public int getTooltipBackgroundPadding() {
+        return tooltipBackgroundPadding;
+    }
+    public void setTooltipMousePositionAlignment(Alignment alignment) {
+        this.tooltipMousePositionAlingment = alignment;
+    }
+    public Alignment getTooltipMousePositionAlignment() {
+        return tooltipMousePositionAlingment;
+    }
+
     protected void renderBackground()
     {
         if(enableBackground)
@@ -239,6 +272,14 @@ public abstract class GuiElement {
         graphics.pushPose();
         graphics.translate((float)getX(), (float)getY(), 0.0F);
         render();
+        if(hoverTooltipSupplier != null && isMouseOver() && isVisible())
+        {
+            String tooltip = hoverTooltipSupplier.get();
+            if(tooltip != null && !tooltip.isEmpty())
+            {
+                drawTooltipLater(tooltip, getMousePos());
+            }
+        }
         for (GuiElement child : childs) {
             child.renderInternal();
         }
@@ -254,12 +295,28 @@ public abstract class GuiElement {
         graphics.translate((float)getX(), (float)getY(), 0.0F);
         for(TooltipLaterData data : drawTooltipLater)
         {
+
+
             if(data.item != null)
                 drawTooltip(data.item, new Point(data.x, data.y));
             else if(data.component != null)
                 drawText(data.component, new Point(data.x, data.y));
-            else if(data.customString != null)
-                drawText(data.customString, new Point(data.x, data.y));
+            else if(data.customString != null) {
+
+
+                Point size = getTextBounds(data.customString);
+
+                Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), data.alignment,
+                        data.x, data.y,0,0);
+                if(data.createBackground)
+                {
+                    drawRect(rect.x - data.backgroundPadding,
+                            rect.y - data.backgroundPadding,
+                            size.x + data.backgroundPadding * 2,
+                            size.y + data.backgroundPadding * 2, data.backgroundColor);
+                }
+                drawText(data.customString, new Point(rect.x, rect.y));
+            }
         }
         drawTooltipLater.clear();
         for (GuiElement child : childs) {
@@ -918,28 +975,28 @@ public abstract class GuiElement {
     }
 
 
-    public void drawTooltip(Component tooltip, int x, int y)
+    private void drawTooltip(Component tooltip, int x, int y)
     {
         root.drawTooltip(tooltip, x,y);
     }
-    public void drawTooltip(Component tooltip, Point pos) {
+    private void drawTooltip(Component tooltip, Point pos) {
         drawTooltip(tooltip, pos.x, pos.y);
     }
 
-    public void drawTooltip(ItemStack stack, int x, int y)
+    private void drawTooltip(ItemStack stack, int x, int y)
     {
         root.drawTooltip(stack, x,y);
     }
-    public void drawTooltip(ItemStack stack, Point pos)
+    private void drawTooltip(ItemStack stack, Point pos)
     {
         drawTooltip(stack, pos.x, pos.y);
     }
 
-    public void drawTooltip(String msg, int x, int y)
+    private void drawTooltip(String msg, int x, int y)
     {
         root.drawTooltip(msg, x,y);
     }
-    public void drawTooltip(String msg, Point pos)
+    private void drawTooltip(String msg, Point pos)
     {
         drawTooltip(msg, pos.x, pos.y);
     }
@@ -953,6 +1010,13 @@ public abstract class GuiElement {
         drawTooltipLater.add(data);
     }
     public void drawTooltipLater(ItemStack stack, Point pos)
+    {
+        if(stack == null)
+            return;
+        String itemName = stack.getHoverName().getString();
+        drawTooltipLater(itemName, pos.x, pos.y);
+    }
+    public void drawTooltipLaterNative(ItemStack stack, Point pos)
     {
         drawTooltipLater(stack, pos.x, pos.y);
     }
@@ -975,7 +1039,41 @@ public abstract class GuiElement {
         data.x = x;
         data.y = y;
         data.customString = tooltip;
+        data.createBackground = true; // Default to true, can be changed later
         drawTooltipLater.add(data);
+    }
+    public void drawTooltipLater(String tooltip, int x, int y, boolean createBackground)
+    {
+        TooltipLaterData data = new TooltipLaterData();
+        data.x = x;
+        data.y = y;
+        data.customString = tooltip;
+        data.createBackground = createBackground;
+        drawTooltipLater.add(data);
+    }
+    public void drawTooltipLater(String tooltip, int x, int y, int backgroundColor, int backgroundPadding, Alignment alignment)
+    {
+        TooltipLaterData data = new TooltipLaterData();
+        data.x = x;
+        data.y = y;
+        data.customString = tooltip;
+        data.createBackground = true;
+        data.backgroundColor = backgroundColor;
+        data.backgroundPadding = backgroundPadding;
+        data.alignment = alignment;
+        drawTooltipLater.add(data);
+    }
+    public Point getTextBounds(String text)
+    {
+        var lines = text.split("\n");
+        int maxWidth = 0;
+        for (String line : lines) {
+            int width = getTextWidth(line);
+            if (width > maxWidth)
+                maxWidth = width;
+        }
+        int height = getTextHeight() * lines.length;
+        return new Point(maxWidth, height);
     }
     public void drawTooltipLater(String tooltip, Point pos)
     {

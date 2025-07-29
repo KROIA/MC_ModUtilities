@@ -37,6 +37,9 @@ public class ItemView extends GuiElement {
     public void setItemStack(ItemStack itemStack) {
         this.itemStack = itemStack;
     }
+    public ItemStack getItemStack() {
+        return itemStack;
+    }
 
 
     public void setShowCount(boolean showCount) {
