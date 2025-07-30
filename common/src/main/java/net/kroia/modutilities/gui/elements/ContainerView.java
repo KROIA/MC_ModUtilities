@@ -204,7 +204,7 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
     protected void renderTooltip(int pX, int pY) {
         if (this.menu.getCarried().isEmpty() && this.hoveredSlot != null && this.hoveredSlot.hasItem()) {
             ItemStack itemstack = this.hoveredSlot.getItem();
-            drawTooltipLater(itemstack, pX, pY);
+            drawTooltip(itemstack, pX, pY);
         }
 
     }

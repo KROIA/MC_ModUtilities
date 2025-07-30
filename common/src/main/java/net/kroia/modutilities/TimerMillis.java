@@ -6,30 +6,38 @@ public class TimerMillis implements ServerSaveable{
     private long startTime;
     private long duration;
     private boolean autoRestart;
+    private boolean isRunning;
 
     public TimerMillis(boolean autoRestart) {
         this.startTime = 0;
         this.autoRestart = autoRestart;
-        this.duration = duration;
+        this.duration = 0;
+        this.isRunning = false;
     }
 
     public void start(long duration) {
         this.startTime = System.currentTimeMillis();
         this.duration = duration;
+        this.isRunning = true;
     }
 
     public boolean isRunning() {
-        return   startTime > 0 &&
-                (System.currentTimeMillis() - startTime) < duration;
+        return isRunning;
     }
     public boolean isFinished() {
-        return !isRunning();
+        if(startTime > 0 && (System.currentTimeMillis() - startTime) > duration)
+        {
+            isRunning = false; // Mark as not running if duration exceeded
+            return true; // Timer has finished
+        }
+        return false; // Timer is still running
     }
     public void stop() {
+        this.isRunning = false;
         this.startTime = 0;
     }
     public boolean check() {
-        if (isRunning()) {
+        if (!isFinished()) {
             return false;
         }
         if (autoRestart) {

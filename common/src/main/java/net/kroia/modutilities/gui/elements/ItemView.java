@@ -64,7 +64,7 @@ public class ItemView extends GuiElement {
         else
             drawItem(itemStack, itemPos);
         if(showTooltip && isMouseOver()) {
-            drawTooltipLater(itemStack, getMousePos());
+            drawTooltip(itemStack, getMousePos());
         }
     }
 
