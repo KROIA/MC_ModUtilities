@@ -172,7 +172,8 @@ public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
                 potion.save(tag);
             }
 
-            stack.setTag(tag);
+            if(!tag.isEmpty())
+                stack.setTag(tag);
             return stack;
         }
 
