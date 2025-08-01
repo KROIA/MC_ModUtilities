@@ -9,12 +9,13 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.function.Consumer;
 
 public class ItemSelectionView extends GuiElement {
     public interface Sorter
     {
-        public abstract void apply(ArrayList<ItemStack> items);
+        public abstract void apply(List<ItemStack> items);
     }
     public interface Filter
     {
@@ -24,7 +25,7 @@ public class ItemSelectionView extends GuiElement {
     public static final class NameSorter implements Sorter
     {
         @Override
-        public void apply(ArrayList<ItemStack> items) {
+        public void apply(List<ItemStack> items) {
             items.sort(Comparator.comparing(stack -> {
                 return stack.getHoverName().getString();
             }));
@@ -32,7 +33,7 @@ public class ItemSelectionView extends GuiElement {
     }
     public static class SorterByIntID implements ItemSelectionView.Sorter {
         @Override
-        public void apply(ArrayList<ItemStack> items) {
+        public void apply(List<ItemStack> items) {
 
             items.sort(Comparator.comparing(stack -> {
                 // Compare item id index
@@ -88,7 +89,7 @@ public class ItemSelectionView extends GuiElement {
         }
     }
 
-    private final ArrayList<ItemStack> allowedItems;
+    private final List<ItemStack> allowedItems;
     private final Consumer<ItemStack> onItemSelected;
 
     private final Label searchLabel;
@@ -99,7 +100,7 @@ public class ItemSelectionView extends GuiElement {
     public ItemSelectionView(Consumer<ItemStack> onItemSelected) {
         this(ItemUtilities.getAllItems(), onItemSelected);
     }
-    public ItemSelectionView(ArrayList<ItemStack> allowedItemsIDs, Consumer<ItemStack> onItemSelected) {
+    public ItemSelectionView(List<ItemStack> allowedItemsIDs, Consumer<ItemStack> onItemSelected) {
         this.onItemSelected = onItemSelected;
 
         this.allowedItems = new ArrayList<>();
@@ -123,7 +124,7 @@ public class ItemSelectionView extends GuiElement {
         sortItems();
     }
 
-    public void setItems(ArrayList<ItemStack> allowedItemsIDs) {
+    public void setItems(List<ItemStack> allowedItemsIDs) {
         allowedItems.clear();
         allowedItems.addAll(allowedItemsIDs);
         sortItems();
@@ -132,7 +133,7 @@ public class ItemSelectionView extends GuiElement {
         allowedItems.add(stack);
         sortItems();
     }
-    public void addItems(ArrayList<ItemStack> stacks) {
+    public void addItems(List<ItemStack> stacks) {
         allowedItems.addAll(stacks);
         sortItems();
     }
@@ -140,7 +141,7 @@ public class ItemSelectionView extends GuiElement {
         allowedItems.remove(stack);
         updateFilter();
     }
-    public void removeItems(ArrayList<ItemStack> stacks) {
+    public void removeItems(List<ItemStack> stacks) {
         allowedItems.removeAll(stacks);
         updateFilter();
     }

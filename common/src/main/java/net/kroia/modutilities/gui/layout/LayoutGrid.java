@@ -3,6 +3,7 @@ package net.kroia.modutilities.gui.layout;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class LayoutGrid extends Layout{
 
@@ -23,7 +24,7 @@ public class LayoutGrid extends Layout{
 
     @Override
     public void apply(GuiElement element) {
-        ArrayList<GuiElement> childs = element.getChilds();
+        List<GuiElement> childs = element.getChilds();
         if(childs.isEmpty())
             return;
 

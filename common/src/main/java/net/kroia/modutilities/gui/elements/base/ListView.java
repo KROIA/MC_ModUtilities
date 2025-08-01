@@ -4,6 +4,7 @@ import net.kroia.modutilities.gui.elements.Button;
 import net.kroia.modutilities.gui.layout.Layout;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public abstract class ListView extends GuiElement{
     protected class ScrollContainer extends GuiElement
@@ -138,7 +139,7 @@ public abstract class ListView extends GuiElement{
         setScrollBarBounds();
     }
     @Override
-    public ArrayList<GuiElement> getChilds()
+    public List<GuiElement> getChilds()
     {
         return scrollContainer.getChilds();
     }

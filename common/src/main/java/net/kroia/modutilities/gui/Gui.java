@@ -30,7 +30,7 @@ public class Gui {
 
     protected GuiElement focusedElement = null;
 
-    private ArrayList<GuiElement> elements = new ArrayList<>();
+    private List<GuiElement> elements = new ArrayList<>();
 
     public Gui(Screen parent)
     {

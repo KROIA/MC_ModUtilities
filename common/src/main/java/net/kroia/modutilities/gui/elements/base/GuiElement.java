@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui.elements.base;
 
+import net.kroia.modutilities.ItemUtilities;
 import net.kroia.modutilities.TimerMillis;
 import net.kroia.modutilities.gui.Graphics;
 import net.kroia.modutilities.gui.Gui;
@@ -13,10 +14,14 @@ import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvent;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 public abstract class GuiElement {
 
@@ -48,7 +53,7 @@ public abstract class GuiElement {
     private GuiElement rootParent = null;
     private final Rectangle bounds;
     private final Point globalPositon = new Point(0,0);
-    private final ArrayList<GuiElement> childs = new ArrayList<>();
+    private final List<GuiElement> childs = new ArrayList<>();
 
     private boolean isEnabled = true;
     private int gizmoColor = 0x55FF0000;
@@ -79,7 +84,7 @@ public abstract class GuiElement {
         public int backgroundPadding = tooltipBackgroundPadding;
         public Alignment alignment = tooltipMousePositionAlingment;
     }
-    private ArrayList<TooltipLaterData> drawTooltipLater = new ArrayList<>();
+    private final List<TooltipLaterData> drawTooltipLater = new ArrayList<>();
 
 
 
@@ -630,7 +635,7 @@ public abstract class GuiElement {
         childs.clear();
         layoutChangedInternal();
     }
-    public ArrayList<GuiElement> getChilds()
+    public List<GuiElement> getChilds()
     {
         return childs;
     }
@@ -1022,22 +1027,20 @@ public abstract class GuiElement {
 
     public void drawTooltip(ItemStack stack, int x, int y)
     {
-        TooltipLaterData data = new TooltipLaterData();
-        data.x = x;
-        data.y = y;
-        data.item = stack;
-        drawTooltipLater.add(data);
+        drawTooltip(ItemUtilities.getItemDisplayText(stack), x, y);
     }
     public void drawTooltip(ItemStack stack, Point pos)
     {
-        if(stack == null)
-            return;
-        String itemName = stack.getHoverName().getString();
-        drawTooltip(itemName, pos.x, pos.y);
+        drawTooltip(stack, pos.x, pos.y);
     }
     public void drawTooltipNative(ItemStack stack, Point pos)
     {
-        drawTooltip(stack, pos.x, pos.y);
+        TooltipLaterData data = new TooltipLaterData();
+        data.x = pos.x;
+        data.y = pos.y;
+        data.item = stack;
+        data.createBackground = true; // Default to true, can be changed later
+        drawTooltipLater.add(data);
     }
     public void drawTooltip(Component component, int x, int y)
     {

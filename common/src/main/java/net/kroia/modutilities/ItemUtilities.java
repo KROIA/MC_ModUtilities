@@ -5,16 +5,15 @@ import dev.architectury.utils.Env;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.searchtree.SearchRegistry;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.flag.FeatureFlags;
-import net.minecraft.world.item.CreativeModeTabs;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
+import net.minecraft.world.item.*;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
@@ -22,6 +21,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Collectors;
+
+import static net.kroia.modutilities.gui.Gui.getMinecraft;
 
 public class ItemUtilities {
 
@@ -88,6 +90,22 @@ public class ItemUtilities {
     public static String getItemIDStr(Item item)
     {
         return UtilitiesPlatform.getItemIDStr(item);
+    }
+    public static String getItemDisplayText(ItemStack itemStack)
+    {
+        Player player = getMinecraft().player;
+        if(player == null)
+        {
+            return itemStack.getHoverName().getString();
+        }
+        List<Component> tooltip = itemStack.getTooltipLines(getMinecraft().player, TooltipFlag.Default.NORMAL);
+
+        List<String> tooltipStrings = tooltip.stream()
+                .map(Component::getString)
+                .collect(Collectors.toList());
+
+        String fullTooltip = String.join("\n", tooltipStrings);
+        return fullTooltip.isEmpty() ? itemStack.getHoverName().getString() : fullTooltip;
     }
 
     public static ArrayList<String> getAllItemIDStrs()
