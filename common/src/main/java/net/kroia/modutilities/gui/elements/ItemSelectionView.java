@@ -168,10 +168,10 @@ public class ItemSelectionView extends GuiElement {
     protected void layoutChanged() {
         int width = getWidth();
         layoutGrid.columns = width/20;
-        searchLabel.setBounds(0, 0, width/2, 20);
-        searchField.setBounds(width/2, 0, width/2, 20);
-        itemsLabel.setBounds(0, 20, width, 20);
-        listView.setBounds(0, 40, width, getHeight()-40);
+        searchLabel.setBounds(0, 0, width/2, 15);
+        searchField.setBounds(searchLabel.getRight(), searchLabel.getTop(), width-searchLabel.getWidth(), searchLabel.getHeight());
+        itemsLabel.setBounds(0, searchLabel.getBottom(), width, searchLabel.getHeight());
+        listView.setBounds(0, itemsLabel.getBottom(), width, getHeight()-itemsLabel.getBottom());
     }
 
     public String getSearchText() {

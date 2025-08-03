@@ -148,7 +148,7 @@ public class CheckBox extends GuiElement {
 
 
 
-        label.setBounds(padding, padding, getWidth()-height-padding, height);
+        label.setBounds(padding, padding, getWidth()-height-padding*2-1, height);
 
     }
 

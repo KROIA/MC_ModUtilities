@@ -1,6 +1,7 @@
 package net.kroia.modutilities.gui;
 
 import net.kroia.modutilities.gui.elements.base.GuiElement;
+import net.kroia.modutilities.gui.geometry.Point;
 import net.minecraft.client.gui.GuiGraphics; // mc>=1.20.1
 //import com.mojang.blaze3d.vertex.PoseStack; // mc<=1.19.4
 import net.minecraft.client.gui.screens.Screen;
@@ -78,7 +79,7 @@ public abstract class GuiScreen extends Screen {
     @Override
     public void render(GuiGraphics pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) {
         gui.getGraphics().setGraphics(pGuiGraphics);
-        gui.setMousePos(pMouseX, pMouseY);
+        gui.storeMousePos(pMouseX, pMouseY);
         gui.setPartialTick(pPartialTick);
         this.renderBackground(pGuiGraphics);
         gui.render();
@@ -133,6 +134,21 @@ public abstract class GuiScreen extends Screen {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
         return gui.mouseScrolled(mouseX, mouseY, delta);
+    }
+
+    public int getMouseX() {
+        return gui.getMousePosX();
+    }
+    public int getMouseY() {
+        return gui.getMousePosY();
+    }
+    public Point getMousePos() {
+        return new Point(gui.getMousePosX(), gui.getMousePosY());
+    }
+
+    public void setMousePos(int x, int y)
+    {
+        gui.moveMouseToPos(x, y);
     }
 
     @Override

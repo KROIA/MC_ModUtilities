@@ -1,27 +1,22 @@
 package net.kroia.modutilities.gui.elements.base;
 
+import net.kroia.modutilities.gui.Graphics;
 import net.kroia.modutilities.gui.elements.Button;
+import net.kroia.modutilities.gui.geometry.Rectangle;
 import net.kroia.modutilities.gui.layout.Layout;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public abstract class ListView extends GuiElement{
-    protected class ScrollContainer extends GuiElement
+    protected static class ScrollContainer extends GuiElement
     {
         private final ListView parentListView;
         public ScrollContainer(ListView parentListView) {
             super();
             this.parentListView = parentListView;
-        }
-        public ScrollContainer(int x, int y, int width, int height, ListView parentListView) {
-            super(x, y, width, height);
-            this.parentListView = parentListView;
-        }
-
-        @Override
-        protected void renderBackground() {
-
+            this.setEnableBackground(false);
+            this.setEnableOutline(false);
         }
 
         @Override
@@ -30,18 +25,39 @@ public abstract class ListView extends GuiElement{
         }
 
         @Override
+        public void renderBackgroundInternal() {
+            if(!isVisible())
+                return;
+            Rectangle bounds = parentListView.getScissorRect();
+            enableScissor(bounds);
+            super.renderBackgroundInternal();
+            disableScissor();
+        }
+
+        @Override
+        public void renderInternal() {
+            if(!isVisible())
+                return;
+            Rectangle bounds = parentListView.getScissorRect();
+            enableScissor(bounds);
+            super.renderInternal();
+            disableScissor();
+        }
+
+        @Override
+        public void renderGizmosInternal() {
+            if(!isVisible())
+                return;
+            Rectangle bounds = parentListView.getScissorRect();
+            enableScissor(bounds);
+            super.renderGizmosInternal();
+            disableScissor();
+        }
+
+        @Override
         protected void layoutChanged() {
             parentListView.childsChanged();
         }
-
-        /*@Override
-        public void layoutChangedInternal() {
-            super.layoutChangedInternal();
-            super.getBounds().height = getHeight();
-        }*/
-
-
-
     }
 
     protected int scrollOffset = 0;
@@ -74,6 +90,8 @@ public abstract class ListView extends GuiElement{
         super.addChild(scrollbarButton);
         super.addChild(scrollContainer);
     }
+
+    protected abstract Rectangle getScissorRect();
 
     public void setScrolSpeed(int scrolSpeed)
     {
@@ -177,33 +195,40 @@ public abstract class ListView extends GuiElement{
         return scrollContainer.getLayout();
     }
 
-    @Override
+   /* @Override
     public void renderBackgroundInternal()
     {
         if(!isVisible())
             return;
-        enableScissor();
+
+
+
+
+
+
+        //Rectangle bounds = getBounds();
+        //enableScissor(1, 1, bounds.width-2, bounds.height-2);
         super.renderBackgroundInternal();
-        disableScissor();
+        //disableScissor();
     }
     @Override
     public void renderInternal()
     {
         if(!isVisible())
             return;
-        enableScissor();
         super.renderInternal();
-        disableScissor();
+        //disableScissor();
     }
     @Override
     public void renderGizmosInternal()
     {
         if(!isVisible())
             return;
-        enableScissor();
+       // Rectangle bounds = getBounds();
+       // enableScissor(1, 1, bounds.width-2, bounds.height-2);
         super.renderGizmosInternal();
-        disableScissor();
-    }
+        //disableScissor();
+    }*/
 
 
 

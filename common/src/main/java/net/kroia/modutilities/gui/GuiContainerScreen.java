@@ -2,6 +2,7 @@ package net.kroia.modutilities.gui;
 
 
 import net.kroia.modutilities.gui.elements.base.GuiElement;
+import net.kroia.modutilities.gui.geometry.Point;
 import net.minecraft.client.gui.GuiGraphics; // mc>=1.20.1
 //import com.mojang.blaze3d.vertex.PoseStack; // mc<=1.19.4
 
@@ -75,7 +76,7 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     protected void renderBg(GuiGraphics guiGraphics, float pPartialTick, int pMouseX, int pMouseY) {
         gui.getGraphics().setGraphics(guiGraphics);
         renderBackground(guiGraphics);
-        gui.setMousePos(pMouseX, pMouseY);
+        gui.storeMousePos(pMouseX, pMouseY);
         gui.setPartialTick(pPartialTick);
         gui.renderBackground();
     }
@@ -84,7 +85,7 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     public void render(GuiGraphics pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) {
         gui.getGraphics().setGraphics(pGuiGraphics);
         renderBg(pGuiGraphics, pPartialTick, pMouseX, pMouseY);
-        gui.setMousePos(pMouseX, pMouseY);
+        gui.storeMousePos(pMouseX, pMouseY);
         gui.setPartialTick(pPartialTick);
         gui.render();
         gui.renderTooltip();
@@ -136,6 +137,21 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
         return gui.mouseScrolled(mouseX, mouseY, delta);
+    }
+
+    public int getMouseX() {
+        return gui.getMousePosX();
+    }
+    public int getMouseY() {
+        return gui.getMousePosY();
+    }
+    public Point getMousePos() {
+        return new Point(gui.getMousePosX(), gui.getMousePosY());
+    }
+
+    public void setMousePos(int x, int y)
+    {
+        gui.moveMouseToPos(x, y);
     }
 
     @Override

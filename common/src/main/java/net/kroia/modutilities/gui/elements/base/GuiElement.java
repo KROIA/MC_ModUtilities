@@ -367,6 +367,10 @@ public abstract class GuiElement {
     {
         root.enableScissor(area);
     }
+    protected void enableScissor(int x, int y, int width, int height)
+    {
+        enableGlobalScissor(new Rectangle(globalPositon.x+x, globalPositon.y+y, width, height));
+    }
     protected void enableScissor(Rectangle area)
     {
         enableGlobalScissor(new Rectangle(globalPositon.x+area.x, globalPositon.y+area.y, area.width, area.height));
@@ -594,6 +598,17 @@ public abstract class GuiElement {
     {
         return new Point(getMouseXGlobal(), getMouseYGlobal());
     }
+
+    public void setMousePos(int x, int y)
+    {
+        Point globalPos = getGlobalPositon();
+        root.moveMouseToPos(x + globalPos.x, globalPos.y + y);
+    }
+    public void setMousePosGlobal(int x, int y)
+    {
+        root.moveMouseToPos(x, y);
+    }
+
     public float getPartialTick() {
         return root.getPartialTick();
     }
@@ -869,6 +884,63 @@ public abstract class GuiElement {
     public void drawText(Component text, Point pos, boolean dropShadow)
     {
         drawText(text, pos.x, pos.y, 0xFFFFFF, dropShadow);
+    }
+
+    public void drawText(String text, Point pos, Alignment posAlignment)
+    {
+        Point size = getTextBounds(text);
+        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+                pos.x, pos.y,0,0);
+        drawText(text, rect.x, rect.y);
+    }
+    public void drawText(String text, int x, int y, Alignment posAlignment)
+    {
+        Point size = getTextBounds(text);
+        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+                x, y,0,0);
+        drawText(text, rect.x, rect.y);
+    }
+    public void drawText(String text, Point pos, int color, Alignment posAlignment)
+    {
+        Point size = getTextBounds(text);
+        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+                pos.x, pos.y,0,0);
+        drawText(text, rect.x, rect.y, color);
+    }
+    public void drawText(String text, int x, int y, int color, Alignment posAlignment)
+    {
+        Point size = getTextBounds(text);
+        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+                x, y,0,0);
+        drawText(text, rect.x, rect.y, color);
+    }
+    public void drawText(Component text, Point pos, boolean dropShadow, Alignment posAlignment)
+    {
+        Point size = getTextBounds(text.getString());
+        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+                pos.x, pos.y,0,0);
+        drawText(text, rect.x, rect.y, 0xFFFFFF, dropShadow);
+    }
+    public void drawText(Component text, int x, int y, boolean dropShadow, Alignment posAlignment)
+    {
+        Point size = getTextBounds(text.getString());
+        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+                x, y,0,0);
+        drawText(text, rect.x, rect.y, 0xFFFFFF, dropShadow);
+    }
+    public void drawText(Component text, Point pos, int color, boolean dropShadow, Alignment posAlignment)
+    {
+        Point size = getTextBounds(text.getString());
+        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+                pos.x, pos.y,0,0);
+        drawText(text, rect.x, rect.y, color, dropShadow);
+    }
+    public void drawText(Component text, int x, int y, int color, boolean dropShadow, Alignment posAlignment)
+    {
+        Point size = getTextBounds(text.getString());
+        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+                x, y,0,0);
+        drawText(text, rect.x, rect.y, color, dropShadow);
     }
 
 

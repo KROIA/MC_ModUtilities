@@ -16,6 +16,7 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.item.ItemStack;
 import org.joml.Matrix4f;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,6 +37,7 @@ public class Gui {
     {
         this.parent = parent;
         this.graphics = new Graphics(parent);
+
     }
     public void init()
     {
@@ -111,10 +113,18 @@ public class Gui {
         return this.focusedElement;
     }
 
-    public void setMousePos(int x, int y)
+    public void storeMousePos(int x, int y)
     {
         this.mousePosX = x;
         this.mousePosY = y;
+    }
+    public void moveMouseToPos(int x, int y)
+    {
+        double guiScaleFactor = getGuiScale();
+        double newX = x * guiScaleFactor;
+        double newY = y * guiScaleFactor;
+        long windowHandle = getWindowHandle();
+        GLFW.glfwSetCursorPos(windowHandle, newX, newY);
     }
     public void setPartialTick(float partialTick)
     {
@@ -412,6 +422,10 @@ public class Gui {
     public static double getGuiScale()
     {
         return Minecraft.getInstance().getWindow().getGuiScale();
+    }
+    public long getWindowHandle()
+    {
+        return Minecraft.getInstance().getWindow().getWindow();
     }
     public void enableScissor(Rectangle rect)
     {
