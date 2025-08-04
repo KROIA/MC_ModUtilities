@@ -43,17 +43,17 @@ public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
         public JsonElement toJson()
         {
             JsonObject data = new JsonObject();
-            data.addProperty("enchantmentID", enchantmentID);
-            data.addProperty("level", level);
+            data.addProperty("id", enchantmentID);
+            data.addProperty("lvl", level);
             return data;
         }
 
         public boolean fromJson(JsonElement json) {
             if (json.isJsonObject()) {
                 JsonObject data = json.getAsJsonObject();
-                if (data.has("enchantmentID") && data.has("level")) {
-                    enchantmentID = data.get("enchantmentID").getAsString();
-                    level = data.get("level").getAsInt();
+                if (data.has("id") && data.has("lvl")) {
+                    enchantmentID = data.get("id").getAsString();
+                    level = data.get("lvl").getAsInt();
                     return true;
                 }
             }
@@ -84,21 +84,20 @@ public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
             return true;
         }
 
-        public JsonElement toJson()
+        public void toJson(JsonObject data)
         {
-            JsonObject data = new JsonObject();
-            data.addProperty("potionID", potionID);
-            //data.addProperty("amplifier", amplifier);
-            return data;
+            data.addProperty("Potion", potionID);
         }
-        public boolean fromJson(JsonElement json) {
-            if (json.isJsonObject()) {
-                JsonObject data = json.getAsJsonObject();
-                if (data.has("potionID")) {
-                    potionID = data.get("potionID").getAsString();
-                    //amplifier = data.get("amplifier").getAsInt();
-                    return true;
-                }
+        public boolean fromJson(JsonElement json)
+        {
+            if (!json.isJsonObject()) {
+                return false;
+            }
+            JsonObject data = json.getAsJsonObject();
+            if (data.has("Potion")) {
+                potionID = data.get("Potion").getAsString();
+                //amplifier = data.get("amplifier").getAsInt();
+                return true;
             }
             return false;
         }
@@ -187,11 +186,11 @@ public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
                     for (EnchantmentData enchantment : enchantments) {
                         enchantmentsTag.add(enchantment.toJson());
                     }
-                    data.add("enchantments", enchantmentsTag);
+                    data.add("StoredEnchantments", enchantmentsTag);
                 }
             }
             if(potion != null)
-                data.add("potion", potion.toJson());
+                potion.toJson(data);
             return data;
         }
 
@@ -201,8 +200,8 @@ public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
                 if (data.has("itemID")) {
                     stack = ItemUtilities.createItemStackFromId(data.get("itemID").getAsString());
                 }
-                if (data.has("enchantments")) {
-                    JsonArray enchantmentsTag = data.getAsJsonArray("enchantments");
+                if (data.has("StoredEnchantments")) {
+                    JsonArray enchantmentsTag = data.getAsJsonArray("StoredEnchantments");
                     enchantments = new EnchantmentData[enchantmentsTag.size()];
                     for (int i = 0; i < enchantmentsTag.size(); i++) {
                         EnchantmentData enchantment = new EnchantmentData();
@@ -212,9 +211,9 @@ public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
                 } else {
                     enchantments = new EnchantmentData[0];
                 }
-                if (data.has("potion")) {
+                if (data.has("Potion")) {
                     potion = new PotionData();
-                    potion.fromJson(data.get("potion"));
+                    potion.fromJson(data.get("Potion"));
                 } else {
                     potion = null;
                 }
