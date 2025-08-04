@@ -17,6 +17,9 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
 
     protected final Gui gui;
     protected boolean enableGizmos = false;
+    protected boolean enableBackground = true;
+    protected boolean enableForeground = true;
+    protected boolean enableTooltip = true; // Enable tooltip rendering by default
     protected boolean isInitialized = false;
     public GuiContainerScreen(T pMenu, Inventory pPlayerInventory, Component pTitle) {
         super(pMenu, pPlayerInventory, pTitle);
@@ -29,10 +32,34 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     public boolean isEnableGizmos() {
         return enableGizmos;
     }
+    public void setEnableBackground(boolean enableBackground) {
+        this.enableBackground = enableBackground;
+    }
+    public boolean isEnableBackground() {
+        return enableBackground;
+    }
+    public void setEnableForeground(boolean enableForeground) {
+        this.enableForeground = enableForeground;
+    }
+    public boolean isEnableForeground() {
+        return enableForeground;
+    }
+    public void setEnableTooltip(boolean enableTooltip) {
+        this.enableTooltip = enableTooltip;
+    }
+    public boolean isEnableTooltip() {
+        return enableTooltip;
+    }
     public Gui getGui() {
         return gui;
     }
 
+    public float getGuiScale() {
+        return gui.getGuiScale();
+    }
+    public void setGuiScale(float guiScale) {
+        gui.setGuiScale(guiScale);
+    }
     @Override
     public final void init() {
         super.init();
@@ -59,10 +86,10 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     }
 
     protected int getWidth() {
-        return width;
+        return (int)((float)width*gui.getInvGuiScale());
     }
     protected int getHeight() {
-        return height;
+        return (int)((float)height*gui.getInvGuiScale());
     }
 
     @Override
@@ -76,7 +103,7 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     protected void renderBg(GuiGraphics guiGraphics, float pPartialTick, int pMouseX, int pMouseY) {
         gui.getGraphics().setGraphics(guiGraphics);
         renderBackground(guiGraphics);
-        gui.storeMousePos(pMouseX, pMouseY);
+        //gui.storeMousePos((int)((float)pMouseX*invGuiScale), (int)((float)pMouseY*invGuiScale));
         gui.setPartialTick(pPartialTick);
         gui.renderBackground();
     }
@@ -84,11 +111,14 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     @Override
     public void render(GuiGraphics pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) {
         gui.getGraphics().setGraphics(pGuiGraphics);
-        renderBg(pGuiGraphics, pPartialTick, pMouseX, pMouseY);
         gui.storeMousePos(pMouseX, pMouseY);
+        if(enableBackground)
+            this.renderBg(pGuiGraphics, pPartialTick, pMouseX, pMouseY);
         gui.setPartialTick(pPartialTick);
-        gui.render();
-        gui.renderTooltip();
+        if(enableForeground)
+            gui.render();
+        if(enableTooltip)
+            gui.renderTooltip();
         if(enableGizmos)
             gui.renderGizmos();
     }
@@ -156,10 +186,28 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        // Check for F3 Key
-        if(keyCode == GLFW.GLFW_KEY_F3) {
-            enableGizmos = !enableGizmos;
-            return true;
+        switch(keyCode)
+        {
+            case GLFW.GLFW_KEY_F3:
+            {
+                enableGizmos = !enableGizmos;
+                return true;
+            }
+            case GLFW.GLFW_KEY_F4:
+            {
+                enableBackground = !enableBackground;
+                return true;
+            }
+            case GLFW.GLFW_KEY_F5:
+            {
+                enableForeground = !enableForeground;
+                return true;
+            }
+            case GLFW.GLFW_KEY_F6:
+            {
+                enableTooltip = !enableTooltip;
+                return true;
+            }
         }
 
         boolean ret = gui.keyPressed(keyCode, scanCode, modifiers);

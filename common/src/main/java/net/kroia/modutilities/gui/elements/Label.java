@@ -10,7 +10,6 @@ public class Label extends GuiElement {
     private Alignment alignment = Alignment.LEFT;
     private String text;
     private int padding = GuiElement.DEFAULT_PADDING;
-    private int textColor = GuiElement.DEFAULT_TEXT_COLOR;
     private Point textPos = new Point(0,0);
     public Label()
     {
@@ -49,15 +48,6 @@ public class Label extends GuiElement {
     {
         return padding;
     }
-    public void setTextColor(int textColor)
-    {
-        this.textColor = textColor;
-    }
-    public int getTextColor()
-    {
-        return textColor;
-    }
-
 
     @Override
     public void renderBackground() {
@@ -66,13 +56,13 @@ public class Label extends GuiElement {
 
     @Override
     public void render() {
-        drawText(text, textPos, textColor);
+        drawText(text, textPos);
     }
 
     @Override
     public void layoutChanged() {
-        int textHeight = getFont().lineHeight;
-        int textWidth = getFont().width(text);
+        int textHeight = getTextHeight();
+        int textWidth = getTextWidth(text);
         int x = padding;
         int y = padding;
         int width = getWidth() - padding*2;

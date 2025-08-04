@@ -14,14 +14,11 @@ import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvent;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.TooltipFlag;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 public abstract class GuiElement {
 
@@ -38,11 +35,23 @@ public abstract class GuiElement {
         BOTTOM_RIGHT
     }
 
+    public static final class HoverTooltipData
+    {
+        public Supplier<String> textSupplier = null;
+        public boolean enableBackground = true;
+        public int textColor = DEFAULT_TEXT_COLOR;
+        public int backgroundColor = DEFAULT_TOOLTIP_BACKGROUND_COLOR;
+        public int backgroundPadding = DEFAULT_TOOLTIP_BACKGROUND_PADDING;
+        public float fontScale = 1.0f;
+        public Alignment mousePositionAlignment = Alignment.TOP_LEFT;
+    }
+
+
 
     public static int DEFAULT_PADDING = 1;
     public static int DEFAULT_TOOLTIP_BACKGROUND_PADDING = 2;
-    public static int DEFAULT_TOOLTIP_BACKGROUND_COLOR = 0xBB555555;
-    public static int DEFAULT_TEXT_COLOR = 0xFFFFFF;
+    public static int DEFAULT_TOOLTIP_BACKGROUND_COLOR = 0xDD555555;
+    public static int DEFAULT_TEXT_COLOR = 0xFFFFFFFF;
     public static int DEFAULT_BACKGROUND_COLOR = 0xAA888888;
     public static int DEFAULT_FOCUSED_BACKGROUND_COLOR = 0xAA666666;
     public static int DEFAULT_HOVER_BACKGROUND_COLOR = 0xFFAAAAAA;
@@ -65,24 +74,32 @@ public abstract class GuiElement {
 
     protected Layout layout = null;
     private boolean isRelayoutingThis = false;
-    private Supplier<String> hoverTooltipSupplier = null;
+
     private final TimerMillis tooltipTimer = new TimerMillis(false);
+    private boolean tooltipCreateBackground = true;
     private int tooltipBackgroundColor = DEFAULT_TOOLTIP_BACKGROUND_COLOR;
     private int tooltipBackgroundPadding = DEFAULT_TOOLTIP_BACKGROUND_PADDING;
-    private Alignment tooltipMousePositionAlingment = Alignment.TOP_LEFT;
+    private Alignment tooltipPositionAlingment = Alignment.TOP_LEFT;
     private int tooltipDelay = 700; // milliseconds
     private boolean tooltipTimerStarted = false;
+    private int textColor = DEFAULT_TEXT_COLOR;
+    private int tooltipTextColor = DEFAULT_TEXT_COLOR;
+    private float textFontScale = 1.0f;
+    private float tooltipFontScale = 1.0f;
 
+    HoverTooltipData hoverTooltipData = new HoverTooltipData();
     private class TooltipLaterData
     {
         public int x,y;
         public ItemStack item;
         public Component component;
         public String customString;
-        public boolean createBackground = true;
+        public boolean createBackground = tooltipCreateBackground;
         public int backgroundColor = tooltipBackgroundColor;
+        public int textColor = tooltipTextColor;
         public int backgroundPadding = tooltipBackgroundPadding;
-        public Alignment alignment = tooltipMousePositionAlingment;
+        public Alignment alignment = tooltipPositionAlingment;
+        public float fontScale = tooltipFontScale;
     }
     private final List<TooltipLaterData> drawTooltipLater = new ArrayList<>();
 
@@ -213,15 +230,79 @@ public abstract class GuiElement {
         return enableOutline;
     }
 
+
+
+    // Hover Tooltip
     public void setHoverTooltipSupplier(Supplier<String> hoverTooltipSupplier)
     {
-        this.hoverTooltipSupplier = hoverTooltipSupplier;
+        hoverTooltipData.textSupplier = hoverTooltipSupplier;
     }
+    public Supplier<String> getHoverTooltipSupplier()
+    {
+        return hoverTooltipData.textSupplier;
+    }
+    public void setHoverTooltipBackgroundColor(int tooltipBackgroundColor) {
+        hoverTooltipData.backgroundColor = tooltipBackgroundColor;
+    }
+    public int getHoverTooltipBackgroundColor() {
+        return hoverTooltipData.backgroundColor;
+    }
+    public void setHoverTooltipEnableBackground(boolean enableTooltipBackground) {
+        hoverTooltipData.enableBackground = enableTooltipBackground;
+    }
+    public boolean isHoverTooltipBackgroundEnabled() {
+        return hoverTooltipData.enableBackground;
+    }
+    public void setHoverTooltipTextColor(int tooltipTextColor) {
+        hoverTooltipData.textColor = tooltipTextColor;
+    }
+    public int getHoverTooltipTextColor() {
+        return hoverTooltipData.textColor;
+    }
+    public void setHoverTooltipBackgroundPadding(int tooltipBackgroundPadding) {
+        hoverTooltipData.backgroundPadding = tooltipBackgroundPadding;
+    }
+    public int getHoverTooltipBackgroundPadding() {
+        return hoverTooltipData.backgroundPadding;
+    }
+    public void setHoverTooltipFontScale(float tooltipFontScale) {
+        hoverTooltipData.fontScale = tooltipFontScale;
+    }
+    public float getHoverTooltipFontScale() {
+        return hoverTooltipData.fontScale;
+    }
+    public void setHoverTooltipMousePositionAlignment(Alignment alignment) {
+        hoverTooltipData.mousePositionAlignment = alignment;
+    }
+    public Alignment getHoverTooltipMousePositionAlignment() {
+        return hoverTooltipData.mousePositionAlignment;
+    }
+    public void setHoverTooltipData(HoverTooltipData data)
+    {
+        if(data == null)
+            return;
+        hoverTooltipData = data;
+    }
+    public HoverTooltipData getHoverTooltipData()
+    {
+        return hoverTooltipData;
+    }
+
+
+
+
+
     public void setTooltipBackgroundColor(int tooltipBackgroundColor) {
         this.tooltipBackgroundColor = tooltipBackgroundColor;
     }
     public int getTooltipBackgroundColor() {
         return tooltipBackgroundColor;
+    }
+    public void setTooltipEnableBackground(boolean enableTooltipBackground) {
+        this.tooltipCreateBackground = enableTooltipBackground;
+    }
+    public boolean isTooltipBackgroundEnabled() {
+        return tooltipCreateBackground;
     }
     public void setTooltipBackgroundPadding(int toolripBackgroundPadding) {
         this.tooltipBackgroundPadding = toolripBackgroundPadding;
@@ -229,17 +310,45 @@ public abstract class GuiElement {
     public int getTooltipBackgroundPadding() {
         return tooltipBackgroundPadding;
     }
-    public void setTooltipMousePositionAlignment(Alignment alignment) {
-        this.tooltipMousePositionAlingment = alignment;
+    public void setTooltipPositionAlignment(Alignment alignment) {
+        this.tooltipPositionAlingment = alignment;
     }
-    public Alignment getTooltipMousePositionAlignment() {
-        return tooltipMousePositionAlingment;
+    public Alignment getTooltipPositionAlignment() {
+        return tooltipPositionAlingment;
     }
     public void setHoverTooltipDelay(int tooltipDelay) {
         this.tooltipDelay = tooltipDelay;
     }
     public int getHoverTooltipDelay() {
         return tooltipDelay;
+    }
+
+    public void setTooltipFontScale(float tooltipFontScale) {
+        this.tooltipFontScale = tooltipFontScale;
+    }
+    public float getTooltipFontScale() {
+        return tooltipFontScale;
+    }
+
+    public void setTooltipTextColor(int tooltipTextColor) {
+        this.tooltipTextColor = tooltipTextColor;
+    }
+    public int getTooltipTextColor() {
+        return tooltipTextColor;
+    }
+
+
+    public void setTextColor(int textColor) {
+        this.textColor = textColor;
+    }
+    public int getTextColor() {
+        return textColor;
+    }
+    public void setTextFontScale(float textFontScale) {
+        this.textFontScale = textFontScale;
+    }
+    public float getTextFontScale() {
+        return textFontScale;
     }
 
     protected void renderBackground()
@@ -285,7 +394,7 @@ public abstract class GuiElement {
         graphics.pushPose();
         graphics.translate((float)getX(), (float)getY(), 0.0F);
         render();
-        if(hoverTooltipSupplier != null && isMouseOver() && isVisible())
+        if(hoverTooltipData.textSupplier != null && isMouseOver() && isVisible())
         {
             if(!tooltipTimerStarted) {
                 tooltipTimer.start(tooltipDelay);
@@ -293,10 +402,21 @@ public abstract class GuiElement {
             }
             else if(tooltipTimer.isFinished())
             {
-                String tooltip = hoverTooltipSupplier.get();
+                String tooltip = hoverTooltipData.textSupplier.get();
                 if(tooltip != null && !tooltip.isEmpty())
                 {
-                    drawTooltip(tooltip, getMousePos());
+                    Point pos = getMousePos();
+                    TooltipLaterData data = new TooltipLaterData();
+                    data.x = pos.x;
+                    data.y = pos.y;
+                    data.customString = tooltip;
+                    data.createBackground = hoverTooltipData.enableBackground;
+                    data.backgroundColor = hoverTooltipData.backgroundColor;
+                    data.backgroundPadding = hoverTooltipData.backgroundPadding;
+                    data.alignment = hoverTooltipData.mousePositionAlignment;
+                    data.textColor = hoverTooltipData.textColor;
+                    data.fontScale = hoverTooltipData.fontScale;
+                    drawTooltip(data);
                 }
             }
         }
@@ -319,16 +439,14 @@ public abstract class GuiElement {
         graphics.translate((float)getX(), (float)getY(), 0.0F);
         for(TooltipLaterData data : drawTooltipLater)
         {
-
-
             if(data.item != null)
-                drawTooltipInternal(data.item, new Point(data.x, data.y));
+                drawTooltipInternal(data.item, data.x, data.y);
             else if(data.component != null)
-                drawText(data.component, new Point(data.x, data.y));
+                drawText(data.component, data.x, data.y, data.textColor, data.fontScale);
             else if(data.customString != null) {
 
 
-                Point size = getTextBounds(data.customString);
+                Point size = getTextBounds(data.customString, data.fontScale);
 
                 Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), data.alignment,
                         data.x, data.y,0,0);
@@ -339,7 +457,7 @@ public abstract class GuiElement {
                             size.x + data.backgroundPadding * 2,
                             size.y + data.backgroundPadding * 2, data.backgroundColor);
                 }
-                drawText(data.customString, new Point(rect.x, rect.y));
+                drawText(data.customString, rect.x, rect.y, data.textColor, data.fontScale);
             }
         }
         drawTooltipLater.clear();
@@ -777,11 +895,11 @@ public abstract class GuiElement {
 
     public int getTextWidth(String text)
     {
-        return getFont().width(text);
+        return (int)((float)getFont().width(text) * textFontScale);
     }
     public int getTextHeight()
     {
-        return getFont().lineHeight;
+        return (int)((float)getFont().lineHeight * textFontScale);
     }
 
     public void applyAlignment(Alignment alignment, int x, int y, int width, int height) {
@@ -835,113 +953,222 @@ public abstract class GuiElement {
     }
 
 
+
     public void drawText(String text, int x, int y, int color)
     {
-        root.drawText(text, x,y, color);
+        root.drawText(text, x,y, color, textFontScale);
     }
     public void drawText(String text, int x, int y)
     {
-        drawText(text, x, y, 0xFFFFFF);
+        drawText(text, x, y, textColor, textFontScale);
     }
     public void drawText(String text, Point pos, int color)
     {
-        drawText(text, pos.x, pos.y, color);
+        drawText(text, pos.x, pos.y, color, textFontScale);
     }
     public void drawText(String text, Point pos)
     {
-        drawText(text, pos.x, pos.y, 0xFFFFFF);
+        drawText(text, pos.x, pos.y, textColor, textFontScale);
     }
-
     public void drawText(Component text, int x, int y, int color)
     {
-        root.drawText(text, x, y, color);
+        root.drawText(text, x, y, color, textFontScale);
     }
     public void drawText(Component text, int x, int y)
     {
-        drawText(text, x, y, 0xFFFFFF);
+        drawText(text, x, y, textColor, textFontScale);
     }
     public void drawText(Component text, Point pos, int color)
     {
-        drawText(text, pos.x, pos.y, color);
+        drawText(text, pos.x, pos.y, color, textFontScale);
     }
     public void drawText(Component text, Point pos)
     {
-        drawText(text, pos.x, pos.y, 0xFFFFFF);
+        drawText(text, pos.x, pos.y, textColor, textFontScale);
     }
-
     public void drawText(Component text, int x, int y, int color, boolean dropShadow)
     {
-        root.drawText(text, x, y, color, dropShadow);
+        root.drawText(text, x, y, color, dropShadow, textFontScale);
     }
     public void drawText(Component text, int x, int y, boolean dropShadow)
     {
-        drawText(text, x, y, 0xFFFFFF, dropShadow);
+        drawText(text, x, y, textColor, dropShadow, textFontScale);
     }
     public void drawText(Component text, Point pos, int color, boolean dropShadow)
     {
-        drawText(text, pos.x, pos.y, color, dropShadow);
+        drawText(text, pos.x, pos.y, color, dropShadow, textFontScale);
     }
     public void drawText(Component text, Point pos, boolean dropShadow)
     {
-        drawText(text, pos.x, pos.y, 0xFFFFFF, dropShadow);
+        drawText(text, pos.x, pos.y, textColor, dropShadow, textFontScale);
     }
-
     public void drawText(String text, Point pos, Alignment posAlignment)
     {
         Point size = getTextBounds(text);
         Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
                 pos.x, pos.y,0,0);
-        drawText(text, rect.x, rect.y);
+        drawText(text, rect.x, rect.y, textColor, textFontScale);
     }
     public void drawText(String text, int x, int y, Alignment posAlignment)
     {
         Point size = getTextBounds(text);
         Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
                 x, y,0,0);
-        drawText(text, rect.x, rect.y);
+        drawText(text, rect.x, rect.y, textColor, textFontScale);
     }
     public void drawText(String text, Point pos, int color, Alignment posAlignment)
     {
         Point size = getTextBounds(text);
         Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
                 pos.x, pos.y,0,0);
-        drawText(text, rect.x, rect.y, color);
+        drawText(text, rect.x, rect.y, color, textFontScale);
     }
     public void drawText(String text, int x, int y, int color, Alignment posAlignment)
     {
         Point size = getTextBounds(text);
         Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
                 x, y,0,0);
-        drawText(text, rect.x, rect.y, color);
+        drawText(text, rect.x, rect.y, color, textFontScale);
     }
     public void drawText(Component text, Point pos, boolean dropShadow, Alignment posAlignment)
     {
         Point size = getTextBounds(text.getString());
         Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
                 pos.x, pos.y,0,0);
-        drawText(text, rect.x, rect.y, 0xFFFFFF, dropShadow);
+        drawText(text, rect.x, rect.y, textColor, dropShadow, textFontScale);
     }
     public void drawText(Component text, int x, int y, boolean dropShadow, Alignment posAlignment)
     {
         Point size = getTextBounds(text.getString());
         Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
                 x, y,0,0);
-        drawText(text, rect.x, rect.y, 0xFFFFFF, dropShadow);
+        drawText(text, rect.x, rect.y, textColor, dropShadow, textFontScale);
     }
     public void drawText(Component text, Point pos, int color, boolean dropShadow, Alignment posAlignment)
     {
         Point size = getTextBounds(text.getString());
         Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
                 pos.x, pos.y,0,0);
-        drawText(text, rect.x, rect.y, color, dropShadow);
+        drawText(text, rect.x, rect.y, color, dropShadow, textFontScale);
     }
     public void drawText(Component text, int x, int y, int color, boolean dropShadow, Alignment posAlignment)
     {
         Point size = getTextBounds(text.getString());
         Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
                 x, y,0,0);
-        drawText(text, rect.x, rect.y, color, dropShadow);
+        drawText(text, rect.x, rect.y, color, dropShadow, textFontScale);
     }
+
+
+    public void drawText(String text, int x, int y, int color, float fontScale)
+    {
+        root.drawText(text, x,y, color, fontScale);
+    }
+    public void drawText(String text, int x, int y, float fontScale)
+    {
+        drawText(text, x, y, textColor, fontScale);
+    }
+    public void drawText(String text, Point pos, int color, float fontScale)
+    {
+        drawText(text, pos.x, pos.y, color, fontScale);
+    }
+    public void drawText(String text, Point pos, float fontScale)
+    {
+        drawText(text, pos.x, pos.y, textColor, fontScale);
+    }
+
+    public void drawText(Component text, int x, int y, int color, float fontScale)
+    {
+        root.drawText(text, x, y, color, fontScale);
+    }
+    public void drawText(Component text, int x, int y, float fontScale)
+    {
+        drawText(text, x, y, textColor, fontScale);
+    }
+    public void drawText(Component text, Point pos, int color, float fontScale)
+    {
+        drawText(text, pos.x, pos.y, color, fontScale);
+    }
+    public void drawText(Component text, Point pos, float fontScale)
+    {
+        drawText(text, pos.x, pos.y, textColor, fontScale);
+    }
+    public void drawText(Component text, int x, int y, int color, boolean dropShadow, float fontScale)
+    {
+        root.drawText(text, x, y, color, dropShadow, fontScale);
+    }
+    public void drawText(Component text, int x, int y, boolean dropShadow, float fontScale)
+    {
+        drawText(text, x, y, textColor, dropShadow, fontScale);
+    }
+    public void drawText(Component text, Point pos, int color, boolean dropShadow, float fontScale)
+    {
+        drawText(text, pos.x, pos.y, color, dropShadow, fontScale);
+    }
+    public void drawText(Component text, Point pos, boolean dropShadow, float fontScale)
+    {
+        drawText(text, pos.x, pos.y, textColor, dropShadow, fontScale);
+    }
+    public void drawText(String text, Point pos, Alignment posAlignment, float fontScale)
+    {
+        Point size = getTextBounds(text, fontScale);
+        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+                pos.x, pos.y,0,0);
+        drawText(text, rect.x, rect.y, fontScale);
+    }
+    public void drawText(String text, int x, int y, Alignment posAlignment, float fontScale)
+    {
+        Point size = getTextBounds(text, fontScale);
+        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+                x, y,0,0);
+        drawText(text, rect.x, rect.y, fontScale);
+    }
+    public void drawText(String text, Point pos, int color, Alignment posAlignment, float fontScale)
+    {
+        Point size = getTextBounds(text, fontScale);
+        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+                pos.x, pos.y,0,0);
+        drawText(text, rect.x, rect.y, color, fontScale);
+    }
+    public void drawText(String text, int x, int y, int color, Alignment posAlignment, float fontScale)
+    {
+        Point size = getTextBounds(text, fontScale);
+        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+                x, y,0,0);
+        drawText(text, rect.x, rect.y, color, fontScale);
+    }
+    public void drawText(Component text, Point pos, boolean dropShadow, Alignment posAlignment, float fontScale)
+    {
+        Point size = getTextBounds(text.getString(), fontScale);
+        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+                pos.x, pos.y,0,0);
+        drawText(text, rect.x, rect.y, textColor, dropShadow, fontScale);
+    }
+    public void drawText(Component text, int x, int y, boolean dropShadow, Alignment posAlignment, float fontScale)
+    {
+        Point size = getTextBounds(text.getString(), fontScale);
+        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+                x, y,0,0);
+        drawText(text, rect.x, rect.y, textColor, dropShadow, fontScale);
+    }
+    public void drawText(Component text, Point pos, int color, boolean dropShadow, Alignment posAlignment, float fontScale)
+    {
+        Point size = getTextBounds(text.getString(), fontScale);
+        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+                pos.x, pos.y,0,0);
+        drawText(text, rect.x, rect.y, color, dropShadow, fontScale);
+    }
+    public void drawText(Component text, int x, int y, int color, boolean dropShadow, Alignment posAlignment, float fontScale)
+    {
+        Point size = getTextBounds(text.getString(), fontScale);
+        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+                x, y,0,0);
+        drawText(text, rect.x, rect.y, color, dropShadow, fontScale);
+    }
+
+
+
+
 
 
     public void drawLine(int x1, int y1, int x2, int y2, float thickness, int color)
@@ -1096,15 +1323,6 @@ public abstract class GuiElement {
     {
         drawTooltipInternal(msg, pos.x, pos.y);
     }
-
-    public void drawTooltip(ItemStack stack, int x, int y)
-    {
-        drawTooltip(ItemUtilities.getItemDisplayText(stack), x, y);
-    }
-    public void drawTooltip(ItemStack stack, Point pos)
-    {
-        drawTooltip(stack, pos.x, pos.y);
-    }
     public void drawTooltipNative(ItemStack stack, Point pos)
     {
         TooltipLaterData data = new TooltipLaterData();
@@ -1114,6 +1332,21 @@ public abstract class GuiElement {
         data.createBackground = true; // Default to true, can be changed later
         drawTooltipLater.add(data);
     }
+
+
+    public void drawTooltip(String tooltip, Point pos)
+    {
+        drawTooltip(tooltip, pos.x, pos.y);
+    }
+    public void drawTooltip(ItemStack stack, int x, int y)
+    {
+        drawTooltip(ItemUtilities.getItemDisplayText(stack), x, y);
+    }
+    public void drawTooltip(ItemStack stack, Point pos)
+    {
+        drawTooltip(stack, pos.x, pos.y);
+    }
+
     public void drawTooltip(Component component, int x, int y)
     {
         TooltipLaterData data = new TooltipLaterData();
@@ -1126,7 +1359,6 @@ public abstract class GuiElement {
     {
         drawTooltip(component, pos.x, pos.y);
     }
-
     public void drawTooltip(String tooltip, int x, int y)
     {
         TooltipLaterData data = new TooltipLaterData();
@@ -1157,6 +1389,187 @@ public abstract class GuiElement {
         data.alignment = alignment;
         drawTooltipLater.add(data);
     }
+
+    public void drawTooltip(ItemStack stack, int x, int y, int textColor)
+    {
+        drawTooltip(ItemUtilities.getItemDisplayText(stack), x, y);
+    }
+    public void drawTooltip(ItemStack stack, Point pos, int textColor)
+    {
+        drawTooltip(stack, pos.x, pos.y);
+    }
+
+    public void drawTooltip(Component component, int x, int y, int textColor)
+    {
+        TooltipLaterData data = new TooltipLaterData();
+        data.x = x;
+        data.y = y;
+        data.component = component;
+        data.textColor = textColor;
+        drawTooltipLater.add(data);
+    }
+    public void drawTooltip(Component component, Point pos, int textColor)
+    {
+        drawTooltip(component, pos.x, pos.y, textColor);
+    }
+    public void drawTooltip(String tooltip, int x, int y, int textColor)
+    {
+        TooltipLaterData data = new TooltipLaterData();
+        data.x = x;
+        data.y = y;
+        data.customString = tooltip;
+        data.createBackground = true; // Default to true, can be changed later
+        data.textColor = textColor;
+        drawTooltipLater.add(data);
+    }
+    public void drawTooltip(String tooltip, int x, int y, boolean createBackground, int textColor)
+    {
+        TooltipLaterData data = new TooltipLaterData();
+        data.x = x;
+        data.y = y;
+        data.customString = tooltip;
+        data.createBackground = createBackground;
+        data.textColor = textColor;
+        drawTooltipLater.add(data);
+    }
+    public void drawTooltip(String tooltip, int x, int y, int backgroundColor, int backgroundPadding, Alignment alignment, int textColor)
+    {
+        TooltipLaterData data = new TooltipLaterData();
+        data.x = x;
+        data.y = y;
+        data.customString = tooltip;
+        data.createBackground = true;
+        data.backgroundColor = backgroundColor;
+        data.backgroundPadding = backgroundPadding;
+        data.alignment = alignment;
+        data.textColor = textColor;
+        drawTooltipLater.add(data);
+    }
+
+    public void drawTooltip(ItemStack stack, int x, int y, float fontScale)
+    {
+        drawTooltip(ItemUtilities.getItemDisplayText(stack), x, y, fontScale);
+    }
+    public void drawTooltip(ItemStack stack, Point pos, float fontScale)
+    {
+        drawTooltip(stack, pos.x, pos.y, fontScale);
+    }
+
+    public void drawTooltip(Component component, int x, int y, float fontScale)
+    {
+        TooltipLaterData data = new TooltipLaterData();
+        data.x = x;
+        data.y = y;
+        data.component = component;
+        data.fontScale = fontScale;
+        drawTooltipLater.add(data);
+    }
+    public void drawTooltip(Component component, Point pos, float fontScale)
+    {
+        drawTooltip(component, pos.x, pos.y, fontScale);
+    }
+    public void drawTooltip(String tooltip, int x, int y, float fontScale)
+    {
+        TooltipLaterData data = new TooltipLaterData();
+        data.x = x;
+        data.y = y;
+        data.customString = tooltip;
+        data.createBackground = true; // Default to true, can be changed later
+        data.fontScale = fontScale;
+        drawTooltipLater.add(data);
+    }
+    public void drawTooltip(String tooltip, int x, int y, boolean createBackground, float fontScale)
+    {
+        TooltipLaterData data = new TooltipLaterData();
+        data.x = x;
+        data.y = y;
+        data.customString = tooltip;
+        data.createBackground = createBackground;
+        data.fontScale = fontScale;
+        drawTooltipLater.add(data);
+    }
+    public void drawTooltip(String tooltip, int x, int y, int backgroundColor, int backgroundPadding, Alignment alignment, float fontScale)
+    {
+        TooltipLaterData data = new TooltipLaterData();
+        data.x = x;
+        data.y = y;
+        data.customString = tooltip;
+        data.createBackground = true;
+        data.backgroundColor = backgroundColor;
+        data.backgroundPadding = backgroundPadding;
+        data.alignment = alignment;
+        data.fontScale = fontScale;
+        drawTooltipLater.add(data);
+    }
+
+    public void drawTooltip(ItemStack stack, int x, int y, int textColor, float fontScale)
+    {
+        drawTooltip(ItemUtilities.getItemDisplayText(stack), x, y, fontScale);
+    }
+    public void drawTooltip(ItemStack stack, Point pos, int textColor, float fontScale)
+    {
+        drawTooltip(stack, pos.x, pos.y, fontScale);
+    }
+
+    public void drawTooltip(Component component, int x, int y, int textColor, float fontScale)
+    {
+        TooltipLaterData data = new TooltipLaterData();
+        data.x = x;
+        data.y = y;
+        data.component = component;
+        data.textColor = textColor;
+        data.fontScale = fontScale;
+        drawTooltipLater.add(data);
+    }
+    public void drawTooltip(Component component, Point pos, int textColor, float fontScale)
+    {
+        drawTooltip(component, pos.x, pos.y, textColor, fontScale);
+    }
+    public void drawTooltip(String tooltip, int x, int y, int textColor, float fontScale)
+    {
+        TooltipLaterData data = new TooltipLaterData();
+        data.x = x;
+        data.y = y;
+        data.customString = tooltip;
+        data.createBackground = true; // Default to true, can be changed later
+        data.textColor = textColor;
+        data.fontScale = fontScale;
+        drawTooltipLater.add(data);
+    }
+    public void drawTooltip(String tooltip, int x, int y, boolean createBackground, int textColor, float fontScale)
+    {
+        TooltipLaterData data = new TooltipLaterData();
+        data.x = x;
+        data.y = y;
+        data.customString = tooltip;
+        data.createBackground = createBackground;
+        data.textColor = textColor;
+        data.fontScale = fontScale;
+        drawTooltipLater.add(data);
+    }
+    public void drawTooltip(String tooltip, int x, int y, int backgroundColor, int backgroundPadding, Alignment alignment, int textColor, float fontScale)
+    {
+        TooltipLaterData data = new TooltipLaterData();
+        data.x = x;
+        data.y = y;
+        data.customString = tooltip;
+        data.createBackground = true;
+        data.backgroundColor = backgroundColor;
+        data.backgroundPadding = backgroundPadding;
+        data.alignment = alignment;
+        data.textColor = textColor;
+        data.fontScale = fontScale;
+        drawTooltipLater.add(data);
+    }
+    private void drawTooltip(TooltipLaterData data)
+    {
+        drawTooltipLater.add(data);
+    }
+
+
+
+
+
     public Point getTextBounds(String text)
     {
         var lines = text.split("\n");
@@ -1169,10 +1582,19 @@ public abstract class GuiElement {
         int height = getTextHeight() * lines.length;
         return new Point(maxWidth, height);
     }
-    public void drawTooltip(String tooltip, Point pos)
+    public Point getTextBounds(String text, float fontScale)
     {
-        drawTooltip(tooltip, pos.x, pos.y);
+        var lines = text.split("\n");
+        int maxWidth = 0;
+        for (String line : lines) {
+            int width = getFont().width(line);
+            if (width > maxWidth)
+                maxWidth = width;
+        }
+        int height = (int)((float)(getFont().lineHeight * lines.length) * fontScale);
+        return new Point((int)((float)maxWidth*fontScale), height);
     }
+
 
     public void drawFrame(int x, int y, int width, int height, int color, int thickness)
     {
@@ -1190,7 +1612,7 @@ public abstract class GuiElement {
     }
     public double getGuiScale()
     {
-        return Gui.getGuiScale();
+        return Gui.getMinecraftGuiScale();
     }
 
     public void playLocalSound(SoundEvent sound, float volume, float pitch)

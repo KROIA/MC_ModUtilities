@@ -114,10 +114,12 @@ public class Button extends GuiElement {
     @Override
     protected void renderBackground() {
         int color = colorIdle;
-        if(isPressed)
-            color = colorPressed;
-        else if(isMouseOver())
-            color = colorHover;
+        if(isClickable) {
+            if (isPressed)
+                color = colorPressed;
+            else if (isMouseOver())
+                color = colorHover;
+        }
         drawRect(0,0,getWidth(), getHeight(),color);
         if(enableOutline)
             renderOutline();
@@ -174,5 +176,22 @@ public class Button extends GuiElement {
                 onRisingEdge.run();
         }
         isPressed = false;
+    }
+
+    @Override
+    public void setTextColor(int color) {
+        label.setTextColor(color);
+    }
+    @Override
+    public int getTextColor() {
+        return label.getTextColor();
+    }
+    @Override
+    public void setTextFontScale(float scale) {
+        label.setTextFontScale(scale);
+    }
+    @Override
+    public float getTextFontScale() {
+        return label.getTextFontScale();
     }
 }

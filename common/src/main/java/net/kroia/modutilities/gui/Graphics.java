@@ -143,6 +143,11 @@ public class Graphics {
         //graphics.translate(x, y, z); // mc<=1.19.4
         graphics.pose().translate(x, y, z); // mc>=1.20.1
     }
+    public void scale(float x, float y, float z)
+    {
+        //graphics.scale(x, y, z); // mc<=1.19.4
+        graphics.pose().scale(x, y, z); // mc>=1.20.1
+    }
 
     public void pushPose()
     {

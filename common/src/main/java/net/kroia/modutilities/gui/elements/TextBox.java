@@ -86,6 +86,23 @@ public class TextBox extends GuiElement {
         this.textChangedFromUser = textChangedFromUser;
     }
 
+    @Override
+    public void setTextColor(int color) {
+        textLabel.setTextColor(color);
+    }
+    @Override
+    public int getTextColor() {
+        return textLabel.getTextColor();
+    }
+    @Override
+    public void setTextFontScale(float scale) {
+        textLabel.setTextFontScale(scale);
+    }
+    @Override
+    public float getTextFontScale() {
+        return textLabel.getTextFontScale();
+    }
+
     public String getText() {
         return text;
     }
@@ -154,7 +171,8 @@ public class TextBox extends GuiElement {
                 cursorVisible = !cursorVisible;
             }
             if(cursorVisible) {
-                int cursorX = textLabel.getFont().width(text.substring(0, currentCursorPos)) + textLabel.getX();
+
+                int cursorX = textLabel.getTextWidth(text.substring(0, currentCursorPos)) + textLabel.getX();
                 drawRect(cursorX+1, 3,1, getHeight()-6, cursorColor);
                 drawRect(cursorX, 2,3, 1, cursorColor);
                 drawRect(cursorX, getHeight()-4,3, 1, cursorColor);
@@ -176,7 +194,7 @@ public class TextBox extends GuiElement {
         int cursorPos = 0;
         for (int i = 0; i < text.length(); i++) {
             String subString = text.substring(0, i);
-            int textWidth = textLabel.getFont().width(subString);
+            int textWidth = textLabel.getTextWidth(subString);
             if(textWidth >= mouseX)
             {
                 break;

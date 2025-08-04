@@ -8,10 +8,15 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
+import java.util.List;
+
 public abstract class GuiScreen extends Screen {
 
     protected final Gui gui;
     protected boolean enableGizmos = false;
+    protected boolean enableBackground = true;
+    protected boolean enableForeground = true;
+    protected boolean enableTooltip = true; // Enable tooltip rendering by default
     protected GuiScreen(Component pTitle) {
         super(pTitle);
         this.gui = new Gui(this);
@@ -23,8 +28,33 @@ public abstract class GuiScreen extends Screen {
     public boolean isEnableGizmos() {
         return enableGizmos;
     }
+    public void setEnableBackground(boolean enableBackground) {
+        this.enableBackground = enableBackground;
+    }
+    public boolean isEnableBackground() {
+        return enableBackground;
+    }
+    public void setEnableForeground(boolean enableForeground) {
+        this.enableForeground = enableForeground;
+    }
+    public boolean isEnableForeground() {
+        return enableForeground;
+    }
+    public void setEnableTooltip(boolean enableTooltip) {
+        this.enableTooltip = enableTooltip;
+    }
+    public boolean isEnableTooltip() {
+        return enableTooltip;
+    }
     public Gui getGui() {
         return gui;
+    }
+
+    public float getGuiScale() {
+        return gui.getGuiScale();
+    }
+    public void setGuiScale(float guiScale) {
+        gui.setGuiScale(guiScale);
     }
 
     @Override
@@ -50,12 +80,21 @@ public abstract class GuiScreen extends Screen {
     protected void removeElement(GuiElement element) {
         gui.removeElement(element);
     }
+    protected void removeAllElements() {
+        gui.removeAllElements();
+    }
+    protected GuiElement getFocusedElement() {
+        return gui.getFocusedElement();
+    }
+    public List<GuiElement> getElements() {
+        return gui.getElements();
+    }
 
     protected int getWidth() {
-        return width;
+        return (int)((float)width*gui.getInvGuiScale());
     }
     protected int getHeight() {
-        return height;
+        return (int)((float)height*gui.getInvGuiScale());
     }
     @Override
     public boolean isPauseScreen() {
@@ -67,7 +106,7 @@ public abstract class GuiScreen extends Screen {
     // mc>=1.20.1
     @Override
     public void renderBackground(GuiGraphics guiGraphics) {
-        if(this.minecraft == null)
+        if(this.minecraft == null || !enableBackground)
         {
             return;
         }
@@ -79,11 +118,14 @@ public abstract class GuiScreen extends Screen {
     @Override
     public void render(GuiGraphics pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) {
         gui.getGraphics().setGraphics(pGuiGraphics);
-        gui.storeMousePos(pMouseX, pMouseY);
+        gui.storeMousePos(pMouseX,pMouseY);
         gui.setPartialTick(pPartialTick);
-        this.renderBackground(pGuiGraphics);
-        gui.render();
-        gui.renderTooltip();
+        if(enableBackground)
+            this.renderBackground(pGuiGraphics);
+        if(enableForeground)
+            gui.render();
+        if(enableTooltip)
+            gui.renderTooltip();
         if(enableGizmos)
             gui.renderGizmos();
     }
@@ -153,10 +195,29 @@ public abstract class GuiScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        // Check for F3 Key
-        if(keyCode == GLFW.GLFW_KEY_F3) {
-            enableGizmos = !enableGizmos;
-            return true;
+
+        switch(keyCode)
+        {
+            case GLFW.GLFW_KEY_F3:
+            {
+                enableGizmos = !enableGizmos;
+                return true;
+            }
+            case GLFW.GLFW_KEY_F4:
+            {
+                enableBackground = !enableBackground;
+                return true;
+            }
+            case GLFW.GLFW_KEY_F5:
+            {
+                enableForeground = !enableForeground;
+                return true;
+            }
+            case GLFW.GLFW_KEY_F6:
+            {
+                enableTooltip = !enableTooltip;
+                return true;
+            }
         }
 
         boolean ret = gui.keyPressed(keyCode, scanCode, modifiers);

@@ -179,4 +179,21 @@ public class CheckBox extends GuiElement {
         }
         return false;
     }
+
+    @Override
+    public void setTextColor(int color) {
+        label.setTextColor(color);
+    }
+    @Override
+    public int getTextColor() {
+        return label.getTextColor();
+    }
+    @Override
+    public void setTextFontScale(float scale) {
+        label.setTextFontScale(scale);
+    }
+    @Override
+    public float getTextFontScale() {
+        return label.getTextFontScale();
+    }
 }

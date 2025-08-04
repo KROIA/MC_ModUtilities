@@ -207,4 +207,26 @@ public class ItemSelectionView extends GuiElement {
             updateFilter();
         }
     }
+
+
+    @Override
+    public void setTextColor(int color) {
+        searchLabel.setTextColor(color);
+        itemsLabel.setTextColor(color);
+        searchField.setTextColor(color);
+    }
+    @Override
+    public int getTextColor() {
+        return searchLabel.getTextColor();
+    }
+    @Override
+    public void setTextFontScale(float scale) {
+        searchLabel.setTextFontScale(scale);
+        itemsLabel.setTextFontScale(scale);
+        searchField.setTextFontScale(scale);
+    }
+    @Override
+    public float getTextFontScale() {
+        return searchLabel.getTextFontScale();
+    }
 }

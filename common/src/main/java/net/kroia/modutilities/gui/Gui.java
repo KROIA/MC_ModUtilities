@@ -26,6 +26,10 @@ public class Gui {
     protected final Graphics graphics;
     protected Screen parent;
     protected int mousePosX, mousePosY;
+
+    private float guiScale = 1.0f; // Scale of the GUI, default is 1.0 (no scaling)
+    private float invGuiScale = 1.0f; // Inverse scale of the GUI, default is 1.0 (no scaling)
+
     protected float partialTick;
     private Rectangle globalScissorArea = null;
 
@@ -47,6 +51,19 @@ public class Gui {
         }
     }
 
+    public float getGuiScale() {
+        return guiScale;
+    }
+    public float getInvGuiScale() {
+        return invGuiScale;
+    }
+    public void setGuiScale(float guiScale) {
+        this.guiScale = guiScale;
+        if(guiScale <= 0.0f) {
+            guiScale = 1.0f; // Ensure scale is always positive
+        }
+        invGuiScale = 1.0f / guiScale; // Calculate inverse scale
+    }
 
     public Graphics getGraphics()
     {
@@ -98,6 +115,18 @@ public class Gui {
         element.setRoot(null);
         elements.remove(element);
     }
+    public void removeAllElements()
+    {
+        for(GuiElement element : elements)
+        {
+            element.setRoot(null);
+        }
+        elements.clear();
+    }
+    public List<GuiElement> getElements()
+    {
+        return elements;
+    }
     public void setFocusedElement(GuiElement element)
     {
         if(element == this.focusedElement)
@@ -115,14 +144,19 @@ public class Gui {
 
     public void storeMousePos(int x, int y)
     {
-        this.mousePosX = x;
-        this.mousePosY = y;
+        this.mousePosX = (int)((float)x*invGuiScale);
+        this.mousePosY = (int)((float)y*invGuiScale);
+    }
+    public void storeMousePos(double x, double y)
+    {
+        this.mousePosX = (int)(x*(double)invGuiScale);
+        this.mousePosY = (int)(y*(double)invGuiScale);
     }
     public void moveMouseToPos(int x, int y)
     {
-        double guiScaleFactor = getGuiScale();
-        double newX = x * guiScaleFactor;
-        double newY = y * guiScaleFactor;
+        double guiScaleFactor = getMinecraftGuiScale();
+        double newX = x * guiScaleFactor * guiScale;
+        double newY = y * guiScaleFactor * guiScale;
         long windowHandle = getWindowHandle();
         GLFW.glfwSetCursorPos(windowHandle, newX, newY);
     }
@@ -132,22 +166,29 @@ public class Gui {
     }
     public void renderBackground()
     {
+        pushPose();
+        scale(guiScale, guiScale, 1.0f);
         for(GuiElement element : elements)
         {
             element.renderBackgroundInternal();
         }
+        popPose();
     }
     public void render()
     {
+        pushPose();
+        scale(guiScale, guiScale, 1.0f);
         for(GuiElement element : elements)
         {
             element.renderInternal();
         }
+        popPose();
     }
     public void renderTooltip()
     {
         pushPose();
         translate(0, 0, 200); // Ensure tooltip is rendered on top
+        scale(guiScale, guiScale, 1.0f);
         for(GuiElement element : elements)
         {
             element.renderTooltipInternal();
@@ -156,16 +197,18 @@ public class Gui {
     }
     public void renderGizmos()
     {
+        pushPose();
+        scale(guiScale, guiScale, 1.0f);
         for(GuiElement element : elements)
         {
             element.renderGizmosInternal();
         }
+        popPose();
     }
 
     public boolean mouseClicked(double mouseX, double mouseY, int button)
     {
-        this.mousePosX = (int)mouseX;
-        this.mousePosY = (int)mouseY;
+        storeMousePos(mouseX, mouseY);
         for(GuiElement element : elements)
         {
             if(element.mouseClickedInternal(button, true))
@@ -175,8 +218,7 @@ public class Gui {
     }
     public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY)
     {
-        this.mousePosX = (int)mouseX;
-        this.mousePosY = (int)mouseY;
+        storeMousePos(mouseX, mouseY);
         for(GuiElement element : elements)
         {
             if(element.mouseDraggedInternal(button, deltaX, deltaY))
@@ -186,8 +228,7 @@ public class Gui {
     }
     public boolean mouseReleased(double mouseX, double mouseY, int button)
     {
-        this.mousePosX = (int)mouseX;
-        this.mousePosY = (int)mouseY;
+        storeMousePos(mouseX, mouseY);
         for(GuiElement element : elements)
         {
             if(element.mouseReleasedInternal(button,true))
@@ -197,8 +238,7 @@ public class Gui {
     }
     public boolean mouseScrolled(double mouseX, double mouseY, double delta)
     {
-        this.mousePosX = (int)mouseX;
-        this.mousePosY = (int)mouseY;
+        storeMousePos(mouseX, mouseY);
         for(GuiElement element : elements)
         {
             if(element.mouseScrolledInternal(delta,true))
@@ -237,6 +277,15 @@ public class Gui {
             graphics.drawString(getFont(), lines[i], x, y + i*getFont().lineHeight, color);
         }
     }
+    public void drawText(String text, int x, int y, int color, boolean dropShadow)
+    {
+        // Split text by new line
+        String[] lines = text.split("\n");
+        for(int i = 0; i < lines.length; i++)
+        {
+            graphics.drawString(getFont(), lines[i], x, y + i*getFont().lineHeight, color, dropShadow);
+        }
+    }
     public void drawText(Component text, int x, int y, int color)
     {
         // Split text by new line
@@ -254,6 +303,66 @@ public class Gui {
         {
             graphics.drawString(getFont(), lines[i], x, y + i*getFont().lineHeight, color, dropShadow);
         }
+    }
+    public void drawText(String text, int x, int y, int color, float fontScale)
+    {
+        pushPose();
+        translate(x, y, 0.f);
+        scale(fontScale, fontScale, 1.f);
+        // Split text by new line
+        String[] lines = text.split("\n");
+        Font font = getFont();
+        int lineHeight = font.lineHeight;
+        for(int i = 0; i < lines.length; i++)
+        {
+            graphics.drawString(font, lines[i], 0, i*lineHeight, color);
+        }
+        popPose();
+    }
+    public void drawText(String text, int x, int y, int color, boolean dropShadow, float fontScale)
+    {
+        pushPose();
+        translate(x, y, 0.f);
+        scale(fontScale, fontScale, 1.f);
+        // Split text by new line
+        String[] lines = text.split("\n");
+        Font font = getFont();
+        int lineHeight = font.lineHeight;
+        for(int i = 0; i < lines.length; i++)
+        {
+            graphics.drawString(font, lines[i], 0, i*lineHeight, color, dropShadow);
+        }
+        popPose();
+    }
+    public void drawText(Component text, int x, int y, int color, float fontScale)
+    {
+        pushPose();
+        translate(x, y, 0.f);
+        scale(fontScale, fontScale, 1.f);
+        // Split text by new line
+        String[] lines = text.getString().split("\n");
+        Font font = getFont();
+        int lineHeight = font.lineHeight;
+        for(int i = 0; i < lines.length; i++)
+        {
+            graphics.drawString(font, lines[i], 0, i*lineHeight, color);
+        }
+        popPose();
+    }
+    public void drawText(Component text, int x, int y, int color, boolean dropShadow, float fontScale)
+    {
+        pushPose();
+        translate(x, y, 0.f);
+        scale(fontScale, fontScale, 1.f);
+        // Split text by new line
+        String[] lines = text.getString().split("\n");
+        Font font = getFont();
+        int lineHeight = font.lineHeight;
+        for(int i = 0; i < lines.length; i++)
+        {
+            graphics.drawString(font, lines[i], 0, i*lineHeight, color, dropShadow);
+        }
+        popPose();
     }
 
 
@@ -419,7 +528,7 @@ public class Gui {
         return new ResourceLocation(modID, path);
         //return ResourceLocation.fromNamespaceAndPath(modID, path);
     }
-    public static double getGuiScale()
+    public static double getMinecraftGuiScale()
     {
         return Minecraft.getInstance().getWindow().getGuiScale();
     }
@@ -430,10 +539,10 @@ public class Gui {
     public void enableScissor(Rectangle rect)
     {
         globalScissorArea = rect;
-        int x1 = rect.x;
-        int y1 = rect.y;
-        int x2 = (rect.x+rect.width);
-        int y2 = (rect.y+rect.height);
+        int x1 = (int)((float)rect.x * guiScale);
+        int y1 = (int)((float)rect.y * guiScale);
+        int x2 = (int)(((float)rect.x+(float)rect.width)*guiScale);
+        int y2 = (int)(((float)rect.y+(float)rect.height)*guiScale);
 
         graphics.enableScissor(x1,y1,x2,y2);
     }
@@ -469,6 +578,10 @@ public class Gui {
     public void translate(double x, double y, double z)
     {
         graphics.translate(x, y, z);
+    }
+    public void scale(float x, float y, float z)
+    {
+        graphics.scale(x, y, z);
     }
     public void pushPose()
     {
