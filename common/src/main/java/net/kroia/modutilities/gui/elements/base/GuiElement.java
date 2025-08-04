@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui.elements.base;
 
+import net.kroia.modutilities.ClientPlayerUtilities;
 import net.kroia.modutilities.ItemUtilities;
 import net.kroia.modutilities.TimerMillis;
 import net.kroia.modutilities.gui.Graphics;
@@ -436,7 +437,7 @@ public abstract class GuiElement {
             return;
         Graphics graphics = root.getGraphics();
         graphics.pushPose();
-        graphics.translate((float)getX(), (float)getY(), 0.0F);
+        graphics.translate((float)getX(), (float)getY(), 200.0F);
         for(TooltipLaterData data : drawTooltipLater)
         {
             if(data.item != null)
@@ -1340,7 +1341,7 @@ public abstract class GuiElement {
     }
     public void drawTooltip(ItemStack stack, int x, int y)
     {
-        drawTooltip(ItemUtilities.getItemDisplayText(stack), x, y);
+        drawTooltip(ClientPlayerUtilities.getItemDisplayText(stack), x, y);
     }
     public void drawTooltip(ItemStack stack, Point pos)
     {
@@ -1392,7 +1393,7 @@ public abstract class GuiElement {
 
     public void drawTooltip(ItemStack stack, int x, int y, int textColor)
     {
-        drawTooltip(ItemUtilities.getItemDisplayText(stack), x, y);
+        drawTooltip(ClientPlayerUtilities.getItemDisplayText(stack), x, y);
     }
     public void drawTooltip(ItemStack stack, Point pos, int textColor)
     {
@@ -1448,7 +1449,7 @@ public abstract class GuiElement {
 
     public void drawTooltip(ItemStack stack, int x, int y, float fontScale)
     {
-        drawTooltip(ItemUtilities.getItemDisplayText(stack), x, y, fontScale);
+        drawTooltip(ClientPlayerUtilities.getItemDisplayText(stack), x, y, fontScale);
     }
     public void drawTooltip(ItemStack stack, Point pos, float fontScale)
     {
@@ -1504,7 +1505,7 @@ public abstract class GuiElement {
 
     public void drawTooltip(ItemStack stack, int x, int y, int textColor, float fontScale)
     {
-        drawTooltip(ItemUtilities.getItemDisplayText(stack), x, y, fontScale);
+        drawTooltip(ClientPlayerUtilities.getItemDisplayText(stack), x, y, fontScale);
     }
     public void drawTooltip(ItemStack stack, Point pos, int textColor, float fontScale)
     {
