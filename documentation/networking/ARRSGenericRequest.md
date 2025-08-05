@@ -13,7 +13,7 @@ This "function" takes any type of object as parameter and returns any type of ob
 ---
 ### Example Implementation
 This example creates a request called `TestRequest` which takes an `Integer` and returns a `String`.
-> [NOTE] Pseudocode for this example:
+> [!NOTE] Pseudocode for this example:
 > ``` Java
 > String testRequest_handleOnClient(Integer input)
 > {

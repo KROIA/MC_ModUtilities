@@ -7,7 +7,9 @@ Fabric and Forge do both include this mod so you don't need it as a dependency.
 
 # Features
 - Helperfunctions for intaracting with items and players
-- GUI Library to create the GUI-Screens in a better way than default minecraft offers
+- GUI library to create the GUI-Screens in a better way than default minecraft offers
+- Settings library to create easy Json setting files 
+- [Networking library](documentation/networking/Networking.md) for easy communication and data transfer between server and client
 
 # Dependencies
 - [Architectury API](https://www.curseforge.com/minecraft/mc-mods/architectury-api)

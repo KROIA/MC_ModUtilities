@@ -1,6 +1,7 @@
 # NetworkManager
 The `NetworkManager` class is used to send and receive `NetworkPackets`. 
-
+Only one Instance per mod is required. 
+It registers all network packet classes and holds the instances for the ARRS Requests.
 
 ---
 ## Content

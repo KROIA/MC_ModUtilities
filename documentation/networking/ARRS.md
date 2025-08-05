@@ -82,7 +82,7 @@ public class MyExampleModNetworking extends NetworkManager {
 ```
 
 
-> [NOTE]
+> [!NOTE]
 > **This "function" takes any type of object as parameter and returns any type of object.**
 > A input is always required, but can be as simple as it needs.
 >
