@@ -213,7 +213,7 @@ public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
                 }
                 if (data.has("Potion")) {
                     potion = new PotionData();
-                    potion.fromJson(data.get("Potion"));
+                    potion.fromJson(data);
                 } else {
                     potion = null;
                 }
