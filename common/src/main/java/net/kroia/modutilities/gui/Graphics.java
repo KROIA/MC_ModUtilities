@@ -1,6 +1,8 @@
 package net.kroia.modutilities.gui;
 
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics; // mc>=1.20.1
 //import com.mojang.blaze3d.vertex.PoseStack; // mc<=1.19.4
@@ -15,6 +17,7 @@ import org.joml.Matrix4f;
 import java.util.List;
 import java.util.Optional;
 
+@Environment(EnvType.CLIENT)
 public class Graphics {
 
     GuiGraphics graphics;// mc>=1.20.1

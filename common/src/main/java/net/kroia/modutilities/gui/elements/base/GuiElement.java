@@ -1,5 +1,7 @@
 package net.kroia.modutilities.gui.elements.base;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.kroia.modutilities.ClientPlayerUtilities;
 import net.kroia.modutilities.ItemUtilities;
 import net.kroia.modutilities.TimerMillis;
@@ -21,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
+@Environment(EnvType.CLIENT)
 public abstract class GuiElement {
 
     public enum Alignment

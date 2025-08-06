@@ -1,5 +1,7 @@
 package net.kroia.modutilities.gui;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Point;
 import net.minecraft.client.gui.GuiGraphics; // mc>=1.20.1
@@ -10,6 +12,8 @@ import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
 
+
+@Environment(EnvType.CLIENT)
 public abstract class GuiScreen extends Screen {
 
     protected final Gui gui;

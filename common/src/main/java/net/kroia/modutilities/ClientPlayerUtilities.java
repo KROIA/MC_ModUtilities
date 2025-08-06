@@ -1,5 +1,7 @@
 package net.kroia.modutilities;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -10,6 +12,7 @@ import java.util.stream.Collectors;
 
 import static net.kroia.modutilities.gui.Gui.getMinecraft;
 
+@Environment(EnvType.CLIENT)
 public class ClientPlayerUtilities {
 
 
@@ -28,5 +31,13 @@ public class ClientPlayerUtilities {
 
         String fullTooltip = String.join("\n", tooltipStrings);
         return fullTooltip.isEmpty() ? itemStack.getHoverName().getString() : fullTooltip;
+    }
+
+    public static void printToConsole(String message) {
+        if (getMinecraft().player != null) {
+            getMinecraft().player.sendSystemMessage(Component.literal(message));
+        } else {
+            System.out.println(message);
+        }
     }
 }

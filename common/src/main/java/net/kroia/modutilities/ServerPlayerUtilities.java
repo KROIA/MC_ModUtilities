@@ -1,5 +1,7 @@
 package net.kroia.modutilities;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.PlayerList;
@@ -11,7 +13,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-public class PlayerUtilities {
+public class ServerPlayerUtilities {
 
     public static void printToClientConsole(ServerPlayer player, String msg)
     {

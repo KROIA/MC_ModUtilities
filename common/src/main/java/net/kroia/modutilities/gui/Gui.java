@@ -1,6 +1,8 @@
 package net.kroia.modutilities.gui;
 
 import com.mojang.blaze3d.vertex.*;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.elements.base.Vertex;
 import net.kroia.modutilities.gui.elements.base.VertexBuffer;
@@ -21,6 +23,7 @@ import org.lwjgl.glfw.GLFW;
 import java.util.ArrayList;
 import java.util.List;
 
+@Environment(EnvType.CLIENT)
 public class Gui {
 
     protected final Graphics graphics;
