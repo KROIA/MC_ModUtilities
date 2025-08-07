@@ -77,8 +77,8 @@ public class LayoutGrid extends Layout{
         int elementWidth = element.getWidth()-padding*2;
         int elementHeight = element.getHeight()-padding*2;
 
-        int width = (elementWidth-spacing)/columns + spacing;
-        int height = (elementHeight-spacing)/rows + spacing;
+        int width = (elementWidth+spacing)/columns - spacing;
+        int height = (elementHeight+spacing)/rows - spacing;
 
         int i=0;
         int xPos = padding;

@@ -16,6 +16,7 @@ import java.util.function.Consumer;
  */
 public class Setting<T> {
     private T value;
+    private int valueHashCode;
     private final T defaultValue;
     private final Type type;
     private final String name;
@@ -26,6 +27,7 @@ public class Setting<T> {
         this.name = name;
         this.defaultValue = initialValue;
         this.value = initialValue;
+        this.valueHashCode = initialValue != null ? initialValue.hashCode() : 0;
         this.type = type;
         this.customJsonParser = null; // No custom parser by default
     }
@@ -33,6 +35,7 @@ public class Setting<T> {
         this.name = name;
         this.defaultValue = initialValue;
         this.value = initialValue;
+        this.valueHashCode = initialValue != null ? initialValue.hashCode() : 0;
         this.type = type;
         this.customJsonParser = customJsonParser;
     }
@@ -42,8 +45,14 @@ public class Setting<T> {
     }
 
     public void set(T newValue) {
-        if (!Objects.equals(this.value, newValue)) {
+        // Check if the new value is different from the current value
+        int newValueHashCode = 0;
+        if(newValue != null) {
+            newValueHashCode = newValue.hashCode();
+        }
+        if (newValueHashCode != valueHashCode || !Objects.equals(newValue, value)) {
             this.value = newValue;
+            this.valueHashCode = newValueHashCode;
             notifyListeners();
         }
     }

@@ -26,6 +26,11 @@ import java.util.List;
 @Environment(EnvType.CLIENT)
 public class Gui {
 
+    protected int backgroundZ = 0;
+    protected int foregroundZ = 1;
+    protected int tooltipZ = 200;
+    protected int gizmoZ = 300;
+
     protected final Graphics graphics;
     protected Screen parent;
     protected int mousePosX, mousePosY;
@@ -92,6 +97,41 @@ public class Gui {
     {
         return Minecraft.getInstance();
     }
+
+    public int getBackgroundRenderZPos()
+    {
+        return backgroundZ;
+    }
+    public int getForegroundRenderZPos()
+    {
+        return foregroundZ;
+    }
+    public int getTooltipRenderZPos()
+    {
+        return tooltipZ;
+    }
+    public int getGizmoRenderZPos()
+    {
+        return gizmoZ;
+    }
+    public void setBackgroundRenderZPos(int z)
+    {
+        this.backgroundZ = z;
+    }
+    public void setForegroundRenderZPos(int z)
+    {
+        this.foregroundZ = z;
+    }
+    public void setTooltipRenderZPos(int z)
+    {
+        this.tooltipZ = z;
+    }
+    public void setGizmoRenderZPos(int z)
+    {
+        this.gizmoZ = z;
+    }
+
+
     public Screen getScreen()
     {
         return parent;
@@ -170,6 +210,7 @@ public class Gui {
     public void renderBackground()
     {
         pushPose();
+        translate(0, 0, backgroundZ); // Ensure background is rendered below everything else
         scale(guiScale, guiScale, 1.0f);
         for(GuiElement element : elements)
         {
@@ -180,6 +221,7 @@ public class Gui {
     public void render()
     {
         pushPose();
+        translate(0, 0, foregroundZ); // Ensure foreground is rendered above background
         scale(guiScale, guiScale, 1.0f);
         for(GuiElement element : elements)
         {
@@ -190,7 +232,7 @@ public class Gui {
     public void renderTooltip()
     {
         pushPose();
-        translate(0, 0, 200); // Ensure tooltip is rendered on top
+        translate(0, 0, tooltipZ); // Ensure tooltip is rendered on top
         scale(guiScale, guiScale, 1.0f);
         for(GuiElement element : elements)
         {
@@ -201,6 +243,7 @@ public class Gui {
     public void renderGizmos()
     {
         pushPose();
+        translate(0, 0, gizmoZ); // Ensure tooltip is rendered on top
         scale(guiScale, guiScale, 1.0f);
         for(GuiElement element : elements)
         {

@@ -22,13 +22,13 @@ public class TextBox extends GuiElement {
     private int cursorBlinkCounter = 0;
     private boolean cursorVisible = false;
 
-    private int marginX = 4;
+    private int labelPadding = 2;
 
     Consumer<String> textChangedFromUser = null;
     public TextBox(int x, int y, int width) {
         super(x, y, width, Label.DEFAULT_HEIGHT);
         textLabel = new Label("");
-        textLabel.setBounds(marginX, 0, width-2*marginX, Label.DEFAULT_HEIGHT);
+        textLabel.setBounds(labelPadding, 0, width-2*labelPadding, Label.DEFAULT_HEIGHT);
         textLabel.setAlignment(Alignment.LEFT);
 
         addChild(textLabel);
@@ -182,7 +182,7 @@ public class TextBox extends GuiElement {
 
     @Override
     protected void layoutChanged() {
-        textLabel.setBounds(marginX, 0, getWidth()-2*marginX, getHeight());
+        textLabel.setBounds(labelPadding, labelPadding, getWidth()-2*labelPadding, getHeight()-2*labelPadding);
     }
 
     @Override

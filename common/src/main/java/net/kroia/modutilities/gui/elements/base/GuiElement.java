@@ -452,7 +452,7 @@ public abstract class GuiElement {
 
                 Point size = getTextBounds(data.customString, data.fontScale);
 
-                Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), data.alignment,
+                Rectangle rect = getAlignedBounds(0,0, size.x, size.y, data.alignment,
                         data.x, data.y,0,0);
                 if(data.createBackground)
                 {
@@ -907,50 +907,56 @@ public abstract class GuiElement {
     }
 
     public void applyAlignment(Alignment alignment, int x, int y, int width, int height) {
-        Rectangle bounds = getAlignedBounds(getBounds(), alignment, x, y, width, height);
+        var b = getBounds();
+        Rectangle bounds = getAlignedBounds(b.x, b.y ,b.width ,b.height , alignment, x, y, width, height);
         setBounds(bounds);
     }
-    public static Rectangle getAlignedBounds(Rectangle inputBounds, Alignment alignment, int x, int y, int width, int height) {
-        Rectangle bounds = new Rectangle(inputBounds);
 
-        int xCenter = x+(width - bounds.width) / 2;
-        int yCenter = y+(height - bounds.height) / 2;
+
+    /**
+     * Places the rectangle given by "inputBounds" inside the rectangle defined by "x1", "y2", "width2", "height2" depending on the alignment.
+     * @return The new bounds of the rectangle, aligned according to the specified alignment.
+     */
+    public static Rectangle getAlignedBounds(int x1, int y1, int width1, int height1, Alignment alignment, int x2, int y2, int width2, int height2) {
+        Rectangle bounds = new Rectangle(x1, y1, width1, height1);
+        int xCenter = x2+(width2 - width1) / 2;
+        int yCenter = y2+(height2 - height1) / 2;
         switch (alignment) {
             case CENTER:
                 bounds.x = xCenter;
                 bounds.y = yCenter;
                 break;
             case LEFT:
-                bounds.x = x;
+                bounds.x = x2;
                 bounds.y = yCenter;
                 break;
             case RIGHT:
-                bounds.x = width - bounds.width+x;
+                bounds.x = width2 - bounds.width+x2;
                 bounds.y = yCenter;
                 break;
             case TOP:
                 bounds.x = xCenter;
-                bounds.y = y;
+                bounds.y = y2;
                 break;
             case BOTTOM:
                 bounds.x = xCenter;
-                bounds.y = height - bounds.height+y;
+                bounds.y = height2 - bounds.height+y2;
                 break;
             case TOP_LEFT:
-                bounds.x = x;
-                bounds.y = y;
+                bounds.x = x2;
+                bounds.y = y2;
                 break;
             case TOP_RIGHT:
-                bounds.x = width - bounds.width+x;
-                bounds.y = y;
+                bounds.x = width2 - bounds.width+x2;
+                bounds.y = y2;
                 break;
             case BOTTOM_LEFT:
-                bounds.x = x;
-                bounds.y = height - bounds.height+y;
+                bounds.x = x2;
+                bounds.y = height2 - bounds.height+y2;
                 break;
             case BOTTOM_RIGHT:
-                bounds.x = width - bounds.width+x;
-                bounds.y = height - bounds.height+y;
+                bounds.x = width2 - bounds.width+x2;
+                bounds.y = height2 - bounds.height+y2;
                 break;
         }
         return bounds;
@@ -1009,56 +1015,56 @@ public abstract class GuiElement {
     public void drawText(String text, Point pos, Alignment posAlignment)
     {
         Point size = getTextBounds(text);
-        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+        Rectangle rect = getAlignedBounds(0,0, size.x, size.y, posAlignment,
                 pos.x, pos.y,0,0);
         drawText(text, rect.x, rect.y, textColor, textFontScale);
     }
     public void drawText(String text, int x, int y, Alignment posAlignment)
     {
         Point size = getTextBounds(text);
-        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+        Rectangle rect = getAlignedBounds(0,0, size.x, size.y, posAlignment,
                 x, y,0,0);
         drawText(text, rect.x, rect.y, textColor, textFontScale);
     }
     public void drawText(String text, Point pos, int color, Alignment posAlignment)
     {
         Point size = getTextBounds(text);
-        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+        Rectangle rect = getAlignedBounds(0,0, size.x, size.y, posAlignment,
                 pos.x, pos.y,0,0);
         drawText(text, rect.x, rect.y, color, textFontScale);
     }
     public void drawText(String text, int x, int y, int color, Alignment posAlignment)
     {
         Point size = getTextBounds(text);
-        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+        Rectangle rect = getAlignedBounds(0,0, size.x, size.y, posAlignment,
                 x, y,0,0);
         drawText(text, rect.x, rect.y, color, textFontScale);
     }
     public void drawText(Component text, Point pos, boolean dropShadow, Alignment posAlignment)
     {
         Point size = getTextBounds(text.getString());
-        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+        Rectangle rect = getAlignedBounds(0,0, size.x, size.y, posAlignment,
                 pos.x, pos.y,0,0);
         drawText(text, rect.x, rect.y, textColor, dropShadow, textFontScale);
     }
     public void drawText(Component text, int x, int y, boolean dropShadow, Alignment posAlignment)
     {
         Point size = getTextBounds(text.getString());
-        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+        Rectangle rect = getAlignedBounds(0,0, size.x, size.y, posAlignment,
                 x, y,0,0);
         drawText(text, rect.x, rect.y, textColor, dropShadow, textFontScale);
     }
     public void drawText(Component text, Point pos, int color, boolean dropShadow, Alignment posAlignment)
     {
         Point size = getTextBounds(text.getString());
-        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+        Rectangle rect = getAlignedBounds(0,0, size.x, size.y, posAlignment,
                 pos.x, pos.y,0,0);
         drawText(text, rect.x, rect.y, color, dropShadow, textFontScale);
     }
     public void drawText(Component text, int x, int y, int color, boolean dropShadow, Alignment posAlignment)
     {
         Point size = getTextBounds(text.getString());
-        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+        Rectangle rect = getAlignedBounds(0,0, size.x, size.y, posAlignment,
                 x, y,0,0);
         drawText(text, rect.x, rect.y, color, dropShadow, textFontScale);
     }
@@ -1116,56 +1122,56 @@ public abstract class GuiElement {
     public void drawText(String text, Point pos, Alignment posAlignment, float fontScale)
     {
         Point size = getTextBounds(text, fontScale);
-        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+        Rectangle rect = getAlignedBounds(0,0, size.x, size.y, posAlignment,
                 pos.x, pos.y,0,0);
         drawText(text, rect.x, rect.y, fontScale);
     }
     public void drawText(String text, int x, int y, Alignment posAlignment, float fontScale)
     {
         Point size = getTextBounds(text, fontScale);
-        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+        Rectangle rect = getAlignedBounds(0,0, size.x, size.y, posAlignment,
                 x, y,0,0);
         drawText(text, rect.x, rect.y, fontScale);
     }
     public void drawText(String text, Point pos, int color, Alignment posAlignment, float fontScale)
     {
         Point size = getTextBounds(text, fontScale);
-        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+        Rectangle rect = getAlignedBounds(0,0, size.x, size.y, posAlignment,
                 pos.x, pos.y,0,0);
         drawText(text, rect.x, rect.y, color, fontScale);
     }
     public void drawText(String text, int x, int y, int color, Alignment posAlignment, float fontScale)
     {
         Point size = getTextBounds(text, fontScale);
-        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+        Rectangle rect = getAlignedBounds(0,0, size.x, size.y, posAlignment,
                 x, y,0,0);
         drawText(text, rect.x, rect.y, color, fontScale);
     }
     public void drawText(Component text, Point pos, boolean dropShadow, Alignment posAlignment, float fontScale)
     {
         Point size = getTextBounds(text.getString(), fontScale);
-        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+        Rectangle rect = getAlignedBounds(0,0, size.x, size.y, posAlignment,
                 pos.x, pos.y,0,0);
         drawText(text, rect.x, rect.y, textColor, dropShadow, fontScale);
     }
     public void drawText(Component text, int x, int y, boolean dropShadow, Alignment posAlignment, float fontScale)
     {
         Point size = getTextBounds(text.getString(), fontScale);
-        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+        Rectangle rect = getAlignedBounds(0,0, size.x, size.y, posAlignment,
                 x, y,0,0);
         drawText(text, rect.x, rect.y, textColor, dropShadow, fontScale);
     }
     public void drawText(Component text, Point pos, int color, boolean dropShadow, Alignment posAlignment, float fontScale)
     {
         Point size = getTextBounds(text.getString(), fontScale);
-        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+        Rectangle rect = getAlignedBounds(0,0, size.x, size.y, posAlignment,
                 pos.x, pos.y,0,0);
         drawText(text, rect.x, rect.y, color, dropShadow, fontScale);
     }
     public void drawText(Component text, int x, int y, int color, boolean dropShadow, Alignment posAlignment, float fontScale)
     {
         Point size = getTextBounds(text.getString(), fontScale);
-        Rectangle rect = getAlignedBounds(new Rectangle(0,0, size.x, size.y), posAlignment,
+        Rectangle rect = getAlignedBounds(0,0, size.x, size.y, posAlignment,
                 x, y,0,0);
         drawText(text, rect.x, rect.y, color, dropShadow, fontScale);
     }
@@ -1195,6 +1201,48 @@ public abstract class GuiElement {
     public void drawVertexBuffer_QUADS(VertexBuffer buffer)
     {
         root.drawVertexBuffer_QUADS(buffer);
+    }
+
+    public void drawCross(int x, int y, int size, int color)
+    {
+        drawRect(x - size, y, size * 2 + 1, 1, color);
+        drawRect(x, y - size, 1, size * 2 + 1, color);
+    }
+
+    /**
+     *   ╔═
+     */
+    public void drawCornerTL(int x, int y, int size, int color)
+    {
+        drawRect(x, y, size, 1, color);
+        drawRect(x , y, 1, size, color);
+    }
+
+    /**
+     *   ═╗
+     */
+    public void drawCornerTR(int x, int y, int size, int color)
+    {
+        drawRect(x - size+1, y, size, 1, color);
+        drawRect(x, y, 1, size, color);
+    }
+
+    /**
+     *   ╚═
+     */
+    public void drawCornerBL(int x, int y, int size, int color)
+    {
+        drawRect(x, y, size, 1, color);
+        drawRect(x , y-size+1, 1, size, color);
+    }
+
+    /**
+     *   ═╝
+     */
+    public void drawCornerBR(int x, int y, int size, int color)
+    {
+        drawRect(x - size+1, y, size, 1, color);
+        drawRect(x , y- size+1, 1, size, color);
     }
 
 
