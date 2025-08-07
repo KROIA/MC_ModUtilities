@@ -108,7 +108,7 @@ public class AsynchronousRequestResponseSystem {
      * @param <IN> The type of input data.
      * @param <OUT> The type of output data provided by the provider
      */
-    public static <IN, OUT> void sendRequestToServer(@NotNull GenericRequest<IN, OUT> request, @NotNull IN input, @NotNull Consumer<OUT> responseHandler) {
+    public static <IN, OUT> void sendRequestToServer(@NotNull GenericRequest<IN, OUT> request, IN input, @NotNull Consumer<OUT> responseHandler) {
         checkManagerExists();
         REQUEST_MANAGER.sendRequestToServer(request, input, responseHandler);
     }
@@ -125,7 +125,7 @@ public class AsynchronousRequestResponseSystem {
      * @param <IN> The type of input data.
      * @param <OUT> The type of output data provided by the provider
      */
-    public static <IN, OUT> void sendRequestToClient(@NotNull GenericRequest<IN, OUT> request, @NotNull IN input, @NotNull ServerPlayer target, @NotNull BiConsumer<OUT, ServerPlayer> responseHandler) {
+    public static <IN, OUT> void sendRequestToClient(@NotNull GenericRequest<IN, OUT> request, IN input, @NotNull ServerPlayer target, @NotNull BiConsumer<OUT, ServerPlayer> responseHandler) {
         checkManagerExists();
         REQUEST_MANAGER.sendRequestToClient(request, input, target, responseHandler);
     }

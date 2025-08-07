@@ -14,7 +14,7 @@ import java.util.Map;
  */
 public class RequestRegistry
 {
-    static class RegistryData<IN, OUT>
+    public static class RegistryData<IN, OUT>
     {
         GenericRequest<IN, OUT> request;
     }

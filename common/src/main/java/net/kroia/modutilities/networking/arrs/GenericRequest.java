@@ -126,7 +126,7 @@ public abstract class GenericRequest<IN, OUT>
      * This methode can be called manually on the clientside only (when the client is the requestor).
      */
     public void sendRequestToServer(
-            @NotNull IN input,
+            IN input,
             @NotNull Consumer<OUT> responseHandler)
     {
         if(manager == null)
@@ -155,7 +155,7 @@ public abstract class GenericRequest<IN, OUT>
      * This methode can be called manually on the serverside only (when the server is the requestor).
      */
     public void sendRequestToClient(
-            @NotNull IN input,
+            IN input,
             @NotNull ServerPlayer receiver,
             @NotNull BiConsumer<OUT, ServerPlayer> responseHandler)
     {

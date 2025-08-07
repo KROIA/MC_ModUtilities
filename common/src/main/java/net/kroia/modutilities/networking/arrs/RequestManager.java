@@ -85,7 +85,7 @@ public class RequestManager {
      * @param <OUT> The type of output data provided by the provider
      */
     public <IN, OUT> void sendRequestToServer(@NotNull GenericRequest<IN, OUT> request,
-                                              @NotNull IN input,
+                                              IN input,
                                               @NotNull Consumer<OUT> responseHandler) {
         if(networkManager == null)
         {
@@ -117,7 +117,7 @@ public class RequestManager {
      * @param <OUT> The type of output data provided by the provider
      */
     public <IN, OUT> void sendRequestToClient(@NotNull GenericRequest<IN, OUT> request,
-                                              @NotNull IN input,
+                                              IN input,
                                               @NotNull ServerPlayer target,
                                               @NotNull BiConsumer<OUT, ServerPlayer> responseHandler) {
         if(networkManager == null)
