@@ -10,7 +10,7 @@ public class LayoutGrid extends Layout{
     public int rows = 4;
     public int columns = 0; // 0 means auto
 
-    public GuiElement.Alignment alignment = GuiElement.Alignment.CENTER;
+    public GuiElement.Alignment alignment = GuiElement.Alignment.TOP;
 
     public LayoutGrid(){
         super();
@@ -100,11 +100,11 @@ public class LayoutGrid extends Layout{
                 child.applyAlignment(alignment, xPos, yPos, width, height);
                 maxHeight = Math.max(maxHeight, child.getHeight());
 
-                xPos += width;
+                xPos += width + spacing;
                 i++;
             }
             xPos = padding;
-            yPos += maxHeight;
+            yPos += maxHeight + spacing;
         }
     }
 

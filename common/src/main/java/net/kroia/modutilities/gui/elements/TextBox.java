@@ -11,7 +11,9 @@ public class TextBox extends GuiElement {
 
     boolean allowNumbers = true;
     boolean allowDecimal = true;
+    boolean allowNegativeNumbers = true;
     boolean allowLetters = true;
+
     private final Label textLabel;
     private int maxChars = 20;
     private int cursorColor = 0xFF222222;
@@ -43,11 +45,18 @@ public class TextBox extends GuiElement {
         this.allowNumbers = allowNumbers;
         this.allowDecimal = allowDecimal;
     }
+
     public boolean isAllowingNumbers() {
         return allowNumbers;
     }
     public boolean isAllowingDecimal() {
         return allowDecimal;
+    }
+    public void setAllowNegativeNumbers(boolean allowNegativeNumbers) {
+        this.allowNegativeNumbers = allowNegativeNumbers;
+    }
+    public boolean isAllowingNegativeNumbers() {
+        return allowNegativeNumbers;
     }
     public void setAllowLetters(boolean allowLetters) {
         this.allowLetters = allowLetters;
@@ -430,7 +439,7 @@ public class TextBox extends GuiElement {
     {
         boolean number = Character.isDigit(codePoint) ||
                 (allowDecimal && codePoint == '.' && text.indexOf('.')==-1) ||
-                (allowDecimal && codePoint == '-' && currentCursorPos == 0 && text.indexOf('-')==-1);
+                (allowNegativeNumbers && codePoint == '-' && currentCursorPos == 0 && text.indexOf('-')==-1);
         boolean letter = !Character.isDigit(codePoint);
         return (number && allowNumbers) || (letter && allowLetters);
     }
