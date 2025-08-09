@@ -1,6 +1,7 @@
 package net.kroia.modutilities.networking.arrs;
 
 
+import net.kroia.modutilities.ModUtilitiesMod;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
@@ -36,6 +37,7 @@ public class RequestRegistry
 
         if (registry.containsKey(request.getRequestTypeID()))
         {
+            ModUtilitiesMod.LOGGER.error("Request with ID '{}' is already registered!", request.getRequestTypeID());
             return null; // already registered
         }
         registry.put(request.getRequestTypeID(), data);

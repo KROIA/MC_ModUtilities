@@ -16,6 +16,7 @@ public class TextBox extends GuiElement {
 
     private final Label textLabel;
     private int maxChars = 20;
+    private int maxDecimalChar = 20;
     private int cursorColor = 0xFF222222;
     private int backgroundColor = DEFAULT_BACKGROUND_COLOR;
     private int hoverBackgroundColor = DEFAULT_HOVER_BACKGROUND_COLOR;
@@ -57,6 +58,12 @@ public class TextBox extends GuiElement {
     }
     public boolean isAllowingNegativeNumbers() {
         return allowNegativeNumbers;
+    }
+    public void setMaxDecimalChar(int maxDecimalChar) {
+        this.maxDecimalChar = maxDecimalChar;
+    }
+    public int getMaxDecimalChar() {
+        return maxDecimalChar;
     }
     public void setAllowLetters(boolean allowLetters) {
         this.allowLetters = allowLetters;
@@ -437,10 +444,52 @@ public class TextBox extends GuiElement {
     }
     private boolean canConsume(char codePoint)
     {
-        boolean number = Character.isDigit(codePoint) ||
-                (allowDecimal && codePoint == '.' && text.indexOf('.')==-1) ||
-                (allowNegativeNumbers && codePoint == '-' && currentCursorPos == 0 && text.indexOf('-')==-1);
-        boolean letter = !Character.isDigit(codePoint);
-        return (number && allowNumbers) || (letter && allowLetters);
+        if(text.length() >= maxChars)
+            return false;
+        if(allowLetters && Character.isLetter(codePoint)) {
+            return true; // Allow letters
+        }
+
+        if(allowNumbers)
+        {
+            if(!allowDecimal && codePoint == '.')
+                return false; // Disallow decimal point if not allowed
+            if((!allowNegativeNumbers || currentCursorPos > 0) && codePoint == '-')
+                return false; // Disallow negative sign if not allowed
+            //boolean isDigit = Character.isDigit(codePoint);
+            String newStr = text.substring(0, currentCursorPos) + codePoint + text.substring(currentCursorPos);
+            int decimalIndex = newStr.indexOf('.');
+            String leftPart = newStr;
+            String rightPart = "";
+            if(decimalIndex != -1)
+            {
+                leftPart = newStr.substring(0, decimalIndex);
+                rightPart = newStr.substring(decimalIndex + 1);
+            }
+
+            // Check if the right part has more than maxDecimalChar digits
+            if(rightPart.length() > maxDecimalChar)
+                return false; // Disallow more than maxDecimalChar digits in the right part
+
+            boolean isDigit = Character.isDigit(codePoint);
+            if(isDigit)
+            {
+                if(rightPart.indexOf('.') != -1)
+                    return false; // Disallow multiple decimal points
+
+                return true; // Allow digits
+            }
+
+            else if(allowDecimal && codePoint == '.')
+            {
+                // Allow decimal point only if it is at the position of the cursor
+                return text.indexOf('.') == -1;
+            }
+            else if(allowNegativeNumbers && codePoint == '-' && currentCursorPos == 0)
+            {
+                return text.indexOf('-') == -1; // Allow negative sign only at the beginning and only once
+            }
+        }
+        return false; // Disallow all other characters
     }
 }
