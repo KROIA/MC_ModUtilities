@@ -36,7 +36,7 @@ public class DataPersistence {
             errorLogger.accept(error + "\nError: " + throwable.getMessage() + "\n" + Arrays.toString(throwable.getStackTrace()));
         }
     };
-    public Consumer<String> infoLogger = System.out::println;
+    public Consumer<String> debugLogger = System.out::println;
 
     private final Gson GSON;
     private Path relativeSavePath;
@@ -57,15 +57,15 @@ public class DataPersistence {
         this.nbtFormat = nbtFormat;
     }
 
-    public void setLogger(Consumer<String> errorLogger, Consumer<String> infoLogger, Consumer<String> warnLogger) {
+    public void setLogger(Consumer<String> errorLogger, Consumer<String> debugLogger, Consumer<String> warnLogger) {
         this.errorLogger = errorLogger;
-        this.infoLogger = infoLogger;
+        this.debugLogger = debugLogger;
         this.warnLogger = warnLogger;
     }
-    public void setLogger(Consumer<String> errorLogger, BiConsumer<String, Throwable>errorLoggerThrowable, Consumer<String> infoLogger, Consumer<String> warnLogger) {
+    public void setLogger(Consumer<String> errorLogger, BiConsumer<String, Throwable>errorLoggerThrowable, Consumer<String> debugLogger, Consumer<String> warnLogger) {
         this.errorLogger = errorLogger;
         this.errorLoggerThrowable = errorLoggerThrowable;
-        this.infoLogger = infoLogger;
+        this.debugLogger = debugLogger;
         this.warnLogger = warnLogger;
     }
 
@@ -107,7 +107,7 @@ public class DataPersistence {
         File folder = new File(path.toUri());
         if (!folder.exists()) {
             if (folder.mkdirs()) {
-                info("Created folder: " + folder.getAbsolutePath());
+                debug("Created folder: " + folder.getAbsolutePath());
                 return true;
             } else {
                 error("Failed to create folder: " + folder.getAbsolutePath());
@@ -129,9 +129,9 @@ public class DataPersistence {
 
 
 
-    protected void info(String message) {
-        if (infoLogger != null) {
-            infoLogger.accept("[DataPersistence]: " + message);
+    protected void debug(String message) {
+        if (debugLogger != null) {
+            debugLogger.accept("[DataPersistence]: " + message);
         }
     }
     protected void error(String message) {
@@ -216,7 +216,7 @@ public class DataPersistence {
             success = false;
         }
         long endMillis = System.currentTimeMillis();
-        info("Saving data to file: " + absolutePath + " took " + (endMillis - startMillis) + "ms");
+        debug("Saving data to file: " + absolutePath + " took " + (endMillis - startMillis) + "ms");
         return success;
     }
 

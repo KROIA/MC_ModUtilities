@@ -139,23 +139,30 @@ public class ServerPlayerUtilities {
     {
         if(player == null || stack == null || stack.isEmpty())
             return 0;
-        int remainingAmount = stack.getCount();;
+        int remainingAmount = stack.getCount();
         int maxStackSize = stack.getMaxStackSize();
         ItemStack stackCpy = stack.copy();
         Inventory inventory = player.getInventory();
-        while(remainingAmount > 0)
+
+        for(int i=0; i<inventory.getContainerSize(); i++)
         {
-            int stackSize = Math.min(remainingAmount, maxStackSize);
-            stackCpy.setCount(stackSize);
-            // Try to add the item to the inventory
-            int slotIndex = inventory.getFreeSlot();
-            if(slotIndex >= 0) {
-                inventory.setItem(slotIndex, stackCpy.copy());
-                remainingAmount -= stackSize; // Decrease the requested amount
+            ItemStack currentStack = inventory.getItem(i);
+            if(currentStack.isEmpty() || (currentStack.is(stackCpy.getItem()) && currentStack.getCount() < maxStackSize))
+            {
+                // If the slot is empty or contains the same item and has space, add the stack
+                int spaceInSlot = maxStackSize - currentStack.getCount();
+                if(spaceInSlot > 0)
+                {
+                    int amountToAdd = Math.min(remainingAmount, spaceInSlot);
+                    int currentAmount = currentStack.getCount();
+                    currentStack = stack.copy();
+                    currentStack.setCount(currentAmount + amountToAdd);
+                    remainingAmount -= amountToAdd;
+                    inventory.setItem(i, currentStack);
+                }
             }
-            else {
-                break;
-            }
+            if(remainingAmount <= 0)
+                break; // No more items to add
         }
         stack.setCount(remainingAmount); // Update the original stack with the remaining amount
         return remainingAmount;
