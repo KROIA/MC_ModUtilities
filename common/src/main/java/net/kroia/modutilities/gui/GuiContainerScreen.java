@@ -151,7 +151,7 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if(!gui.mouseClicked(mouseX, mouseY, button))
-            return super.mouseClicked(mouseX, mouseY, button);
+            return false; //return super.mouseClicked(mouseX, mouseY, button);
         return true;
     }
     @Override

@@ -27,6 +27,39 @@ public class ColorUtilities {
     {
         return (alpha << 24) | (red << 16) | (green << 8) | blue;
     }
+    public static int setAlpha(int color, int alpha)
+    {
+        return (color & 0x00FFFFFF) | (alpha << 24);
+    }
+    public static int setAlpha(int color, float alpha)
+    {
+        return setAlpha(color, (int)(alpha*255));
+    }
+    public static int setRed(int color, int red)
+    {
+        return (color & 0xFF00FFFF) | (red << 16);
+    }
+    public static int setRed(int color, float red)
+    {
+        return setRed(color, (int)(red*255));
+    }
+    public static int setGreen(int color, int green)
+    {
+        return (color & 0xFFFF00FF) | (green << 8);
+    }
+    public static int setGreen(int color, float green)
+    {
+        return setGreen(color, (int)(green*255));
+    }
+    public static int setBlue(int color, int blue)
+    {
+        return (color & 0xFFFFFF00) | blue;
+    }
+    public static int setBlue(int color, float blue)
+    {
+        return setBlue(color, (int)(blue*255));
+    }
+
 
     public static int getRGB(int color, int alpha)
     {
