@@ -9,6 +9,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 
 public class ItemSelectionScreen extends GuiScreen {
@@ -25,7 +26,7 @@ public class ItemSelectionScreen extends GuiScreen {
     public ItemSelectionScreen(Screen parentScreen, Consumer<ItemStack> onItemSelected) {
         this(parentScreen, ItemUtilities.getAllItems(), onItemSelected);
     }
-    public ItemSelectionScreen(Screen parentScreen, ArrayList<ItemStack> allowedItemsIDs, Consumer<ItemStack> onItemSelected) {
+    public ItemSelectionScreen(Screen parentScreen, List<ItemStack> allowedItemsIDs, Consumer<ItemStack> onItemSelected) {
         super(TITLE);
 
         itemSelectionView = new ItemSelectionView(allowedItemsIDs, (s) -> {
