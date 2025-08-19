@@ -16,6 +16,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.item.ItemStack;
 
@@ -1325,8 +1326,21 @@ public abstract class GuiElement {
 
     public void drawTexture(GuiTexture texture, int x, int y)
     {
-        root.drawTexture(texture.getResourceLocation(), x, y, texture.getWidth(), texture.getHeight(), texture.getUVOffsetX(), texture.getUVOffsetY());
+        root.drawTexture(texture.getResourceLocation(), x, y, texture.getUVOffsetX(), texture.getUVOffsetY(), texture.getWidth(), texture.getHeight(), texture.getWidth(), texture.getHeight());
     }
+    public void drawTexture(GuiTexture texture, int x, int y, int width, int height)
+    {
+        root.drawTexture(texture.getResourceLocation(), x, y, texture.getUVOffsetX(), texture.getUVOffsetY(), width, height, width, height);
+    }
+    public void drawTexture(ResourceLocation atlasLocation, int x, int y, float uOffset, float vOffset, int width, int height, int textureWidth, int textureHeight)
+    {
+        root.drawTexture(atlasLocation, x, y, uOffset, vOffset, width, height, textureWidth, textureHeight);
+    }
+    public void drawTextureFillArea(GuiTexture texture, int x, int y, int areaWidth, int areaHeight)
+    {
+        root.drawTexture(texture.getResourceLocation(), x, y, texture.getUVOffsetX(), texture.getUVOffsetY(), areaWidth, areaHeight, texture.getWidth(), texture.getHeight());
+    }
+
     public void drawTexture(GuiTexture texture, Point pos)
     {
         drawTexture(texture, pos.x, pos.y);

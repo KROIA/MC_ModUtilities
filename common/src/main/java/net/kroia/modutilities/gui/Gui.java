@@ -43,7 +43,7 @@ public class Gui {
 
     protected GuiElement focusedElement = null;
 
-    private List<GuiElement> elements = new ArrayList<>();
+    private final List<GuiElement> elements = new ArrayList<>();
 
     public Gui(Screen parent)
     {
@@ -556,9 +556,13 @@ public class Gui {
         popPose();
     }
 
-    public void drawTexture(ResourceLocation texture, int x, int y, int width, int height, int uOffset, int vOffset)
+    public void drawTexture(ResourceLocation texture, int x, int y,  int uOffset, int vOffset, int width, int height)
     {
         graphics.blit(texture, x, y, uOffset, vOffset, width, height);
+    }
+    public void drawTexture(ResourceLocation atlasLocation, int x, int y, float uOffset, float vOffset, int width, int height, int textureWidth, int textureHeight)
+    {
+        graphics.blit(atlasLocation, x, y, uOffset, vOffset, width, height, textureWidth, textureHeight);
     }
     public void drawTexture(TextureAtlasSprite sprite, int x, int y, int width, int height, int blitOffset)
     {
