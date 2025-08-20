@@ -399,7 +399,17 @@ public abstract class GuiElement {
         graphics.pushPose();
         graphics.translate((float)getX(), (float)getY(), 0.0F);
         render();
-        if(hoverTooltipData.textSupplier != null && isMouseOver() && isVisible())
+        for (GuiElement child : childs) {
+            child.renderInternal();
+        }
+        graphics.popPose();
+
+    }
+    public void renderTooltipInternal()
+    {
+        if(!isVisible())
+            return;
+        if(hoverTooltipData.textSupplier != null && isMouseOver())
         {
             if(!tooltipTimerStarted) {
                 tooltipTimer.start(tooltipDelay);
@@ -429,16 +439,7 @@ public abstract class GuiElement {
             tooltipTimer.stop();
             tooltipTimerStarted = false;
         }
-        for (GuiElement child : childs) {
-            child.renderInternal();
-        }
-        graphics.popPose();
 
-    }
-    public void renderTooltipInternal()
-    {
-        if(!isVisible())
-            return;
         Graphics graphics = root.getGraphics();
         graphics.pushPose();
         graphics.translate((float)getX(), (float)getY(), 200.0F);
