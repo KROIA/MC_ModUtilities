@@ -143,11 +143,11 @@ public class Plot extends GuiElement
         plots.clear();
     }
 
-    public void setxAxisValueConversion(String format)
+    public void setXAxisValueConversion(String format)
     {
         this.xAxisValueConversion = format;
     }
-    public void setyAxisValueConversion(String format)
+    public void setYAxisValueConversion(String format)
     {
         this.yAxisValueConversion = format;
     }
@@ -264,19 +264,21 @@ public class Plot extends GuiElement
 
         // Draw Plots
         for (PlotData plot : plots) {
-            int lastX = xAxis.getPos(0);
-            int lastY = yAxis.getPos(0);
+            if(plot.yValues.size() > 1) {
+                int lastX = xAxis.getPos(0);
+                int lastY = yAxis.getPos(plot.yValues.get(0));
 
-            for (int i = 1; i < plot.yValues.size(); i++) {
-                float nextXValue = xAxis.getMinValue() + (xAxis.getMaxValue() - xAxis.getMinValue()) * i / (plot.yValues.size() - 1);
-                float nextYValue = plot.yValues.get(i);
-                int nextX = xAxis.getPos(nextXValue);
-                int nextY = yAxis.getPos(nextYValue);
+                for (int i = 1; i < plot.yValues.size(); i++) {
+                    float nextXValue = xAxis.getMinValue() + (xAxis.getMaxValue() - xAxis.getMinValue()) * i / (plot.yValues.size() - 1);
+                    float nextYValue = plot.yValues.get(i);
+                    int nextX = xAxis.getPos(nextXValue);
+                    int nextY = yAxis.getPos(nextYValue);
 
-                drawLine(lastX, lastY, nextX, nextY, plot.thickness, plot.color); // Draw line in specified color
+                    drawLine(lastX, lastY, nextX, nextY, plot.thickness, plot.color); // Draw line in specified color
 
-                lastX = nextX;
-                lastY = nextY;
+                    lastX = nextX;
+                    lastY = nextY;
+                }
             }
         }
 

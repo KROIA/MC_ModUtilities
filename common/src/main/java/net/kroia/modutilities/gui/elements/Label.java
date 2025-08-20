@@ -15,13 +15,14 @@ public class Label extends GuiElement {
     private Point textPos = new Point(0,0);
     public Label()
     {
-        super(0,0,100,DEFAULT_HEIGHT);
-        text = "";
+        this("");
     }
     public Label(String text)
     {
         super(0,0,100,DEFAULT_HEIGHT);
         this.text = Objects.requireNonNullElse(text, "");
+        setEnableBackground(false);
+        setEnableOutline(false);
     }
 
     public void setText(String text)
@@ -51,10 +52,10 @@ public class Label extends GuiElement {
         return padding;
     }
 
-    @Override
+    /*@Override
     public void renderBackground() {
 
-    }
+    }*/
 
     @Override
     public void render() {

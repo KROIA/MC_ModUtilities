@@ -29,6 +29,10 @@ public class TextureElement extends GuiElement {
         this.texture = texture;
         setEnableBackground(false);
         setEnableOutline(false);
+        if(texture != null)
+        {
+            this.setSize(texture.getWidth(), texture.getHeight());
+        }
     }
     public TextureElement(String modID, String path, int imageWidth, int imageHeight)
     {
@@ -88,7 +92,7 @@ public class TextureElement extends GuiElement {
 
     }
 
-    private void renderTextureInternal()
+    protected void renderTextureInternal()
     {
         if(texture == null)
             return;
@@ -98,7 +102,7 @@ public class TextureElement extends GuiElement {
                 drawTexture(texture.getResourceLocation(),
                         0,0,
                         texture.getUVOffsetX(), texture.getUVOffsetY(),
-                        getWidth(), getHeight(),
+                        Math.min(getWidth(), texture.getWidth()), Math.min(getHeight(),texture.getHeight()),
                         texture.getWidth(), texture.getHeight());
             }
             case FILL -> {
