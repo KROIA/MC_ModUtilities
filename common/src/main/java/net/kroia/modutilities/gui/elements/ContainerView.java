@@ -94,7 +94,7 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
         this.titleLabelX = 8;
         this.titleLabelY = 6;
         this.inventoryLabelX = 8;
-        this.inventoryLabelY = pBackgroundTexture.getHeight() - 94;
+
     }
 
     private boolean isSameInventory(Slot pSlot, Slot pOtherSlot) {
@@ -119,7 +119,8 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
     }
     @Override
     public void renderBackground() {
-        drawTexture(background_texture, 0, 0);
+        drawTexture(background_texture.getResourceLocation(), 0, 0, 0,0, getWidth(), getHeight(),
+                background_texture.getWidth(), background_texture.getHeight());
     }
 
     @Override
@@ -186,7 +187,7 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
 
     @Override
     protected void layoutChanged() {
-
+        this.inventoryLabelY = (int)((float)getHeight()*0.433f);
     }
 
     public void setOnCloseEvent(Runnable pOnCloseEvent) {
