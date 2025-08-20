@@ -1,4 +1,4 @@
-package net.kroia.modutilities;
+package net.kroia.modutilities.persistence;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -12,9 +12,7 @@ import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -180,6 +178,16 @@ public class DataPersistence {
             return List.of(); // Return empty list on error
         }
     }
+    public List<Path> getFoldes(Path absolutePath) {
+        try {
+            return Files.list(absolutePath) // List files
+                    .filter(Files::isDirectory)       // Keep only directories
+                    .collect(Collectors.toList()); // Convert to List
+        } catch (IOException e) {
+            error("Failed to list folders in directory: " + absolutePath, e);
+            return List.of(); // Return empty list on error
+        }
+    }
 
 
 
@@ -229,7 +237,7 @@ public class DataPersistence {
         }
         if(uncompressedSize > MAX_NBT_SIZE)
         {
-            warn("Data size exceeds maximum NBT size of " + MAX_NBT_SIZE + " bytes.\nThis will cause problems in specific minecraft versions.\n" +
+            warn("Data size exceeds maximum NBT size of " + MAX_NBT_SIZE + " bytes.\n" +
                     "Consider splitting the data into a TagList and use the saveDataCompoundList() function to store the data.");
         }
 
@@ -253,7 +261,7 @@ public class DataPersistence {
     {
         long startMillis = System.currentTimeMillis();
         boolean success = true;
-        long uncompressedSize = 0;
+       /* long uncompressedSize = 0;
         try {
             CompoundTag data = new CompoundTag();
             data.put("data", dataList);
@@ -261,67 +269,84 @@ public class DataPersistence {
         }catch (IOException e) {
             error("Failed to get uncompressed size of data: " + absolutePath, e);
             success = false;
+        }*/
+        // Save the data to a single file
+        if(!createSaveFolder()) {
+            error("Failed to create save folder: " + getAbsoluteSavePath());
+            return false;
         }
-        if(uncompressedSize > MAX_NBT_SIZE)
+
+
+        String fileName = absolutePath.getFileName().toString();
+        if(fileName.lastIndexOf(".") != -1)
         {
-            // Split the data into chunks and store them in a folder with the name of the file
-            String fileName = absolutePath.getFileName().toString();
-            if(fileName.lastIndexOf(".") != -1)
-            {
-                fileName = fileName.substring(0, fileName.lastIndexOf("."));
-            }
-            Path folderPath = absolutePath.getParent().resolve(fileName);
-            if(!createFolder(folderPath)) {
-                error("Failed to create folder for large NBT data: " + folderPath);
-                return false;
-            }
-            // Split the data into chunks
-            List<CompoundTag> chunks = new ArrayList<>();
-            int processedTagCount = 0;
-            while(processedTagCount < dataList.size())
-            {
-                CompoundTag chunk = new CompoundTag();
-                ListTag chunkList = new ListTag();
-                chunk.put("data", chunkList);
-                for(; processedTagCount<dataList.size(); ++processedTagCount)
-                {
-                    chunkList.add(dataList.get(processedTagCount));
-                    long chunkUncompressedSize = 0;
+            fileName = fileName.substring(0, fileName.lastIndexOf("."));
+        }
+        Path chunkFolderPath = absolutePath.getParent().resolve(fileName);
+
+        if(folderExists(chunkFolderPath))
+        {
+            // delete all files in the folder
+            try {
+                Files.list(chunkFolderPath).forEach(file -> {
                     try {
-                        chunkUncompressedSize = getUncompressedSize(chunk);
+                        Files.delete(file);
                     } catch (IOException e) {
-                        error("Failed to get uncompressed size of chunk data: " + absolutePath, e);
-                        success = false;
-                        break;
+                        error("Failed to delete file: " + file, e);
                     }
-                    if(chunkUncompressedSize > MAX_NBT_SIZE) {
-                        // If the chunk is too large, stop adding more tags
-                        // remove the last tag
-                        chunkList.remove(chunkList.size() - 1);
-                        break;
-                    }
-                }
-                chunks.add(chunk);
-            }
-            // Save each chunk to a file
-            for(int i = 0; i < chunks.size(); ++i) {
-                Path chunkPath = folderPath.resolve("chunk_" + i + ".nbt");
-                if(!saveDataCompound(chunkPath, chunks.get(i))) {
-                    error("Failed to save chunk data to file: " + chunkPath);
-                    success = false;
-                }
+                });
+            } catch (IOException e) {
+                error("Failed to list files in folder: " + chunkFolderPath, e);
+                return false;
             }
         }
         else {
-            // Save the data to a single file
-            if(!createSaveFolder()) {
-                error("Failed to create save folder: " + getAbsoluteSavePath());
+            if (!createFolder(chunkFolderPath)) {
+                error("Failed to create folder for large NBT data: " + chunkFolderPath);
                 return false;
             }
-            CompoundTag dataTag = new CompoundTag();
-            dataTag.put("data", dataList);
-            if(!saveDataCompound(absolutePath, dataTag)) {
-                error("Failed to save data to file: " + absolutePath);
+        }
+
+
+        // Split the data into chunks
+        List<CompoundTag> chunks = new ArrayList<>();
+        int processedTagCount = 0;
+        while(processedTagCount < dataList.size())
+        {
+            CompoundTag chunk = new CompoundTag();
+            ListTag chunkList = new ListTag();
+            chunk.put("data", chunkList);
+            for(; processedTagCount<dataList.size(); ++processedTagCount)
+            {
+                chunkList.add(dataList.get(processedTagCount));
+                long chunkUncompressedSize = 0;
+                try {
+                    chunkUncompressedSize = getUncompressedSize(chunk);
+                } catch (IOException e) {
+                    error("Failed to get uncompressed size of chunk data: " + absolutePath, e);
+                    success = false;
+                    break;
+                }
+                if(chunkUncompressedSize > MAX_NBT_SIZE) {
+                    // If the chunk is too large, stop adding more tags
+                    // remove the last tag
+                    chunkList.remove(chunkList.size() - 1);
+                    if(chunkList.isEmpty())
+                    {
+                        error("The Tag at index: "+processedTagCount+" in the dataList is larger than the maximum NBT size of " + MAX_NBT_SIZE + " bytes.\n" +
+                                "Consider splitting the data into smaller ListTag elements or using a different data format.", new Throwable("Data too large"));
+                        return false;
+                    }
+                    break;
+                }
+            }
+            chunks.add(chunk);
+        }
+        // Save each chunk to a file
+        for(int i = 0; i < chunks.size(); ++i) {
+            Path chunkPath = chunkFolderPath.resolve("chunk_" + i + ".nbt");
+            if(!saveDataCompound(chunkPath, chunks.get(i))) {
+                error("Failed to save chunk data to file: " + chunkPath);
                 success = false;
             }
         }
@@ -340,36 +365,76 @@ public class DataPersistence {
             fileName = fileName.substring(0, fileName.lastIndexOf("."));
         }
         Path folderPath = absolutePath.getParent().resolve(fileName);
-        boolean isFile = Files.isRegularFile(absolutePath) && !Files.isDirectory(folderPath);
-        if(isFile)
-        {
-            CompoundTag data = readDataCompound(absolutePath);
-            if(data != null && data.contains("data", Tag.TAG_LIST)) {
-                dataOut = data.getList("data", Tag.TAG_COMPOUND); // 10 is the type ID for CompoundTag
-            } else {
-                error("No valid 'data' list found in file: " + absolutePath);
-                dataOut = new ListTag();
-            }
-        } else {
-            dataOut = new ListTag();
-            // If it's a folder, read all chunk files
-            try {
-                List<Path> chunkFiles = getFiles(folderPath, ".nbt");
-                for (Path chunkFile : chunkFiles) {
-                    CompoundTag chunkData = readDataCompound(chunkFile);
-                    if (chunkData != null && chunkData.contains("data", Tag.TAG_LIST)) {
-                        dataOut.addAll(chunkData.getList("data", Tag.TAG_COMPOUND));
-                    } else {
-                        error("No valid 'data' list found in chunk file: " + chunkFile);
-                    }
+
+        dataOut = new ListTag();
+        // If it's a folder, read all chunk files
+        try {
+            List<Path> chunkFiles = getFiles(folderPath, ".nbt");
+            for (Path chunkFile : chunkFiles) {
+                CompoundTag chunkData = readDataCompound(chunkFile);
+                if (chunkData != null && chunkData.contains("data", Tag.TAG_LIST)) {
+                    dataOut.addAll(chunkData.getList("data", Tag.TAG_COMPOUND));
+                } else {
+                    error("No valid 'data' list found in chunk file: " + chunkFile);
                 }
-            } catch (Exception e) {
-                error("Failed to read data from folder: " + absolutePath, e);
             }
+        } catch (Exception e) {
+            error("Failed to read data from folder: " + absolutePath, e);
         }
+
         return dataOut;
     }
 
+
+    public boolean saveDataCompoundListMap(Path absolutePath, Map<String, ListTag> dataListMap)
+    {
+        if(!createSaveFolder()) {
+            error("Failed to create save folder: " + getAbsoluteSavePath());
+            return false;
+        }
+        if (!createFolder(absolutePath)) {
+            error("Failed to create folder for large NBT data map: " + absolutePath);
+            return false;
+        }
+
+        // Save each ListTag to a separate file
+        boolean success = true;
+        for (Map.Entry<String, ListTag> entry : dataListMap.entrySet()) {
+            String fileName = entry.getKey();
+            Path absoluteListPath = absolutePath.resolve(fileName);
+            if (!saveDataCompoundList(absoluteListPath, entry.getValue())) {
+                error("Failed to save ListTag to file: " + absoluteListPath);
+                success = false;
+            }
+        }
+        return success;
+    }
+
+    public Map<String, ListTag> readDataCompoundListMap(Path absolutePath) {
+        Map<String, ListTag> dataMap = new HashMap<>();
+        if(!folderExists(absolutePath)) {
+            error("Folder does not exist: " + absolutePath);
+            return dataMap;
+        }
+
+        // Read each ListTag from a separate file
+        List<Path> folderList = getFoldes(absolutePath);
+        for(Path folder : folderList) {
+            String fileName = folder.getFileName().toString();
+            if(fileName.lastIndexOf(".") != -1)
+            {
+                fileName = fileName.substring(0, fileName.lastIndexOf("."));
+            }
+            Path absoluteListPath = absolutePath.resolve(fileName);
+            ListTag listTag = readDataCompoundList(absoluteListPath);
+            if (listTag != null) {
+                dataMap.put(fileName, listTag);
+            } else {
+                error("No valid ListTag found in folder: " + absoluteListPath);
+            }
+        }
+        return dataMap;
+    }
     public boolean saveAsJson(Object o, Path absolutePath)
     {
         String json = GSON.toJson(o);
