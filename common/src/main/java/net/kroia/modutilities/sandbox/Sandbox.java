@@ -1,15 +1,24 @@
 package net.kroia.modutilities.sandbox;
 
+import com.google.gson.JsonElement;
 import com.mojang.brigadier.CommandDispatcher;
 import dev.architectury.event.events.common.CommandRegistrationEvent;
+import net.kroia.modutilities.JsonUtilities;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.networking.NetworkManager;
 import net.kroia.modutilities.networking.NetworkPacket;
+import net.kroia.modutilities.setting.parser.ItemStackJsonParser;
 import net.minecraft.client.Minecraft;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
+
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 public class Sandbox {
     private static class SandboxNetwork extends NetworkManager
@@ -88,6 +97,51 @@ public class Sandbox {
                                     .executes(context -> {
                                         ServerPlayer player = context.getSource().getPlayerOrException();
                                         SandboxOpenGuiPacked.send(player, SandboxOpenGuiPacked.GuiType.TEST_SCREEN);
+                                        return 1;
+                                    }))
+                            .then(Commands.literal("saveItemInHand")
+                                    .executes(context -> {
+                                        ServerPlayer player = context.getSource().getPlayerOrException();
+                                        ItemStack itemInHand = player.getMainHandItem();
+                                        if(itemInHand == null || itemInHand.isEmpty()) {
+                                            return 0;
+                                        }
+                                        ItemStackJsonParser parser = new ItemStackJsonParser();
+                                        JsonElement stackJson = parser.toJson(itemInHand);
+                                        ModUtilitiesMod.LOGGER.info("Saved item in hand: " + stackJson.toString());
+                                        player.sendSystemMessage(Component.literal("Saved item in hand: " + stackJson.toString()));
+                                        // save to file
+                                        try {
+                                            Files.writeString(Path.of("saved_item.json"), JsonUtilities.toPrettyString(stackJson));
+                                        } catch (Exception e) {
+                                            ModUtilitiesMod.LOGGER.error("Failed to save JSON to file: " + "saved_item.json", e);
+                                            return 0;
+                                        }
+                                        return 1;
+                                    }))
+                            .then(Commands.literal("loadItemToHand")
+                                    .executes(context -> {
+                                        ServerPlayer player = context.getSource().getPlayerOrException();
+                                        ItemStackJsonParser parser = new ItemStackJsonParser();
+
+                                        // Load from file
+                                        File file = new File("saved_item.json");
+                                        if (!file.exists()) {
+                                            player.sendSystemMessage(Component.literal("No saved item found."));
+                                            return 0;
+                                        }
+                                        try {
+                                            String jsonContent = Files.readString(file.toPath());
+                                            JsonElement jsonElement = JsonUtilities.fromString(jsonContent);
+                                            ItemStack itemStack = parser.fromJson(jsonElement);
+                                            player.setItemInHand(player.getUsedItemHand(), itemStack);
+                                            player.sendSystemMessage(Component.literal("Loaded item to hand: " + itemStack.toString()));
+                                        } catch (Exception e) {
+                                            ModUtilitiesMod.LOGGER.error("Failed to load item from JSON file", e);
+                                            player.sendSystemMessage(Component.literal("Failed to load item from JSON file: " + e.getMessage()));
+                                            return 0;
+                                        }
+
                                         return 1;
                                     }))
             );

@@ -223,18 +223,66 @@ public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
         }
 
     }
+
+    private final NBTJsonParser nbtJsonParser = new NBTJsonParser();
     @Override
     public JsonElement toJson(ItemStack stack) {
-        return new ItemData(stack).toJson();
+        //return new ItemData(stack).toJson();
+
+        JsonObject stackData = new JsonObject();
+        stackData.addProperty("itemID", ItemUtilities.getItemIDStr(stack.getItem()));
+        CompoundTag tag = stack.getTag();
+        if(tag != null)
+            stackData.add("nbt", nbtJsonParser.toJson(tag));
+        return stackData;
     }
 
     @Override
     public ItemStack fromJson(JsonElement json) {
-        ItemData itemData = new ItemData();
+        if (!json.isJsonObject()) {
+            throw new IllegalArgumentException("Invalid JSON element for ItemStack");
+        }
+        JsonObject data = json.getAsJsonObject();
+
+        if (!data.has("itemID")) {
+            throw new IllegalArgumentException("JSON element does not contain 'itemID' for ItemStack");
+        }
+        String itemID = data.get("itemID").getAsString();
+
+        ItemStack stack = ItemUtilities.createItemStackFromId(itemID);
+        if (stack == null || stack.isEmpty()) {
+            throw new IllegalArgumentException("Invalid itemID: " + itemID);
+        }
+        if (data.has("nbt")) {
+            JsonElement nbtElement = data.get("nbt");
+            if (nbtElement.isJsonObject()) {
+                Tag nbtTag = nbtJsonParser.fromJson(nbtElement);
+                if(nbtTag == null || !(nbtTag instanceof CompoundTag)) {
+                    throw new IllegalArgumentException("Invalid NBT data for ItemStack");
+                }
+                stack.setTag((CompoundTag)nbtTag);
+            } else {
+                throw new IllegalArgumentException("Invalid NBT data for ItemStack");
+            }
+        }
+        else {
+            // Check if it has old parser data
+            if(data.has("StoredEnchantments") || data.has("Potion")) {
+                ItemData itemData = new ItemData();
+                if(itemData.fromJson(json)) {
+                    return itemData.getItemStack();
+                } else {
+                    throw new IllegalArgumentException("Invalid JSON element for ItemStack");
+                }
+            }
+        }
+        return stack;
+
+        /*ItemData itemData = new ItemData();
         if(itemData.fromJson(json)) {
             return itemData.getItemStack();
         } else {
             throw new IllegalArgumentException("Invalid JSON element for ItemStack");
-        }
+        }*/
     }
 }

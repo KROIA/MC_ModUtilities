@@ -4,6 +4,8 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 
+import java.nio.file.Files;
+
 public class JsonUtilities {
     private static final Gson GSON_PRETTY = new GsonBuilder().setPrettyPrinting().create();
     private static final Gson GSON = new GsonBuilder().create();
@@ -15,5 +17,9 @@ public class JsonUtilities {
     }
     public static String toString(JsonElement jsonElement) {
         return GSON.toJson(jsonElement);
+    }
+
+    public static JsonElement fromString(String jsonString) {
+        return GSON.fromJson(jsonString, JsonElement.class);
     }
 }
