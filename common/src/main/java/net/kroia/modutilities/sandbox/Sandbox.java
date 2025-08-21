@@ -98,12 +98,19 @@ public class Sandbox {
 
                                         return 1;
                                     }))
+                            .then(Commands.literal("loadAndSaveDataArchive")
+                                    .executes(context -> {
+                                        ServerPlayer player = context.getSource().getPlayerOrException();
+                                        SandboxDataArchiveManager.loadAndSave();
+                                        return 1;
+                                    }))
             );
         }
     }
 
     private static SandboxNetwork network = null;
 
+    private static SandboxDataArchiveManager dataArchiveManager;
 
     public static void init()
     {
@@ -111,5 +118,7 @@ public class Sandbox {
             SandboxCommand.register(dispatcher);
         });
         network = new SandboxNetwork();
+
+        //dataArchiveManager = new SandboxDataArchiveManager(Path.of("data/sandbox_data_archive"));
     }
 }

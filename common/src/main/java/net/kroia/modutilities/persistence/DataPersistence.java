@@ -229,12 +229,7 @@ public class DataPersistence {
         boolean success = true;
 
         long uncompressedSize = 0;
-        try {
-            uncompressedSize = getUncompressedSize(data);
-        }catch (IOException e) {
-            error("Failed to get uncompressed size of data: " + absolutePath, e);
-            success = false;
-        }
+        uncompressedSize = ChunkedNBT.getUncompressedSize(data);
         if(uncompressedSize > MAX_NBT_SIZE)
         {
             warn("Data size exceeds maximum NBT size of " + MAX_NBT_SIZE + " bytes.\n" +
@@ -320,13 +315,7 @@ public class DataPersistence {
             {
                 chunkList.add(dataList.get(processedTagCount));
                 long chunkUncompressedSize = 0;
-                try {
-                    chunkUncompressedSize = getUncompressedSize(chunk);
-                } catch (IOException e) {
-                    error("Failed to get uncompressed size of chunk data: " + absolutePath, e);
-                    success = false;
-                    break;
-                }
+                chunkUncompressedSize = ChunkedNBT.getUncompressedSize(chunk);
                 if(chunkUncompressedSize > MAX_NBT_SIZE) {
                     // If the chunk is too large, stop adding more tags
                     // remove the last tag
@@ -407,6 +396,31 @@ public class DataPersistence {
                 success = false;
             }
         }
+
+        CompoundTag allDataCompound = new CompoundTag();
+        // Create a ListTag to hold all ListTags
+        for(Map.Entry<String, ListTag> entry : dataListMap.entrySet()) {
+            String fileName = entry.getKey();
+            ListTag listTag = entry.getValue();
+            if (listTag != null) {
+                allDataCompound.put(fileName, listTag);
+            } else {
+                error("No valid ListTag found for key: " + fileName);
+            }
+        }
+
+        //saveDataCompoundChunked(absolutePath.resolve("all_data"), allDataCompound);
+
+        //CompoundTag readed = readDataCompoundChunked(absolutePath.resolve("all_data"));
+
+        /*CompoundTag analyzedCompound = ChunkedNBT.getSizeAnalysis(allDataCompound);
+        // save the tag as json
+        Path analysisPath = absolutePath.resolve("analysis.json");
+        if(!saveAsJson(analyzedCompound, analysisPath)) {
+            error("Failed to save analysis JSON to file: " + analysisPath);
+            success = false;
+        }*/
+
         return success;
     }
 
@@ -435,6 +449,89 @@ public class DataPersistence {
         }
         return dataMap;
     }
+
+    /*public boolean saveDataCompoundChunked(Path absolutePath, CompoundTag tag)
+    {
+        ChunkedNBT.FlatNBT flatNBT = null;
+        try{
+            flatNBT = ChunkedNBT.flatten(tag);
+        }
+        catch(IOException e) {
+            error("Failed to flatten CompoundTag: " + absolutePath, e);
+            return false;
+        }
+        return saveFlatNBT(absolutePath, flatNBT);
+    }
+    public CompoundTag readDataCompoundChunked(Path absolutePath) {
+        ChunkedNBT.FlatNBT flatNBT = loadFlatNBT(absolutePath);
+        if (flatNBT == null) {
+            error("Failed to load FlatNBT data from file: " + absolutePath);
+            return null;
+        }
+        return ChunkedNBT.rebuild(flatNBT);
+    }
+
+
+    public boolean saveFlatNBT(Path absolutePath, ChunkedNBT.FlatNBT flatNBT)
+    {
+    // delete existing files
+        if(fileExists(absolutePath)) {
+            try {
+                Files.delete(absolutePath);
+            } catch (IOException e) {
+                error("Failed to delete existing file: " + absolutePath, e);
+                return false;
+            }
+        }
+        if(!createFolder(absolutePath))
+            return false;
+
+        Path chunksFolder = absolutePath.resolve("chunks");
+        if(!createFolder(chunksFolder)) {
+            error("Failed to create chunks folder: " + chunksFolder);
+            return false;
+        }
+
+        CompoundTag root = new CompoundTag();
+        root.putInt("root", flatNBT.rootId);
+        boolean success = saveDataCompound(absolutePath.resolve("root"), root);
+        success &= saveDataCompoundList(chunksFolder, flatNBT.chunks);
+        if(!success) {
+            error("Failed to save FlatNBT data to file: " + absolutePath);
+            return false;
+        }
+        debug("Saved FlatNBT data to file: " + absolutePath);
+        return true;
+    }
+
+    public ChunkedNBT.FlatNBT loadFlatNBT(Path absolutePath) {
+        // Check if the path exists
+        if (!folderExists(absolutePath)) {
+            error("FlatNBT folder does not exist: " + absolutePath);
+            return null;
+        }
+        // Read the structure data
+        CompoundTag rootData = readDataCompound(absolutePath.resolve("root"));
+        if (rootData == null) {
+            error("Failed to read root data from file: " + absolutePath.resolve("root"));
+            return null;
+        }
+        // Read the chunks data
+        ListTag chunksData = readDataCompoundList(absolutePath.resolve("chunks"));
+        if (chunksData == null) {
+            error("Failed to read chunks data from folder: " + absolutePath.resolve("chunks"));
+            return null;
+        }
+        ChunkedNBT.FlatNBT flatNBT = new ChunkedNBT.FlatNBT();
+        flatNBT.rootId = rootData.getInt("root");
+        flatNBT.chunks = chunksData;
+        debug("Loaded FlatNBT data from file: " + absolutePath);
+        return flatNBT;
+    }*/
+
+
+
+
     public boolean saveAsJson(Object o, Path absolutePath)
     {
         String json = GSON.toJson(o);
@@ -485,14 +582,5 @@ public class DataPersistence {
             return (b1 == 0x1F && b2 == 0x8B);
         }
     }
-    public static long getUncompressedSize(CompoundTag tag) throws IOException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        DataOutputStream dos = new DataOutputStream(baos);
 
-        // Write the NBT to a byte array to measure its raw uncompressed size
-        NbtIo.write(tag, dos);
-        dos.flush();
-
-        return baos.size();
-    }
 }
