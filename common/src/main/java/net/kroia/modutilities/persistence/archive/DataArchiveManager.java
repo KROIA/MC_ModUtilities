@@ -300,11 +300,17 @@ public abstract class DataArchiveManager<T extends DataArchiveChunk> {
     }
     protected List<Path> getFiles(Path absolutePath) {
         try {
+            // check if folder exists
+            if(!Files.exists(absolutePath)) {
+                error("Archive folder does not exist: " + absolutePath);
+                return new ArrayList<>(); // Return empty list if folder does not exist
+            }
+
             return Files.list(absolutePath) // List files
                     .filter(Files::isRegularFile)
                     .collect(Collectors.toList()); // Convert to List
         } catch (IOException e) {
-            error("Failed to list JSON files in directory: " + absolutePath, e);
+            error("Failed to list files in directory: " + absolutePath, e);
             return List.of(); // Return empty list on error
         }
     }
