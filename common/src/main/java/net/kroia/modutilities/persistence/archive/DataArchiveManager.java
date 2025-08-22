@@ -41,6 +41,9 @@ public abstract class DataArchiveManager<T extends DataArchiveChunk> {
         this.chunkFactory = chunkFactory;
     }
 
+    public Path getArchiveFolderPath() {
+        return archiveFolderPath;
+    }
 
     protected boolean saveChunk(T chunk)
     {
@@ -311,12 +314,14 @@ public abstract class DataArchiveManager<T extends DataArchiveChunk> {
         this.errorLogger = errorLogger;
         this.debugLogger = debugLogger;
         this.warnLogger = warnLogger;
+        nbtFileParser.setLogger(errorLogger, debugLogger, warnLogger); // Set logger for NBTFileParser as well
     }
     public void setLogger(Consumer<String> errorLogger, BiConsumer<String, Throwable>errorLoggerThrowable, Consumer<String> debugLogger, Consumer<String> warnLogger) {
         this.errorLogger = errorLogger;
         this.errorLoggerThrowable = errorLoggerThrowable;
         this.debugLogger = debugLogger;
         this.warnLogger = warnLogger;
+        nbtFileParser.setLogger(errorLogger, errorLoggerThrowable, debugLogger, warnLogger); // Set logger for NBTFileParser as well
     }
 
     protected void debug(String message) {
