@@ -2,6 +2,7 @@ package net.kroia.modutilities.networking;
 
 import dev.architectury.networking.NetworkChannel;
 import net.kroia.modutilities.networking.arrs.AsynchronousRequestResponseSystem;
+import net.kroia.modutilities.networking.streaming.StreamSystem;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -24,12 +25,21 @@ public abstract class NetworkManager {
     }
 
     /**
-     * Setup the Asynchronous Request Response System (ARRS) for this network manager.
+     * Set up the Asynchronous Request Response System (ARRS) for this network manager.
      * This method can be called in the constructor of the derived NetworkManager class if the ARRS is used.
      */
     protected void setupARRS()
     {
         AsynchronousRequestResponseSystem.setup(this);
+    }
+
+    /**
+     * Set up the Stream System for this network manager.
+     * This method can be called in the constructor of the derived NetworkManager class if streaming is used.
+     */
+    protected void setupStreamSystem()
+    {
+        StreamSystem.setup(this);
     }
 
     abstract public void setupClientReceiverPackets();
@@ -55,6 +65,8 @@ public abstract class NetworkManager {
 
         CHANNEL.register(type, encoder, (buf)->{return decode(buf, decoder);}, messageConsumer);
     }
+
+
 
     private <T extends NetworkPacket> T decode(FriendlyByteBuf buf, Function<FriendlyByteBuf, T> decoder)
     {

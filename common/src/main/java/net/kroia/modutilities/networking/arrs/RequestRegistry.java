@@ -23,9 +23,9 @@ public class RequestRegistry
     private final Map<String, RegistryData<?,?>> registry = new java.util.HashMap<>();
 
     /**
-     * Registers a GenericRequest in the registry.
+     * Registers a Request in the registry.
      *
-     * @param request The GenericRequest static instance to register.
+     * @param request The static Request instance to register.
      * @param <IN>    The input type of the request.
      * @param <OUT>   The output type of the request.
      * @return The registered request, or null if there is already a request with the same RequestTypeID registered.
@@ -35,12 +35,13 @@ public class RequestRegistry
         RegistryData<IN, OUT> data = new RegistryData<>();
         data.request = request;
 
-        if (registry.containsKey(request.getRequestTypeID()))
+        String requestTypeID = request.getRequestTypeID();
+        if (registry.containsKey(requestTypeID))
         {
-            ModUtilitiesMod.LOGGER.error("Request with ID '{}' is already registered!", request.getRequestTypeID());
+            error("Request with ID "+requestTypeID+" is already registered!");
             return null; // already registered
         }
-        registry.put(request.getRequestTypeID(), data);
+        registry.put(requestTypeID, data);
         return request;
     }
 
@@ -98,5 +99,15 @@ public class RequestRegistry
             return null; // not found
         }
         return data.request;
+    }
+
+    private void error(String msg, Throwable e) {
+        ModUtilitiesMod.LOGGER.error("[RequestRegistry] " + msg, e);
+    }
+    private void error(String msg) {
+        ModUtilitiesMod.LOGGER.error("[RequestRegistry] " + msg);
+    }
+    private void warn(String msg) {
+        ModUtilitiesMod.LOGGER.warn("[RequestRegistry] " + msg);
     }
 }

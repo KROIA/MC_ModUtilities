@@ -1,11 +1,15 @@
 package net.kroia.modutilities.sandbox;
 
+import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.GuiScreen;
 import net.kroia.modutilities.gui.elements.*;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
+import net.kroia.modutilities.networking.streaming.StreamSystem;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+
+import java.util.UUID;
 
 public class TestScreen extends GuiScreen {
 
@@ -16,6 +20,8 @@ public class TestScreen extends GuiScreen {
     Plot.PlotData plotData2 = new Plot.PlotData();
     Plot.PlotData plotData3 = new Plot.PlotData();
     float time = 0;
+
+    private final UUID sinusStreamID;
 
     public TestScreen()
     {
@@ -45,7 +51,7 @@ public class TestScreen extends GuiScreen {
         Button tab3Button = new Button("Tab 3");
 
         tab1Button.setBounds(0, 0, 100, 20);
-       // tab2Button.setBounds(20, 20, 100, 20);
+        // tab2Button.setBounds(20, 20, 100, 20);
         tab3Button.setBounds(40, 40, 100, 20);
         frame1.addChild(tab1Button);
         frame3.addChild(tab3Button);
@@ -69,10 +75,32 @@ public class TestScreen extends GuiScreen {
         });
 
 
+        sinusStreamID = StreamSystem.startServerToClientStream(Sandbox.SandboxNetwork.SINUS_STREAM, 0.0f,
+                (value)-> // Callback handler for stream data
+                {
+                    plotData1.yValues.add((float)value.doubleValue());
+                    if(plotData1.yValues.size() > 100)
+                    {
+                        plotData1.yValues.remove(0);
+                    }
+                },
+                ()-> // Callback handler for stream stopped event
+                {
+                    // Stream stopped handler
+                    ModUtilitiesMod.LOGGER.info("[UI] SineStream stopped");
+                });
+
 
 
         addElement(tabElement);
     }
+
+    @Override
+    public void onClose() {
+        super.onClose();
+        StreamSystem.stopStream(sinusStreamID);
+    }
+
     @Override
     protected void updateLayout(Gui gui) {
         tabElement.setBounds(0,0,getWidth(),getHeight());
@@ -83,16 +111,21 @@ public class TestScreen extends GuiScreen {
         tabElement.setSelectedTitleHeight((int)((Math.sin(time*30)+1)*5 + 10));
         super.renderBackground(guiGraphics);
 
-        plotData1.yValues.clear();
+        //plotData1.yValues.clear();
         plotData2.yValues.clear();
         plotData3.yValues.clear();
         for(int i=0; i<100; i++)
         {
-            plotData1.yValues.add(i, ((float)Math.sin(time+i/10.0)));
+            //plotData1.yValues.add(i, ((float)Math.sin(time+i/10.0)));
             plotData2.yValues.add(i, ((float)Math.sin(time+i/10.0 + Math.PI*2/3)));
             plotData3.yValues.add(i, ((float)Math.sin(time+i/10.0 + Math.PI*4/3)));
         }
         time+= 0.01f;
+
+    }
+
+    public void onSinusSignalArrived(Double value)
+    {
 
     }
 }

@@ -46,7 +46,7 @@ public abstract class GenericRequest<IN, OUT>
      *
      * @return The output produced by the responder.
      */
-    public abstract OUT handleOnClient(IN input);
+    public OUT handleOnClient(IN input)  { throw new AssertionError("handleOnClient() is not implemented in" + this.getRequestTypeID() + ". Please implement this method to handle the request on the client side."); }
 
     /**
      * Handles the request on the server side.
@@ -60,7 +60,9 @@ public abstract class GenericRequest<IN, OUT>
      *
      * @return The output produced by the responder.
      */
-    public abstract OUT handleOnServer(IN input, ServerPlayer sender);
+    public OUT handleOnServer(IN input, ServerPlayer sender) {
+        throw new AssertionError("handleOnServer() is not implemented in " + this.getRequestTypeID() + ". Please implement this method to handle the request on the server side.");
+    }
 
 
     /**
@@ -73,7 +75,9 @@ public abstract class GenericRequest<IN, OUT>
      * @apiNote
      * This methode gets called serverside and clientside.
      */
-    public abstract void encodeInput(FriendlyByteBuf buf, IN input);
+    public void encodeInput(FriendlyByteBuf buf, IN input) {
+        throw new AssertionError("encodeInput() is not implemented in " + this.getRequestTypeID() + ". Please implement this method to encode the input data.");
+    }
 
     /**
      * Encodes the output into a byte buffer for transmission.
@@ -85,7 +89,9 @@ public abstract class GenericRequest<IN, OUT>
      * @apiNote
      * This methode gets called serverside and clientside.
      */
-    public abstract void encodeOutput(FriendlyByteBuf buf, OUT output);
+    public void encodeOutput(FriendlyByteBuf buf, OUT output)  {
+        throw new AssertionError("encodeOutput() is not implemented in " + this.getRequestTypeID() + ". Please implement this method to encode the output data.");
+    }
 
 
     /**
@@ -99,7 +105,9 @@ public abstract class GenericRequest<IN, OUT>
      *
      * @return The decoded input.
      */
-    public abstract IN decodeInput(FriendlyByteBuf buf);
+    public IN decodeInput(FriendlyByteBuf buf)  {
+        throw new AssertionError("decodeInput() is not implemented in " + this.getRequestTypeID() + ". Please implement this method to decode the input data.");
+    }
 
     /**
      * Decodes the output from a byte buffer.
@@ -112,7 +120,9 @@ public abstract class GenericRequest<IN, OUT>
      *
      * @return The decoded output.
      */
-    public abstract OUT decodeOutput(FriendlyByteBuf buf);
+    public OUT decodeOutput(FriendlyByteBuf buf)  {
+        throw new AssertionError("decodeOutput() is not implemented in " + this.getRequestTypeID() + ". Please implement this method to decode the output data.");
+    }
 
 
     /**
@@ -233,5 +243,12 @@ public abstract class GenericRequest<IN, OUT>
     public RequestManager getManager()
     {
         return this.manager;
+    }
+
+    @Override
+    public String toString() {
+        return "GenericRequest{" +
+                "requestTypeID='" + getRequestTypeID() + '\'' +
+                '}';
     }
 }

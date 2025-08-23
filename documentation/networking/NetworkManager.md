@@ -7,6 +7,7 @@ It registers all network packet classes and holds the instances for the ARRS Req
 ## Content
 - [Example Implementation](#example-implementation)
 - [ARRS Usage](#arrs-usage)
+- [Stream System Usage](#stream-system-usage)
 
 
 ---
@@ -44,7 +45,7 @@ public class MyExampleModNetworking extends NetworkManager {
 }
 
 ```
-
+---
 ### ARRS Usage
 The codesniped shows the registration and setup of the **Asynchronous Request Response System** (ARRS).
 To learn more about ARRS, click [here](ARRS.md) to visit its documentation. 
@@ -68,5 +69,30 @@ public class MyExampleModNetworking extends NetworkManager {
 
     ... // Packet registration blabla
 }
+```
 
+---
+### Stream System Usage
+The codesniped shows the registration and setup of the **Stream System**.
+To learn more about the Stream System, click [here](StreamSystem.md) to visit its documentation. 
+
+``` Java
+public class MyExampleModNetworking extends NetworkManager {
+    ... // Instance blabla
+
+    // Creating and registring a Streaming object
+    public static SineStream SIN_STREAM = (SinusStream) StreamSystem.register(new SinusStream());
+
+    public MyExampleModNetworking() {
+        super(MyExampleMod.MOD_ID);
+
+        setupClientReceiverPackets();
+        setupServerReceiverPackets();
+
+        // Setup the Stream System
+        this.setupStreamSystem();
+    }
+
+    ... // Packet registration blabla
+}
 ```

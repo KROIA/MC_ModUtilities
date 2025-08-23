@@ -2,6 +2,8 @@ package net.kroia.modutilities.networking.arrs;
 
 
 import net.kroia.modutilities.networking.NetworkManager;
+import net.kroia.modutilities.networking.arrs.requestholder.ClientRequestHolder;
+import net.kroia.modutilities.networking.arrs.requestholder.ServerRequestHolder;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.NotNull;
@@ -16,44 +18,15 @@ import java.util.function.Consumer;
  * A request will stay in a list until the response is received.
  *
  * This class needs access to the NetworkManager from this utility mod to send requests.
- * You can set the NetworkManager using RequestManager.setNetworkManager(NetworkManager manager).
  *
  */
 public class RequestManager {
-    private static class ServerRequestData<IN, OUT>
-    {
-        public Consumer<OUT> responseHandler;
-        public GenericRequestPacket requestPacket;
-        public GenericRequest<IN, OUT> request;
-        public void processResponse(FriendlyByteBuf buf)
-        {
-            OUT response = request.decodeOutput(buf);
-            if(responseHandler != null)
-            {
-                responseHandler.accept(response);
-            }
-        }
-    }
-    private static class ClientRequestData<IN, OUT>
-    {
-        public BiConsumer<OUT, ServerPlayer> responseHandler;
-        public GenericRequestPacket requestPacket;
-        public GenericRequest<IN, OUT> request;
-        public void processResponse(FriendlyByteBuf buf, ServerPlayer player)
-        {
-            // Decode the response using the request's decodeOutput method
-            OUT response = request.decodeOutput(buf);
-            if(responseHandler != null)
-            {
-                // Pass the response and player to the handler
-                responseHandler.accept(response, player);
-            }
-        }
-    }
+
+
 
     private final NetworkManager networkManager;
-    private final Map<UUID, ServerRequestData<?,?>> pendingServerRequests = new java.util.concurrent.ConcurrentHashMap<>();
-    private final Map<UUID, ClientRequestData<?,?>> pendingClientRequests = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<UUID, ServerRequestHolder<?,?>> pendingServerRequests = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<UUID, ClientRequestHolder<?,?>> pendingClientRequests = new java.util.concurrent.ConcurrentHashMap<>();
 
 
     /**
@@ -62,7 +35,10 @@ public class RequestManager {
      *
      * @param networkManager The NetworkManager to use for sending requests.
      */
-    public RequestManager(NetworkManager networkManager) {
+    public RequestManager(@NotNull NetworkManager networkManager) {
+        if(networkManager == null) {
+            throw new IllegalArgumentException("NetworkManager cannot be null. Please provide a valid NetworkManager instance.");
+        }
         this.networkManager = networkManager;
     }
 
@@ -87,15 +63,10 @@ public class RequestManager {
     public <IN, OUT> void sendRequestToServer(@NotNull GenericRequest<IN, OUT> request,
                                               IN input,
                                               @NotNull Consumer<OUT> responseHandler) {
-        if(networkManager == null)
-        {
-            throw new IllegalStateException("NetworkManager is not set. Please call RequestManager.setNetworkManager() before sending requests.");
-        }
-
         FriendlyByteBuf buf = new FriendlyByteBuf(io.netty.buffer.Unpooled.buffer());
         request.encodeInput(buf, input);
         GenericRequestPacket requestPacket = new GenericRequestPacket(request.getRequestTypeID(), buf);
-        ServerRequestData<IN, OUT> requestData = new ServerRequestData<>();
+        ServerRequestHolder<IN, OUT> requestData = new ServerRequestHolder<>();
         requestData.responseHandler = responseHandler;
         requestData.requestPacket = requestPacket;
         requestData.request = request;
@@ -120,15 +91,10 @@ public class RequestManager {
                                               IN input,
                                               @NotNull ServerPlayer target,
                                               @NotNull BiConsumer<OUT, ServerPlayer> responseHandler) {
-        if(networkManager == null)
-        {
-            throw new IllegalStateException("NetworkManager is not set. Please call RequestManager.setNetworkManager() before sending requests.");
-        }
-
         FriendlyByteBuf buf = new FriendlyByteBuf(io.netty.buffer.Unpooled.buffer());
         request.encodeInput(buf, input);
         GenericRequestPacket requestPacket = new GenericRequestPacket(request.getRequestTypeID(), buf);
-        ClientRequestData<IN, OUT> requestData = new ClientRequestData<>();
+        ClientRequestHolder<IN, OUT> requestData = new ClientRequestHolder<>();
         requestData.responseHandler = responseHandler;
         requestData.requestPacket = requestPacket;
         requestData.request = request;
@@ -187,7 +153,7 @@ public class RequestManager {
     public void processResponseOnClient(GenericResponsePacket responsePacket)
     {
         UUID requestId = responsePacket.getRequestID();
-        ServerRequestData<?, ?> requestData = pendingServerRequests.remove(requestId);
+        ServerRequestHolder<?, ?> requestData = pendingServerRequests.remove(requestId);
         if(requestData == null)
             return;
 
@@ -204,7 +170,7 @@ public class RequestManager {
      */
     public void processResponseOnServer(GenericResponsePacket responsePacket, ServerPlayer player) {
         UUID requestId = responsePacket.getRequestID();
-        ClientRequestData<?, ?> requestData = pendingClientRequests.remove(requestId);
+        ClientRequestHolder<?, ?> requestData = pendingClientRequests.remove(requestId);
         if(requestData == null)
             return;
 
