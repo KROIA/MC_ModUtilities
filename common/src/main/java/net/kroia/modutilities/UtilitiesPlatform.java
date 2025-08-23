@@ -28,6 +28,38 @@ public class UtilitiesPlatform {
         return platform;
     }
 
+    public static boolean codeCalledFromServerSide()
+    {
+        if(Platform.getEnvironment() == Env.SERVER)
+            return true;
+
+        MinecraftServer server = getServer();
+        if(server != null && server.isRunning()) {
+            return server.isSameThread(); // Called from server side in a server environment
+        }
+        /*
+        if(Platform.getEnvironment() == Env.CLIENT)
+        {
+            Minecraft mc = Minecraft.getInstance();
+            if(mc.level != null && !mc.level.isClientSide()) {
+                return true; // Called from server side in a client environment
+            }
+        }*/
+        return false; // Called from client side or unknown environment
+    }
+    public static boolean codeCalledFromCliendSide()
+    {
+        if(Platform.getEnvironment() == Env.SERVER)
+            return false;
+
+
+        Minecraft mc = Minecraft.getInstance();
+        if(mc != null)
+        {
+            return mc.isSameThread();
+        }
+        return false; // Called from server side or unknown environment
+    }
     public static boolean isClient()
     {
         return Platform.getEnvironment() == Env.CLIENT;

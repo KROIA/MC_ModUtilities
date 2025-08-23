@@ -11,14 +11,23 @@ import java.util.function.Consumer;
 
 /**
  * Asynchronous Request Response System (ARRS) for handling requests and responses in a networked environment.
- * This system allows for sending requests to the server or client and receiving responses asynchronously.
+ * This system allows for sending requests to the server or client and receiving responses.
  * It is designed to be used with the NetworkManager from this utilities mod for packet handling.
  *
  * This class combines the components required for the ARRS, including the RequestRegistry and RequestManager.
  *
  */
 public class AsynchronousRequestResponseSystem {
+
+    /**
+     * The RequestRegistry instance that holds all registered requests.
+     */
     private static final RequestRegistry REGISTRY = new RequestRegistry();
+
+    /**
+     * The RequestManager instance that manages the requests and responses.
+     * This is initialized in the setup method and used to send requests and handle responses.
+     */
     private static RequestManager REQUEST_MANAGER;
 
 
@@ -30,7 +39,6 @@ public class AsynchronousRequestResponseSystem {
      */
     public static void setup(@NotNull NetworkManager networkManager) {
         if (REQUEST_MANAGER != null) {
-            //throw new IllegalStateException("ARRS is already setup!");
             return;
         }
         REQUEST_MANAGER = new RequestManager(networkManager);
@@ -59,8 +67,7 @@ public class AsynchronousRequestResponseSystem {
      */
     public static <IN, OUT> GenericRequest<IN, OUT> register(@NotNull GenericRequest<IN, OUT> request)
     {
-        if(REQUEST_MANAGER != null)
-            request.setManager(REQUEST_MANAGER);
+        request.setManager(REQUEST_MANAGER);
         return REGISTRY.register(request);
     }
 
@@ -78,10 +85,31 @@ public class AsynchronousRequestResponseSystem {
     }
 
     /**
+     * Unregisters a GenericRequest from the registry by its RequestTypeID.
+     *
+     * @param requestTypeID The ID of the request type to unregister.
+     */
+    public static void unregister(@NotNull String requestTypeID)
+    {
+        var request = REGISTRY.getRegisteredRequest(requestTypeID);
+        if(request != null) {
+            request.setManager(null);
+            REGISTRY.unregister(requestTypeID);
+        }
+    }
+
+    /**
      * Clears the registry, removing all registered requests.
      */
     public static void clearRegistry()
     {
+        var requests = REGISTRY.getRegistry();
+        for(Map.Entry<String, RequestRegistry.RegistryData<?,?>> entry : requests.entrySet())
+        {
+            GenericRequest<?, ?> request = entry.getValue().request;
+            if(request != null)
+                request.setManager(null);
+        }
         REGISTRY.clear();
     }
 
@@ -206,7 +234,7 @@ public class AsynchronousRequestResponseSystem {
                     RequestManager is not set. Cannot send request to server.
                     Make sure to setup the ARRS correctly.
                     Call AsynchronousRequestResponseSystem.setup() once on the client and server side.
-                    Also register this Request class with AsynchronousRequestResponseSystem.register(new GenericRequestType()) once on the client and server side.
+                    Also register the Request classes with AsynchronousRequestResponseSystem.register(new CustomRequest()) once on the client and server side.
                     """);
     }
 }

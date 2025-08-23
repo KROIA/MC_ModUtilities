@@ -6,6 +6,7 @@ import dev.architectury.event.events.common.CommandRegistrationEvent;
 import net.kroia.modutilities.JsonUtilities;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.networking.NetworkManager;
+import net.kroia.modutilities.networking.streaming.StreamSystem;
 import net.kroia.modutilities.setting.parser.ItemStackJsonParser;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -20,11 +21,15 @@ import java.nio.file.Path;
 public class Sandbox {
     public static class SandboxNetwork extends NetworkManager
     {
+
+        public static final SineStream SINUS_STREAM = (SineStream) StreamSystem.register(new SineStream());
+
         public SandboxNetwork() {
             super(ModUtilitiesMod.MOD_ID);
             setupClientReceiverPackets();
             setupServerReceiverPackets();
             this.setupARRS(); // Setup the Asynchronous Request Response System (ARRS)
+            this.setupStreamSystem();
 
             SandboxOpenGuiPacket.network = this; // Set the network instance for the SandboxOpenGuiPacket
         }
