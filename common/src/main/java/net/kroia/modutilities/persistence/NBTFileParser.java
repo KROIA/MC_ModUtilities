@@ -24,12 +24,14 @@ public class NBTFileParser {
     };
     public Consumer<String> debugLogger = System.out::println;
     private final NbtFormat nbtFormat;
-    private static final long MAX_NBT_SIZE = 2_097_152L; // 2 MB
+    private static long MAX_NBT_SIZE = 2_097_152L; // 2 MB
 
 
     public NBTFileParser(NbtFormat nbtFormat) {
         this.nbtFormat = nbtFormat;
     }
+
+
 
 
     public void setLogger(Consumer<String> errorLogger, Consumer<String> debugLogger, Consumer<String> warnLogger) {
@@ -44,6 +46,11 @@ public class NBTFileParser {
         this.warnLogger = warnLogger;
     }
 
+    public static void setMaxNbtSize(long maxNbtSize) {
+        if(maxNbtSize <= 0)
+            throw new IllegalArgumentException("Maximum NBT size must be greater than 0");
+        MAX_NBT_SIZE = maxNbtSize;
+    }
 
     public static long getMaxNbtSize() {
         return MAX_NBT_SIZE;
