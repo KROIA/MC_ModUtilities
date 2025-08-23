@@ -155,6 +155,39 @@ public abstract class DataArchiveManager<T extends DataArchiveChunk> {
         }
         return loadedChunks; // Return the list of loaded chunks
     }
+
+
+    /**
+     * Loads a chunk that start time is equal to the given startTime.
+     * This start time must be equal to the first part of the file name of the chunk.
+     * The filename looks like "{startTime}_{duration}.nbt", where startTime is the first part.
+     * @param startTime the start time of the chunk to load, which is the first part of the file name
+     * @return the loaded chunk, or null if no chunk is found with the specified start time
+     */
+    protected @Nullable T loadChunk(long startTime)
+    {
+        String fileNameStartsWith = startTime + "_";
+        List<Path> files = getArchiveFiles();
+        for (Path file : files) {
+            String fileName = file.getFileName().toString();
+            if (fileName.startsWith(fileNameStartsWith)) {
+                CompoundTag dataTag = nbtFileParser.readDataCompound(file);
+                if (dataTag != null) {
+                    T chunk = chunkFactory.get();
+                    if (chunk.loadInternal(dataTag)) {
+                        debug("Loaded chunk: " + fileName + " with size: " + getChunkSizeUtilisationPercentage(chunk) + "%");
+                        return chunk; // Return the loaded chunk
+                    } else {
+                        error("Failed to load chunk from file: " + fileName);
+                    }
+                } else {
+                    error("Failed to read data from file: " + fileName);
+                }
+            }
+        }
+        error("No chunk found starting with: " + fileNameStartsWith);
+        return null; // Return null if no chunk is found
+    }
     protected List<T> loadChunks()
     {
         List<DataArchiveChunk.TimeInterval> availableIntervals = getStoredIntervals();
