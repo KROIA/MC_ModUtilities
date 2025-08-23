@@ -1,7 +1,7 @@
 # Stream System
-The Stream System can be used to send a bunch of packets from the server to the client or vice versa.
-A Stream can contain custom payload data.
-Multiple streams of the same type can be run at the same time.
+The stream system allows multiple packets to be sent from the server to the client or vice versa.
+A stream can contain custom payloads.
+Multiple streams of the same type can run concurrently.
 
 
 
