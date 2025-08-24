@@ -15,6 +15,13 @@ public class ModUtilitiesMod {
         Sandbox.init();
     }
 
+    /*public static void onClientSetup()
+    {
+        // This method is called when the client is initialized
+        // You can put client-side initialization code here
+        Sandbox.initClient();
+    }*/
+
     public static boolean isClientInitialized() {
         return UtilitiesPlatform.getPlatform() != null;
     }

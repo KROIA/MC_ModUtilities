@@ -215,10 +215,10 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
     }
 
     private void renderFloatingItem(ItemStack pStack, int pX, int pY, String pText) {
-        graphicsPosePush();
+        graphicsPushPose();
         graphicsTranslate(0.0F, 0.0F, 232.0F);
         drawItemWithDecoration(pStack, pX, pY);
-        graphicsPosePop();
+        graphicsPopPose();
     }
 
     protected void renderLabels(int pMouseX, int pMouseY) {
@@ -261,7 +261,7 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
             }
         }
 
-        graphicsPosePush();
+        graphicsPushPose();
         graphicsTranslate(0.0F, 0.0F, 100.0F);
         if (itemstack.isEmpty() && pSlot.isActive()) {
             Pair<ResourceLocation, ResourceLocation> pair = pSlot.getNoItemIcon();
@@ -279,7 +279,7 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
             drawItemWithDecoration(itemstack, i, j);
         }
 
-        graphicsPosePop();
+        graphicsPopPose();
     }
 
     private void recalculateQuickCraftRemaining() {

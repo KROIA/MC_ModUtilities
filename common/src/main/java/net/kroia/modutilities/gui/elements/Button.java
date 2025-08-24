@@ -116,7 +116,12 @@ public class Button extends GuiElement {
         int color = colorIdle;
         if(isClickable) {
             if (isPressed)
+            {
+                if(onDown != null) {
+                    onDown.run();
+                }
                 color = colorPressed;
+            }
             else if (isMouseOver())
                 color = colorHover;
         }
@@ -151,7 +156,7 @@ public class Button extends GuiElement {
         return true;
     }
 
-    @Override
+   /* @Override
     protected boolean mouseDragged(int button, double deltaX, double deltaY)
     {
         if(!isClickable || triggerButton != button)
@@ -165,7 +170,7 @@ public class Button extends GuiElement {
         }
         return false;
     }
-
+*/
     @Override
     protected void mouseReleased(int button)
     {

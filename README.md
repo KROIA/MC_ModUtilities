@@ -1,21 +1,25 @@
 # MC_ModUtilities
 
-# About
+## About
 This is just a utilities mod that contains some common sources.
 This mod is only needed for the Quilt platform since it does not include the jar inside the mod which uses this dependency...<br>
 Fabric and Forge do both include this mod so you don't need it as a dependency.
 
-# Features
+## Features
 - Helperfunctions for intaracting with items and players
-- GUI library to create the GUI-Screens in a better way than default minecraft offers
+- [GUI library](documentation/gui/GuiLibrary.md) to create the GUI-Screens in a better way than default minecraft offers
 - Settings library to create easy Json setting files 
 - [Networking library](documentation/networking/Networking.md) for easy communication and data transfer between server and client
 
-# Dependencies
+## Dependencies
 - [Architectury API](https://www.curseforge.com/minecraft/mc-mods/architectury-api)
 - [Quilted Fabric API](https://www.curseforge.com/minecraft/mc-mods/qsl)
 
-# Downloads
+## Documentation
+- [GUI library](documentation/gui/GuiLibrary.md)
+- [Networking library](documentation/networking/Networking.md)
+
+## Downloads
 
 [CurseForge](https://www.curseforge.com/minecraft/mc-mods/kroiautilities)
 | Minecraft | Quilt |

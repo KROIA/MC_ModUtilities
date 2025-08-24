@@ -110,6 +110,11 @@ public abstract class ListView extends GuiElement{
         return this.scrollbarBackgroundColor;
     }
 
+    public void setScrollbarThickness(int scrollbarThickness)
+    {
+        this.scrollbarThickness = scrollbarThickness;
+        layoutChangedInternal();
+    }
     public int getScrollbarThickness()
     {
         return scrollbarThickness;

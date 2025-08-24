@@ -1,34 +1,108 @@
 package net.kroia.modutilities.sandbox;
 
+import net.kroia.modutilities.ColorUtilities;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.gui.Gui;
+import net.kroia.modutilities.gui.GuiContainerScreen;
 import net.kroia.modutilities.gui.GuiScreen;
+import net.kroia.modutilities.gui.GuiTexture;
 import net.kroia.modutilities.gui.elements.*;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
+import net.kroia.modutilities.gui.elements.base.ListView;
+import net.kroia.modutilities.gui.elements.base.Slider;
+import net.kroia.modutilities.gui.layout.Layout;
+import net.kroia.modutilities.gui.layout.LayoutGrid;
+import net.kroia.modutilities.gui.layout.LayoutVertical;
 import net.kroia.modutilities.networking.streaming.StreamSystem;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Inventory;
 
 import java.util.UUID;
 
 public class TestScreen extends GuiScreen {
 
 
-    private final TabElement tabElement;
+   /* private final TabElement tabElement;
 
     Plot.PlotData plotData1 = new Plot.PlotData();
     Plot.PlotData plotData2 = new Plot.PlotData();
     Plot.PlotData plotData3 = new Plot.PlotData();
     float time = 0;
 
-    private final UUID sinusStreamID;
+    private final UUID sinusStreamID;*/
+class MyElement extends GuiElement
+{
+    private final ListView listView;
+    float time = 0;
+    public MyElement()
+    {
+        listView = new VerticalListView();
+        LayoutGrid layout = new LayoutGrid();
+        layout.stretchX = true;
+        layout.columns = 3;
+        listView.setLayout(layout);
+
+        for(int i = 0; i < 10; i++)
+        {
+            Label label = new Label("Label " + i);
+            label.setHeight(20);
+            listView.addChild(label);
+        }
+
+        addChild(listView);
+    }
+    @Override
+    protected void render()
+    {
+        time += 0.1f;
+        listView.setScrollbarThickness((int)(Math.sin(time * 2) * 10 + 10));
+
+    }
+    @Override
+    protected void layoutChanged() {
+        int width = getWidth();
+        int height = getHeight();
+
+        listView.setBounds(width/4, height/4, width/2, height/2);
+    }
+
+    private void onButtonFallingEdge()
+    {
+        ModUtilitiesMod.LOGGER.info("[UI] Button clicked!");
+    }
+    private void onButtonRisingEdge()
+    {
+        ModUtilitiesMod.LOGGER.info("[UI] Button released!");
+    }
+    private void onButtonHeld()
+    {
+        ModUtilitiesMod.LOGGER.info("[UI] Button held down!");
+    }
+}
+    private final Button myButton;
+    private final MyElement myElement;
+    //private final ContainerView<MyContainerMenu> inventoryView;
 
     public TestScreen()
+    //public TestScreen(MyContainerMenu pMenu, Inventory pPlayerInventory, Component pTitle)
     {
+        //super(pMenu, pPlayerInventory, pTitle);
         super(Component.translatable("TEST"));
 
+        myButton = new Button("Click me!");
+        //inventoryView = new ContainerView<>(pMenu, pPlayerInventory, Component.literal("Inventory"), new GuiTexture(ModUtilitiesMod.MOD_ID,
+        //        "textures/gui/inventory_hpc.png", 256, 256));
+        //inventoryView.setSize(176, 166);
 
-        tabElement = new TabElement();
+      //  addElement(myButton);
+
+
+        myElement = new MyElement();
+        addElement(myElement);
+
+        /*tabElement = new TabElement();
         tabElement.setEnableBackground(false);
         tabElement.setEnableOutline(false);
 
@@ -92,22 +166,31 @@ public class TestScreen extends GuiScreen {
 
 
 
-        addElement(tabElement);
+        addElement(tabElement);*/
     }
 
+    public static void open()
+    {
+        GuiScreen.setScreen(new TestScreen());
+    }
     @Override
     public void onClose() {
         super.onClose();
-        StreamSystem.stopStream(sinusStreamID);
+       // StreamSystem.stopStream(sinusStreamID);
     }
 
     @Override
     protected void updateLayout(Gui gui) {
-        tabElement.setBounds(0,0,getWidth(),getHeight());
+        //tabElement.setBounds(0,0,getWidth(),getHeight());
+
+        myButton.setBounds(10, 10, 100, 20);
+
+        myElement.setBounds(10, 10, 300, 100);
     }
 
-    @Override
+    /*@Override
     public void renderBackground(GuiGraphics guiGraphics) {
+
         tabElement.setSelectedTitleHeight((int)((Math.sin(time*30)+1)*5 + 10));
         super.renderBackground(guiGraphics);
 
@@ -122,7 +205,7 @@ public class TestScreen extends GuiScreen {
         }
         time+= 0.01f;
 
-    }
+    }*/
 
     public void onSinusSignalArrived(Double value)
     {
