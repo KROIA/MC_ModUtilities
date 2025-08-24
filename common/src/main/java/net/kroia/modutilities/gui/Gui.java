@@ -18,6 +18,7 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.item.ItemStack;
 import org.joml.Matrix4f;
+import org.joml.Quaternionf;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
@@ -76,6 +77,10 @@ public class Gui {
     public Graphics getGraphics()
     {
         return this.graphics;
+    }
+    public PoseStack getPoseStack()
+    {
+        return this.graphics.getPoseStack();
     }
     public int getMousePosX()
     {
@@ -632,6 +637,14 @@ public class Gui {
     public void scale(float x, float y, float z)
     {
         graphics.scale(x, y, z);
+    }
+    public void mulPose(Quaternionf quaternion)
+    {
+        graphics.mulPose(quaternion);
+    }
+    public void rotateAround(Quaternionf quaternion, float x, float y, float z)
+    {
+        graphics.rotateAround(quaternion, x, y, z);
     }
     public void pushPose()
     {

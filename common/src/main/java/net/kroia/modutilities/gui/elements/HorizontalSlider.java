@@ -1,5 +1,7 @@
 package net.kroia.modutilities.gui.elements;
 
+import net.kroia.modutilities.gui.elements.base.Slider;
+
 public class HorizontalSlider extends Slider {
 
     public HorizontalSlider()

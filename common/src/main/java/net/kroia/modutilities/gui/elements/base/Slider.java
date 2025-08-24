@@ -1,4 +1,4 @@
-package net.kroia.modutilities.gui.elements;
+package net.kroia.modutilities.gui.elements.base;
 
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Point;

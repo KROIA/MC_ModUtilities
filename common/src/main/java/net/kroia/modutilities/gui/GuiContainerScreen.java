@@ -3,9 +3,11 @@ package net.kroia.modutilities.gui;
 
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Point;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics; // mc>=1.20.1
 //import com.mojang.blaze3d.vertex.PoseStack; // mc<=1.19.4
 
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
@@ -16,6 +18,8 @@ import org.lwjgl.glfw.GLFW;
 public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extends AbstractContainerScreen<T> {
 
     protected final Gui gui;
+    protected final Screen parent;
+    protected boolean debugKeysEnabled = true;
     protected boolean enableGizmos = false;
     protected boolean enableBackground = true;
     protected boolean enableForeground = true;
@@ -24,8 +28,29 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     public GuiContainerScreen(T pMenu, Inventory pPlayerInventory, Component pTitle) {
         super(pMenu, pPlayerInventory, pTitle);
         this.gui = new Gui(this);
+        this.parent = null;
+    }
+    protected GuiContainerScreen(T pMenu, Inventory pPlayerInventory, Component pTitle, Screen parent) {
+        super(pMenu, pPlayerInventory, pTitle);
+        this.gui = new Gui(this);
+        this.parent = parent;
     }
 
+    public static void setScreen(Screen screen)
+    {
+        Minecraft mc = Minecraft.getInstance();
+        if(mc.screen != screen)
+        {
+            mc.setScreen(screen);
+        }
+    }
+
+    public void setDebugKeysEnabled(boolean debugKeysEnabled) {
+        this.debugKeysEnabled = debugKeysEnabled;
+    }
+    public boolean isDebugKeysEnabled() {
+        return debugKeysEnabled;
+    }
     public void setEnableGizmos(boolean enableGizmos) {
         this.enableGizmos = enableGizmos;
     }
@@ -96,6 +121,20 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     public boolean isPauseScreen() {
         return false;
     }
+
+
+    public void close()
+    {
+        this.onClose();
+    }
+
+    @Override
+    public void onClose() {
+        super.onClose();
+        if(this.minecraft != null)
+            this.minecraft.setScreen(parent);
+    }
+
 
 
     // mc>=1.20.1
@@ -186,27 +225,24 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        switch(keyCode)
-        {
-            case GLFW.GLFW_KEY_F3:
-            {
-                enableGizmos = !enableGizmos;
-                return true;
-            }
-            case GLFW.GLFW_KEY_F4:
-            {
-                enableBackground = !enableBackground;
-                return true;
-            }
-            case GLFW.GLFW_KEY_F5:
-            {
-                enableForeground = !enableForeground;
-                return true;
-            }
-            case GLFW.GLFW_KEY_F6:
-            {
-                enableTooltip = !enableTooltip;
-                return true;
+        if(debugKeysEnabled) {
+            switch (keyCode) {
+                case GLFW.GLFW_KEY_F3: {
+                    enableGizmos = !enableGizmos;
+                    return true;
+                }
+                case GLFW.GLFW_KEY_F4: {
+                    enableBackground = !enableBackground;
+                    return true;
+                }
+                case GLFW.GLFW_KEY_F5: {
+                    enableForeground = !enableForeground;
+                    return true;
+                }
+                case GLFW.GLFW_KEY_F6: {
+                    enableTooltip = !enableTooltip;
+                    return true;
+                }
             }
         }
 

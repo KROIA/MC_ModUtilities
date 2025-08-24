@@ -255,11 +255,11 @@ public class Plot extends GuiElement
 
         // Draw Y Axis Label
         if(yLabel != null && !yLabel.isEmpty()) {
-            graphicsPosePush();
+            graphicsPushPose();
             graphicsTranslate((float)getTextHeight()/2+1, (float)(yAxis.getMinPos()+yAxis.getMaxPos())/2, 0);
-            getGraphics().getGraphics().pose().mulPose(com.mojang.math.Axis.ZP.rotationDegrees(-90));
+            getPoseStack().mulPose(com.mojang.math.Axis.ZP.rotationDegrees(-90));
             drawText(yLabel, 0,0, Alignment.TOP);
-            graphicsPosePop();
+            graphicsPopPose();
         }
 
         // Draw Plots

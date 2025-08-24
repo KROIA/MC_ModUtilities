@@ -1,9 +1,9 @@
 package net.kroia.modutilities.gui.elements.base;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.kroia.modutilities.ClientPlayerUtilities;
-import net.kroia.modutilities.ItemUtilities;
 import net.kroia.modutilities.TimerMillis;
 import net.kroia.modutilities.gui.Graphics;
 import net.kroia.modutilities.gui.Gui;
@@ -19,6 +19,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.item.ItemStack;
+import org.joml.Quaternionf;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -93,7 +94,7 @@ public abstract class GuiElement {
     private float tooltipFontScale = 1.0f;
 
     HoverTooltipData hoverTooltipData = new HoverTooltipData();
-    private class TooltipLaterData
+    public class TooltipData
     {
         public int x,y;
         public ItemStack item;
@@ -106,7 +107,7 @@ public abstract class GuiElement {
         public Alignment alignment = tooltipPositionAlingment;
         public float fontScale = tooltipFontScale;
     }
-    private final List<TooltipLaterData> drawTooltipLater = new ArrayList<>();
+    private final List<TooltipData> drawTooltipLater = new ArrayList<>();
 
 
 
@@ -421,7 +422,7 @@ public abstract class GuiElement {
                 if(tooltip != null && !tooltip.isEmpty())
                 {
                     Point pos = getMousePos();
-                    TooltipLaterData data = new TooltipLaterData();
+                    TooltipData data = new TooltipData();
                     data.x = pos.x;
                     data.y = pos.y;
                     data.customString = tooltip;
@@ -443,7 +444,7 @@ public abstract class GuiElement {
         Graphics graphics = root.getGraphics();
         graphics.pushPose();
         graphics.translate((float)getX(), (float)getY(), 200.0F);
-        for(TooltipLaterData data : drawTooltipLater)
+        for(TooltipData data : drawTooltipLater)
         {
             if(data.item != null)
                 drawTooltipInternal(data.item, data.x, data.y);
@@ -571,27 +572,83 @@ public abstract class GuiElement {
     public boolean isMouseOver() {
         return isOver(root.getMousePosX(), root.getMousePosY());
     }
+
+    /**
+     * Called when the mouse is clicked
+     * @param button The mouse button that was clicked
+     */
     protected void mouseClicked(int button) {
     }
+
+    /**
+     * Called when the mouse is clicked over the element
+     * @param button The mouse button that was clicked
+     * @return true if the click was consumed, false otherwise
+     */
     protected boolean mouseClickedOverElement(int button) {
         return false;
     }
+
+    /**
+     * Called when the mouse is dragged
+     * @param button The mouse button that was dragged
+     * @param deltaX The change in the x position of the mouse
+     * @param deltaY The change in the y position of the mouse
+     * @return true if the drag was consumed, false otherwise
+     */
     protected boolean mouseDragged(int button, double deltaX, double deltaY) {
         return false;
     }
+
+    /**
+     * Called when the mouse is released
+     * @param button The mouse button that was released
+     */
     protected void mouseReleased(int button) {
     }
+
+    /**
+     * Called when the mouse is released over the element
+     * @param button The mouse button that was released
+     * @return true if the release was consumed, false otherwise
+     */
     protected boolean mouseReleasedOverElement(int button) {
         return false;
     }
+
+    /**
+     * Called when the mouse is scrolled
+     * @param delta The amount of scrolling, positive for scrolling up, negative for scrolling down
+     */
     protected void mouseScrolled(double delta) {
     }
+
+    /**
+     * Called when the mouse is scrolled over the element
+     * @param delta The amount of scrolling, positive for scrolling up, negative for scrolling down
+     * @return true if the scroll was consumed, false otherwise
+     */
     protected boolean mouseScrolledOverElement(double delta) {
         return false;
     }
+
+    /**
+     * Called when a key is pressed
+     * @param keyCode The key code of the pressed key
+     * @param scanCode The scan code of the pressed key
+     * @param modifiers The modifiers that were pressed (e.g. shift, ctrl, alt)
+     * @return true if the key press was consumed, false otherwise
+     */
     protected boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         return false;
     }
+
+    /**
+     * Called when a character is typed
+     * @param codePoint The character that was typed
+     * @param modifiers The modifiers that were pressed (e.g. shift, ctrl, alt)
+     * @return true if the character was consumed, false otherwise
+     */
     protected boolean charTyped(char codePoint, int modifiers) {
         return false;
     }
@@ -685,14 +742,37 @@ public abstract class GuiElement {
     public Graphics getGraphics() {
         return root.getGraphics();
     }
-    public void graphicsPosePush() {
-        root.getGraphics().pushPose();
+    public PoseStack getPoseStack()
+    {
+        return root.getPoseStack();
     }
-    public void graphicsPosePop() {
-        root.getGraphics().popPose();
+    public void graphicsPushPose() {
+        root.pushPose();
+    }
+    public void graphicsPopPose() {
+        root.popPose();
     }
     public void graphicsTranslate(float x, float y, float z) {
-        root.getGraphics().translate(x, y, z);
+        root.translate(x, y, z);
+    }
+    public void graphicsTranslate(float x, float y) {
+        root.translate(x, y, 0);
+    }
+    public void graphicsScale(float x, float y, float z)
+    {
+        root.scale(x, y, z);
+    }
+    public void graphicsScale(float x, float y)
+    {
+        root.scale(x, y, 1.0f);
+    }
+    public void graphicMulPose(Quaternionf quaternion)
+    {
+        root.mulPose(quaternion);
+    }
+    public void graphicsRotateAround(Quaternionf quaternion, float x, float y, float z)
+    {
+        root.rotateAround(quaternion, x, y, z);
     }
     public Gui getGui()
     {
@@ -725,8 +805,7 @@ public abstract class GuiElement {
 
     public void setMousePos(int x, int y)
     {
-        Point globalPos = getGlobalPositon();
-        root.moveMouseToPos(x + globalPos.x, globalPos.y + y);
+        root.moveMouseToPos(x + globalPositon.x, globalPositon.y + y);
     }
     public void setMousePosGlobal(int x, int y)
     {
@@ -885,7 +964,8 @@ public abstract class GuiElement {
     public Rectangle getChildFrame()
     {
         Rectangle frame = new Rectangle(0,0,0,0);
-        for (GuiElement child : childs) {
+        var localChilds = getChilds();
+        for (GuiElement child : localChilds) {
             Rectangle childFrame = child.getChildFrame();
             if(childFrame.x < frame.x)
                 frame.x = childFrame.x;
@@ -916,7 +996,10 @@ public abstract class GuiElement {
 
 
     /**
-     * Places the rectangle given by "inputBounds" inside the rectangle defined by "x1", "y2", "width2", "height2" depending on the alignment.
+     * Takes a rectangle1 defined by "x1", "y1", "width1", "height1" and a rectangle2 defined by "x2", "y2", "width2", "height2" and then returns a rectangle
+     * that is the same size as rectangle1 but moved inside rectangle2 according to the specified alignment.
+     * It moves the rectangle1 inside rectangle2 so that it is aligned according to the specified alignment.
+     *
      * @return The new bounds of the rectangle, aligned according to the specified alignment.
      */
     public static Rectangle getAlignedBounds(int x1, int y1, int width1, int height1, Alignment alignment, int x2, int y2, int width2, int height2) {
@@ -1392,7 +1475,7 @@ public abstract class GuiElement {
     }
     public void drawTooltipNative(ItemStack stack, Point pos)
     {
-        TooltipLaterData data = new TooltipLaterData();
+        TooltipData data = new TooltipData();
         data.x = pos.x;
         data.y = pos.y;
         data.item = stack;
@@ -1416,7 +1499,7 @@ public abstract class GuiElement {
 
     public void drawTooltip(Component component, int x, int y)
     {
-        TooltipLaterData data = new TooltipLaterData();
+        TooltipData data = new TooltipData();
         data.x = x;
         data.y = y;
         data.component = component;
@@ -1428,7 +1511,7 @@ public abstract class GuiElement {
     }
     public void drawTooltip(String tooltip, int x, int y)
     {
-        TooltipLaterData data = new TooltipLaterData();
+        TooltipData data = new TooltipData();
         data.x = x;
         data.y = y;
         data.customString = tooltip;
@@ -1437,7 +1520,7 @@ public abstract class GuiElement {
     }
     public void drawTooltip(String tooltip, int x, int y, boolean createBackground)
     {
-        TooltipLaterData data = new TooltipLaterData();
+        TooltipData data = new TooltipData();
         data.x = x;
         data.y = y;
         data.customString = tooltip;
@@ -1446,7 +1529,7 @@ public abstract class GuiElement {
     }
     public void drawTooltip(String tooltip, int x, int y, int backgroundColor, int backgroundPadding, Alignment alignment)
     {
-        TooltipLaterData data = new TooltipLaterData();
+        TooltipData data = new TooltipData();
         data.x = x;
         data.y = y;
         data.customString = tooltip;
@@ -1456,7 +1539,6 @@ public abstract class GuiElement {
         data.alignment = alignment;
         drawTooltipLater.add(data);
     }
-
     public void drawTooltip(ItemStack stack, int x, int y, int textColor)
     {
         drawTooltip(ClientPlayerUtilities.getItemDisplayText(stack), x, y);
@@ -1465,10 +1547,9 @@ public abstract class GuiElement {
     {
         drawTooltip(stack, pos.x, pos.y);
     }
-
     public void drawTooltip(Component component, int x, int y, int textColor)
     {
-        TooltipLaterData data = new TooltipLaterData();
+        TooltipData data = new TooltipData();
         data.x = x;
         data.y = y;
         data.component = component;
@@ -1481,7 +1562,7 @@ public abstract class GuiElement {
     }
     public void drawTooltip(String tooltip, int x, int y, int textColor)
     {
-        TooltipLaterData data = new TooltipLaterData();
+        TooltipData data = new TooltipData();
         data.x = x;
         data.y = y;
         data.customString = tooltip;
@@ -1491,7 +1572,7 @@ public abstract class GuiElement {
     }
     public void drawTooltip(String tooltip, int x, int y, boolean createBackground, int textColor)
     {
-        TooltipLaterData data = new TooltipLaterData();
+        TooltipData data = new TooltipData();
         data.x = x;
         data.y = y;
         data.customString = tooltip;
@@ -1501,7 +1582,7 @@ public abstract class GuiElement {
     }
     public void drawTooltip(String tooltip, int x, int y, int backgroundColor, int backgroundPadding, Alignment alignment, int textColor)
     {
-        TooltipLaterData data = new TooltipLaterData();
+        TooltipData data = new TooltipData();
         data.x = x;
         data.y = y;
         data.customString = tooltip;
@@ -1512,7 +1593,6 @@ public abstract class GuiElement {
         data.textColor = textColor;
         drawTooltipLater.add(data);
     }
-
     public void drawTooltip(ItemStack stack, int x, int y, float fontScale)
     {
         drawTooltip(ClientPlayerUtilities.getItemDisplayText(stack), x, y, fontScale);
@@ -1521,10 +1601,9 @@ public abstract class GuiElement {
     {
         drawTooltip(stack, pos.x, pos.y, fontScale);
     }
-
     public void drawTooltip(Component component, int x, int y, float fontScale)
     {
-        TooltipLaterData data = new TooltipLaterData();
+        TooltipData data = new TooltipData();
         data.x = x;
         data.y = y;
         data.component = component;
@@ -1537,7 +1616,7 @@ public abstract class GuiElement {
     }
     public void drawTooltip(String tooltip, int x, int y, float fontScale)
     {
-        TooltipLaterData data = new TooltipLaterData();
+        TooltipData data = new TooltipData();
         data.x = x;
         data.y = y;
         data.customString = tooltip;
@@ -1547,7 +1626,7 @@ public abstract class GuiElement {
     }
     public void drawTooltip(String tooltip, int x, int y, boolean createBackground, float fontScale)
     {
-        TooltipLaterData data = new TooltipLaterData();
+        TooltipData data = new TooltipData();
         data.x = x;
         data.y = y;
         data.customString = tooltip;
@@ -1557,7 +1636,7 @@ public abstract class GuiElement {
     }
     public void drawTooltip(String tooltip, int x, int y, int backgroundColor, int backgroundPadding, Alignment alignment, float fontScale)
     {
-        TooltipLaterData data = new TooltipLaterData();
+        TooltipData data = new TooltipData();
         data.x = x;
         data.y = y;
         data.customString = tooltip;
@@ -1568,7 +1647,6 @@ public abstract class GuiElement {
         data.fontScale = fontScale;
         drawTooltipLater.add(data);
     }
-
     public void drawTooltip(ItemStack stack, int x, int y, int textColor, float fontScale)
     {
         drawTooltip(ClientPlayerUtilities.getItemDisplayText(stack), x, y, fontScale);
@@ -1577,10 +1655,9 @@ public abstract class GuiElement {
     {
         drawTooltip(stack, pos.x, pos.y, fontScale);
     }
-
     public void drawTooltip(Component component, int x, int y, int textColor, float fontScale)
     {
-        TooltipLaterData data = new TooltipLaterData();
+        TooltipData data = new TooltipData();
         data.x = x;
         data.y = y;
         data.component = component;
@@ -1594,7 +1671,7 @@ public abstract class GuiElement {
     }
     public void drawTooltip(String tooltip, int x, int y, int textColor, float fontScale)
     {
-        TooltipLaterData data = new TooltipLaterData();
+        TooltipData data = new TooltipData();
         data.x = x;
         data.y = y;
         data.customString = tooltip;
@@ -1605,7 +1682,7 @@ public abstract class GuiElement {
     }
     public void drawTooltip(String tooltip, int x, int y, boolean createBackground, int textColor, float fontScale)
     {
-        TooltipLaterData data = new TooltipLaterData();
+        TooltipData data = new TooltipData();
         data.x = x;
         data.y = y;
         data.customString = tooltip;
@@ -1616,7 +1693,7 @@ public abstract class GuiElement {
     }
     public void drawTooltip(String tooltip, int x, int y, int backgroundColor, int backgroundPadding, Alignment alignment, int textColor, float fontScale)
     {
-        TooltipLaterData data = new TooltipLaterData();
+        TooltipData data = new TooltipData();
         data.x = x;
         data.y = y;
         data.customString = tooltip;
@@ -1628,7 +1705,7 @@ public abstract class GuiElement {
         data.fontScale = fontScale;
         drawTooltipLater.add(data);
     }
-    private void drawTooltip(TooltipLaterData data)
+    public final void drawTooltip(TooltipData data)
     {
         drawTooltipLater.add(data);
     }
