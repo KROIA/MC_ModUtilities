@@ -1,11 +1,9 @@
 package net.kroia.modutilities.gui.elements.base;
 
-import net.kroia.modutilities.gui.Graphics;
-import net.kroia.modutilities.gui.elements.Button;
+import net.kroia.modutilities.gui.elements.EmptyButton;
 import net.kroia.modutilities.gui.geometry.Rectangle;
 import net.kroia.modutilities.gui.layout.Layout;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public abstract class ListView extends GuiElement{
@@ -65,14 +63,14 @@ public abstract class ListView extends GuiElement{
 
     protected int scrolSpeed = 5;
     protected int scrollbarThickness = 5;
-    protected final Button scrollbarButton;
+    protected final EmptyButton scrollbarButton;
     protected final ScrollContainer scrollContainer;
     protected int scrollbarDragStartMouse = 0;
     protected int scrollbarBackgroundColor = 0xff444444;
 
     public ListView() {
         super();
-        scrollbarButton = new Button("");
+        scrollbarButton = new EmptyButton();
 
         scrollbarButton.setOnDown(this::onScrollBarDragging);
         scrollbarButton.setOnFallingEdge(this::onScrllBarFallingEdge);
@@ -82,7 +80,7 @@ public abstract class ListView extends GuiElement{
     }
     public ListView(int x, int y, int width, int height) {
         super(x, y, width, height);
-        scrollbarButton = new Button("");
+        scrollbarButton = new EmptyButton();
 
         scrollbarButton.setOnDown(this::onScrollBarDragging);
         scrollbarButton.setOnFallingEdge(this::onScrllBarFallingEdge);
@@ -128,6 +126,17 @@ public abstract class ListView extends GuiElement{
     {
         return scrollContainer.getHeight();
     }
+
+
+    /**
+     * @return The width of the whole list view if it was fully expanded to fit all elements.
+     */
+    public abstract int getSizeHintWidth();
+
+    /**
+     * @return The height of the whole list view if it was fully expanded to fit all elements.
+     */
+    public abstract int getSizeHintHeight();
 
     protected abstract int getContentDimension2();
     protected abstract void setScrollBarBounds();

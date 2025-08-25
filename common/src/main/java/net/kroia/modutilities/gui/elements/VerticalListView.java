@@ -25,6 +25,18 @@ public class VerticalListView extends ListView {
         if(enableOutline)
             renderOutline();
     }
+
+
+    @Override
+    public int getSizeHintWidth()
+    {
+        return getWidth();
+    }
+    @Override
+    public int getSizeHintHeight()
+    {
+        return allObjectSize + 2*outlineThickness;
+    }
     @Override
     protected int getContentDimension2()
     {

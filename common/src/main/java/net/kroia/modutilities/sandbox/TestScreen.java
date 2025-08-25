@@ -81,8 +81,9 @@ class MyElement extends GuiElement
         ModUtilitiesMod.LOGGER.info("[UI] Button held down!");
     }
 }
-    private final Button myButton;
-    private final MyElement myElement;
+    //private final Button myButton;
+    //private final MyElement myElement;
+    private final DropDownMenu dropDownMenu;
     //private final ContainerView<MyContainerMenu> inventoryView;
 
     public TestScreen()
@@ -91,7 +92,7 @@ class MyElement extends GuiElement
         //super(pMenu, pPlayerInventory, pTitle);
         super(Component.translatable("TEST"));
 
-        myButton = new Button("Click me!");
+        //myButton = new Button("Click me!");
         //inventoryView = new ContainerView<>(pMenu, pPlayerInventory, Component.literal("Inventory"), new GuiTexture(ModUtilitiesMod.MOD_ID,
         //        "textures/gui/inventory_hpc.png", 256, 256));
         //inventoryView.setSize(176, 166);
@@ -99,8 +100,22 @@ class MyElement extends GuiElement
       //  addElement(myButton);
 
 
-        myElement = new MyElement();
-        addElement(myElement);
+        //myElement = new MyElement();
+        //addElement(myElement);
+
+
+        dropDownMenu = new DropDownMenu("Dropdown");
+        dropDownMenu.addOption("Option 1");
+        dropDownMenu.addOption("Option 2");
+        dropDownMenu.addOption("Option 3");
+        dropDownMenu.addOption("Option 4");
+        dropDownMenu.addOption("Option 5");
+        dropDownMenu.addOption("Option 6");
+
+        dropDownMenu.setOnOptionSelected((index, element) -> {
+            ModUtilitiesMod.LOGGER.info("[UI] Selected option: " + index + " - " + element.toString());
+        });
+        addElement(dropDownMenu);
 
         /*tabElement = new TabElement();
         tabElement.setEnableBackground(false);
@@ -183,9 +198,11 @@ class MyElement extends GuiElement
     protected void updateLayout(Gui gui) {
         //tabElement.setBounds(0,0,getWidth(),getHeight());
 
-        myButton.setBounds(10, 10, 100, 20);
+        //myButton.setBounds(10, 10, 100, 20);
+//
+        //myElement.setBounds(10, 10, 300, 100);
 
-        myElement.setBounds(10, 10, 300, 100);
+        dropDownMenu.setBounds(10, 10, 150, 20);
     }
 
     /*@Override
