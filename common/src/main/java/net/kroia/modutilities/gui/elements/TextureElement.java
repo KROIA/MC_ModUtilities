@@ -102,8 +102,8 @@ public class TextureElement extends GuiElement {
                 drawTexture(texture.getResourceLocation(),
                         0,0,
                         texture.getUVOffsetX(), texture.getUVOffsetY(),
-                        Math.min(getWidth(), texture.getWidth()), Math.min(getHeight(),texture.getHeight()),
-                        texture.getWidth(), texture.getHeight());
+                        getWidth(), getHeight(),
+                        getWidth(), getHeight());
             }
             case FILL -> {
                 drawTextureFillArea(texture, 0,0, getWidth(), getHeight());

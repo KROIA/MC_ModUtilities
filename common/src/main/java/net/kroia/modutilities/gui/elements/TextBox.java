@@ -146,7 +146,7 @@ public class TextBox extends GuiElement {
 
     public void setText(String text) {
         this.text = text;
-        currentCursorPos = text.length();
+        currentCursorPos = Math.min(text.length(), currentCursorPos);
         updateTextLabel();
     }
     public void setText(double value) {
