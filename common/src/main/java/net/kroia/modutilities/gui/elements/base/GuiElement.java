@@ -71,6 +71,7 @@ public abstract class GuiElement {
     private final List<GuiElement> childs = new ArrayList<>();
 
     private boolean isEnabled = true;
+    private boolean checkOverlapForRendering = true; // If true, the element will only be rendered if it is visible (overlaps with the parent)
     private int gizmoColor = 0x55FF0000;
     private int backgroundColor = DEFAULT_BACKGROUND_COLOR;
     private int outlineColor = DEFAULT_OUTLINE_COLOR;
@@ -168,11 +169,18 @@ public abstract class GuiElement {
     {
         return isEnabled;
     }
+    public void setCheckOverlapForRendering(boolean checkOverlapForRendering)
+    {
+        this.checkOverlapForRendering = checkOverlapForRendering;
+    }
+    public boolean isCheckOverlapForRendering() {
+        return checkOverlapForRendering;
+    }
     public boolean isVisible()
     {
         if(!isEnabled)
             return false;
-        if(parent != null)
+        if(parent != null && checkOverlapForRendering)
         {
             Rectangle rect1 = new Rectangle(parent.globalPositon.x,parent.globalPositon.y, parent.getWidth(), parent.getHeight());
             Rectangle rect2 = new Rectangle(globalPositon.x,globalPositon.y, bounds.width, bounds.height);

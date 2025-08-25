@@ -25,6 +25,16 @@ public class HorizontalListView extends ListView {
         if(enableOutline)
             renderOutline();
     }
+    @Override
+    public int getSizeHintWidth()
+    {
+        return allObjectSize + 2*outlineThickness;
+    }
+    @Override
+    public int getSizeHintHeight()
+    {
+        return getHeight();
+    }
 
     @Override
     protected int getContentDimension2()
