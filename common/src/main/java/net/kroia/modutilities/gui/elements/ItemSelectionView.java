@@ -113,7 +113,7 @@ public class ItemSelectionView extends GuiElement {
         searchField = new TextBox();
         searchField.setOnTextChanged((s)->updateFilter());
         listView = new VerticalListView();
-        layoutGrid = new LayoutGrid(1, 0, false, false,0,getWidth()/20, GuiElement.Alignment.TOP);
+        layoutGrid = new LayoutGrid(1, 0, false, false,0,0, GuiElement.Alignment.TOP);
         listView.setLayout(layoutGrid);
 
         addChild(searchLabel);
@@ -167,11 +167,12 @@ public class ItemSelectionView extends GuiElement {
     @Override
     protected void layoutChanged() {
         int width = getWidth();
-        layoutGrid.columns = width/20;
+
         searchLabel.setBounds(0, 0, width/2, 15);
         searchField.setBounds(searchLabel.getRight(), searchLabel.getTop(), width-searchLabel.getWidth(), searchLabel.getHeight());
         itemsLabel.setBounds(0, searchLabel.getBottom(), width, searchLabel.getHeight());
         listView.setBounds(0, itemsLabel.getBottom(), width, getHeight()-itemsLabel.getBottom());
+        layoutGrid.columns = listView.getContainerWidth()/ItemView.DEFAULT_WIDTH;
     }
 
     public String getSearchText() {

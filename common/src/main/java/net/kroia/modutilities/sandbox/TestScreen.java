@@ -84,6 +84,7 @@ class MyElement extends GuiElement
     //private final Button myButton;
     //private final MyElement myElement;
     private final DropDownMenu dropDownMenu;
+    //private final ItemSelectionView itemSelectionView;
     //private final ContainerView<MyContainerMenu> inventoryView;
 
     public TestScreen()
@@ -116,6 +117,10 @@ class MyElement extends GuiElement
             ModUtilitiesMod.LOGGER.info("[UI] Selected option: " + index + " - " + element.toString());
         });
         addElement(dropDownMenu);
+
+        //itemSelectionView = new ItemSelectionView((i)->{});
+
+        //addElement(itemSelectionView);
 
         /*tabElement = new TabElement();
         tabElement.setEnableBackground(false);
@@ -203,6 +208,7 @@ class MyElement extends GuiElement
         //myElement.setBounds(10, 10, 300, 100);
 
         dropDownMenu.setBounds(10, 10, 150, 20);
+        //itemSelectionView.setBounds(10, 10, getWidth()/2, 100);
     }
 
     /*@Override

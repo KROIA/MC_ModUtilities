@@ -67,6 +67,7 @@ public abstract class GuiElement {
     private GuiElement parent = null;
     private GuiElement rootParent = null;
     private final Rectangle bounds;
+    private float zPos = 0.0f;
     private final Point globalPositon = new Point(0,0);
     private final List<GuiElement> childs = new ArrayList<>();
 
@@ -393,7 +394,7 @@ public abstract class GuiElement {
             return;
         Graphics graphics = root.getGraphics();
         graphics.pushPose();
-        graphics.translate((float)getX(), (float)getY(), 0.0F);
+        graphics.translate((float)getX(), (float)getY(), zPos);
         renderBackground();
         for (GuiElement child : childs) {
             child.renderBackgroundInternal();
@@ -406,7 +407,7 @@ public abstract class GuiElement {
             return;
         Graphics graphics = root.getGraphics();
         graphics.pushPose();
-        graphics.translate((float)getX(), (float)getY(), 0.0F);
+        graphics.translate((float)getX(), (float)getY(), zPos);
         render();
         for (GuiElement child : childs) {
             child.renderInternal();
@@ -451,7 +452,7 @@ public abstract class GuiElement {
 
         Graphics graphics = root.getGraphics();
         graphics.pushPose();
-        graphics.translate((float)getX(), (float)getY(), 200.0F);
+        graphics.translate((float)getX(), (float)getY(), 200.0F + zPos);
         for(TooltipData data : drawTooltipLater)
         {
             if(data.item != null)
@@ -488,7 +489,7 @@ public abstract class GuiElement {
             return;
         Graphics graphics = root.getGraphics();
         graphics.pushPose();
-        graphics.translate((float)getX(), (float)getY(), 0.0F);
+        graphics.translate((float)getX(), (float)getY(), zPos);
         renderGizmos();
         for (GuiElement child : childs) {
             child.renderGizmosInternal();
@@ -574,11 +575,18 @@ public abstract class GuiElement {
     public boolean isOver(int globalPosX, int globalPosY) {
         if(parent != null && !parent.isOver(globalPosX, globalPosY))
             return false;
-        return (globalPosX - globalPositon.x) >= 0 && (globalPosX - globalPositon.x) < bounds.width &&
-               (globalPosY - globalPositon.y) >= 0 && (globalPosY - globalPositon.y) < bounds.height;
+        return isOverIgoreParents(globalPosX, globalPosY);
     }
+    public boolean isOverIgoreParents(int globalPosX, int globalPosY) {
+        return (globalPosX - globalPositon.x) >= 0 && (globalPosX - globalPositon.x) < bounds.width &&
+                (globalPosY - globalPositon.y) >= 0 && (globalPosY - globalPositon.y) < bounds.height;
+    }
+
     public boolean isMouseOver() {
         return isOver(root.getMousePosX(), root.getMousePosY());
+    }
+    public boolean isMouseOverIgnoreParents() {
+        return isOverIgoreParents(root.getMousePosX(), root.getMousePosY());
     }
 
     /**
@@ -874,6 +882,10 @@ public abstract class GuiElement {
     public int getY() {
         return bounds.y;
     }
+    public float getZ() {
+        return zPos;
+    }
+
     public Point getPosition()
     {
         return new Point(bounds.x, bounds.y);
@@ -895,6 +907,9 @@ public abstract class GuiElement {
     public void setY(int y) {
         bounds.y = y;
         layoutChangedInternal();
+    }
+    public void setZ(float z) {
+        zPos = z;
     }
     public void setPosition(int x, int y)
     {
