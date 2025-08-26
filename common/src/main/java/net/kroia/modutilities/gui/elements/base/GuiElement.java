@@ -13,6 +13,7 @@ import net.kroia.modutilities.gui.geometry.Rectangle;
 import net.kroia.modutilities.gui.layout.Layout;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.network.chat.Component;
@@ -793,6 +794,12 @@ public abstract class GuiElement {
     public Gui getGui()
     {
         return root;
+    }
+    public Screen getScreen()
+    {
+        if(root == null)
+            return null;
+        return root.getScreen();
     }
     public Font getFont()
     {
