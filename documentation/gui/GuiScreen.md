@@ -57,6 +57,7 @@ public class TestScreen extends GuiScreen {
 ## Manage multiple screens
 In some cases multiple screens are needed. Only one screen can be open at a time, but screens can be stacked hierarchically. The trick is to keep track of the parent screen inside the new opened screen to just switch back to the parent screen when the new created screen gets closed.
 It is also possible to switch screens manually by just calling the `GuiScreen.setScreen()` method.
+By passing a screen to the constructor of a ChildScreen will make sure that once the ChildScreen gets closed, the parent screen will be opened again to create the ilusion of going back to the old screen.
 
 ``` Java
 public class ChildScreen extends GuiScreen {
