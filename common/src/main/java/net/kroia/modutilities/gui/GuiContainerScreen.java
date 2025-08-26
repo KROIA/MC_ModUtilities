@@ -131,8 +131,12 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     @Override
     public void onClose() {
         super.onClose();
-        if(this.minecraft != null)
+        if(this.minecraft != null) {
+            int mousePosX = getMouseX();
+            int mousePosY = getMouseY();
             this.minecraft.setScreen(parent);
+            setMousePos(mousePosX, mousePosY);
+        }
     }
 
 
