@@ -63,6 +63,7 @@ public abstract class GuiElement {
     public static int DEFAULT_FOCUSED_BACKGROUND_COLOR = 0xAA666666;
     public static int DEFAULT_HOVER_BACKGROUND_COLOR = 0xFFAAAAAA;
     public static int DEFAULT_OUTLINE_COLOR = 0xFF333333;
+    public static int DEFAULT_HOVER_TOOLTIP_MOUSE_OFFSET = 5;
 
     private Gui root;
     private GuiElement parent = null;
@@ -95,6 +96,7 @@ public abstract class GuiElement {
     private int tooltipTextColor = DEFAULT_TEXT_COLOR;
     private float textFontScale = 1.0f;
     private float tooltipFontScale = 1.0f;
+    private int tooltipHoverMouseOffset = DEFAULT_HOVER_TOOLTIP_MOUSE_OFFSET;
 
     HoverTooltipData hoverTooltipData = new HoverTooltipData();
     public class TooltipData
@@ -287,6 +289,12 @@ public abstract class GuiElement {
     public float getHoverTooltipFontScale() {
         return hoverTooltipData.fontScale;
     }
+    public void setHoverTooltipMouseOffset(int offset) {
+        tooltipHoverMouseOffset = offset;
+    }
+    public int getHoverTooltipMouseOffset() {
+        return tooltipHoverMouseOffset;
+    }
     public void setHoverTooltipMousePositionAlignment(Alignment alignment) {
         hoverTooltipData.mousePositionAlignment = alignment;
     }
@@ -464,9 +472,43 @@ public abstract class GuiElement {
 
 
                 Point size = getTextBounds(data.customString, data.fontScale);
+                int x = 0;
+                int y = 0;
+                switch(data.alignment)
+                {
+                    case CENTER:
+                    case LEFT:
+                        x = tooltipHoverMouseOffset;
+                        break;
+                    case RIGHT:
+                        x = -tooltipHoverMouseOffset;
+                        break;
+                    case TOP:
+                        y = tooltipHoverMouseOffset;
+                        break;
+                    case BOTTOM:
+                        y = -tooltipHoverMouseOffset;
+                        break;
+                    case TOP_LEFT:
+                        x = tooltipHoverMouseOffset;
+                        y = tooltipHoverMouseOffset;
+                        break;
+                    case TOP_RIGHT:
+                        x = -tooltipHoverMouseOffset;
+                        y = tooltipHoverMouseOffset;
+                        break;
+                    case BOTTOM_LEFT:
+                        x = tooltipHoverMouseOffset;
+                        y = -tooltipHoverMouseOffset;
+                        break;
+                    case BOTTOM_RIGHT:
+                        x = -tooltipHoverMouseOffset;
+                        y = -tooltipHoverMouseOffset;
+                        break;
+                }
 
                 Rectangle rect = getAlignedBounds(0,0, size.x, size.y, data.alignment,
-                        data.x, data.y,0,0);
+                        data.x+x, data.y+y,0,0);
                 if(data.createBackground)
                 {
                     drawRect(rect.x - data.backgroundPadding,

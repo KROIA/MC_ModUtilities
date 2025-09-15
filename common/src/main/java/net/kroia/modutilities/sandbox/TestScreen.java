@@ -83,7 +83,7 @@ class MyElement extends GuiElement
 }
     //private final Button myButton;
     //private final MyElement myElement;
-    private final DropDownMenu dropDownMenu;
+    //private final DropDownMenu dropDownMenu;
     //private final ItemSelectionView itemSelectionView;
     //private final ContainerView<MyContainerMenu> inventoryView;
 
@@ -105,7 +105,7 @@ class MyElement extends GuiElement
         //addElement(myElement);
 
 
-        dropDownMenu = new DropDownMenu("Dropdown");
+       /* dropDownMenu = new DropDownMenu("Dropdown");
         dropDownMenu.addOption("Option 1");
         dropDownMenu.addOption("Option 2");
         dropDownMenu.addOption("Option 3");
@@ -116,7 +116,20 @@ class MyElement extends GuiElement
         dropDownMenu.setOnOptionSelected((index, element) -> {
             ModUtilitiesMod.LOGGER.info("[UI] Selected option: " + index + " - " + element.toString());
         });
-        addElement(dropDownMenu);
+        addElement(dropDownMenu);*/
+
+        int y=50;
+        for(int i=0; i<=GuiElement.Alignment.BOTTOM_RIGHT.ordinal(); ++i)
+        {
+            Label label1 = new Label("Label "+i);
+            int finalI = i;
+            label1.setHoverTooltipSupplier(()->"This is a tooltip for label "+ finalI);
+            GuiElement.Alignment alignment = GuiElement.Alignment.values()[i];
+            label1.setHoverTooltipMousePositionAlignment(alignment);
+            label1.setBounds(200,y,100,15);
+            y += 15;
+            addElement(label1);
+        }
 
         //itemSelectionView = new ItemSelectionView((i)->{});
 
@@ -207,7 +220,7 @@ class MyElement extends GuiElement
 //
         //myElement.setBounds(10, 10, 300, 100);
 
-        dropDownMenu.setBounds(10, 10, 150, 20);
+        //dropDownMenu.setBounds(10, 10, 150, 20);
         //itemSelectionView.setBounds(10, 10, getWidth()/2, 100);
     }
 
