@@ -118,7 +118,7 @@ class MyElement extends GuiElement
         });
         addElement(dropDownMenu);*/
 
-        int y=50;
+        /*int y=50;
         for(int i=0; i<=GuiElement.Alignment.BOTTOM_RIGHT.ordinal(); ++i)
         {
             Label label1 = new Label("Label "+i);
@@ -129,7 +129,12 @@ class MyElement extends GuiElement
             label1.setBounds(200,y,100,15);
             y += 15;
             addElement(label1);
-        }
+        }*/
+
+        ItemSelectionView itemSelectionView = new ItemSelectionView((i)->{});
+        addElement(itemSelectionView);
+        itemSelectionView.setBounds(10,10,200,200);
+        itemSelectionView.setSorter(new ItemSelectionView.TagSorter());
 
         //itemSelectionView = new ItemSelectionView((i)->{});
 

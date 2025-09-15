@@ -58,11 +58,15 @@ public abstract class ListView extends GuiElement{
         }
     }
 
+
+    private static final int DEFAULT_SCROLL_SPEED = 10;
+    private static final int DEFAULT_SCROLLBAR_THICKNESS = 5;
+
     protected int scrollOffset = 0;
     protected int allObjectSize = 0;
 
-    protected int scrolSpeed = 5;
-    protected int scrollbarThickness = 5;
+    protected int scrolSpeed = DEFAULT_SCROLL_SPEED;
+    protected int scrollbarThickness = DEFAULT_SCROLLBAR_THICKNESS;
     protected final EmptyButton scrollbarButton;
     protected final ScrollContainer scrollContainer;
     protected int scrollbarDragStartMouse = 0;

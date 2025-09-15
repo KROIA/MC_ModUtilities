@@ -5,12 +5,14 @@ import dev.architectury.utils.Env;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class UtilitiesPlatform {
     public enum Type {
@@ -110,7 +112,11 @@ public class UtilitiesPlatform {
     }
 
     public static ArrayList<ItemStack> getAllItems() {
-        return getPlatform().getAllItems();
+
+        ArrayList<ItemStack> itemStacks = new ArrayList<>();
+        List<Item> items = BuiltInRegistries.ITEM.stream().toList();
+        itemStacks.addAll(items.stream().map(ItemStack::new).toList());
+        return itemStacks;
     }
     public static MinecraftServer getServer() {
         return getPlatform().getServer();

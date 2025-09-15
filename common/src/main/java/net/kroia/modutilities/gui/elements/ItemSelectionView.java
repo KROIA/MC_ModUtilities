@@ -1,16 +1,23 @@
 package net.kroia.modutilities.gui.elements;
 
+import net.kroia.modutilities.ClientPlayerUtilities;
 import net.kroia.modutilities.ItemUtilities;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.elements.base.ListView;
 import net.kroia.modutilities.gui.layout.LayoutGrid;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 public class ItemSelectionView extends GuiElement {
     public interface Sorter
@@ -19,7 +26,7 @@ public class ItemSelectionView extends GuiElement {
     }
     public interface Filter
     {
-        public abstract boolean apply(ItemStack stack);
+        public abstract boolean apply(ItemStack stack, String searchText);
     }
 
     public static final class NameSorter implements Sorter
@@ -29,6 +36,48 @@ public class ItemSelectionView extends GuiElement {
             items.sort(Comparator.comparing(stack -> {
                 return stack.getHoverName().getString();
             }));
+        }
+    }
+    public static final class TagSorter implements Sorter
+    {
+        @Override
+        public void apply(List<ItemStack> items) {
+            // Sort by item tags, then by name
+            items.sort((stack1, stack2) -> {
+                Item item1 = stack1.getItem();
+                Item item2 = stack2.getItem();
+
+                // Get the registry keys for both items
+                ResourceKey<Item> key1 = BuiltInRegistries.ITEM.getResourceKey(item1).orElseThrow();
+                ResourceKey<Item> key2 = BuiltInRegistries.ITEM.getResourceKey(item2).orElseThrow();
+
+                // Get all tags for both items
+                Set<TagKey<Item>> tags1 = BuiltInRegistries.ITEM.getHolderOrThrow(key1).tags().collect(Collectors.toSet());
+                Set<TagKey<Item>> tags2 = BuiltInRegistries.ITEM.getHolderOrThrow(key2).tags().collect(Collectors.toSet());
+
+                // Convert tags to sorted string representation for comparison
+                String tagString1 = tags1.stream()
+                        .map(tag -> tag.location().toString())
+                        .sorted()
+                        .collect(Collectors.joining(","));
+
+                String tagString2 = tags2.stream()
+                        .map(tag -> tag.location().toString())
+                        .sorted()
+                        .collect(Collectors.joining(","));
+
+                // First compare by tags
+                int tagComparison = tagString1.compareTo(tagString2);
+                if (tagComparison != 0) {
+                    return -tagComparison;
+                }
+
+                // If tags are the same, compare by item name
+                String name1 = item1.getDescriptionId();
+                String name2 = item2.getDescriptionId();
+
+                return name1.compareTo(name2);
+            });
         }
     }
     public static class SorterByIntID implements ItemSelectionView.Sorter {
@@ -43,15 +92,32 @@ public class ItemSelectionView extends GuiElement {
     }
     public static final class SearchFilter implements Filter
     {
-        private final ItemSelectionView view;
         public SearchFilter(ItemSelectionView view)
         {
-            this.view = view;
+
         }
         @Override
-        public boolean apply(ItemStack stack) {
+        public boolean apply(ItemStack stack, String searchText) {
             String name = stack.getHoverName().getString().toLowerCase();
-            return name.contains(view.getSearchText());
+
+            if(name.contains(searchText))
+                return true;
+            String itemDecoration = ClientPlayerUtilities.getItemDisplayText(stack).toLowerCase();
+            if(itemDecoration.contains(searchText))
+                return true;
+
+            // Check tags
+            Item item = stack.getItem();
+            ResourceKey<Item> key = BuiltInRegistries.ITEM.getResourceKey(item).orElseThrow();
+            Set<TagKey<Item>> tags = BuiltInRegistries.ITEM.getHolderOrThrow(key).tags().collect(Collectors.toSet());
+            for(TagKey<Item> tag : tags)
+            {
+                ResourceLocation loc = tag.location();
+                String tagName = loc.toString().toLowerCase();
+                if(tagName.contains(searchText))
+                    return true;
+            }
+            return false;
         }
     }
 
@@ -61,8 +127,7 @@ public class ItemSelectionView extends GuiElement {
     private static final Component SEARCH_LABEL = Component.translatable("gui.modutilities.search");
     private static final Component ITEMS_LABEL = Component.translatable("gui.modutilities.items");
 
-    private Sorter sorter = new NameSorter();
-    private Filter filter = new SearchFilter(this);
+
 
     private class ItemButton extends ItemView {
 
@@ -88,6 +153,9 @@ public class ItemSelectionView extends GuiElement {
             return false;
         }
     }
+
+    private Sorter sorter = new TagSorter();
+    private Filter filter = new SearchFilter(this);
 
     private final List<ItemStack> allowedItems;
     private final Consumer<ItemStack> onItemSelected;
@@ -189,9 +257,10 @@ public class ItemSelectionView extends GuiElement {
 
         if(filter != null)
         {
+            String searchText = getSearchText().toLowerCase();
             for(ItemStack stack : allowedItems)
             {
-                if(filter.apply(stack))
+                if(filter.apply(stack, searchText))
                 {
                     listView.addChild(new ItemButton(stack));
                 }
