@@ -1,6 +1,9 @@
 package net.kroia.modutilities.gui;
 
 
+import com.mojang.blaze3d.vertex.PoseStack;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics; // mc>=1.20.1
 //import com.mojang.blaze3d.vertex.PoseStack; // mc<=1.19.4
@@ -12,9 +15,12 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import org.joml.Matrix4f;
+import org.joml.Quaternionf;
+
 import java.util.List;
 import java.util.Optional;
 
+@Environment(EnvType.CLIENT)
 public class Graphics {
 
     GuiGraphics graphics;// mc>=1.20.1
@@ -35,6 +41,11 @@ public class Graphics {
     public GuiGraphics getGraphics()
     {
         return graphics;
+    }
+    public PoseStack getPoseStack()
+    {
+        //return graphics; // mc<=1.19.4
+        return graphics.pose(); // mc>=1.20.1
     }
 
     public void drawString(Font font, String text, int x, int y, int color)
@@ -82,17 +93,19 @@ public class Graphics {
         //screen.renderTooltip(graphics, screen.getTooltipFromItem(itemStack), itemStack.getTooltipImage(), x, y); // mc<=1.19.4
         graphics.renderTooltip(font, itemStack, x, y); // mc>=1.20.1
     }
-    public void renderItem(ItemStack itemStack, int x, int y)
+    public void renderItem(ItemStack itemStack, Font font, int x, int y)
     {
         //ItemRenderer itemRenderer = Minecraft.getInstance().getItemRenderer(); // mc<=1.19.4
         //itemRenderer.renderGuiItem(graphics, itemStack, x, y); // mc<=1.19.4
         graphics.renderItem(itemStack, x, y); // mc>=1.20.1
+        graphics.renderItemDecorations(font, itemStack, x, y); // mc>=1.20.1
     }
-    public void renderItem(ItemStack itemStack, int x, int y, int seed)
+    public void renderItem(ItemStack itemStack, Font font, int x, int y, int seed)
     {
         //ItemRenderer itemRenderer = Minecraft.getInstance().getItemRenderer(); // mc<=1.19.4
         //itemRenderer.renderGuiItem(graphics, itemStack, x, y); // mc<=1.19.4
         graphics.renderItem(itemStack, x, y, seed); // mc>=1.20.1
+        graphics.renderItemDecorations(font, itemStack, x, y); // mc>=1.20.1
     }
 
 
@@ -134,23 +147,38 @@ public class Graphics {
     public void translate(float x, float y, float z)
     {
         //graphics.translate(x, y, z); // mc<=1.19.4
-        graphics.pose().translate(x, y, z); // mc>=1.20.1
+        getPoseStack().translate(x, y, z); // mc>=1.20.1
     }
     public void translate(double x, double y, double z)
     {
         //graphics.translate(x, y, z); // mc<=1.19.4
-        graphics.pose().translate(x, y, z); // mc>=1.20.1
+        getPoseStack().translate(x, y, z); // mc>=1.20.1
+    }
+    public void scale(float x, float y, float z)
+    {
+        //graphics.scale(x, y, z); // mc<=1.19.4
+        getPoseStack().scale(x, y, z); // mc>=1.20.1
+    }
+    public void mulPose(Quaternionf quaternion)
+    {
+        //graphics.mulPose(quaternion); // mc<=1.19.4
+        getPoseStack().mulPose(quaternion); // mc>=1.20.1
+    }
+    public void rotateAround(Quaternionf quaternion, float x, float y, float z)
+    {
+        //graphics.rotateAround(quaternion, x, y, z); // mc<=1.19.4
+        getPoseStack().rotateAround(quaternion, x, y, z); // mc>=1.20.1
     }
 
     public void pushPose()
     {
         //graphics.pushPose(); // mc<=1.19.4
-        graphics.pose().pushPose(); // mc>=1.20.1
+        getPoseStack().pushPose(); // mc>=1.20.1
     }
     public void popPose()
     {
         //graphics.popPose(); // mc<=1.19.4
-        graphics.pose().popPose(); // mc>=1.20.1
+        getPoseStack().popPose(); // mc>=1.20.1
     }
 
 
@@ -162,7 +190,7 @@ public class Graphics {
     public Matrix4f getLastPoseMatrix()
     {
         //return graphics.last().pose(); // mc<=1.19.4
-        return graphics.pose().last().pose(); // mc>=1.20.1
+        return getPoseStack().last().pose(); // mc>=1.20.1
     }
 
     public MultiBufferSource.BufferSource bufferSource()

@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui.elements;
 
+import net.kroia.modutilities.gui.Graphics;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Point;
 import net.minecraft.world.item.ItemStack;
@@ -12,7 +13,7 @@ public class ItemView extends GuiElement {
     protected ItemStack itemStack;
     protected Point itemPos = new Point(0,0);
     public ItemView() {
-        super(0,0,DEFAULT_WIDTH,DEFAULT_WIDTH);
+        super(0,0,DEFAULT_WIDTH, DEFAULT_WIDTH);
         setEnableBackground(false);
         setEnableOutline(false);
     }
@@ -23,7 +24,7 @@ public class ItemView extends GuiElement {
     }
 
     public ItemView(ItemStack itemStack) {
-        super(0,0,DEFAULT_WIDTH,DEFAULT_WIDTH);
+        super(0,0,DEFAULT_WIDTH, DEFAULT_WIDTH);
         this.itemStack = itemStack;
         setEnableBackground(false);
         setEnableOutline(false);
@@ -36,6 +37,9 @@ public class ItemView extends GuiElement {
     }
     public void setItemStack(ItemStack itemStack) {
         this.itemStack = itemStack;
+    }
+    public ItemStack getItemStack() {
+        return itemStack;
     }
 
 
@@ -58,16 +62,30 @@ public class ItemView extends GuiElement {
 
         if(showCount)
             drawItemWithDecoration(itemStack, itemPos, itemStack.getCount());
-        else
-            drawItem(itemStack, itemPos);
+        else {
+            int width = getWidth();
+            if(width < DEFAULT_WIDTH) {
+                var graphics = getGraphics();
+                width = Math.min(width, getHeight());
+                graphics.pushPose();
+                graphics.translate(itemPos.x, itemPos.y, 0);
+                float scale = width / (float) (DEFAULT_WIDTH);
+                graphics.scale(scale, scale, 1);
+                drawItem(itemStack, 0,0);
+                graphics.popPose();
+            }
+            else {
+                drawItem(itemStack, itemPos);
+            }
+        }
         if(showTooltip && isMouseOver()) {
-            drawTooltipLater(itemStack, getMousePos());
+            drawTooltip(itemStack, getMousePos());
         }
     }
 
     @Override
     protected void layoutChanged() {
-        itemPos.x = (getWidth() - DEFAULT_WIDTH) / 2;
-        itemPos.y = (getHeight() - DEFAULT_WIDTH) / 2;
+        itemPos.x = Math.max(0, (getWidth() - DEFAULT_WIDTH) / 2);
+        itemPos.y = Math.max(0, (getHeight() - DEFAULT_WIDTH) / 2);
     }
 }

@@ -1,4 +1,4 @@
-package net.kroia.modutilities;
+package net.kroia.modutilities.persistence;
 
 import net.minecraft.nbt.CompoundTag;
 

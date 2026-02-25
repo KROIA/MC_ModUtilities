@@ -1,5 +1,6 @@
 package net.kroia.modutilities;
 
+import net.kroia.modutilities.sandbox.Sandbox;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -11,8 +12,15 @@ public class ModUtilitiesMod {
 
     public static void init()
     {
-
+        Sandbox.init();
     }
+
+    /*public static void onClientSetup()
+    {
+        // This method is called when the client is initialized
+        // You can put client-side initialization code here
+        Sandbox.initClient();
+    }*/
 
     public static boolean isClientInitialized() {
         return UtilitiesPlatform.getPlatform() != null;
@@ -23,5 +31,10 @@ public class ModUtilitiesMod {
         }
         return false;
     }
+
+
+
+
+
 
 }
