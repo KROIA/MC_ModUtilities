@@ -9,6 +9,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
 import java.util.ArrayList;
 
@@ -250,7 +251,7 @@ public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
         String itemID = data.get("itemID").getAsString();
 
         ItemStack stack = ItemUtilities.createItemStackFromId(itemID);
-        if (stack == null || stack.isEmpty()) {
+        if (stack == null || stack.isEmpty() && !stack.is((Items.AIR))) {
             throw new IllegalArgumentException("Invalid itemID: " + itemID);
         }
         if (data.has("nbt")) {
