@@ -4,11 +4,13 @@ import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Rectangle;
 import net.minecraft.sounds.SoundEvents;
 
+import java.util.function.Consumer;
+
 public class CheckBox extends GuiElement {
 
     Label label;
     Runnable onClick;
-    Runnable onStateChanged;
+    Consumer<Boolean> onStateChanged;
     Runnable onChecked;
     Runnable onUnchecked;
     boolean isChecked = false;
@@ -32,14 +34,14 @@ public class CheckBox extends GuiElement {
         addChild(label);
         hitboxRect = checkBoxRect;
     }
-    public CheckBox(String text, Runnable onStateChanged) {
+    public CheckBox(String text, Consumer<Boolean> onStateChanged) {
         super();
         label = new Label(text);
         addChild(label);
         this.onStateChanged = onStateChanged;
         hitboxRect = checkBoxRect;
     }
-    public CheckBox(int x, int y, int width, int height, String text, Runnable onStateChanged) {
+    public CheckBox(int x, int y, int width, int height, String text, Consumer<Boolean> onStateChanged) {
         super(x, y, width, height);
         label = new Label(text);
         addChild(label);
@@ -53,7 +55,7 @@ public class CheckBox extends GuiElement {
     public void setOnClick(Runnable onClick) {
         this.onClick = onClick;
     }
-    public void setOnStateChanged(Runnable onStateChanged) {
+    public void setOnStateChanged(Consumer<Boolean> onStateChanged) {
         this.onStateChanged = onStateChanged;
     }
     public void setOnChecked(Runnable onChecked) {
@@ -146,7 +148,7 @@ public class CheckBox extends GuiElement {
 
 
 
-        label.setBounds(padding, padding, getWidth()-height-padding, height);
+        label.setBounds(padding, padding, getWidth()-height-padding*2-1, height);
 
     }
 
@@ -163,7 +165,7 @@ public class CheckBox extends GuiElement {
             playLocalSound(SoundEvents.UI_BUTTON_CLICK.value(),0.5F);
             if(onStateChanged != null)
             {
-                onStateChanged.run();
+                onStateChanged.accept(isChecked);
             }
             if(isChecked && onChecked != null)
             {
@@ -176,5 +178,22 @@ public class CheckBox extends GuiElement {
             return true;
         }
         return false;
+    }
+
+    @Override
+    public void setTextColor(int color) {
+        label.setTextColor(color);
+    }
+    @Override
+    public int getTextColor() {
+        return label.getTextColor();
+    }
+    @Override
+    public void setTextFontScale(float scale) {
+        label.setTextFontScale(scale);
+    }
+    @Override
+    public float getTextFontScale() {
+        return label.getTextFontScale();
     }
 }

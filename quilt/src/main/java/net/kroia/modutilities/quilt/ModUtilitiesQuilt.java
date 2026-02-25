@@ -1,4 +1,4 @@
-package net.kroia.quilt;
+package net.kroia.modutilities.quilt;
 
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.UtilitiesPlatform;

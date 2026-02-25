@@ -1,26 +1,20 @@
 package net.kroia.modutilities.gui.elements.base;
 
-import net.kroia.modutilities.gui.elements.Button;
+import net.kroia.modutilities.gui.elements.EmptyButton;
+import net.kroia.modutilities.gui.geometry.Rectangle;
 import net.kroia.modutilities.gui.layout.Layout;
 
-import java.util.ArrayList;
+import java.util.List;
 
 public abstract class ListView extends GuiElement{
-    protected class ScrollContainer extends GuiElement
+    protected static class ScrollContainer extends GuiElement
     {
         private final ListView parentListView;
         public ScrollContainer(ListView parentListView) {
             super();
             this.parentListView = parentListView;
-        }
-        public ScrollContainer(int x, int y, int width, int height, ListView parentListView) {
-            super(x, y, width, height);
-            this.parentListView = parentListView;
-        }
-
-        @Override
-        protected void renderBackground() {
-
+            this.setEnableBackground(false);
+            this.setEnableOutline(false);
         }
 
         @Override
@@ -29,33 +23,58 @@ public abstract class ListView extends GuiElement{
         }
 
         @Override
+        public void renderBackgroundInternal() {
+            if(!isVisible())
+                return;
+            Rectangle bounds = parentListView.getScissorRect();
+            enableScissor(bounds);
+            super.renderBackgroundInternal();
+            disableScissor();
+        }
+
+        @Override
+        public void renderInternal() {
+            if(!isVisible())
+                return;
+            Rectangle bounds = parentListView.getScissorRect();
+            enableScissor(bounds);
+            super.renderInternal();
+            disableScissor();
+        }
+
+        @Override
+        public void renderGizmosInternal() {
+            if(!isVisible())
+                return;
+            Rectangle bounds = parentListView.getScissorRect();
+            enableScissor(bounds);
+            super.renderGizmosInternal();
+            disableScissor();
+        }
+
+        @Override
         protected void layoutChanged() {
             parentListView.childsChanged();
         }
-
-        /*@Override
-        public void layoutChangedInternal() {
-            super.layoutChangedInternal();
-            super.getBounds().height = getHeight();
-        }*/
-
-
-
     }
+
+
+    private static final int DEFAULT_SCROLL_SPEED = 10;
+    private static final int DEFAULT_SCROLLBAR_THICKNESS = 5;
 
     protected int scrollOffset = 0;
     protected int allObjectSize = 0;
 
-    protected int scrolSpeed = 5;
-    protected int scrollbarThickness = 5;
-    protected final Button scrollbarButton;
+    protected int scrolSpeed = DEFAULT_SCROLL_SPEED;
+    protected int scrollbarThickness = DEFAULT_SCROLLBAR_THICKNESS;
+    protected final EmptyButton scrollbarButton;
     protected final ScrollContainer scrollContainer;
     protected int scrollbarDragStartMouse = 0;
     protected int scrollbarBackgroundColor = 0xff444444;
 
     public ListView() {
         super();
-        scrollbarButton = new Button("");
+        scrollbarButton = new EmptyButton();
 
         scrollbarButton.setOnDown(this::onScrollBarDragging);
         scrollbarButton.setOnFallingEdge(this::onScrllBarFallingEdge);
@@ -65,7 +84,7 @@ public abstract class ListView extends GuiElement{
     }
     public ListView(int x, int y, int width, int height) {
         super(x, y, width, height);
-        scrollbarButton = new Button("");
+        scrollbarButton = new EmptyButton();
 
         scrollbarButton.setOnDown(this::onScrollBarDragging);
         scrollbarButton.setOnFallingEdge(this::onScrllBarFallingEdge);
@@ -73,6 +92,8 @@ public abstract class ListView extends GuiElement{
         super.addChild(scrollbarButton);
         super.addChild(scrollContainer);
     }
+
+    protected abstract Rectangle getScissorRect();
 
     public void setScrolSpeed(int scrolSpeed)
     {
@@ -91,6 +112,11 @@ public abstract class ListView extends GuiElement{
         return this.scrollbarBackgroundColor;
     }
 
+    public void setScrollbarThickness(int scrollbarThickness)
+    {
+        this.scrollbarThickness = scrollbarThickness;
+        layoutChangedInternal();
+    }
     public int getScrollbarThickness()
     {
         return scrollbarThickness;
@@ -104,6 +130,17 @@ public abstract class ListView extends GuiElement{
     {
         return scrollContainer.getHeight();
     }
+
+
+    /**
+     * @return The width of the whole list view if it was fully expanded to fit all elements.
+     */
+    public abstract int getSizeHintWidth();
+
+    /**
+     * @return The height of the whole list view if it was fully expanded to fit all elements.
+     */
+    public abstract int getSizeHintHeight();
 
     protected abstract int getContentDimension2();
     protected abstract void setScrollBarBounds();
@@ -138,7 +175,7 @@ public abstract class ListView extends GuiElement{
         setScrollBarBounds();
     }
     @Override
-    public ArrayList<GuiElement> getChilds()
+    public List<GuiElement> getChilds()
     {
         return scrollContainer.getChilds();
     }
@@ -176,33 +213,40 @@ public abstract class ListView extends GuiElement{
         return scrollContainer.getLayout();
     }
 
-    @Override
+   /* @Override
     public void renderBackgroundInternal()
     {
         if(!isVisible())
             return;
-        enableScissor();
+
+
+
+
+
+
+        //Rectangle bounds = getBounds();
+        //enableScissor(1, 1, bounds.width-2, bounds.height-2);
         super.renderBackgroundInternal();
-        disableScissor();
+        //disableScissor();
     }
     @Override
     public void renderInternal()
     {
         if(!isVisible())
             return;
-        enableScissor();
         super.renderInternal();
-        disableScissor();
+        //disableScissor();
     }
     @Override
     public void renderGizmosInternal()
     {
         if(!isVisible())
             return;
-        enableScissor();
+       // Rectangle bounds = getBounds();
+       // enableScissor(1, 1, bounds.width-2, bounds.height-2);
         super.renderGizmosInternal();
-        disableScissor();
-    }
+        //disableScissor();
+    }*/
 
 
 
