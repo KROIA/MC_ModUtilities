@@ -211,9 +211,9 @@ public class DataPersistence {
                     nbtFormatLocal = NbtFormat.UNCOMPRESSED;
                 }
                 if(nbtFormatLocal == NbtFormat.COMPRESSED)
-                    data = NbtIo.readCompressed(file);
+                    data = NbtIo.readCompressed(file.toPath(), NbtAccounter.unlimitedHeap());
                 else
-                    data = NbtIo.read(file);
+                    data = NbtIo.read(file.toPath());
 
                 dataOut = data;
                 return dataOut;
@@ -240,9 +240,9 @@ public class DataPersistence {
         File file = new File(absolutePath.toUri());
         try {
             if (nbtFormat == NbtFormat.COMPRESSED)
-                NbtIo.writeCompressed(data, file);
+                NbtIo.writeCompressed(data, file.toPath());
             else
-                NbtIo.write(data, file);
+                NbtIo.write(data, file.toPath());
         } catch(Exception e)
         {
             error("Failed to save data to file: " + absolutePath, e);
