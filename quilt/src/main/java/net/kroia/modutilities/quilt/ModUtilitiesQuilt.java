@@ -1,4 +1,4 @@
-package net.kroia.quilt;
+package net.kroia.modutilities.quilt;
 
 import net.fabricmc.api.ModInitializer;
 import net.kroia.modutilities.ModUtilitiesMod;

@@ -10,6 +10,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.fml.event.lifecycle.FMLDedicatedServerSetupEvent;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 
 public class UtilitiesPlatformNeoForge implements PlatformAbstraction {
@@ -37,19 +38,19 @@ public class UtilitiesPlatformNeoForge implements PlatformAbstraction {
     }
 
     @Override
-    public String getItemID(Item item) {
+    public String getItemIDStr(Item item) {
         return BuiltInRegistries.ITEM.getKey(item).toString();
     }
 
     @Override
-    public HashMap<String, ItemStack> getAllItems() {
-        HashMap<String, ItemStack> itemsMap = new HashMap<>();
+    public ArrayList<ItemStack> getAllItems() {
+        ArrayList<ItemStack> list = new ArrayList<>();
 
         for (Item item : BuiltInRegistries.ITEM) {
-            itemsMap.put(getItemID(item), new ItemStack(item));
+            list.add(new ItemStack(item));
         }
 
-        return itemsMap;
+        return list;
     }
 
     @Override

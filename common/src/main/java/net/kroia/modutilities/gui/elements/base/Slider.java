@@ -1,4 +1,4 @@
-package net.kroia.modutilities.gui.elements;
+package net.kroia.modutilities.gui.elements.base;
 
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Point;
@@ -56,7 +56,7 @@ public abstract class Slider extends GuiElement {
             color = colorHover;
         }
         if(contains && tooltipSupplier != null)
-            drawTooltipLater(tooltipSupplier.get(), getMouseX(), getMouseY()-getFont().lineHeight);
+            drawTooltip(tooltipSupplier.get(), getMouseX(), getMouseY()-getFont().lineHeight);
 
         drawRect(sliderBounds.x, sliderBounds.y, sliderBounds.width, sliderBounds.height, sliderOutlineColor);
         drawRect(sliderBounds.x+1, sliderBounds.y+1, sliderBounds.width-2, sliderBounds.height-2, color);

@@ -2,8 +2,12 @@ package net.kroia.modutilities.gui.elements;
 
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.elements.base.ListView;
+import net.kroia.modutilities.gui.geometry.Rectangle;
+import org.spongepowered.asm.mixin.SoftOverride;
 
 public class VerticalListView extends ListView {
+
+    private final Rectangle scissorRect = new Rectangle(0, 0, 0, 0);
     public VerticalListView() {
         super();
         scrollContainer.setBounds(1, 1, 0, 0);
@@ -21,6 +25,18 @@ public class VerticalListView extends ListView {
         if(enableOutline)
             renderOutline();
     }
+
+
+    @Override
+    public int getSizeHintWidth()
+    {
+        return getWidth();
+    }
+    @Override
+    public int getSizeHintHeight()
+    {
+        return allObjectSize + 2*outlineThickness;
+    }
     @Override
     protected int getContentDimension2()
     {
@@ -28,7 +44,7 @@ public class VerticalListView extends ListView {
     }
     @Override
     protected void layoutChanged() {
-        scrollContainer.setSize(getWidth() - scrollbarThickness-1, getHeight()-2);
+        scrollContainer.setBounds(1,1,getWidth() - scrollbarThickness-1, getHeight()-2);
         childsChanged();
         setScrollBarBounds();
         updateElementPositions();
@@ -96,5 +112,15 @@ public class VerticalListView extends ListView {
         scrollOffset = Math.max(Math.min(scrollOffset + delta, allObjectSize - getContentDimension2()), 0);
         updateElementPositions();
         setScrollBarBounds();
+    }
+
+    @Override
+    protected Rectangle getScissorRect()
+    {
+        scissorRect.x = 0;
+        scissorRect.y = scrollOffset;
+        scissorRect.width = scrollContainer.getWidth();
+        scissorRect.height = getHeight()-2;
+        return scissorRect;
     }
 }
