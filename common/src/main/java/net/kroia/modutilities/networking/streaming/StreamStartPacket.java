@@ -32,7 +32,7 @@ public class StreamStartPacket extends NetworkPacket {
     public static final StreamCodec<RegistryFriendlyByteBuf, StreamStartPacket> STREAM_CODEC = StreamCodec.composite(
             UUIDUtil.STREAM_CODEC, p -> p.streamID,
             ByteBufCodecs.STRING_UTF8, p -> p.streamTypeID,
-            ExtraCodecUtils.FRIENDLY_BYTE_BUF_CODEC, p -> p.data,
+            ExtraCodecUtils.REGISTRY_FRIENDLY_BYTE_BUF_CODEC, p -> p.data,
             StreamStartPacket::new
 
     );
@@ -54,18 +54,18 @@ public class StreamStartPacket extends NetworkPacket {
 
     UUID streamID;
     String streamTypeID;
-    FriendlyByteBuf data;
+    RegistryFriendlyByteBuf data;
 
 
 
-    public StreamStartPacket(String streamTypeID, FriendlyByteBuf data) {
+    public StreamStartPacket(String streamTypeID, RegistryFriendlyByteBuf data) {
         super();
         this.streamID = UUID.randomUUID();
         this.streamTypeID = streamTypeID;
         this.data = data;
     }
 
-    public StreamStartPacket(UUID streamID, String streamTypeID, FriendlyByteBuf data) {
+    public StreamStartPacket(UUID streamID, String streamTypeID, RegistryFriendlyByteBuf data) {
         super();
         this.streamID = streamID;
         this.streamTypeID = streamTypeID;
@@ -79,7 +79,7 @@ public class StreamStartPacket extends NetworkPacket {
     public String getStreamTypeID() {
         return streamTypeID;
     }
-    public FriendlyByteBuf getData() {
+    public RegistryFriendlyByteBuf getData() {
         return data;
     }
 

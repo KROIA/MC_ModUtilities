@@ -114,7 +114,9 @@ public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
         {}
         public ItemData(ItemStack stack)
         {
-
+            // Not implemented
+            this.stack = stack;
+            throw new RuntimeException("ItemData is not implemented in the modutilities");
         }
         private ItemData(ItemStack stack, EnchantmentData[] enchantments, PotionData potion)
         {
@@ -124,7 +126,7 @@ public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
         }
         public ItemStack getItemStack()
         {
-           return null;
+           return stack;
         }
 
         boolean fromJson(JsonElement json) {
@@ -160,12 +162,14 @@ public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
     private final NBTJsonParser nbtJsonParser = new NBTJsonParser();
     @Override
     public JsonElement toJson(ItemStack stack) {
-       return null;
+        throw new RuntimeException("ItemData is not implemented in the modutilities");
+
     }
 
     @Override
     public ItemStack fromJson(JsonElement json) {
-        return null;
+        throw new RuntimeException("ItemData is not implemented in the modutilities");
+
 
         /*ItemData itemData = new ItemData();
         if(itemData.fromJson(json)) {

@@ -29,7 +29,7 @@ public final class GenericResponsePacket extends NetworkPacket
     public static final StreamCodec<RegistryFriendlyByteBuf, GenericResponsePacket> STREAM_CODEC = StreamCodec.composite(
             UUIDUtil.STREAM_CODEC, p -> p.requestID,
             ByteBufCodecs.STRING_UTF8, p -> p.requestTypeID,
-            ExtraCodecUtils.FRIENDLY_BYTE_BUF_CODEC, p -> p.data,
+            ExtraCodecUtils.REGISTRY_FRIENDLY_BYTE_BUF_CODEC, p -> p.data,
             GenericResponsePacket::new
     );
 
@@ -77,9 +77,9 @@ public final class GenericResponsePacket extends NetworkPacket
      * The data of the response.
      * This is a byte buffer that contains the serialized data of the request response.
      */
-    FriendlyByteBuf data;
+    RegistryFriendlyByteBuf data;
 
-    public GenericResponsePacket(UUID requestID, String requestTypeID, FriendlyByteBuf data) {
+    public GenericResponsePacket(UUID requestID, String requestTypeID, RegistryFriendlyByteBuf data) {
         super();
         this.requestID = requestID;
         this.requestTypeID = requestTypeID;
@@ -92,7 +92,7 @@ public final class GenericResponsePacket extends NetworkPacket
     public String getRequestTypeID() {
         return requestTypeID;
     }
-    public FriendlyByteBuf getData() {
+    public RegistryFriendlyByteBuf getData() {
         return data;
     }
 

@@ -3,9 +3,12 @@ package net.kroia.modutilities.networking.arrs;
 
 import dev.architectury.networking.NetworkManager;
 import net.kroia.modutilities.ModUtilitiesMod;
+import net.kroia.modutilities.UtilitiesPlatform;
 import net.kroia.modutilities.networking.ExtraCodecUtils;
 import net.kroia.modutilities.networking.NetworkPacket;
 import net.kroia.modutilities.networking.PacketHandler;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.RegistryCodecs;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.FriendlyByteBuf;
@@ -33,9 +36,10 @@ public final class GenericRequestPacket extends NetworkPacket
     public static final StreamCodec<RegistryFriendlyByteBuf, GenericRequestPacket> STREAM_CODEC = StreamCodec.composite(
             UUIDUtil.STREAM_CODEC, p -> p.requestID,
             ByteBufCodecs.STRING_UTF8, p -> p.requestTypeID,
-            ExtraCodecUtils.FRIENDLY_BYTE_BUF_CODEC, p -> p.data,
+            ExtraCodecUtils.REGISTRY_FRIENDLY_BYTE_BUF_CODEC, p -> p.data,
             GenericRequestPacket::new
     );
+
 
     public static final PacketHandler<GenericRequestPacket> HANDLER = new PacketHandler<>(){
 
@@ -45,8 +49,7 @@ public final class GenericRequestPacket extends NetworkPacket
             if (request == null) {
                 return; // No factory found for this request type
             }
-
-            FriendlyByteBuf responseData = new FriendlyByteBuf(io.netty.buffer.Unpooled.buffer());
+            RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBuf();
             try {
                 request.decodeHandleEncodeOnServer(packet.data, responseData, (ServerPlayer) context.getPlayer());
             }
@@ -64,8 +67,7 @@ public final class GenericRequestPacket extends NetworkPacket
             if (request == null) {
                 return; // No factory found for this request type
             }
-
-            FriendlyByteBuf responseData = new FriendlyByteBuf(io.netty.buffer.Unpooled.buffer());
+            RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBuf();
             try {
                 request.decodeHandleEncodeOnClient(packet.data, responseData);
             }
@@ -95,16 +97,16 @@ public final class GenericRequestPacket extends NetworkPacket
      * Data associated with the request.
      * This is a byte buffer that contains the data to be sent with the request.
      */
-    FriendlyByteBuf data;
+    RegistryFriendlyByteBuf data;
 
-    public GenericRequestPacket(String requestTypeID, FriendlyByteBuf data) {
+    public GenericRequestPacket(String requestTypeID, RegistryFriendlyByteBuf data) {
         super();
         this.requestID = UUID.randomUUID();
         this.requestTypeID = requestTypeID;
         this.data = data;
     }
 
-    public GenericRequestPacket(UUID requestID, String requestTypeID, FriendlyByteBuf data) {
+    public GenericRequestPacket(UUID requestID, String requestTypeID, RegistryFriendlyByteBuf data) {
         this.requestID = requestID;
         this.requestTypeID = requestTypeID;
         this.data = data;

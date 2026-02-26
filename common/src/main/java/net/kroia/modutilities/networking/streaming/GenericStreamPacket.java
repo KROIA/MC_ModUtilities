@@ -32,7 +32,7 @@ public class GenericStreamPacket extends NetworkPacket {
 
     public static final StreamCodec<RegistryFriendlyByteBuf, GenericStreamPacket> STREAM_CODEC = StreamCodec.composite(
             UUIDUtil.STREAM_CODEC, p -> p.streamID,
-            ExtraCodecUtils.FRIENDLY_BYTE_BUF_CODEC, p -> p.data,
+            ExtraCodecUtils.REGISTRY_FRIENDLY_BYTE_BUF_CODEC, p -> p.data,
             GenericStreamPacket::new
 
     );
@@ -51,10 +51,10 @@ public class GenericStreamPacket extends NetworkPacket {
     };
 
     UUID streamID;
-    FriendlyByteBuf data;
+    RegistryFriendlyByteBuf data;
 
 
-    public GenericStreamPacket(UUID streamID, FriendlyByteBuf data) {
+    public GenericStreamPacket(UUID streamID, RegistryFriendlyByteBuf data) {
         super();
         this.streamID = streamID;
         this.data = data;
@@ -64,7 +64,7 @@ public class GenericStreamPacket extends NetworkPacket {
     public UUID getStreamID() {
         return streamID;
     }
-    public FriendlyByteBuf getData() {
+    public RegistryFriendlyByteBuf getData() {
         return data;
     }
 

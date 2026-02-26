@@ -3,6 +3,7 @@ package net.kroia.modutilities.networking.arrs.requestholder;
 import net.kroia.modutilities.networking.arrs.GenericRequest;
 import net.kroia.modutilities.networking.arrs.GenericRequestPacket;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.function.BiConsumer;
@@ -17,7 +18,7 @@ public class ClientRequestHolder<IN, OUT>
     public BiConsumer<OUT, ServerPlayer> responseHandler;
     public GenericRequestPacket requestPacket;
     public GenericRequest<IN, OUT> request;
-    public void processResponse(FriendlyByteBuf buf, ServerPlayer player)
+    public void processResponse(RegistryFriendlyByteBuf buf, ServerPlayer player)
     {
         // Decode the response using the request's decodeOutput method
         OUT response = request.decodeOutput(buf);

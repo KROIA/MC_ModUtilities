@@ -2,6 +2,7 @@ package net.kroia.modutilities.networking.arrs;
 
 
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.NotNull;
 
@@ -75,7 +76,7 @@ public abstract class GenericRequest<IN, OUT>
      * @apiNote
      * This methode gets called serverside and clientside.
      */
-    public abstract void encodeInput(FriendlyByteBuf buf, IN input);
+    public abstract void encodeInput(RegistryFriendlyByteBuf buf, IN input);
 
     /**
      * Encodes the output into a byte buffer for transmission.
@@ -87,7 +88,7 @@ public abstract class GenericRequest<IN, OUT>
      * @apiNote
      * This methode gets called serverside and clientside.
      */
-    public abstract void encodeOutput(FriendlyByteBuf buf, OUT output);
+    public abstract void encodeOutput(RegistryFriendlyByteBuf buf, OUT output);
 
 
     /**
@@ -101,7 +102,7 @@ public abstract class GenericRequest<IN, OUT>
      *
      * @return The decoded input.
      */
-    public abstract IN decodeInput(FriendlyByteBuf buf);
+    public abstract IN decodeInput(RegistryFriendlyByteBuf buf);
 
     /**
      * Decodes the output from a byte buffer.
@@ -114,7 +115,7 @@ public abstract class GenericRequest<IN, OUT>
      *
      * @return The decoded output.
      */
-    public abstract OUT decodeOutput(FriendlyByteBuf buf);
+    public abstract OUT decodeOutput(RegistryFriendlyByteBuf buf);
 
 
     /**
@@ -195,7 +196,7 @@ public abstract class GenericRequest<IN, OUT>
      * This methode gets called serverside only (when the client is the requestor).
      * This function is called by the ARRS (do not call this method manually).
      */
-    public void decodeHandleEncodeOnServer(FriendlyByteBuf inputBuf, FriendlyByteBuf outputBuf, ServerPlayer sender)
+    public void decodeHandleEncodeOnServer(RegistryFriendlyByteBuf inputBuf, RegistryFriendlyByteBuf outputBuf, ServerPlayer sender)
     {
         IN input = decodeInput(inputBuf);
         OUT output = handleOnServer(input, sender);
@@ -212,7 +213,7 @@ public abstract class GenericRequest<IN, OUT>
      * This methode gets called clientside only (when the server is the requestor).
      * This function is called by the ARRS (do not call this method manually).
      */
-    public void decodeHandleEncodeOnClient(FriendlyByteBuf inputBuf, FriendlyByteBuf outputBuf)
+    public void decodeHandleEncodeOnClient(RegistryFriendlyByteBuf inputBuf, RegistryFriendlyByteBuf outputBuf)
     {
         IN input = decodeInput(inputBuf);
         OUT output = handleOnClient(input);

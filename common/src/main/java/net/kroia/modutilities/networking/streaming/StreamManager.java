@@ -9,7 +9,11 @@ import net.kroia.modutilities.networking.streaming.streamholder.ClientReceiverSt
 import net.kroia.modutilities.networking.streaming.streamholder.ClientSenderStreamHolder;
 import net.kroia.modutilities.networking.streaming.streamholder.ServerReceiverStreamHolder;
 import net.kroia.modutilities.networking.streaming.streamholder.ServerSenderStreamHolder;
+import net.minecraft.Util;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Tuple;
@@ -94,7 +98,7 @@ public class StreamManager {
         if(!isOnClient())
             throw new IllegalStateException("This method can only be called on the client side!");
 
-        FriendlyByteBuf buf = new FriendlyByteBuf(io.netty.buffer.Unpooled.buffer());
+        RegistryFriendlyByteBuf buf = UtilitiesPlatform.createRegistryFriendlyByteBuf();
         stream.encodeContextData(buf, contextData);
         StreamStartPacket startPacket = new StreamStartPacket(stream.getStreamTypeID(), buf);
         UUID streamID = startPacket.getStreamID();
@@ -126,7 +130,7 @@ public class StreamManager {
         if(isOnClient())
             throw new IllegalStateException("This method can only be called on the server side!");
 
-        FriendlyByteBuf buf = new FriendlyByteBuf(io.netty.buffer.Unpooled.buffer());
+        RegistryFriendlyByteBuf buf = UtilitiesPlatform.createRegistryFriendlyByteBuf();
         stream.encodeContextData(buf, contextData);
         StreamStartPacket startPacket = new StreamStartPacket(stream.getStreamTypeID(), buf);
         UUID streamID = startPacket.getStreamID();
@@ -271,6 +275,7 @@ public class StreamManager {
     }
 
 
+
     /*
      * ----------------------------------------------------------------------------------------------------
      *
@@ -413,7 +418,7 @@ public class StreamManager {
                 if (streamData != null) {
                     GenericStream<?, ?> stream = streamData.stream;
                     if (stream != null) {
-                        FriendlyByteBuf buf = new FriendlyByteBuf(io.netty.buffer.Unpooled.buffer());
+                        RegistryFriendlyByteBuf buf = UtilitiesPlatform.createRegistryFriendlyByteBuf();
                         stream.createStreamPacketOnClient(buf);
                         networkManager.sendToServer(new GenericStreamPacket(streamID, buf));
                     }
@@ -426,7 +431,7 @@ public class StreamManager {
                 if (streamData != null) {
                     GenericStream<?, ?> stream = streamData.stream;
                     if (stream != null) {
-                        FriendlyByteBuf buf = new FriendlyByteBuf(io.netty.buffer.Unpooled.buffer());
+                        RegistryFriendlyByteBuf buf = UtilitiesPlatform.createRegistryFriendlyByteBuf();
                         stream.createStreamPacketOnServer(buf);
                         ServerPlayer targetPlayer = ServerPlayerUtilities.getOnlinePlayer(streamData.playerUUID);
                         if (targetPlayer == null) {

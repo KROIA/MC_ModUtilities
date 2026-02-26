@@ -1,10 +1,16 @@
 package net.kroia.modutilities.networking.arrs;
 
 
+import io.netty.buffer.Unpooled;
+import net.kroia.modutilities.PlatformAbstraction;
+import net.kroia.modutilities.UtilitiesPlatform;
 import net.kroia.modutilities.networking.PacketManager;
 import net.kroia.modutilities.networking.arrs.requestholder.ClientRequestHolder;
 import net.kroia.modutilities.networking.arrs.requestholder.ServerRequestHolder;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.NotNull;
 
@@ -63,7 +69,8 @@ public class RequestManager {
     public <IN, OUT> void sendRequestToServer(@NotNull GenericRequest<IN, OUT> request,
                                               IN input,
                                               @NotNull Consumer<OUT> responseHandler) {
-        FriendlyByteBuf buf = new FriendlyByteBuf(io.netty.buffer.Unpooled.buffer());
+        assert Minecraft.getInstance().level != null;
+        RegistryFriendlyByteBuf buf = UtilitiesPlatform.createRegistryFriendlyByteBuf();
         request.encodeInput(buf, input);
         GenericRequestPacket requestPacket = new GenericRequestPacket(request.getRequestTypeID(), buf);
         ServerRequestHolder<IN, OUT> requestData = new ServerRequestHolder<>();
@@ -91,7 +98,8 @@ public class RequestManager {
                                               IN input,
                                               @NotNull ServerPlayer target,
                                               @NotNull BiConsumer<OUT, ServerPlayer> responseHandler) {
-        FriendlyByteBuf buf = new FriendlyByteBuf(io.netty.buffer.Unpooled.buffer());
+
+        RegistryFriendlyByteBuf buf = UtilitiesPlatform.createRegistryFriendlyByteBuf();
         request.encodeInput(buf, input);
         GenericRequestPacket requestPacket = new GenericRequestPacket(request.getRequestTypeID(), buf);
         ClientRequestHolder<IN, OUT> requestData = new ClientRequestHolder<>();

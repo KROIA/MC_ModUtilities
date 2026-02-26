@@ -3,8 +3,11 @@ package net.kroia.modutilities.networking;
 import io.netty.buffer.Unpooled;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
@@ -43,6 +46,11 @@ public class ExtraCodecUtils {
                     return data;
                 }
         );
+    }
+
+
+    public static <T> StreamCodec<RegistryFriendlyByteBuf, List<T>> listStreamCodec(StreamCodec<? super RegistryFriendlyByteBuf, T> datCodec){
+        return ByteBufCodecs.collection(ArrayList::new, datCodec);
     }
 
 
@@ -102,5 +110,9 @@ public class ExtraCodecUtils {
                 buf.writeByteArray(b.array());
             },
             (buf) -> new FriendlyByteBuf(Unpooled.wrappedBuffer(buf.readByteArray()))
+    );
+    public static final StreamCodec<RegistryFriendlyByteBuf, RegistryFriendlyByteBuf> REGISTRY_FRIENDLY_BYTE_BUF_CODEC = StreamCodec.of(
+            FriendlyByteBuf::writeBytes,
+            (buf) -> new RegistryFriendlyByteBuf(Unpooled.wrappedBuffer(buf.readByteArray()), buf.registryAccess())
     );
 }

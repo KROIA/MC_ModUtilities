@@ -3,6 +3,7 @@ package net.kroia.modutilities.networking.arrs.requestholder;
 import net.kroia.modutilities.networking.arrs.GenericRequest;
 import net.kroia.modutilities.networking.arrs.GenericRequestPacket;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 
 import java.util.function.Consumer;
 
@@ -16,7 +17,7 @@ public class ServerRequestHolder<IN, OUT>
     public Consumer<OUT> responseHandler;
     public GenericRequestPacket requestPacket;
     public GenericRequest<IN, OUT> request;
-    public void processResponse(FriendlyByteBuf buf)
+    public void processResponse(RegistryFriendlyByteBuf buf)
     {
         OUT response = request.decodeOutput(buf);
         if(responseHandler != null)

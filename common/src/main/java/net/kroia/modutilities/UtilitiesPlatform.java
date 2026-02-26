@@ -5,6 +5,7 @@ import dev.architectury.utils.Env;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.Item;
@@ -95,6 +96,14 @@ public class UtilitiesPlatform {
         } else {
             return (RegistryAccess) BuiltInRegistries.REGISTRY.asLookup(); // fallback read-only registry
         }*/
+    }
+
+    public static RegistryFriendlyByteBuf createRegistryFriendlyByteBuf()
+    {
+        RegistryAccess access = getRegistryAccess();
+        if(access == null)
+            return null;
+        return new RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(), access);
     }
 
     public static void setPlatform(PlatformAbstraction platform) {
