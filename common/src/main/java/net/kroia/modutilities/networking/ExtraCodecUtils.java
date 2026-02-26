@@ -1,5 +1,6 @@
 package net.kroia.modutilities.networking;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -125,7 +126,7 @@ public class ExtraCodecUtils {
      * @return
      * @param <T>
      */
-    public static <T> StreamCodec<RegistryFriendlyByteBuf, T> nullable(StreamCodec<RegistryFriendlyByteBuf, T> innerCodec) {
+    public static <T, B extends ByteBuf> StreamCodec<B, T> nullable(StreamCodec<B, T> innerCodec) {
         return StreamCodec.of(
                 (buf, value) -> {
                     buf.writeBoolean(value != null); // write a flag

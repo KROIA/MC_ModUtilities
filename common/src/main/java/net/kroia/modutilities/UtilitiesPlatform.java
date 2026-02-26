@@ -72,35 +72,39 @@ public class UtilitiesPlatform {
         return Platform.getEnvironment() == Env.SERVER;
     }
 
-    public static RegistryAccess getRegistryAccess() {
-        if(isClient())
-        {
-            Minecraft mc = Minecraft.getInstance();
-            if(mc.level != null) {
-                return mc.level.registryAccess();
-            }
-        }
-        if(isServer())
-        {
-            MinecraftServer server = getServer();
-            if(server != null) {
-                return server.registryAccess();
-            }
+    /*public static RegistryAccess getRegistryAccess() {
+        if(codeCalledFromCliendSide())
+            return getRegistryAccessClientSide();
+
+        if(codeCalledFromServerSide())
+            return getRegistryAccessServerSide();
+        return null;
+    }*/
+    public static RegistryAccess getRegistryAccessClientSide() {
+        Minecraft mc = Minecraft.getInstance();
+        if(mc.level != null) {
+            return mc.level.registryAccess();
         }
         return null;
-        /*Minecraft mc = Minecraft.getInstance();
-        if (mc.level != null) {
-            return mc.level.registryAccess();
-        } else if (mc.player != null) {
-            return mc.player.connection.registryAccess();
-        } else {
-            return (RegistryAccess) BuiltInRegistries.REGISTRY.asLookup(); // fallback read-only registry
-        }*/
+    }
+    public static RegistryAccess getRegistryAccessServerSide() {
+        MinecraftServer server = getServer();
+        if(server != null) {
+            return server.registryAccess();
+        }
+        return null;
     }
 
-    public static RegistryFriendlyByteBuf createRegistryFriendlyByteBuf()
+    public static RegistryFriendlyByteBuf createRegistryFriendlyByteBufClientSide()
     {
-        RegistryAccess access = getRegistryAccess();
+        RegistryAccess access = getRegistryAccessClientSide();
+        if(access == null)
+            return null;
+        return new RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(), access);
+    }
+    public static RegistryFriendlyByteBuf createRegistryFriendlyByteBufServerSide()
+    {
+        RegistryAccess access = getRegistryAccessServerSide();
         if(access == null)
             return null;
         return new RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(), access);

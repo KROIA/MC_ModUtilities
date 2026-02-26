@@ -69,8 +69,7 @@ public class RequestManager {
     public <IN, OUT> void sendRequestToServer(@NotNull GenericRequest<IN, OUT> request,
                                               IN input,
                                               @NotNull Consumer<OUT> responseHandler) {
-        assert Minecraft.getInstance().level != null;
-        RegistryFriendlyByteBuf buf = UtilitiesPlatform.createRegistryFriendlyByteBuf();
+        RegistryFriendlyByteBuf buf = UtilitiesPlatform.createRegistryFriendlyByteBufClientSide();
         request.encodeInput(buf, input);
         GenericRequestPacket requestPacket = new GenericRequestPacket(request.getRequestTypeID(), buf);
         ServerRequestHolder<IN, OUT> requestData = new ServerRequestHolder<>();
@@ -99,7 +98,7 @@ public class RequestManager {
                                               @NotNull ServerPlayer target,
                                               @NotNull BiConsumer<OUT, ServerPlayer> responseHandler) {
 
-        RegistryFriendlyByteBuf buf = UtilitiesPlatform.createRegistryFriendlyByteBuf();
+        RegistryFriendlyByteBuf buf = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
         request.encodeInput(buf, input);
         GenericRequestPacket requestPacket = new GenericRequestPacket(request.getRequestTypeID(), buf);
         ClientRequestHolder<IN, OUT> requestData = new ClientRequestHolder<>();

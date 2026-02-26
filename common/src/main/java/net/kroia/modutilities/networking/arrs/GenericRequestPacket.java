@@ -50,7 +50,7 @@ public final class GenericRequestPacket extends NetworkPacket
             if (request == null) {
                 return; // No factory found for this request type
             }
-            RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBuf();
+            RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
             try {
                 request.decodeHandleEncodeOnServer(packet.data, responseData, (ServerPlayer) context.getPlayer());
             }
@@ -68,7 +68,7 @@ public final class GenericRequestPacket extends NetworkPacket
             if (request == null) {
                 return; // No factory found for this request type
             }
-            RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBuf();
+            RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufClientSide();
             try {
                 request.decodeHandleEncodeOnClient(packet.data, responseData);
             }

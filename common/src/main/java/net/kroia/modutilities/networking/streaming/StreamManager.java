@@ -99,7 +99,7 @@ public class StreamManager {
         if(!isOnClient())
             throw new IllegalStateException("This method can only be called on the client side!");
 
-        RegistryFriendlyByteBuf buf = UtilitiesPlatform.createRegistryFriendlyByteBuf();
+        RegistryFriendlyByteBuf buf = UtilitiesPlatform.createRegistryFriendlyByteBufClientSide();
         stream.encodeContextData(buf, contextData);
         StreamStartPacket startPacket = new StreamStartPacket(stream.getStreamTypeID(), buf);
         UUID streamID = startPacket.getStreamID();
@@ -450,7 +450,7 @@ public class StreamManager {
                 if (streamData != null) {
                     GenericStream<?, ?> stream = streamData.stream;
                     if (stream != null) {
-                        RegistryFriendlyByteBuf buf = UtilitiesPlatform.createRegistryFriendlyByteBuf();
+                        RegistryFriendlyByteBuf buf = UtilitiesPlatform.createRegistryFriendlyByteBufClientSide();
                         stream.createStreamPacketOnServer(buf);
                         ServerPlayer targetPlayer = ServerPlayerUtilities.getOnlinePlayer(streamData.playerUUID);
                         if (targetPlayer == null) {
