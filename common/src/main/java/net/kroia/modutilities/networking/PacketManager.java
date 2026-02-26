@@ -55,7 +55,7 @@ public abstract class PacketManager {
      * and the message consumer is used to handle the received packet.
      *
      */
-    public <T extends NetworkPacket> void register(CustomPacketPayload.Type<T> packetType, StreamCodec<RegistryFriendlyByteBuf, T> streamCodec, PacketHandler<T> handler) {
+    public <T extends NetworkPacket> void register(CustomPacketPayload.Type<T> packetType, StreamCodec<RegistryFriendlyByteBuf, T> streamCodec, PacketHandler<? super T> handler) {
 
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, packetType, streamCodec, handler::handleClient);
         NetworkManager.registerReceiver(NetworkManager.Side.C2S, packetType, streamCodec, handler::handleServer);

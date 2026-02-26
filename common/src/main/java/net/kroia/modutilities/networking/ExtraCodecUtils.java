@@ -115,4 +115,23 @@ public class ExtraCodecUtils {
             FriendlyByteBuf::writeBytes,
             (buf) -> new RegistryFriendlyByteBuf(Unpooled.wrappedBuffer(buf.readByteArray()), buf.registryAccess())
     );
+
+
+    /**
+     * If a object can be null, use a modified version of the original codec
+     * @param innerCodec
+     * @return
+     * @param <T>
+     */
+    public static <T> StreamCodec<RegistryFriendlyByteBuf, T> nullable(StreamCodec<RegistryFriendlyByteBuf, T> innerCodec) {
+        return StreamCodec.of(
+                (buf, value) -> {
+                    buf.writeBoolean(value != null); // write a flag
+                    if (value != null) {
+                        innerCodec.encode(buf, value); // encode if not null
+                    }
+                },
+                buf -> buf.readBoolean() ? innerCodec.decode(buf) : null // decode based on flag
+        );
+    }
 }
