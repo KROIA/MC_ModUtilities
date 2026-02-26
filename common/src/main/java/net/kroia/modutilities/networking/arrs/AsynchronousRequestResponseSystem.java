@@ -1,6 +1,6 @@
 package net.kroia.modutilities.networking.arrs;
 
-import net.kroia.modutilities.networking.NetworkManager;
+import net.kroia.modutilities.networking.PacketManager;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.NotNull;
 
@@ -37,7 +37,7 @@ public class AsynchronousRequestResponseSystem {
      *
      * @param networkManager The NetworkManager to use for packet handling.
      */
-    public static void setup(@NotNull NetworkManager networkManager) {
+    public static void setup(@NotNull PacketManager networkManager) {
         if (REQUEST_MANAGER != null) {
             return;
         }
@@ -52,8 +52,8 @@ public class AsynchronousRequestResponseSystem {
         }
 
         // Register packets for ARRS
-        networkManager.register(GenericRequestPacket.class, GenericRequestPacket::encode, GenericRequestPacket::new, GenericRequestPacket::receive);
-        networkManager.register(GenericResponsePacket.class, GenericResponsePacket::encode, GenericResponsePacket::new, GenericResponsePacket::receive);
+        networkManager.register(GenericRequestPacket.TYPE, GenericRequestPacket.STREAM_CODEC, GenericRequestPacket.HANDLER);
+        networkManager.register(GenericResponsePacket.TYPE,  GenericResponsePacket.STREAM_CODEC, GenericResponsePacket.HANDLER);
     }
 
 

@@ -1,6 +1,6 @@
 package net.kroia.modutilities.networking.streaming;
 
-import net.kroia.modutilities.networking.NetworkManager;
+import net.kroia.modutilities.networking.PacketManager;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Tuple;
@@ -36,7 +36,7 @@ public class StreamSystem {
      *
      * @param networkManager The NetworkManager to use for packet handling.
      */
-    public static void setup(@NotNull NetworkManager networkManager) {
+    public static void setup(@NotNull PacketManager networkManager) {
         if (STREAM_MANAGER != null) {
             return;
         }
@@ -51,9 +51,9 @@ public class StreamSystem {
         }
 
         // Register packets for streaming
-        networkManager.register(GenericStreamPacket.class, GenericStreamPacket::encode, GenericStreamPacket::new, GenericStreamPacket::receive);
-        networkManager.register(StreamStartPacket.class, StreamStartPacket::encode, StreamStartPacket::new, StreamStartPacket::receive);
-        networkManager.register(StreamStopPacket.class, StreamStopPacket::encode, StreamStopPacket::new, StreamStopPacket::receive);
+        networkManager.register(GenericStreamPacket.TYPE, GenericStreamPacket.STREAM_CODEC, GenericStreamPacket.HANDLER);
+        networkManager.register(StreamStartPacket.TYPE, StreamStartPacket.STREAM_CODEC, StreamStartPacket.HANDLER);
+        networkManager.register(StreamStopPacket.TYPE, StreamStopPacket.STREAM_CODEC, StreamStopPacket.HANDLER);
     }
 
     /**

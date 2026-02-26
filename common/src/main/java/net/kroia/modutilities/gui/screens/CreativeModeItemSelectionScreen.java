@@ -2,6 +2,7 @@ package net.kroia.modutilities.gui.screens;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.flag.FeatureFlagSet;
 import net.minecraft.world.inventory.ClickType;
@@ -15,7 +16,7 @@ public class CreativeModeItemSelectionScreen extends CreativeModeInventoryScreen
     private final Consumer<ItemStack> onItemClicked;
     private final Runnable onClosed;
     public CreativeModeItemSelectionScreen(Player player, FeatureFlagSet enabledFeatures, boolean displayOperatorCreativeTab, Consumer<ItemStack> onItemClicked, Runnable onClosed) {
-        super(player, enabledFeatures, displayOperatorCreativeTab);
+        super((LocalPlayer) player, enabledFeatures, displayOperatorCreativeTab);
         this.onItemClicked = onItemClicked;
         this.onClosed = onClosed;
     }

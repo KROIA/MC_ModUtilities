@@ -1,8 +1,17 @@
 package net.kroia.modutilities.networking.arrs;
 
+import dev.architectury.networking.NetworkManager;
 import net.kroia.modutilities.ModUtilitiesMod;
+import net.kroia.modutilities.networking.ExtraCodecUtils;
 import net.kroia.modutilities.networking.NetworkPacket;
+import net.kroia.modutilities.networking.PacketHandler;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.Arrays;
@@ -14,6 +23,45 @@ import java.util.UUID;
  */
 public final class GenericResponsePacket extends NetworkPacket
 {
+
+    public static final Type<GenericResponsePacket> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "generic_response_packet"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, GenericResponsePacket> STREAM_CODEC = StreamCodec.composite(
+            UUIDUtil.STREAM_CODEC, p -> p.requestID,
+            ByteBufCodecs.STRING_UTF8, p -> p.requestTypeID,
+            ExtraCodecUtils.FRIENDLY_BYTE_BUF_CODEC, p -> p.data,
+            GenericResponsePacket::new
+    );
+
+    public static final PacketHandler<GenericResponsePacket> HANDLER = new PacketHandler<>(){
+
+        @Override
+        public void handleServer(GenericResponsePacket packet, NetworkManager.PacketContext context) {
+            try {
+                AsynchronousRequestResponseSystem.processResponseOnServer(packet, (ServerPlayer) context.getPlayer());
+            }
+            catch (Exception e) {
+                // Handle any exceptions that may occur during decoding/encoding
+                ModUtilitiesMod.LOGGER.error("Error processing GenericResponsePacket on server: " + e.getMessage(), e);
+                return; // Exit if an error occurs
+            }
+        }
+
+        @Override
+        public void handleClient(GenericResponsePacket packet, NetworkManager.PacketContext context) {
+            try{
+                AsynchronousRequestResponseSystem.processResponseOnClient(packet);
+            }
+            catch (Exception e) {
+                // Handle any exceptions that may occur during decoding/encoding
+                ModUtilitiesMod.LOGGER.error("Error processing GenericResponsePacket on client: " + e.getMessage(), e);
+                return; // Exit if an error occurs
+            }
+        }
+    };
+
+
+
     /**
      * The ID of the request this specific request response is for.
      */
@@ -31,33 +79,11 @@ public final class GenericResponsePacket extends NetworkPacket
      */
     FriendlyByteBuf data;
 
-    public GenericResponsePacket(FriendlyByteBuf buf) {
-        super(buf);
-    }
-
     public GenericResponsePacket(UUID requestID, String requestTypeID, FriendlyByteBuf data) {
         super();
         this.requestID = requestID;
         this.requestTypeID = requestTypeID;
         this.data = data;
-    }
-
-    @Override
-    public void encode(FriendlyByteBuf buf) {
-        buf.writeUUID(requestID);
-        buf.writeUtf(requestTypeID);
-        byte[] bytes = Arrays.copyOf(data.asByteBuf().array(), data.asByteBuf().readableBytes());
-        buf.writeBytes(bytes);
-    }
-
-    @Override
-    public void decode(FriendlyByteBuf buf) {
-        this.requestID = buf.readUUID();
-        this.requestTypeID = buf.readUtf();
-        int length = buf.readableBytes();
-        byte[] bytes = new byte[length];
-        buf.readBytes(bytes);
-        this.data = new FriendlyByteBuf(io.netty.buffer.Unpooled.wrappedBuffer(bytes));
     }
 
     public UUID getRequestID() {
@@ -70,27 +96,9 @@ public final class GenericResponsePacket extends NetworkPacket
         return data;
     }
 
-    @Override
-    protected void handleOnClient() {
-        try{
-        AsynchronousRequestResponseSystem.processResponseOnClient(this);
-        }
-        catch (Exception e) {
-            // Handle any exceptions that may occur during decoding/encoding
-            ModUtilitiesMod.LOGGER.error("Error processing GenericResponsePacket on client: " + e.getMessage(), e);
-            return; // Exit if an error occurs
-        }
-    }
 
     @Override
-    protected void handleOnServer(ServerPlayer sender) {
-        try {
-            AsynchronousRequestResponseSystem.processResponseOnServer(this, sender);
-        }
-        catch (Exception e) {
-            // Handle any exceptions that may occur during decoding/encoding
-            ModUtilitiesMod.LOGGER.error("Error processing GenericResponsePacket on server: " + e.getMessage(), e);
-            return; // Exit if an error occurs
-        }
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

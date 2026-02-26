@@ -178,8 +178,8 @@ public class ItemUtilities {
         }
         for(String tag : tags)
         {
-            tagMap.put(modTag+tag, TagKey.create(Registries.ITEM, new ResourceLocation(modTag+tag)));
-            tagMap.put("minecraft:"+tag, TagKey.create(Registries.ITEM, new ResourceLocation("minecraft:"+tag)));
+            tagMap.put(modTag+tag, TagKey.create(Registries.ITEM, ResourceLocation.parse(modTag+tag)));
+            tagMap.put("minecraft:"+tag, TagKey.create(Registries.ITEM, ResourceLocation.parse("minecraft:"+tag)));
         }
         for(ItemStack stack : itemTable)
         {

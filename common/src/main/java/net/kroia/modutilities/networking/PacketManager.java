@@ -1,27 +1,29 @@
 package net.kroia.modutilities.networking;
 
-import dev.architectury.networking.NetworkChannel;
+
+
+import dev.architectury.networking.NetworkManager;
 import net.kroia.modutilities.networking.arrs.AsynchronousRequestResponseSystem;
 import net.kroia.modutilities.networking.streaming.StreamSystem;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 
-import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-public abstract class NetworkManager {
+public abstract class PacketManager {
 
-    private final NetworkChannel CHANNEL;
 
-    public NetworkManager(String modID) {
+    public PacketManager(String modID) {
         this(modID, "default_channel");
 
     }
-    public NetworkManager(String modID, String channelName) {
-        this.CHANNEL = NetworkChannel.create(new ResourceLocation(modID, channelName));
+    public PacketManager(String modID, String channelName) {
+
     }
 
     /**
@@ -52,29 +54,12 @@ public abstract class NetworkManager {
      * the decoder is used to deserialize the packet data from a FriendlyByteBuf,
      * and the message consumer is used to handle the received packet.
      *
-     * @param type The class of the network packet type.
-     * @param encoder The function to encode the packet data into a FriendlyByteBuf.
-     * @param decoder The function to decode the packet data from a FriendlyByteBuf.
-     * @param messageConsumer The consumer that handles the received packet.
      */
-    public <T extends NetworkPacket> void register(Class<T> type,
-                                BiConsumer<T, FriendlyByteBuf> encoder,
-                                Function<FriendlyByteBuf, T> decoder,
-                                BiConsumer<T, Supplier<dev.architectury.networking.NetworkManager.PacketContext>> messageConsumer) {
+    public <T extends NetworkPacket> void register(CustomPacketPayload.Type<T> packetType, StreamCodec<RegistryFriendlyByteBuf, T> streamCodec, PacketHandler<T> handler) {
 
-
-        CHANNEL.register(type, encoder, (buf)->{return decode(buf, decoder);}, messageConsumer);
+        NetworkManager.registerReceiver(NetworkManager.Side.S2C, packetType, streamCodec, handler::handleClient);
+        NetworkManager.registerReceiver(NetworkManager.Side.C2S, packetType, streamCodec, handler::handleServer);
     }
-
-
-
-    private <T extends NetworkPacket> T decode(FriendlyByteBuf buf, Function<FriendlyByteBuf, T> decoder)
-    {
-        T obj = decoder.apply(buf);
-        obj.setManager(this);
-        return obj;
-    }
-
 
     /**
      * Sends a network packet to the server.
@@ -82,8 +67,8 @@ public abstract class NetworkManager {
      *
      * @param packet The network packet to send.
      */
-    public void sendToServer(INetworkPacket packet) {
-        CHANNEL.sendToServer(packet);
+    public void sendToServer(NetworkPacket packet) {
+        NetworkManager.sendToServer(packet);
     }
 
     /**
@@ -93,7 +78,7 @@ public abstract class NetworkManager {
      * @param receiver The player who will receive the packet.
      * @param packet The network packet to send.
      */
-    public void sendToClient(ServerPlayer receiver, INetworkPacket packet) {
-        CHANNEL.sendToPlayer(receiver, packet);
+    public void sendToClient(ServerPlayer receiver, NetworkPacket packet) {
+        NetworkManager.sendToPlayer(receiver, packet);
     }
 }

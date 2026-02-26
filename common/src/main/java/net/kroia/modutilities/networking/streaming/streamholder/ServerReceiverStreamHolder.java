@@ -2,7 +2,7 @@ package net.kroia.modutilities.networking.streaming.streamholder;
 
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.ServerPlayerUtilities;
-import net.kroia.modutilities.networking.NetworkManager;
+import net.kroia.modutilities.networking.PacketManager;
 import net.kroia.modutilities.networking.streaming.GenericStream;
 import net.kroia.modutilities.networking.streaming.StreamStopPacket;
 import net.minecraft.network.FriendlyByteBuf;
@@ -21,7 +21,7 @@ public class ServerReceiverStreamHolder<CONTEXT_DATA, DATA>
     /**
      * The NetworkManager instance used to send packets to the target player.
      */
-    private final NetworkManager networkManager;
+    private final PacketManager networkManager;
 
     /**
      * Not a copy of the registered stream object, but the actual registered stream object.
@@ -58,7 +58,7 @@ public class ServerReceiverStreamHolder<CONTEXT_DATA, DATA>
      */
     private boolean isStpped = false; // Flag to check if the stream is stopped
 
-    public ServerReceiverStreamHolder(NetworkManager networkManager,
+    public ServerReceiverStreamHolder(PacketManager networkManager,
                                       GenericStream<CONTEXT_DATA, DATA> stream,
                                       BiConsumer<DATA, ServerPlayer> streamHandler,
                                       Runnable streamStoppedHandler,

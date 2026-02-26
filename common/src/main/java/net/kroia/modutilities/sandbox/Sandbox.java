@@ -1,42 +1,25 @@
 package net.kroia.modutilities.sandbox;
 
-import com.google.common.base.Suppliers;
 import com.google.gson.JsonElement;
 import com.mojang.brigadier.CommandDispatcher;
 import dev.architectury.event.events.common.CommandRegistrationEvent;
-import dev.architectury.registry.CreativeTabRegistry;
-import dev.architectury.registry.menu.MenuRegistry;
-import dev.architectury.registry.registries.DeferredRegister;
-import dev.architectury.registry.registries.Registrar;
-import dev.architectury.registry.registries.RegistrarManager;
-import dev.architectury.registry.registries.RegistrySupplier;
 import net.kroia.modutilities.JsonUtilities;
 import net.kroia.modutilities.ModUtilitiesMod;
-import net.kroia.modutilities.networking.NetworkManager;
+import net.kroia.modutilities.networking.PacketManager;
 import net.kroia.modutilities.networking.streaming.StreamSystem;
 import net.kroia.modutilities.setting.parser.ItemStackJsonParser;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.inventory.MenuType;
-import net.minecraft.world.item.BlockItem;
-import net.minecraft.world.item.CreativeModeTab;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.entity.BlockEntityType;
-import org.apache.logging.log4j.core.config.plugins.util.ResolverUtil;
 
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.function.Supplier;
 
 public class Sandbox {
-    public static class SandboxNetwork extends NetworkManager
+    public static class SandboxNetwork extends PacketManager
     {
 
         public static final SineStream SINUS_STREAM = (SineStream) StreamSystem.register(new SineStream());
@@ -53,7 +36,7 @@ public class Sandbox {
 
         @Override
         public void setupClientReceiverPackets() {
-            register(SandboxOpenGuiPacket.class, SandboxOpenGuiPacket::encode, SandboxOpenGuiPacket::new, SandboxOpenGuiPacket::receive);
+            register(SandboxOpenGuiPacket.TYPE, SandboxOpenGuiPacket.STREAM_CODEC, SandboxOpenGuiPacket.HANDLER);
 
         }
 

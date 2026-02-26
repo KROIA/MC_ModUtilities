@@ -1,7 +1,7 @@
 package net.kroia.modutilities.networking.arrs;
 
 
-import net.kroia.modutilities.networking.NetworkManager;
+import net.kroia.modutilities.networking.PacketManager;
 import net.kroia.modutilities.networking.arrs.requestholder.ClientRequestHolder;
 import net.kroia.modutilities.networking.arrs.requestholder.ServerRequestHolder;
 import net.minecraft.network.FriendlyByteBuf;
@@ -24,7 +24,7 @@ public class RequestManager {
 
 
 
-    private final NetworkManager networkManager;
+    private final PacketManager networkManager;
     private final Map<UUID, ServerRequestHolder<?,?>> pendingServerRequests = new java.util.concurrent.ConcurrentHashMap<>();
     private final Map<UUID, ClientRequestHolder<?,?>> pendingClientRequests = new java.util.concurrent.ConcurrentHashMap<>();
 
@@ -35,7 +35,7 @@ public class RequestManager {
      *
      * @param networkManager The NetworkManager to use for sending requests.
      */
-    public RequestManager(@NotNull NetworkManager networkManager) {
+    public RequestManager(@NotNull PacketManager networkManager) {
         if(networkManager == null) {
             throw new IllegalArgumentException("NetworkManager cannot be null. Please provide a valid NetworkManager instance.");
         }
@@ -45,7 +45,7 @@ public class RequestManager {
     /**
      * Gets the NetworkManager used by this RequestManager.
      */
-    public NetworkManager getNetworkManager() {
+    public PacketManager getNetworkManager() {
         return networkManager;
     }
 

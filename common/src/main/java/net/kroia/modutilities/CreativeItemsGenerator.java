@@ -1,13 +1,15 @@
 package net.kroia.modutilities;
 
+import net.minecraft.core.Holder;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.EnchantedBookItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.alchemy.Potion;
-import net.minecraft.world.item.alchemy.PotionUtils;
+import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentInstance;
 
@@ -46,15 +48,15 @@ public class CreativeItemsGenerator {
 
         // 2. Add all potion variants (Potion, Splash, Lingering, Tipped Arrows)
         for (Potion potion : BuiltInRegistries.POTION) {
-            results.add(PotionUtils.setPotion(new ItemStack(Items.POTION), potion));
-            results.add(PotionUtils.setPotion(new ItemStack(Items.SPLASH_POTION), potion));
-            results.add(PotionUtils.setPotion(new ItemStack(Items.LINGERING_POTION), potion));
-            results.add(PotionUtils.setPotion(new ItemStack(Items.TIPPED_ARROW), potion));
+            results.add(PotionContents.createItemStack(Items.POTION, Holder.direct(potion)));
+            results.add(PotionContents.createItemStack(Items.SPLASH_POTION, Holder.direct(potion)));
+            results.add(PotionContents.createItemStack(Items.LINGERING_POTION, Holder.direct(potion)));
+            results.add(PotionContents.createItemStack(Items.TIPPED_ARROW, Holder.direct(potion)));
         }
 
         // 3. Add all enchanted books for every enchantment and level
-        for (Enchantment enchantment : BuiltInRegistries.ENCHANTMENT) {
-            for (int lvl = enchantment.getMinLevel(); lvl <= enchantment.getMaxLevel(); lvl++) {
+        for (Holder<Enchantment> enchantment : registryAccess.registryOrThrow(Registries.ENCHANTMENT).holders().toList()) {
+            for (int lvl = enchantment.value().getMinLevel(); lvl <= enchantment.value().getMaxLevel(); lvl++) {
                 results.add(EnchantedBookItem.createForEnchantment(new EnchantmentInstance(enchantment, lvl)));
             }
         }

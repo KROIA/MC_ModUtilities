@@ -1,7 +1,19 @@
 package net.kroia.modutilities.networking.streaming;
 
+import dev.architectury.networking.NetworkManager;
+import net.kroia.modutilities.ModUtilitiesMod;
+import net.kroia.modutilities.networking.ExtraCodecUtils;
 import net.kroia.modutilities.networking.NetworkPacket;
+import net.kroia.modutilities.networking.PacketHandler;
+import net.kroia.modutilities.networking.arrs.AsynchronousRequestResponseSystem;
+import net.kroia.modutilities.networking.arrs.GenericResponsePacket;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.Arrays;
@@ -14,14 +26,38 @@ import java.util.UUID;
  * It contains a stream ID, a stream type ID, and the context data associated with the stream.
  */
 public class StreamStartPacket extends NetworkPacket {
+
+    public static final Type<StreamStartPacket> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "stream_start_packet"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, StreamStartPacket> STREAM_CODEC = StreamCodec.composite(
+            UUIDUtil.STREAM_CODEC, p -> p.streamID,
+            ByteBufCodecs.STRING_UTF8, p -> p.streamTypeID,
+            ExtraCodecUtils.FRIENDLY_BYTE_BUF_CODEC, p -> p.data,
+            StreamStartPacket::new
+
+    );
+
+    public static final PacketHandler<StreamStartPacket> HANDLER = new PacketHandler<>(){
+
+        @Override
+        public void handleServer(StreamStartPacket packet, NetworkManager.PacketContext context) {
+            StreamSystem.handlePacket(packet, (ServerPlayer) context.getPlayer());
+        }
+
+        @Override
+        public void handleClient(StreamStartPacket packet, NetworkManager.PacketContext context) {
+            StreamSystem.handlePacket(packet);
+        }
+    };
+
+
+
     UUID streamID;
     String streamTypeID;
     FriendlyByteBuf data;
 
 
-    public StreamStartPacket(FriendlyByteBuf buf) {
-        super(buf);
-    }
+
     public StreamStartPacket(String streamTypeID, FriendlyByteBuf data) {
         super();
         this.streamID = UUID.randomUUID();
@@ -29,23 +65,13 @@ public class StreamStartPacket extends NetworkPacket {
         this.data = data;
     }
 
-    @Override
-    public void encode(FriendlyByteBuf buf) {
-        buf.writeUUID(streamID);
-        buf.writeUtf(streamTypeID);
-        byte[] bytes = Arrays.copyOf(data.asByteBuf().array(), data.asByteBuf().readableBytes());
-        buf.writeBytes(bytes);
+    public StreamStartPacket(UUID streamID, String streamTypeID, FriendlyByteBuf data) {
+        super();
+        this.streamID = streamID;
+        this.streamTypeID = streamTypeID;
+        this.data = data;
     }
 
-    @Override
-    public void decode(FriendlyByteBuf buf) {
-        this.streamID = buf.readUUID();
-        this.streamTypeID = buf.readUtf();
-        int length = buf.readableBytes();
-        byte[] bytes = new byte[length];
-        buf.readBytes(bytes);
-        this.data = new FriendlyByteBuf(io.netty.buffer.Unpooled.wrappedBuffer(bytes));
-    }
 
     public UUID getStreamID() {
         return streamID;
@@ -58,13 +84,9 @@ public class StreamStartPacket extends NetworkPacket {
     }
 
 
-    @Override
-    protected void handleOnClient() {
-        StreamSystem.handlePacket(this);
-    }
 
     @Override
-    protected void handleOnServer(ServerPlayer sender) {
-        StreamSystem.handlePacket(this, sender);
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

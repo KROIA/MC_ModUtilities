@@ -23,7 +23,7 @@ public class ClientPlayerUtilities {
         {
             return itemStack.getHoverName().getString();
         }
-        List<Component> tooltip = itemStack.getTooltipLines(getMinecraft().player, TooltipFlag.Default.NORMAL);
+        List<Component> tooltip = itemStack.getTooltipLines(null, getMinecraft().player, TooltipFlag.Default.NORMAL);
 
         List<String> tooltipStrings = tooltip.stream()
                 .map(Component::getString)

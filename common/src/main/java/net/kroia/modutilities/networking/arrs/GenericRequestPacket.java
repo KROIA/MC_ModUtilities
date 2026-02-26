@@ -1,9 +1,19 @@
 package net.kroia.modutilities.networking.arrs;
 
 
+import dev.architectury.networking.NetworkManager;
 import net.kroia.modutilities.ModUtilitiesMod;
+import net.kroia.modutilities.networking.ExtraCodecUtils;
 import net.kroia.modutilities.networking.NetworkPacket;
+import net.kroia.modutilities.networking.PacketHandler;
+import net.minecraft.core.RegistryCodecs;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.Arrays;
@@ -17,6 +27,58 @@ import java.util.UUID;
  */
 public final class GenericRequestPacket extends NetworkPacket
 {
+
+    public static final Type<GenericRequestPacket> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "generic_request"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, GenericRequestPacket> STREAM_CODEC = StreamCodec.composite(
+            UUIDUtil.STREAM_CODEC, p -> p.requestID,
+            ByteBufCodecs.STRING_UTF8, p -> p.requestTypeID,
+            ExtraCodecUtils.FRIENDLY_BYTE_BUF_CODEC, p -> p.data,
+            GenericRequestPacket::new
+    );
+
+    public static final PacketHandler<GenericRequestPacket> HANDLER = new PacketHandler<>(){
+
+        @Override
+        public void handleServer(GenericRequestPacket packet, NetworkManager.PacketContext context) {
+            var request = AsynchronousRequestResponseSystem.getRegisteredRequest(packet.requestTypeID);
+            if (request == null) {
+                return; // No factory found for this request type
+            }
+
+            FriendlyByteBuf responseData = new FriendlyByteBuf(io.netty.buffer.Unpooled.buffer());
+            try {
+                request.decodeHandleEncodeOnServer(packet.data, responseData, (ServerPlayer) context.getPlayer());
+            }
+            catch (Exception e) {
+                // Handle any exceptions that may occur during decoding/encoding
+                ModUtilitiesMod.LOGGER.error("Error handling GenericRequestPacket: " + e.getMessage(), e);
+                return; // Exit if an error occurs
+            }
+            //sendResponse(new GenericResponsePacket(packet.requestID, packet.requestTypeID, responseData));
+        }
+
+        @Override
+        public void handleClient(GenericRequestPacket packet, NetworkManager.PacketContext context) {
+            var request = AsynchronousRequestResponseSystem.getRegisteredRequest(packet.requestTypeID);
+            if (request == null) {
+                return; // No factory found for this request type
+            }
+
+            FriendlyByteBuf responseData = new FriendlyByteBuf(io.netty.buffer.Unpooled.buffer());
+            try {
+                request.decodeHandleEncodeOnClient(packet.data, responseData);
+            }
+            catch (Exception e) {
+                // Handle any exceptions that may occur during decoding/encoding
+                ModUtilitiesMod.LOGGER.error("Error handling GenericRequestPacket: " + e.getMessage(), e);
+                return; // Exit if an error occurs
+            }
+
+            //sendResponse(new GenericResponsePacket(packet.requestID, packet.requestTypeID, responseData));
+        }
+    };
+
     /**
      * Unique identifier for the request.
      * This is used to match requests with their responses.
@@ -35,9 +97,6 @@ public final class GenericRequestPacket extends NetworkPacket
      */
     FriendlyByteBuf data;
 
-    public GenericRequestPacket(FriendlyByteBuf buf) {
-        super(buf);
-    }
     public GenericRequestPacket(String requestTypeID, FriendlyByteBuf data) {
         super();
         this.requestID = UUID.randomUUID();
@@ -45,24 +104,12 @@ public final class GenericRequestPacket extends NetworkPacket
         this.data = data;
     }
 
-    @Override
-    public void encode(FriendlyByteBuf buf) {
-        buf.writeUUID(requestID);
-        buf.writeUtf(requestTypeID);
-        byte[] bytes = Arrays.copyOf(data.asByteBuf().array(), data.asByteBuf().readableBytes());
-        buf.writeBytes(bytes);
+    public GenericRequestPacket(UUID requestID, String requestTypeID, FriendlyByteBuf data) {
+        this.requestID = requestID;
+        this.requestTypeID = requestTypeID;
+        this.data = data;
     }
 
-    @Override
-    public void decode(FriendlyByteBuf buf) {
-        this.requestID = buf.readUUID();
-        this.requestTypeID = buf.readUtf();
-
-        int length = buf.readableBytes();
-        byte[] bytes = new byte[length];
-        buf.readBytes(bytes);
-        this.data = new FriendlyByteBuf(io.netty.buffer.Unpooled.wrappedBuffer(bytes));
-    }
 
     public UUID getRequestID() {
         return requestID;
@@ -74,43 +121,9 @@ public final class GenericRequestPacket extends NetworkPacket
         return data;
     }
 
-    @Override
-    protected void handleOnClient() {
-        var request = AsynchronousRequestResponseSystem.getRegisteredRequest(requestTypeID);
-        if (request == null) {
-            return; // No factory found for this request type
-        }
-
-        FriendlyByteBuf responseData = new FriendlyByteBuf(io.netty.buffer.Unpooled.buffer());
-        try {
-            request.decodeHandleEncodeOnClient(data, responseData);
-        }
-        catch (Exception e) {
-            // Handle any exceptions that may occur during decoding/encoding
-            ModUtilitiesMod.LOGGER.error("Error handling GenericRequestPacket: " + e.getMessage(), e);
-            return; // Exit if an error occurs
-        }
-
-        sendResponse(new GenericResponsePacket(requestID, requestTypeID, responseData));
-    }
 
     @Override
-    protected void handleOnServer(ServerPlayer sender) {
-        var request = AsynchronousRequestResponseSystem.getRegisteredRequest(requestTypeID);
-        if (request == null) {
-            return; // No factory found for this request type
-        }
-
-        FriendlyByteBuf responseData = new FriendlyByteBuf(io.netty.buffer.Unpooled.buffer());
-        try {
-            request.decodeHandleEncodeOnServer(data, responseData, sender);
-        }
-        catch (Exception e) {
-            // Handle any exceptions that may occur during decoding/encoding
-            ModUtilitiesMod.LOGGER.error("Error handling GenericRequestPacket: " + e.getMessage(), e);
-            return; // Exit if an error occurs
-        }
-
-        sendResponse(new GenericResponsePacket(requestID, requestTypeID, responseData));
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

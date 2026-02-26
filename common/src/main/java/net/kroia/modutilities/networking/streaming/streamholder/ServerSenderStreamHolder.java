@@ -2,7 +2,7 @@ package net.kroia.modutilities.networking.streaming.streamholder;
 
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.ServerPlayerUtilities;
-import net.kroia.modutilities.networking.NetworkManager;
+import net.kroia.modutilities.networking.PacketManager;
 import net.kroia.modutilities.networking.streaming.GenericStream;
 import net.kroia.modutilities.networking.streaming.StreamStopPacket;
 import net.minecraft.network.FriendlyByteBuf;
@@ -20,7 +20,7 @@ public class ServerSenderStreamHolder<CONTEXT_DATA, DATA>
     /**
      * The NetworkManager instance used to send packets to the target player.
      */
-    private final NetworkManager networkManager;
+    private final PacketManager networkManager;
 
     /**
      * A copy of the registered stream object.
@@ -36,7 +36,7 @@ public class ServerSenderStreamHolder<CONTEXT_DATA, DATA>
      * Flag to check if the stream should be removed.
      */
     private boolean doRemove = false;
-    public ServerSenderStreamHolder(NetworkManager manager,
+    public ServerSenderStreamHolder(PacketManager manager,
                                     GenericStream<CONTEXT_DATA, DATA> stream,
                                     FriendlyByteBuf contextDataBuf,
                                     UUID playerUUID,

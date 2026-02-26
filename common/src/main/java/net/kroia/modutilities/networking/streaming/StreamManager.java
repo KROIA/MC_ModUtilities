@@ -4,7 +4,7 @@ import dev.architectury.event.events.common.TickEvent;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.ServerPlayerUtilities;
 import net.kroia.modutilities.UtilitiesPlatform;
-import net.kroia.modutilities.networking.NetworkManager;
+import net.kroia.modutilities.networking.PacketManager;
 import net.kroia.modutilities.networking.streaming.streamholder.ClientReceiverStreamHolder;
 import net.kroia.modutilities.networking.streaming.streamholder.ClientSenderStreamHolder;
 import net.kroia.modutilities.networking.streaming.streamholder.ServerReceiverStreamHolder;
@@ -32,7 +32,7 @@ public class StreamManager {
     /**
      * The NetworkManager that is used to send and receive stream packets.
      */
-    private final NetworkManager networkManager;
+    private final PacketManager networkManager;
 
     /**
      * Maps to hold the active streams on the server and client side.
@@ -59,7 +59,7 @@ public class StreamManager {
 
 
 
-    public StreamManager(@NotNull NetworkManager networkManager) {
+    public StreamManager(@NotNull PacketManager networkManager) {
         if(networkManager == null)
         {
             throw new IllegalArgumentException("NetworkManager cannot be null. Please provide a valid NetworkManager instance.");

@@ -1,7 +1,7 @@
 package net.kroia.modutilities.networking.streaming.streamholder;
 
 import net.kroia.modutilities.ModUtilitiesMod;
-import net.kroia.modutilities.networking.NetworkManager;
+import net.kroia.modutilities.networking.PacketManager;
 import net.kroia.modutilities.networking.streaming.GenericStream;
 import net.kroia.modutilities.networking.streaming.StreamStopPacket;
 import net.minecraft.network.FriendlyByteBuf;
@@ -19,7 +19,7 @@ public class ClientReceiverStreamHolder<CONTEXT_DATA, DATA>
     /**
      * The NetworkManager instance used to send packets to the server.
      */
-    private final NetworkManager networkManager;
+    private final PacketManager networkManager;
 
     /**
      * Not a copy of the registered stream object, but the actual registered stream object.
@@ -49,7 +49,7 @@ public class ClientReceiverStreamHolder<CONTEXT_DATA, DATA>
      * This is used to prevent multiple calls to the stream stopped handler.
      */
     private boolean isStpped = false; // Flag to check if the stream is stopped
-    public ClientReceiverStreamHolder(NetworkManager networkManager,
+    public ClientReceiverStreamHolder(PacketManager networkManager,
                                       GenericStream<CONTEXT_DATA, DATA> stream,
                                       Consumer<DATA> streamHandler,
                                       Runnable streamStoppedHandler,
