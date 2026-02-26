@@ -1,19 +1,20 @@
 package net.kroia.modutilities.setting.parser;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
+import com.google.gson.*;
 import net.kroia.modutilities.ItemUtilities;
 import net.kroia.modutilities.persistence.ServerSaveable;
+import net.minecraft.core.component.DataComponentPatch;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
-import java.util.ArrayList;
-
 public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
+    /*
     private static class EnchantmentData implements ServerSaveable
     {
         public String enchantmentID;
@@ -158,24 +159,194 @@ public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
         }
 
     }
-
-    private final NBTJsonParser nbtJsonParser = new NBTJsonParser();
-    @Override
+*/
+    /**
+     * Serializes an ItemStack to a JsonElement.
+     * Output format:
+     * {
+     *   "id": "minecraft:diamond_sword",
+     *   "count": 1,
+     *   "components": { ... }  // only if non-default components exist
+     * }
+     */
     public JsonElement toJson(ItemStack stack) {
-        throw new RuntimeException("ItemData is not implemented in the modutilities");
+        if (stack == null || stack.isEmpty()) {
+            return JsonNull.INSTANCE;
+        }
 
+        JsonObject json = new JsonObject();
+
+        // Item ID
+        ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        json.addProperty("id", itemId.toString());
+
+        // Count
+        json.addProperty("count", stack.getCount());
+
+        // Data components (custom NBT, enchantments, name, lore, etc.)
+        DataComponentPatch patch = stack.getComponentsPatch();
+        if (!patch.isEmpty()) {
+            // Encode the component patch using NbtOps
+            Tag componentTag = DataComponentPatch.CODEC
+                    .encodeStart(NbtOps.INSTANCE, patch)
+                    .getOrThrow();
+
+            if (componentTag instanceof CompoundTag compoundTag) {
+                // Convert CompoundTag to JsonObject
+                JsonObject componentsJson = nbtToJson(compoundTag);
+                json.add("components", componentsJson);
+            }
+        }
+
+        return json;
     }
 
-    @Override
+    /**
+     * Deserializes an ItemStack from a JsonElement produced by toJson().
+     */
     public ItemStack fromJson(JsonElement json) {
-        throw new RuntimeException("ItemData is not implemented in the modutilities");
+        if (json == null || json.isJsonNull()) {
+            return ItemStack.EMPTY;
+        }
 
+        if (!json.isJsonObject()) {
+            throw new JsonParseException("Expected a JsonObject for ItemStack, got: " + json);
+        }
 
-        /*ItemData itemData = new ItemData();
-        if(itemData.fromJson(json)) {
-            return itemData.getItemStack();
-        } else {
-            throw new IllegalArgumentException("Invalid JSON element for ItemStack");
-        }*/
+        JsonObject obj = json.getAsJsonObject();
+
+        // --- Item ID ---
+        if (!obj.has("id")) {
+            throw new JsonParseException("ItemStack JSON missing 'id' field");
+        }
+        ResourceLocation itemId = ResourceLocation.tryParse(obj.get("id").getAsString());
+        if (itemId == null) {
+            throw new JsonParseException("Invalid item resource location: " + obj.get("id").getAsString());
+        }
+
+        Item item = BuiltInRegistries.ITEM.get(itemId);
+        if (item == Items.AIR && !itemId.toString().equals("minecraft:air")) {
+            throw new JsonParseException("Unknown item: " + itemId);
+        }
+
+        // --- Count ---
+        int count = obj.has("count") ? obj.get("count").getAsInt() : 1;
+
+        // --- Build base ItemStack ---
+        ItemStack stack = new ItemStack(item, count);
+
+        // --- Components ---
+        if (obj.has("components")) {
+            JsonObject componentsJson = obj.getAsJsonObject("components");
+            CompoundTag componentTag = jsonToNbt(componentsJson);
+
+            DataComponentPatch patch = DataComponentPatch.CODEC
+                    .parse(NbtOps.INSTANCE, componentTag)
+                    .getOrThrow();
+
+            stack.applyComponents(patch);
+        }
+
+        return stack;
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers: Convert between CompoundTag and JsonObject
+    // -------------------------------------------------------------------------
+
+    private JsonObject nbtToJson(CompoundTag tag) {
+        JsonObject json = new JsonObject();
+        for (String key : tag.getAllKeys()) {
+            Tag value = tag.get(key);
+            json.add(key, nbtTagToJson(value));
+        }
+        return json;
+    }
+
+    private JsonElement nbtTagToJson(Tag tag) {
+        switch (tag.getId()) {
+            case Tag.TAG_BYTE:
+            case Tag.TAG_SHORT:
+            case Tag.TAG_INT:
+            case Tag.TAG_LONG:
+            case Tag.TAG_FLOAT:
+            case Tag.TAG_DOUBLE: {
+                // All numeric types
+                String str = tag.getAsString();
+                try { return new JsonPrimitive(Double.parseDouble(str)); }
+                catch (NumberFormatException e) { return new JsonPrimitive(str); }
+            }
+            case Tag.TAG_STRING:
+                return new JsonPrimitive(tag.getAsString());
+            case Tag.TAG_COMPOUND:
+                return nbtToJson((CompoundTag) tag);
+            case Tag.TAG_LIST: {
+                net.minecraft.nbt.ListTag list = (net.minecraft.nbt.ListTag) tag;
+                JsonArray arr = new JsonArray();
+                for (Tag element : list) {
+                    arr.add(nbtTagToJson(element));
+                }
+                return arr;
+            }
+            case Tag.TAG_BYTE_ARRAY: {
+                net.minecraft.nbt.ByteArrayTag bat = (net.minecraft.nbt.ByteArrayTag) tag;
+                JsonArray arr = new JsonArray();
+                for (byte b : bat.getAsByteArray()) arr.add(b);
+                return arr;
+            }
+            case Tag.TAG_INT_ARRAY: {
+                net.minecraft.nbt.IntArrayTag iat = (net.minecraft.nbt.IntArrayTag) tag;
+                JsonArray arr = new JsonArray();
+                for (int i : iat.getAsIntArray()) arr.add(i);
+                return arr;
+            }
+            case Tag.TAG_LONG_ARRAY: {
+                net.minecraft.nbt.LongArrayTag lat = (net.minecraft.nbt.LongArrayTag) tag;
+                JsonArray arr = new JsonArray();
+                for (long l : lat.getAsLongArray()) arr.add(l);
+                return arr;
+            }
+            default:
+                return new JsonPrimitive(tag.getAsString());
+        }
+    }
+
+    private CompoundTag jsonToNbt(JsonObject json) {
+        CompoundTag tag = new CompoundTag();
+        for (var entry : json.entrySet()) {
+            tag.put(entry.getKey(), jsonElementToNbt(entry.getValue()));
+        }
+        return tag;
+    }
+
+    private Tag jsonElementToNbt(JsonElement element) {
+        if (element.isJsonNull()) {
+            return net.minecraft.nbt.StringTag.valueOf("");
+        } else if (element.isJsonPrimitive()) {
+            JsonPrimitive prim = element.getAsJsonPrimitive();
+            if (prim.isBoolean()) {
+                return net.minecraft.nbt.ByteTag.valueOf(prim.getAsBoolean() ? (byte) 1 : (byte) 0);
+            } else if (prim.isNumber()) {
+                Number n = prim.getAsNumber();
+                // Prefer int, fall back to double
+                double d = n.doubleValue();
+                if (d == Math.floor(d) && !Double.isInfinite(d) && Math.abs(d) < Integer.MAX_VALUE) {
+                    return net.minecraft.nbt.IntTag.valueOf(n.intValue());
+                }
+                return net.minecraft.nbt.DoubleTag.valueOf(d);
+            } else {
+                return net.minecraft.nbt.StringTag.valueOf(prim.getAsString());
+            }
+        } else if (element.isJsonArray()) {
+            JsonArray arr = element.getAsJsonArray();
+            net.minecraft.nbt.ListTag list = new net.minecraft.nbt.ListTag();
+            for (JsonElement e : arr) {
+                list.add(jsonElementToNbt(e));
+            }
+            return list;
+        } else if (element.isJsonObject()) {
+            return jsonToNbt(element.getAsJsonObject());
+        }
+        return net.minecraft.nbt.StringTag.valueOf(element.getAsString());
     }
 }

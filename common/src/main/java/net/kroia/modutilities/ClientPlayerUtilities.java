@@ -4,6 +4,7 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 
@@ -23,7 +24,8 @@ public class ClientPlayerUtilities {
         {
             return itemStack.getHoverName().getString();
         }
-        List<Component> tooltip = itemStack.getTooltipLines(null, getMinecraft().player, TooltipFlag.Default.NORMAL);
+        Item.TooltipContext context = Item.TooltipContext.of(getMinecraft().level);
+        List<Component> tooltip = itemStack.getTooltipLines(context, getMinecraft().player, TooltipFlag.Default.NORMAL);
 
         List<String> tooltipStrings = tooltip.stream()
                 .map(Component::getString)
