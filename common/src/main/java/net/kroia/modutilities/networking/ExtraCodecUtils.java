@@ -112,7 +112,9 @@ public class ExtraCodecUtils {
             (buf) -> new FriendlyByteBuf(Unpooled.wrappedBuffer(buf.readByteArray()))
     );
     public static final StreamCodec<RegistryFriendlyByteBuf, RegistryFriendlyByteBuf> REGISTRY_FRIENDLY_BYTE_BUF_CODEC = StreamCodec.of(
-            FriendlyByteBuf::writeBytes,
+            (buf, b) -> {
+                buf.writeByteArray(b.array());
+            },
             (buf) -> new RegistryFriendlyByteBuf(Unpooled.wrappedBuffer(buf.readByteArray()), buf.registryAccess())
     );
 

@@ -2,6 +2,7 @@ package net.kroia.modutilities.networking.arrs;
 
 
 import dev.architectury.networking.NetworkManager;
+import dev.architectury.utils.Env;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.UtilitiesPlatform;
 import net.kroia.modutilities.networking.ExtraCodecUtils;
@@ -58,7 +59,7 @@ public final class GenericRequestPacket extends NetworkPacket
                 ModUtilitiesMod.LOGGER.error("Error handling GenericRequestPacket: " + e.getMessage(), e);
                 return; // Exit if an error occurs
             }
-            //sendResponse(new GenericResponsePacket(packet.requestID, packet.requestTypeID, responseData));
+            sendResponseToClient(request.getManager(), (ServerPlayer) context.getPlayer(), new GenericResponsePacket(packet.requestID, packet.requestTypeID, responseData));
         }
 
         @Override
@@ -77,7 +78,29 @@ public final class GenericRequestPacket extends NetworkPacket
                 return; // Exit if an error occurs
             }
 
-            //sendResponse(new GenericResponsePacket(packet.requestID, packet.requestTypeID, responseData));
+            sendResponseToServer(request.getManager(), new GenericResponsePacket(packet.requestID, packet.requestTypeID, responseData));
+        }
+
+
+        /**
+         * Sends a response packet back to the client or server based on the environment.
+         * This method can be called from within the handleOnClient or handleOnServer methods.
+         *
+         * @param packet The packet to send as a response.
+         * @return true if the response was sent successfully, false otherwise.
+         */
+        private static boolean sendResponseToClient(RequestManager manager, ServerPlayer player, GenericResponsePacket packet)
+        {
+            if(player == null)
+                return false;
+            manager.getNetworkManager().sendToClient(player, packet);
+            return true;
+        }
+
+        private static boolean sendResponseToServer(RequestManager manager, GenericResponsePacket packet)
+        {
+            manager.getNetworkManager().sendToServer(packet);
+            return true;
         }
     };
 
@@ -128,4 +151,8 @@ public final class GenericRequestPacket extends NetworkPacket
     public Type<? extends CustomPacketPayload> type() {
         return TYPE;
     }
+
+
+
+
 }
