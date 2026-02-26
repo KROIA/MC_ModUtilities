@@ -36,7 +36,7 @@ public class Sandbox {
 
         @Override
         public void setupClientReceiverPackets() {
-            register(SandboxOpenGuiPacket.TYPE, SandboxOpenGuiPacket.STREAM_CODEC, SandboxOpenGuiPacket.HANDLER);
+            registerS2C(SandboxOpenGuiPacket.TYPE, SandboxOpenGuiPacket.STREAM_CODEC, SandboxOpenGuiPacket.HANDLER);
 
         }
 

@@ -51,9 +51,9 @@ public class StreamSystem {
         }
 
         // Register packets for streaming
-        networkManager.register(GenericStreamPacket.TYPE, GenericStreamPacket.STREAM_CODEC, GenericStreamPacket.HANDLER);
-        networkManager.register(StreamStartPacket.TYPE, StreamStartPacket.STREAM_CODEC, StreamStartPacket.HANDLER);
-        networkManager.register(StreamStopPacket.TYPE, StreamStopPacket.STREAM_CODEC, StreamStopPacket.HANDLER);
+        networkManager.registerS2C(GenericStreamPacket.TYPE, GenericStreamPacket.STREAM_CODEC, GenericStreamPacket.HANDLER);
+        networkManager.registerC2S(StreamStartPacket.TYPE, StreamStartPacket.STREAM_CODEC, StreamStartPacket.HANDLER);
+        networkManager.registerC2S(StreamStopPacket.TYPE, StreamStopPacket.STREAM_CODEC, StreamStopPacket.HANDLER);
     }
 
     /**
@@ -149,6 +149,8 @@ public class StreamSystem {
      * @param <CONTEXT_DATA> The type of context data associated with the stream.
      * @param <DATA>         The type of data that the stream will handle.
      */
+    /*
+    // Only Streams from server to client are supported
     public static <CONTEXT_DATA, DATA> UUID startClientToServerStream(
             @NotNull GenericStream<CONTEXT_DATA, DATA> stream,
             @NotNull CONTEXT_DATA contextData,
@@ -157,7 +159,7 @@ public class StreamSystem {
             @NotNull ServerPlayer targetPlayer) {
         checkManagerExists();
         return STREAM_MANAGER.startClientToServerStream(stream, contextData, streamHandler, streamStoppedHandler, targetPlayer);
-    }
+    }*/
 
     /**
      * Stops a stream with the given stream ID.

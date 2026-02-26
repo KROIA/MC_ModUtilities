@@ -21,6 +21,7 @@ import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -43,8 +44,8 @@ public class StreamManager {
      * The keys are the stream IDs, and the values are the stream holders.
      */
     private final Map<UUID, ServerSenderStreamHolder<?,?>> activeServerSenderStreams;
-    private final Map<UUID, ClientSenderStreamHolder<?,?>> activeClientSenderStreams;
-    private final Map<UUID, ServerReceiverStreamHolder<?,?>> activeServerReceiverStreams;
+    //private final Map<UUID, ClientSenderStreamHolder<?,?>> activeClientSenderStreams;    // Only Streams from server to client are supported
+    //private final Map<UUID, ServerReceiverStreamHolder<?,?>> activeServerReceiverStreams; // Only Streams from server to client are supported
     private final Map<UUID, ClientReceiverStreamHolder<?,?>> activeClientReceiverStreams;
 
     /**
@@ -52,14 +53,14 @@ public class StreamManager {
      * This is used to avoid concurrent modification exceptions during tick updates.
      */
     private final List<UUID> toRemoveServerSenderLater = new java.util.ArrayList<>();
-    private final List<UUID> toRemoveClientSenderLater = new java.util.ArrayList<>();
+    //private final List<UUID> toRemoveClientSenderLater = new java.util.ArrayList<>(); // Only Streams from server to client are supported
 
     /**
      * Flags to check if the manager is currently in a tick update.
      * This is used to avoid concurrent modification exceptions during tick updates.
      */
     private boolean isInServerTickUpdate = false;
-    private boolean isInClientTickUpdate = false;
+    //private boolean isInClientTickUpdate = false; // Only Streams from server to client are supported
 
 
 
@@ -71,10 +72,10 @@ public class StreamManager {
         this.networkManager = networkManager;
 
         activeServerSenderStreams = new java.util.concurrent.ConcurrentHashMap<>();
-        activeClientSenderStreams = new java.util.concurrent.ConcurrentHashMap<>();
-        activeServerReceiverStreams = new java.util.concurrent.ConcurrentHashMap<>();
+        //activeClientSenderStreams = new java.util.concurrent.ConcurrentHashMap<>();   // Only Streams from server to client are supported
+        //activeServerReceiverStreams = new java.util.concurrent.ConcurrentHashMap<>(); // Only Streams from server to client are supported
         activeClientReceiverStreams = new java.util.concurrent.ConcurrentHashMap<>();
-        TickEvent.PLAYER_POST.register(this::onClientTickUpdate);
+        // TickEvent.PLAYER_POST.register(this::onClientTickUpdate); // Only Streams from server to client are supported
         TickEvent.SERVER_POST.register(this::onServerTickUpdate);
     }
 
@@ -121,6 +122,8 @@ public class StreamManager {
      * @param <CONTEXT_DATA> The type of context data associated with the stream.
      * @param <DATA>         The type of data that the stream will handle.
      */
+    /*
+    // Only Streams from server to client are supported
     public <CONTEXT_DATA, DATA> UUID startClientToServerStream(
             @NotNull GenericStream<CONTEXT_DATA, DATA> stream,
             @NotNull CONTEXT_DATA contextData,
@@ -138,7 +141,7 @@ public class StreamManager {
         activeServerReceiverStreams.put(streamID, streamData);
         networkManager.sendToClient(targetPlayer, startPacket);
         return streamID;
-    }
+    }*/
 
 
     /**
@@ -150,6 +153,8 @@ public class StreamManager {
     {
         boolean isClient = isOnClient();
         boolean isServer = isOnServer();
+        /*
+        // Only Streams from server to client are supported
         if(activeClientSenderStreams != null && isClient) {
             if(isInClientTickUpdate) {
                 toRemoveClientSenderLater.add(streamID);
@@ -161,7 +166,7 @@ public class StreamManager {
                     stream.streamStop();
                 }
             }
-        }
+        }*/
         if(activeServerSenderStreams != null && isServer) {
             if(isInServerTickUpdate)
             {
@@ -186,6 +191,8 @@ public class StreamManager {
                 stream.onStreamStopped();
             }
         }
+        /*
+        // Only Streams from server to client are supported
         if(activeServerReceiverStreams != null && isServer)
         {
             var stream = activeServerReceiverStreams.remove(streamID);
@@ -193,7 +200,7 @@ public class StreamManager {
             {
                 stream.onStreamStopped(); // No player context on server side
             }
-        }
+        }*/
     }
 
 
@@ -220,13 +227,14 @@ public class StreamManager {
      */
     public List<Tuple<UUID, String>> getActiveClientSenderStreams()
     {
-        return activeClientSenderStreams.entrySet().stream()
+        return new ArrayList<>(); // Only Streams from server to client are supported
+        /*return activeClientSenderStreams.entrySet().stream()
                 .map(entry -> new Tuple<>(entry.getKey(), entry.getValue().stream.getStreamTypeID()))
-                .toList();
+                .toList();*/
     }
 
     /**
-     * Gets a list of all active server->client streams.
+     * Gets a list of all active client->server streams.
      * The list holds tuples of
      *      - UUID: the unique stream ID
      *      - String: the stream type ID that can be used in the registry to get the stream object.
@@ -234,9 +242,10 @@ public class StreamManager {
      */
     public List<Tuple<UUID, String>> getActiveServerReceiverStreams()
     {
-        return activeServerReceiverStreams.entrySet().stream()
+        return new ArrayList<>();
+        /*return activeServerReceiverStreams.entrySet().stream()
                 .map(entry -> new Tuple<>(entry.getKey(), entry.getValue().stream.getStreamTypeID()))
-                .toList();
+                .toList();*/
     }
 
     /**
@@ -324,6 +333,8 @@ public class StreamManager {
      */
     public void onClientTickUpdate(Player p)
     {
+        /*
+        // Only Streams from server to client are supported
         isInClientTickUpdate = true;
         for(var entry : activeClientSenderStreams.entrySet())
         {
@@ -344,6 +355,7 @@ public class StreamManager {
             toRemoveClientSenderLater.clear();
         }
         isInClientTickUpdate = false;
+        */
     }
 
 
@@ -391,6 +403,8 @@ public class StreamManager {
                                                              @NotNull UUID streamID,
                                                              @NotNull FriendlyByteBuf contextDataBuffer)
     {
+        throw new IllegalStateException("Only Streams from server to client are supported");
+        /*
         if(isOnClient())
             throw new IllegalStateException("This method can only be called on the client side!");
         ClientSenderStreamHolder<CONTEXT_DATA, DATA> streamData = new ClientSenderStreamHolder<>(networkManager, stream, contextDataBuffer, streamID);
@@ -401,6 +415,8 @@ public class StreamManager {
         }
         activeClientSenderStreams.put(streamID, streamData);
         streamData.stream.onStartStreamSendingOnClient();
+
+        */
     }
 
 
@@ -413,6 +429,9 @@ public class StreamManager {
      */
     public void sendStreamPacket(@NotNull UUID streamID) {
         if(isOnClient()) {
+            /*
+            // Only Streams from server to client are supported
+
             if (activeClientSenderStreams != null) {
                 ClientSenderStreamHolder<?, ?> streamData = activeClientSenderStreams.get(streamID);
                 if (streamData != null) {
@@ -423,7 +442,7 @@ public class StreamManager {
                         networkManager.sendToServer(new GenericStreamPacket(streamID, buf));
                     }
                 }
-            }
+            }*/
         }
         if(isOnServer()) {
             if (activeServerSenderStreams != null) {
@@ -456,12 +475,14 @@ public class StreamManager {
     public void handlePacketOnClient(StreamStopPacket packet)
     {
         UUID streamID = packet.getStreamID();
+        /*
+        // Only Streams from server to client are supported
         if(activeClientSenderStreams != null) {
             ClientSenderStreamHolder<?, ?> streamData = activeClientSenderStreams.remove(streamID);
             if(streamData != null) {
                 streamData.streamStop();
             }
-        }
+        }*/
         if(activeClientReceiverStreams != null) {
             ClientReceiverStreamHolder<?, ?> streamData = activeClientReceiverStreams.remove(streamID);
             if(streamData != null) {
@@ -486,12 +507,14 @@ public class StreamManager {
                 streamData.streamEnd();
             }
         }
+       /*
+       // Only Streams from server to client are supported
         if(activeServerReceiverStreams != null) {
             ServerReceiverStreamHolder<?, ?> streamData = activeServerReceiverStreams.remove(streamID);
             if(streamData != null) {
                 streamData.onStreamStopped(); // No player context on server side
             }
-        }
+        }*/
     }
 
 
@@ -519,11 +542,13 @@ public class StreamManager {
      */
     public void handlePacketOnServer(GenericStreamPacket packet, ServerPlayer sender)
     {
+        /*
+        // Only Streams from server to client are supported
         UUID streamID = packet.getStreamID();
         ServerReceiverStreamHolder<?, ?> streamData = activeServerReceiverStreams.get(streamID);
         if(streamData != null) {
             streamData.handleStreamPacket(packet.getData(), sender);
-        }
+        }*/
     }
 
 

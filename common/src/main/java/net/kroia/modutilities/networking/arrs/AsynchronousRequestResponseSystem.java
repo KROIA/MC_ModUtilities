@@ -52,8 +52,8 @@ public class AsynchronousRequestResponseSystem {
         }
 
         // Register packets for ARRS
-        networkManager.register(GenericRequestPacket.TYPE, GenericRequestPacket.STREAM_CODEC, GenericRequestPacket.HANDLER);
-        networkManager.register(GenericResponsePacket.TYPE,  GenericResponsePacket.STREAM_CODEC, GenericResponsePacket.HANDLER);
+        networkManager.registerC2S(GenericRequestPacket.TYPE, GenericRequestPacket.STREAM_CODEC, GenericRequestPacket.HANDLER);
+        networkManager.registerS2C(GenericResponsePacket.TYPE,  GenericResponsePacket.STREAM_CODEC, GenericResponsePacket.HANDLER);
     }
 
 
