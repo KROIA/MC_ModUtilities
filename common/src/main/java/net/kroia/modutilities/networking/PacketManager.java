@@ -86,4 +86,8 @@ public abstract class PacketManager {
     public void sendToClient(ServerPlayer receiver, NetworkPacket packet) {
         NetworkManager.sendToPlayer(receiver, packet);
     }
+
+    public void sendToClients(Iterable<ServerPlayer> players, NetworkPacket packet) {
+        NetworkManager.sendToPlayers(players, packet);
+    }
 }
