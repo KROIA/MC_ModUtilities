@@ -24,7 +24,7 @@ public class ItemUtilities {
         {
             if(creativeItemCache == null)
             {
-                creativeItemCache = CreativeItemsGenerator.generateAllCreativeItems(UtilitiesPlatform.getRegistryAccessServerSide());
+                creativeItemCache = CreativeItemsGenerator.generateAllCreativeItems(UtilitiesPlatform.getRegistryAccess());
             }
             return creativeItemCache;
         }

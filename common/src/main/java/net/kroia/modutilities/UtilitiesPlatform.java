@@ -94,6 +94,13 @@ public class UtilitiesPlatform {
         }
         return null;
     }
+    public static RegistryAccess getRegistryAccess() {
+        RegistryAccess reg = getRegistryAccessClientSide();
+        if(reg != null) {
+            return reg;
+        }
+        return getRegistryAccessServerSide();
+    }
 
     public static RegistryFriendlyByteBuf createRegistryFriendlyByteBufClientSide()
     {
