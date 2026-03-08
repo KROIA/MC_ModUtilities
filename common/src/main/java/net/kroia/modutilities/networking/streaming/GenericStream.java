@@ -1,6 +1,7 @@
 package net.kroia.modutilities.networking.streaming;
 
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -157,7 +158,7 @@ public abstract class GenericStream<CONTEXT_DATA, DATA> {
      * @param buffer The buffer to write the context data to.
      * @param context The context data to encode.
      */
-    public abstract void encodeContextData(FriendlyByteBuf buffer, CONTEXT_DATA context);
+    public abstract void encodeContextData(RegistryFriendlyByteBuf buffer, CONTEXT_DATA context);
 
     /**
      * Decodes the context data for the stream.
@@ -169,7 +170,7 @@ public abstract class GenericStream<CONTEXT_DATA, DATA> {
      * @param buffer The buffer to read the context data from.
      * @return The decoded context data.
      */
-    public abstract CONTEXT_DATA decodeContextData(FriendlyByteBuf buffer);
+    public abstract CONTEXT_DATA decodeContextData(RegistryFriendlyByteBuf buffer);
 
     /**
      * Encodes the data for the stream packet.
@@ -181,7 +182,7 @@ public abstract class GenericStream<CONTEXT_DATA, DATA> {
      * @param buffer The buffer to write the data to.
      * @param data The data to encode.
      */
-    public abstract void encodeData(FriendlyByteBuf buffer, DATA data);
+    public abstract void encodeData(RegistryFriendlyByteBuf buffer, DATA data);
 
     /**
      * Decodes the data for the stream packet.
@@ -193,7 +194,7 @@ public abstract class GenericStream<CONTEXT_DATA, DATA> {
      * @param buffer The buffer to read the data from.
      * @return The decoded data.
      */
-    public abstract DATA decodeData(FriendlyByteBuf buffer);
+    public abstract DATA decodeData(RegistryFriendlyByteBuf buffer);
 
 
     /**
@@ -239,7 +240,7 @@ public abstract class GenericStream<CONTEXT_DATA, DATA> {
      * Fills the buf with a new stream packet on the server side.
      * @param buf The buffer to write the stream packet data to.
      */
-    public void createStreamPacketOnServer(FriendlyByteBuf buf)
+    public void createStreamPacketOnServer(RegistryFriendlyByteBuf buf)
     {
         try{
             encodeData(buf, provideStreamPacketOnServer());
@@ -252,7 +253,7 @@ public abstract class GenericStream<CONTEXT_DATA, DATA> {
      * Fills the buf with a new stream packet on the client side.
      * @param buf The buffer to write the stream packet data to.
      */
-    public void createStreamPacketOnClient(FriendlyByteBuf buf)
+    public void createStreamPacketOnClient(RegistryFriendlyByteBuf buf)
     {
         try{
             encodeData(buf, provideStreamPacketOnClient());
@@ -293,7 +294,7 @@ public abstract class GenericStream<CONTEXT_DATA, DATA> {
     {
         this.requestorPlayerUUID = requestorPlayerUUID;
     }
-    public final void setContextData(FriendlyByteBuf contextDataBuf)
+    public final void setContextData(RegistryFriendlyByteBuf contextDataBuf)
     {
         try {
             this.contextData = decodeContextData(contextDataBuf);

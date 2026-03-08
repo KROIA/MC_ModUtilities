@@ -2,6 +2,7 @@ package net.kroia.modutilities.networking.streaming;
 
 import net.kroia.modutilities.networking.PacketManager;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Tuple;
 import org.jetbrains.annotations.NotNull;
@@ -231,7 +232,7 @@ public class StreamSystem {
     {
         UUID streamID = packet.getStreamID();
         String StreamType = packet.getStreamTypeID();
-        FriendlyByteBuf buf = packet.getData();
+        RegistryFriendlyByteBuf buf = packet.getData();
         var stream = REGISTRY.getRegisteredStream(StreamType);
         STREAM_MANAGER.startServerSenderStream(stream, streamID, buf, target);
     }
@@ -242,7 +243,7 @@ public class StreamSystem {
     {
         UUID streamID = packet.getStreamID();
         String StreamType = packet.getStreamTypeID();
-        FriendlyByteBuf buf = packet.getData();
+        RegistryFriendlyByteBuf buf = packet.getData();
         var stream = REGISTRY.getRegisteredStream(StreamType);
         STREAM_MANAGER.startClientSenderStream(stream, streamID, buf);
     }

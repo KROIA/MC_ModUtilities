@@ -5,6 +5,7 @@ import net.kroia.modutilities.networking.PacketManager;
 import net.kroia.modutilities.networking.streaming.GenericStream;
 import net.kroia.modutilities.networking.streaming.StreamStopPacket;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 
 import java.util.UUID;
 
@@ -32,7 +33,7 @@ public class ClientSenderStreamHolder<CONTEXT_DATA, DATA>
     private boolean doRemove = false;
     public ClientSenderStreamHolder(PacketManager networkManager,
                                     GenericStream<CONTEXT_DATA, DATA> stream,
-                                    FriendlyByteBuf contextDataBuf,
+                                    RegistryFriendlyByteBuf contextDataBuf,
                                     UUID streamID) {
         this.networkManager = networkManager;
         this.stream = stream.copy();

@@ -373,7 +373,7 @@ public class StreamManager {
      */
     public <CONTEXT_DATA, DATA> void startServerSenderStream(@NotNull GenericStream<CONTEXT_DATA, DATA> stream,
                                                              @NotNull UUID streamID,
-                                                             @NotNull FriendlyByteBuf contextDataBuffer,
+                                                             @NotNull RegistryFriendlyByteBuf contextDataBuffer,
                                                              @NotNull ServerPlayer targetPlayer)
     {
         if(isOnClient())
@@ -428,8 +428,8 @@ public class StreamManager {
      * @param streamID The ID of the stream that is being sent.
      */
     public void sendStreamPacket(@NotNull UUID streamID) {
-        if(isOnClient()) {
-            /*
+        /*if(isOnClient()) {
+
             // Only Streams from server to client are supported
 
             if (activeClientSenderStreams != null) {
@@ -442,15 +442,15 @@ public class StreamManager {
                         networkManager.sendToServer(new GenericStreamPacket(streamID, buf));
                     }
                 }
-            }*/
-        }
+            }
+        }*/
         if(isOnServer()) {
             if (activeServerSenderStreams != null) {
                 ServerSenderStreamHolder<?, ?> streamData = activeServerSenderStreams.get(streamID);
                 if (streamData != null) {
                     GenericStream<?, ?> stream = streamData.stream;
                     if (stream != null) {
-                        RegistryFriendlyByteBuf buf = UtilitiesPlatform.createRegistryFriendlyByteBufClientSide();
+                        RegistryFriendlyByteBuf buf = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
                         stream.createStreamPacketOnServer(buf);
                         ServerPlayer targetPlayer = ServerPlayerUtilities.getOnlinePlayer(streamData.playerUUID);
                         if (targetPlayer == null) {

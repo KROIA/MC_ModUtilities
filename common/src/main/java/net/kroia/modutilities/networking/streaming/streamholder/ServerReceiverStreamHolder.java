@@ -6,6 +6,7 @@ import net.kroia.modutilities.networking.PacketManager;
 import net.kroia.modutilities.networking.streaming.GenericStream;
 import net.kroia.modutilities.networking.streaming.StreamStopPacket;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.UUID;
@@ -79,7 +80,7 @@ public class ServerReceiverStreamHolder<CONTEXT_DATA, DATA>
      * @param buf   The FriendlyByteBuf containing the packet data.
      * @param player The player that sent the packet.
      */
-    public void handleStreamPacket(FriendlyByteBuf buf, ServerPlayer player) {
+    public void handleStreamPacket(RegistryFriendlyByteBuf buf, ServerPlayer player) {
         if (streamHandler != null) {
             DATA data = stream.decodeData(buf);
             try{

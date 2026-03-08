@@ -36,9 +36,13 @@ public class UtilitiesPlatform {
         if(Platform.getEnvironment() == Env.SERVER)
             return true;
 
-        MinecraftServer server = getServer();
-        if(server != null && server.isRunning()) {
-            return server.isSameThread(); // Called from server side in a server environment
+        try {
+            MinecraftServer server = getServer();
+            if (server != null && server.isRunning()) {
+                return server.isSameThread();
+            }
+        }catch(Exception ignored) {
+
         }
         /*
         if(Platform.getEnvironment() == Env.CLIENT)
@@ -55,13 +59,24 @@ public class UtilitiesPlatform {
         if(Platform.getEnvironment() == Env.SERVER)
             return false;
 
+        try {
+            MinecraftServer server = getServer();
+            if (server != null && server.isRunning()) {
+                return !server.isSameThread();
+            }
+        }catch(Exception ignored) {
 
-        Minecraft mc = Minecraft.getInstance();
-        if(mc != null)
-        {
-            return mc.isSameThread();
         }
-        return false; // Called from server side or unknown environment
+        return true;
+
+/*
+        try {
+            Minecraft mc = Minecraft.getInstance();
+            return mc.isSameThread();
+        }catch(Exception ignored) {
+
+        }
+        return false; // Called from server side or unknown environment*/
     }
     public static boolean isClient()
     {

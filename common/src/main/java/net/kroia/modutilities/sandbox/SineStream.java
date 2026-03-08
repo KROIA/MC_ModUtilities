@@ -3,6 +3,9 @@ package net.kroia.modutilities.sandbox;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.networking.streaming.GenericStream;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+
 public class SineStream extends GenericStream<Float, Double> {
 
     private double lastTime = 0.0;
@@ -50,22 +53,22 @@ public class SineStream extends GenericStream<Float, Double> {
     }
 
     @Override
-    public void encodeContextData(FriendlyByteBuf buffer, Float context) {
-        buffer.writeFloat(context);
+    public void encodeContextData(RegistryFriendlyByteBuf buffer, Float context) {
+        ByteBufCodecs.FLOAT.encode(buffer, context);
     }
 
     @Override
-    public Float decodeContextData(FriendlyByteBuf buffer) {
-        return buffer.readFloat();
+    public Float decodeContextData(RegistryFriendlyByteBuf buffer) {
+        return ByteBufCodecs.FLOAT.decode(buffer);
     }
 
     @Override
-    public void encodeData(FriendlyByteBuf buffer, Double aDouble) {
-        buffer.writeDouble(aDouble);
+    public void encodeData(RegistryFriendlyByteBuf buffer, Double aDouble) {
+        ByteBufCodecs.DOUBLE.encode(buffer, aDouble);
     }
 
     @Override
-    public Double decodeData(FriendlyByteBuf buffer) {
-        return buffer.readDouble();
+    public Double decodeData(RegistryFriendlyByteBuf buffer) {
+        return ByteBufCodecs.DOUBLE.decode(buffer);
     }
 }
