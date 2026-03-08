@@ -1,7 +1,6 @@
 package net.kroia.modutilities.networking.streaming;
 
 import net.kroia.modutilities.networking.PacketManager;
-import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Tuple;
@@ -11,7 +10,6 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
@@ -54,7 +52,8 @@ public class StreamSystem {
         // Register packets for streaming
         networkManager.registerS2C(GenericStreamPacket.TYPE, GenericStreamPacket.STREAM_CODEC, GenericStreamPacket.HANDLER);
         networkManager.registerC2S(StreamStartPacket.TYPE, StreamStartPacket.STREAM_CODEC, StreamStartPacket.HANDLER);
-        networkManager.registerC2S(StreamStopPacket.TYPE, StreamStopPacket.STREAM_CODEC, StreamStopPacket.HANDLER);
+        networkManager.registerC2S(StreamStopClientSenderPacket.TYPE, StreamStopClientSenderPacket.STREAM_CODEC, StreamStopClientSenderPacket.HANDLER);
+        networkManager.registerS2C(StreamStopServerSenderPacket.TYPE, StreamStopServerSenderPacket.STREAM_CODEC, StreamStopServerSenderPacket.HANDLER);
     }
 
     /**
@@ -260,10 +259,10 @@ public class StreamSystem {
     /**
      * INTERNAL METHODE, DO NOT CALL THIS METHOD MANUALLY!
      *
-     * Handles a StreamStopPacket on the client side.
-     * @param packet The StreamStopPacket to handle.
+     * Handles a StreamStopClientSenderPacket on the client side.
+     * @param packet The StreamStopClientSenderPacket to handle.
      */
-    public static void handlePacket(StreamStopPacket packet)
+    public static void handlePacket(StreamStopServerSenderPacket packet)
     {
         STREAM_MANAGER.handlePacketOnClient(packet);
     }
@@ -271,11 +270,11 @@ public class StreamSystem {
     /**
      * INTERNAL METHODE, DO NOT CALL THIS METHOD MANUALLY!
      *
-     * Handles a StreamStopPacket on the server side.
-     * @param packet The StreamStopPacket to handle.
+     * Handles a StreamStopClientSenderPacket on the server side.
+     * @param packet The StreamStopClientSenderPacket to handle.
      * @param sender The player that sent the packet.
      */
-    public static void handlePacket(StreamStopPacket packet, ServerPlayer sender)
+    public static void handlePacket(StreamStopClientSenderPacket packet, ServerPlayer sender)
     {
         STREAM_MANAGER.handlePacketOnServer(packet);
     }

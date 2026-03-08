@@ -3,8 +3,7 @@ package net.kroia.modutilities.networking.streaming.streamholder;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.networking.PacketManager;
 import net.kroia.modutilities.networking.streaming.GenericStream;
-import net.kroia.modutilities.networking.streaming.StreamStopPacket;
-import net.minecraft.network.FriendlyByteBuf;
+import net.kroia.modutilities.networking.streaming.StreamStopClientSenderPacket;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 
 import java.util.UUID;
@@ -65,7 +64,7 @@ public class ClientSenderStreamHolder<CONTEXT_DATA, DATA>
             catch (Exception e) {
                 error("Error while stopping stream: "+stream, e);
             }
-            StreamStopPacket stopPacket = new StreamStopPacket(stream.getStreamID());
+            StreamStopClientSenderPacket stopPacket = new StreamStopClientSenderPacket(stream.getStreamID());
             networkManager.sendToServer(stopPacket);
         }
 

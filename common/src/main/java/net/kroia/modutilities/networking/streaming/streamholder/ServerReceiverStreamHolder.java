@@ -4,8 +4,7 @@ import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.ServerPlayerUtilities;
 import net.kroia.modutilities.networking.PacketManager;
 import net.kroia.modutilities.networking.streaming.GenericStream;
-import net.kroia.modutilities.networking.streaming.StreamStopPacket;
-import net.minecraft.network.FriendlyByteBuf;
+import net.kroia.modutilities.networking.streaming.StreamStopClientSenderPacket;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -93,7 +92,7 @@ public class ServerReceiverStreamHolder<CONTEXT_DATA, DATA>
 
     /**
      * Called when the stream is stopped.
-     * It calls the stream stopped handler and sends a StreamStopPacket to the target player.
+     * It calls the stream stopped handler and sends a StreamStopClientSenderPacket to the target player.
      */
     public void onStreamStopped() {
         if (streamStoppedHandler != null && !isStpped) {
@@ -106,7 +105,7 @@ public class ServerReceiverStreamHolder<CONTEXT_DATA, DATA>
             }
             ServerPlayer targetPlayer = ServerPlayerUtilities.getOnlinePlayer(playerSenderUUID);
             if (targetPlayer != null) {
-                StreamStopPacket stopPacket = new StreamStopPacket(streamID);
+                StreamStopClientSenderPacket stopPacket = new StreamStopClientSenderPacket(streamID);
                 networkManager.sendToClient(targetPlayer, stopPacket);
             }
         }

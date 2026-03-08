@@ -6,12 +6,7 @@ import net.kroia.modutilities.ServerPlayerUtilities;
 import net.kroia.modutilities.UtilitiesPlatform;
 import net.kroia.modutilities.networking.PacketManager;
 import net.kroia.modutilities.networking.streaming.streamholder.ClientReceiverStreamHolder;
-import net.kroia.modutilities.networking.streaming.streamholder.ClientSenderStreamHolder;
-import net.kroia.modutilities.networking.streaming.streamholder.ServerReceiverStreamHolder;
 import net.kroia.modutilities.networking.streaming.streamholder.ServerSenderStreamHolder;
-import net.minecraft.Util;
-import net.minecraft.client.Minecraft;
-import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.MinecraftServer;
@@ -25,7 +20,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
@@ -188,7 +182,7 @@ public class StreamManager {
             var stream = activeClientReceiverStreams.remove(streamID);
             if(stream != null)
             {
-                stream.onStreamStopped();
+                stream.onStreamStopped(true);
             }
         }
         /*
@@ -469,10 +463,10 @@ public class StreamManager {
      * INTERNAL METHODE, DO NOT CALL THIS METHOD MANUALLY!
      *
      * Handles the stream stop packet on the client side.
-     * This method is called when a StreamStopPacket is received on the client side.
-     * @param packet The StreamStopPacket that was received.
+     * This method is called when a StreamStopClientSenderPacket is received on the client side.
+     * @param packet The StreamStopClientSenderPacket that was received.
      */
-    public void handlePacketOnClient(StreamStopPacket packet)
+    public void handlePacketOnClient(StreamStopServerSenderPacket packet)
     {
         UUID streamID = packet.getStreamID();
         /*
@@ -486,7 +480,7 @@ public class StreamManager {
         if(activeClientReceiverStreams != null) {
             ClientReceiverStreamHolder<?, ?> streamData = activeClientReceiverStreams.remove(streamID);
             if(streamData != null) {
-                streamData.onStreamStopped();
+                streamData.onStreamStopped(false);
             }
         }
     }
@@ -495,10 +489,10 @@ public class StreamManager {
      * INTERNAL METHODE, DO NOT CALL THIS METHOD MANUALLY!
      *
      * Handles the stream stop packet on the server side.
-     * This method is called when a StreamStopPacket is received on the server side.
-     * @param packet The StreamStopPacket that was received.
+     * This method is called when a StreamStopClientSenderPacket is received on the server side.
+     * @param packet The StreamStopClientSenderPacket that was received.
      */
-    public void handlePacketOnServer(StreamStopPacket packet)
+    public void handlePacketOnServer(StreamStopClientSenderPacket packet)
     {
         UUID streamID = packet.getStreamID();
        if(activeServerSenderStreams != null) {

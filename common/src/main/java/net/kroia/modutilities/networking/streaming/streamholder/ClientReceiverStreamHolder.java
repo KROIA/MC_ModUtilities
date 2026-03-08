@@ -3,8 +3,7 @@ package net.kroia.modutilities.networking.streaming.streamholder;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.networking.PacketManager;
 import net.kroia.modutilities.networking.streaming.GenericStream;
-import net.kroia.modutilities.networking.streaming.StreamStopPacket;
-import net.minecraft.network.FriendlyByteBuf;
+import net.kroia.modutilities.networking.streaming.StreamStopClientSenderPacket;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 
 import java.util.UUID;
@@ -85,7 +84,7 @@ public class ClientReceiverStreamHolder<CONTEXT_DATA, DATA>
      * Stops the stream and sends a stop packet to the server for notification.
      * It also calls the stream stopped handler if it is set.
      */
-    public void onStreamStopped() {
+    public void onStreamStopped(boolean sendEcho) {
         if (streamStoppedHandler != null && !isStpped) {
             isStpped = true; // Mark as stopped
             try {
@@ -95,9 +94,11 @@ public class ClientReceiverStreamHolder<CONTEXT_DATA, DATA>
                 error("Error while calling stream stop handler for: " + stream, e);
             }
 
-
-            StreamStopPacket stopPacket = new StreamStopPacket(streamID);
-            networkManager.sendToServer(stopPacket);
+            if(sendEcho)
+            {
+                StreamStopClientSenderPacket stopPacket = new StreamStopClientSenderPacket(streamID);
+                networkManager.sendToServer(stopPacket);
+            }
         }
     }
     private void error(String msg, Throwable e) {
