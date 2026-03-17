@@ -1,25 +1,13 @@
 package net.kroia.modutilities.sandbox;
 
-import net.kroia.modutilities.ColorUtilities;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.gui.Gui;
-import net.kroia.modutilities.gui.GuiContainerScreen;
 import net.kroia.modutilities.gui.GuiScreen;
-import net.kroia.modutilities.gui.GuiTexture;
 import net.kroia.modutilities.gui.elements.*;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.elements.base.ListView;
-import net.kroia.modutilities.gui.elements.base.Slider;
-import net.kroia.modutilities.gui.layout.Layout;
 import net.kroia.modutilities.gui.layout.LayoutGrid;
-import net.kroia.modutilities.gui.layout.LayoutVertical;
-import net.kroia.modutilities.networking.streaming.StreamSystem;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.entity.player.Inventory;
-
-import java.util.UUID;
 
 public class TestScreen extends GuiScreen {
 

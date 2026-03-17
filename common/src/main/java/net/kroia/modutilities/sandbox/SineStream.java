@@ -1,8 +1,7 @@
 package net.kroia.modutilities.sandbox;
 
 import net.kroia.modutilities.ModUtilitiesMod;
-import net.kroia.modutilities.networking.streaming.GenericStream;
-import net.minecraft.network.FriendlyByteBuf;
+import net.kroia.modutilities.networking.client_server.streaming.GenericStream;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 
