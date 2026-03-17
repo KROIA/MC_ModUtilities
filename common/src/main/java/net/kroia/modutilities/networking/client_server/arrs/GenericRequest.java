@@ -5,6 +5,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -46,7 +47,7 @@ public abstract class GenericRequest<IN, OUT>
      *
      * @return The output produced by the responder.
      */
-    public OUT handleOnClient(IN input)  { throw new AssertionError("handleOnClient() is not implemented in" + this.getRequestTypeID() + ". Please implement this method to handle the request on the client side."); }
+    public CompletableFuture<OUT> handleOnClient(IN input)  { throw new AssertionError("handleOnClient() is not implemented in" + this.getRequestTypeID() + ". Please implement this method to handle the request on the client side."); }
 
     /**
      * Handles the request on the server side.
@@ -60,7 +61,7 @@ public abstract class GenericRequest<IN, OUT>
      *
      * @return The output produced by the responder.
      */
-    public OUT handleOnServer(IN input, ServerPlayer sender) {
+    public CompletableFuture<OUT> handleOnServer(IN input, ServerPlayer sender) {
         throw new AssertionError("handleOnServer() is not implemented in " + this.getRequestTypeID() + ". Please implement this method to handle the request on the server side.");
     }
 
@@ -195,11 +196,16 @@ public abstract class GenericRequest<IN, OUT>
      * This methode gets called serverside only (when the client is the requestor).
      * This function is called by the ARRS (do not call this method manually).
      */
-    public void decodeHandleEncodeOnServer(RegistryFriendlyByteBuf inputBuf, RegistryFriendlyByteBuf outputBuf, ServerPlayer sender)
+    public CompletableFuture<RegistryFriendlyByteBuf> decodeHandleEncodeOnServer(RegistryFriendlyByteBuf inputBuf, RegistryFriendlyByteBuf outputBuf, ServerPlayer sender)
     {
         IN input = decodeInput(inputBuf);
-        OUT output = handleOnServer(input, sender);
-        encodeOutput(outputBuf, output);
+        CompletableFuture<OUT> output = handleOnServer(input, sender);
+        CompletableFuture<RegistryFriendlyByteBuf> byteBufFut = new CompletableFuture<>();
+        output.thenAccept(responseData -> {
+            encodeOutput(outputBuf, responseData);
+            byteBufFut.complete(outputBuf);
+        });
+        return byteBufFut;
     }
 
     /**
@@ -212,11 +218,16 @@ public abstract class GenericRequest<IN, OUT>
      * This methode gets called clientside only (when the server is the requestor).
      * This function is called by the ARRS (do not call this method manually).
      */
-    public void decodeHandleEncodeOnClient(RegistryFriendlyByteBuf inputBuf, RegistryFriendlyByteBuf outputBuf)
+    public CompletableFuture<RegistryFriendlyByteBuf> decodeHandleEncodeOnClient(RegistryFriendlyByteBuf inputBuf, RegistryFriendlyByteBuf outputBuf)
     {
         IN input = decodeInput(inputBuf);
-        OUT output = handleOnClient(input);
-        encodeOutput(outputBuf, output);
+        CompletableFuture<OUT> output = handleOnClient(input);
+        CompletableFuture<RegistryFriendlyByteBuf> byteBufFut = new CompletableFuture<>();
+        output.thenAccept(responseData -> {
+            encodeOutput(outputBuf, responseData);
+            byteBufFut.complete(outputBuf);
+                });
+        return byteBufFut;
     }
 
 

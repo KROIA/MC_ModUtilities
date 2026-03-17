@@ -17,6 +17,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * This Class is used by the "asynchronous request-response system" (ARRS).
@@ -47,14 +48,16 @@ public final class GenericRequestPacket extends NetworkPacket
             }
             RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
             try {
-                request.decodeHandleEncodeOnServer(packet.data, responseData, (ServerPlayer) context.getPlayer());
+                CompletableFuture<RegistryFriendlyByteBuf> fut = request.decodeHandleEncodeOnServer(packet.data, responseData, (ServerPlayer) context.getPlayer());
+                fut.thenAccept(responseBuf -> {
+                    sendResponseToClient(request.getManager(), (ServerPlayer) context.getPlayer(), new GenericResponsePacket(packet.requestID, packet.requestTypeID, responseBuf));
+                });
             }
             catch (Exception e) {
                 // Handle any exceptions that may occur during decoding/encoding
                 ModUtilitiesMod.LOGGER.error("Error handling GenericRequestPacket: " + e.getMessage(), e);
                 return; // Exit if an error occurs
             }
-            sendResponseToClient(request.getManager(), (ServerPlayer) context.getPlayer(), new GenericResponsePacket(packet.requestID, packet.requestTypeID, responseData));
         }
 
         @Override
@@ -65,15 +68,16 @@ public final class GenericRequestPacket extends NetworkPacket
             }
             RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufClientSide();
             try {
-                request.decodeHandleEncodeOnClient(packet.data, responseData);
+                CompletableFuture<RegistryFriendlyByteBuf> fut = request.decodeHandleEncodeOnClient(packet.data, responseData);
+                fut.thenAccept(responseBuf -> {
+                    sendResponseToServer(request.getManager(), new GenericResponsePacket(packet.requestID, packet.requestTypeID, responseBuf));
+                });
             }
             catch (Exception e) {
                 // Handle any exceptions that may occur during decoding/encoding
                 ModUtilitiesMod.LOGGER.error("Error handling GenericRequestPacket: " + e.getMessage(), e);
                 return; // Exit if an error occurs
             }
-
-            sendResponseToServer(request.getManager(), new GenericResponsePacket(packet.requestID, packet.requestTypeID, responseData));
         }
 
 
