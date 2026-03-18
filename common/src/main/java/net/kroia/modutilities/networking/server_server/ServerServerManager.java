@@ -3,21 +3,25 @@ package net.kroia.modutilities.networking.server_server;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.networking.server_server.master.MasterTCPServer;
 import net.kroia.modutilities.networking.server_server.slave.SlaveServerClient;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.MinecraftServer;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.List;
+import java.util.UUID;
 
 public class ServerServerManager
 {
     private static ServerServerManager instance;
 
     private final @Nullable MasterTCPServer  tcpServer;
-    private final @Nullable SlaveServerClient slavePacketHandler;
+    private final @Nullable SlaveServerClient slaveClient;
 
 
 
     private ServerServerManager(@Nullable MasterTCPServer master, @Nullable SlaveServerClient slave) {
         this.tcpServer = master;
-        this.slavePacketHandler = slave;
+        this.slaveClient = slave;
     }
 
     /**
@@ -34,6 +38,7 @@ public class ServerServerManager
             warn("Can't create master since there is already an existing instance of type: "+ ((instance.isSlave())?"Slave":"Master"));
             return false;
         }
+        ServerServerPacketRegistry.onCreate(mcServer);
         MasterTCPServer master = new MasterTCPServer(mcServer, sharedSecret, tcpPort);
         instance = new ServerServerManager(master, null);
         return true;
@@ -45,6 +50,7 @@ public class ServerServerManager
             warn("Can't create master since there is already an existing instance of type: "+ ((instance.isSlave())?"Slave":"Master"));
             return false;
         }
+        ServerServerPacketRegistry.onCreate(mcServer);
         SlaveServerClient slave = new SlaveServerClient(mcServer, sharedSecret, slaveServerID,  masterHostIP, masterHostTcpPort);
         instance = new ServerServerManager(null, slave);
         return true;
@@ -56,7 +62,7 @@ public class ServerServerManager
     {
         if(instance == null)
             return false;
-        return instance.slavePacketHandler != null;
+        return instance.slaveClient != null;
     }
     public static boolean isMaster()
     {
@@ -83,13 +89,13 @@ public class ServerServerManager
         }
         else
         {
-            assert instance.slavePacketHandler != null;
-            if(instance.slavePacketHandler.isConnected())
+            assert instance.slaveClient != null;
+            if(instance.slaveClient.isConnected())
             {
                 warn("Already connected to the master");
                 return true;
             }
-            instance.slavePacketHandler.connect();
+            instance.slaveClient.connect();
         }
         return true;
     }
@@ -107,7 +113,7 @@ public class ServerServerManager
         }
         else
         {
-            instance.slavePacketHandler.disconnect();
+            instance.slaveClient.disconnect();
         }
         return true;
     }
@@ -122,8 +128,8 @@ public class ServerServerManager
         }
         else
         {
-            assert instance.slavePacketHandler != null;
-            return instance.slavePacketHandler.isConnected();
+            assert instance.slaveClient != null;
+            return instance.slaveClient.isConnected();
         }
     }
 
@@ -144,13 +150,164 @@ public class ServerServerManager
             }
             else
             {
-                assert instance.slavePacketHandler != null;
-                instance.slavePacketHandler.disconnect();
+                assert instance.slaveClient != null;
+                instance.slaveClient.disconnect();
             }
         }
         instance = null;
     }
 
+
+
+    public static void sendToMaster(CustomPacketPayload packet)
+    {
+        if(checkSendToMaster())
+            instance.slaveClient.sendToMaster(null, packet);
+    }
+    public static void sendToMaster(UUID senderPlayerUUID, CustomPacketPayload packet)
+    {
+        if(checkSendToMaster())
+            instance.slaveClient.sendToMaster(senderPlayerUUID, packet);
+    }
+
+
+
+
+    public static void sendToSlave(String serverId, CustomPacketPayload packet)
+    {
+        if(checkSendToSlave(serverId))
+            instance.tcpServer.sendToSlave(null,serverId, packet);
+    }
+    public static void sendToSlave(UUID senderPlayerUUID, String serverId, CustomPacketPayload packet)
+    {
+        if(checkSendToSlave(serverId))
+            instance.tcpServer.sendToSlave(senderPlayerUUID,serverId, packet);
+    }
+    public static void broadcastToSlaves(CustomPacketPayload packet)
+    {
+        if(checkBroadcastToSlaves())
+            instance.tcpServer.broadcastToSlaves(null,packet);
+    }
+    public static void broadcastToSlaves(UUID senderPlayerUUID, CustomPacketPayload packet)
+    {
+        if(checkBroadcastToSlaves())
+            instance.tcpServer.broadcastToSlaves(senderPlayerUUID,packet);
+    }
+    public static void broadcastToSlaves(CustomPacketPayload packet, String excludeServerId)
+    {
+        if(checkBroadcastToSlaves())
+            instance.tcpServer.broadcastToSlaves(null,packet, excludeServerId);
+    }
+    public static void broadcastToSlaves(UUID senderPlayerUUID, CustomPacketPayload packet, String excludeServerId)
+    {
+        if(checkBroadcastToSlaves())
+            instance.tcpServer.broadcastToSlaves(senderPlayerUUID,packet, excludeServerId);
+    }
+    public static void broadcastToSlaves(CustomPacketPayload packet, List<String> excludeServerIds)
+    {
+        if(checkBroadcastToSlaves())
+            instance.tcpServer.broadcastToSlaves(null,packet, excludeServerIds);
+    }
+    public static void broadcastToSlaves(UUID senderPlayerUUID, CustomPacketPayload packet, List<String> excludeServerIds)
+    {
+        if(checkBroadcastToSlaves())
+            instance.tcpServer.broadcastToSlaves(senderPlayerUUID,packet, excludeServerIds);
+    }
+
+
+
+    private static boolean checkSendToMaster()
+    {
+        if(instance == null)
+        {
+            error("sendToMaster(packet): Cant send a packet before initializing the ServerServerManager as slave by calling ServerServerManager.createSlave(...)");
+            return false;
+        }
+        if(instance.slaveClient == null)
+        {
+            if(instance.tcpServer != null)
+            {
+                error("sendToMaster(packet): It seems like this ServerServerManager is initialized as master. A master can't send packets to another master!");
+            }
+            else  {
+                throw new IllegalStateException("sendToMaster(packet): It should not be possible that the ServerServerManager is initialized, but neither as master nor as slave");
+            }
+            return false;
+        }
+        if(!instance.slaveClient.isConnected())
+        {
+            if(instance.slaveClient.isConnected())
+            {
+                error("sendToMaster(packet): Failed to establish a connection to the Master during initialization. Reason: "+instance.slaveClient.getConnectionFailReason());
+            }
+            else
+                error("sendToMaster(packet): The connection to the Master has not yet been established. Have you forgotten to call ServerServerManager.start()?");
+            return false;
+        }
+        return true;
+    }
+    private static boolean checkSendToSlave(String serverId)
+    {
+        if(instance == null)
+        {
+            error("sendToSlave(targetServer='"+serverId+"', packet): Cant send a packet before initializing the ServerServerManager as master by calling ServerServerManager.createMaster(...)");
+            return false;
+        }
+
+        if(instance.tcpServer == null)
+        {
+            if(instance.slaveClient != null)
+            {
+                error("sendToSlave(targetServer='"+serverId+"', packet): It seems like this ServerServerManager is initialized as slave. A slave can't send packets to another slave!");
+            }
+            else  {
+                throw new IllegalStateException("sendToSlave(targetServer='"+serverId+"', packet): It should not be possible that the ServerServerManager is initialized, but neither as master nor as slave");
+            }
+            return false;
+        }
+        if(!instance.tcpServer.isRunning())
+        {
+            if(instance.tcpServer.isStartupFailed())
+            {
+                error("sendToSlave(targetServer='"+serverId+"', packet): The TCP server had failed to startup during initialization. Reason: "+instance.tcpServer.getStartupFailReason());
+            }
+            else
+                error("sendToSlave(targetServer='"+serverId+"', packet): The TCP server is not running. Have you forgotten to call ServerServerManager.start()?");
+            return false;
+        }
+        return true;
+    }
+    private static boolean checkBroadcastToSlaves()
+    {
+        if(instance == null)
+        {
+            error("broadcastToSlaves(...): Cant broadcast a packet before initializing the ServerServerManager as master by calling ServerServerManager.createMaster(...)");
+            return false;
+        }
+
+        if(instance.tcpServer == null)
+        {
+            if(instance.slaveClient != null)
+            {
+                error("broadcastToSlaves(...): It seems like this ServerServerManager is initialized as slave. A slave can't broadcast packets to another slave!");
+            }
+            else  {
+                throw new IllegalStateException("broadcastToSlaves(...): It should not be possible that the ServerServerManager is initialized, but neither as master nor as slave");
+            }
+            return false;
+        }
+        if(!instance.tcpServer.isRunning())
+        {
+            if(instance.tcpServer.isStartupFailed())
+            {
+                error("broadcastToSlaves(...): The TCP server had failed to startup during initialization. Reason: "+instance.tcpServer.getStartupFailReason());
+            }
+            else
+                error("broadcastToSlaves(...): The TCP server is not running. Have you forgotten to call ServerServerManager.start()?");
+            return false;
+        }
+        return true;
+    }
 
     private static void info(String message) {
         ModUtilitiesMod.LOGGER.info("[ServerServerManager]: "+message);

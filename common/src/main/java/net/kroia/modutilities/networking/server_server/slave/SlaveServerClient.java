@@ -10,17 +10,22 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
 import net.kroia.modutilities.ModUtilitiesMod;
+import net.kroia.modutilities.networking.server_server.ServerServerPacketRegistry;
 import net.kroia.modutilities.networking.server_server.codec.PayloadDecoder;
 import net.kroia.modutilities.networking.server_server.codec.PayloadEncoder;
+import net.kroia.modutilities.networking.server_server.payload.ForwardPacketPayload;
 import net.kroia.modutilities.networking.server_server.payload.HandshakePayload;
 import net.kroia.modutilities.networking.server_server.payload.Payload;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.MinecraftServer;
+import org.jetbrains.annotations.Nullable;
 
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 public class SlaveServerClient {
-    private final String hubHost;
-    private final int    hubPort;
+    private final String masterHost;
+    private final int    masterPort;
     private final String serverId;
     private final String sharedSecret;
     private final MinecraftServer  mcServer;
@@ -29,10 +34,12 @@ public class SlaveServerClient {
     private Channel channel;
     private volatile boolean shuttingDown = false;
 
+    private @Nullable Throwable connectionFailReason = null;
+
     public SlaveServerClient(MinecraftServer mcServer, String sharedSecret, String slaveServerID, String masterHostIP, int masterHostTcpPort)
     {
-        this.hubHost = masterHostIP;
-        this.hubPort = masterHostTcpPort;
+        this.masterHost = masterHostIP;
+        this.masterPort = masterHostTcpPort;
         this.serverId = slaveServerID;
         this.sharedSecret = sharedSecret;
         this.mcServer = mcServer;
@@ -46,7 +53,7 @@ public class SlaveServerClient {
     {
         if (shuttingDown)
             return;
-        info("Connecting to " + hubHost + ":" + hubPort);
+        info("Connecting to " + masterHost + ":" + masterPort);
 
         SlaveServerClient client = this;
         Bootstrap bootstrap = new Bootstrap()
@@ -60,23 +67,25 @@ public class SlaveServerClient {
                                 .addLast(new LengthFieldBasedFrameDecoder(1 << 21, 0, 3, 0, 3))
                                 // ② Frame length prepender
                                 .addLast(new LengthFieldPrepender(3))
-                                // ③ bytes → HubPayload
+                                // ③ bytes → masterPayload
                                 .addLast(new PayloadDecoder())
-                                // ④ HubPayload → bytes
+                                // ④ masterPayload → bytes
                                 .addLast(new PayloadEncoder())
-                                // ⑤ Handle packets received FROM the hub
+                                // ⑤ Handle packets received FROM the master
                                 .addLast(new SlavePacketHandler(mcServer, client));
                     }
                 });
 
-        bootstrap.connect(hubHost, hubPort).addListener((ChannelFuture future) -> {
+        bootstrap.connect(masterHost, masterPort).addListener((ChannelFuture future) -> {
             if (future.isSuccess()) {
                 channel = future.channel();
-                info("Connected to hub at "+hubHost+":" + hubPort);
-                // Immediately authenticate with the hub
-                sendToHub(new HandshakePayload(serverId, sharedSecret));
+                connectionFailReason = null;
+                info("Connected to master at "+masterHost+":" + masterPort);
+                // Immediately authenticate with the master
+                sendToMaster(new HandshakePayload(serverId, sharedSecret));
             } else {
-                warn("Could not connect to hub — retrying in 5s...");
+                connectionFailReason =  future.cause();
+                warn("Could not connect to master — retrying in 5s... Reason: "+connectionFailReason);
                 scheduleReconnect();
             }
         });
@@ -92,28 +101,40 @@ public class SlaveServerClient {
         shuttingDown = true;
         if (channel != null) channel.close();
         group.shutdownGracefully();
-        info("Disconnected from hub.");
+        connectionFailReason = null;
+        info("Disconnected from master.");
     }
 
     public boolean isConnected() {
         return channel != null && channel.isActive();
     }
 
+    public boolean isConnectionFailed() {
+        return connectionFailReason != null;
+    }
+    public @Nullable Throwable getConnectionFailReason() {
+        return connectionFailReason;
+    }
+
     // ── Send ──────────────────────────────────────────────────────────────────
 
     /**
-     * Send any {@link Payload} to the hub.
+     * Send any {@link Payload} to the master.
      * Thread-safe — Netty queues the write internally.
      */
-    public void sendToHub(Payload payload) {
+    public void sendToMaster(@Nullable UUID senderPlayerUUID, CustomPacketPayload packet) {
+        ForwardPacketPayload payload = ServerServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID, serverId, packet);
+        sendToMaster(payload);
+    }
+    public void sendToMaster(Payload payload) {
         if (channel != null && channel.isActive()) {
             channel.writeAndFlush(payload).addListener(f -> {
                 if (!f.isSuccess()) {
-                    error("Failed to send "+payload.getClass().getSimpleName()+" to hub", f.cause());
+                    error("Failed to send "+payload.getClass().getSimpleName()+" to master", f.cause());
                 }
             });
         } else {
-            warn("Cannot send — not connected to hub.");
+            warn("Cannot send — not connected to master.");
         }
     }
 

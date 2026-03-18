@@ -10,12 +10,18 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
 import net.kroia.modutilities.ModUtilitiesMod;
+import net.kroia.modutilities.networking.server_server.ServerServerPacketRegistry;
 import net.kroia.modutilities.networking.server_server.codec.PayloadDecoder;
 import net.kroia.modutilities.networking.server_server.codec.PayloadEncoder;
+import net.kroia.modutilities.networking.server_server.payload.ForwardPacketPayload;
 import net.kroia.modutilities.networking.server_server.payload.Payload;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.MinecraftServer;
+import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class MasterTCPServer {
@@ -30,6 +36,8 @@ public class MasterTCPServer {
     private final String sharedSecret;
     private final MinecraftServer mcServer;
     private final int tcpPort;
+
+    private @Nullable Throwable startupFailReason = null;
 
 
     public MasterTCPServer(MinecraftServer mcServer, String sharedSecret, int tcpPort)
@@ -47,7 +55,7 @@ public class MasterTCPServer {
      */
     public void start()
     {
-        info("Starting Server TCP Server on port " + tcpPort);
+        info("Starting TCP Server on port " + tcpPort);
         bossGroup  = new NioEventLoopGroup(1);
         workerGroup = new NioEventLoopGroup();
 
@@ -75,10 +83,11 @@ public class MasterTCPServer {
         bootstrap.bind(tcpPort).addListener((ChannelFuture future) -> {
             if (future.isSuccess()) {
                 serverChannel = future.channel();
-                info("Hub TCP listener started on port "+ tcpPort);
+                startupFailReason = null;
+                info("TCP listener started on port "+ tcpPort);
             } else {
-                error("Failed to bind hub TCP port "+ tcpPort,
-                        future.cause());
+                startupFailReason = future.cause();
+                error("Failed to bind TCP port: "+ tcpPort, startupFailReason);
             }
         });
     }
@@ -87,30 +96,66 @@ public class MasterTCPServer {
         if (serverChannel != null) serverChannel.close();
         if (bossGroup  != null) bossGroup.shutdownGracefully();
         if (workerGroup != null) workerGroup.shutdownGracefully();
-        info("Hub TCP listener stopped.");
+        startupFailReason =  null;
+        info("TCP listener stopped.");
     }
 
     // ── Routing helpers ───────────────────────────────────────────────────────
 
     /** Send a payload to one specific child server. */
-    public void sendToChild(String serverId, Payload payload) {
-        Channel ch = CHILD_SERVERS.get(serverId);
+    public void sendToSlave(@Nullable UUID senderPlayerUUID, String targetServerID, CustomPacketPayload packet) {
+        ForwardPacketPayload payload = ServerServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID, "", packet);
+        sendToSlave(targetServerID, payload);
+    }
+
+    /** Broadcast a payload to all connected child servers. */
+    public void broadcastToSlaves(@Nullable UUID senderPlayerUUID, CustomPacketPayload packet) {
+        ForwardPacketPayload payload = ServerServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID, "", packet);
+        broadcastToSlaves(payload);
+    }
+
+    /** Broadcast to all children EXCEPT the one with {@code excludeServerId}. */
+    public void broadcastToSlaves(@Nullable UUID senderPlayerUUID, CustomPacketPayload packet, String excludeServerId) {
+        ForwardPacketPayload payload = ServerServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID, "", packet);
+        broadcastToSlaves(payload, excludeServerId);
+    }
+
+    public void broadcastToSlaves(@Nullable UUID senderPlayerUUID, CustomPacketPayload packet, List<String> excludeServerIds) {
+        ForwardPacketPayload payload = ServerServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID, "", packet);
+        broadcastToSlaves(payload, excludeServerIds);
+    }
+
+
+
+    /** Send a payload to one specific child server. */
+    public void sendToSlave(String targetServerID, Payload payload) {
+        Channel ch = CHILD_SERVERS.get(targetServerID);
         if (ch != null && ch.isActive()) {
             ch.writeAndFlush(payload);
         } else {
-            warn("sendToChild: server '"+serverId+"' not connected");
+            warn("sendToChild: server '"+targetServerID+"' not connected");
         }
     }
 
     /** Broadcast a payload to all connected child servers. */
-    public void broadcastToChildren(Payload payload) {
-        broadcastToChildren(payload, null);
+    public void broadcastToSlaves(Payload payload) {
+        CHILD_SERVERS.forEach((id, ch) -> {
+            ch.writeAndFlush(payload);
+        });
     }
 
     /** Broadcast to all children EXCEPT the one with {@code excludeServerId}. */
-    public void broadcastToChildren(Payload payload, String excludeServerId) {
+    public void broadcastToSlaves(Payload payload, String excludeServerId) {
         CHILD_SERVERS.forEach((id, ch) -> {
             if (!id.equals(excludeServerId) && ch.isActive()) {
+                ch.writeAndFlush(payload);
+            }
+        });
+    }
+
+    public void broadcastToSlaves(Payload payload, List<String> excludeServerIds) {
+        CHILD_SERVERS.forEach((id, ch) -> {
+            if(!excludeServerIds.contains(id)) {
                 ch.writeAndFlush(payload);
             }
         });
@@ -133,6 +178,12 @@ public class MasterTCPServer {
 
     public boolean isRunning() {
         return serverChannel != null && serverChannel.isActive();
+    }
+    public boolean isStartupFailed() {
+        return startupFailReason != null;
+    }
+    public @Nullable Throwable getStartupFailReason() {
+        return startupFailReason;
     }
 
 

@@ -1,15 +1,14 @@
 package net.kroia.modutilities.networking.server_server.master;
 
-import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import net.kroia.modutilities.ModUtilitiesMod;
+import net.kroia.modutilities.networking.server_server.ForwardPacketContext;
 import net.kroia.modutilities.networking.server_server.ServerServerPacketRegistry;
 import net.kroia.modutilities.networking.server_server.payload.HandshakePayload;
 import net.kroia.modutilities.networking.server_server.payload.ForwardPacketPayload;
 import net.kroia.modutilities.networking.server_server.payload.Payload;
-import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.resources.ResourceLocation;
@@ -55,9 +54,10 @@ public class MasterPacketHandler extends SimpleChannelInboundHandler<Payload> {
                 info("Received ForwardPacketPayload from child server: "+bb.senderServerID());
 
                 ResourceLocation packetResouceLoc = bb.packetType();
-                ByteBuf dataBuf =  Unpooled.buffer();
+                RegistryFriendlyByteBuf dataBuf =  new RegistryFriendlyByteBuf(Unpooled.buffer(), mcServer.registryAccess());
                 ByteBufCodecs.BYTE_ARRAY.encode(dataBuf, bb.data());
-                ServerServerPacketRegistry.handleByteBufOnMasterSide(packetResouceLoc, dataBuf, ctx);
+                ForwardPacketContext context = new ForwardPacketContext(ctx, bb.senderServerID(), bb.senderPlayerUUID());
+                ServerServerPacketRegistry.handleByteBufOnMasterSide(packetResouceLoc, dataBuf, context);
             }
 
             default ->

@@ -4,6 +4,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
 import io.netty.handler.codec.DecoderException;
+import net.kroia.modutilities.networking.ExtraCodecUtils;
 import net.kroia.modutilities.networking.server_server.payload.*;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -39,8 +40,7 @@ public class PayloadDecoder extends ByteToMessageDecoder {
                     readString(in)   // message
             );
             case PacketIds.FORWARD_PACKET -> new ForwardPacketPayload(
-                    UUIDUtil.STREAM_CODEC.decode(in),
-                    ByteBufCodecs.STRING_UTF8.decode(in),
+                    ExtraCodecUtils.nullable(UUIDUtil.STREAM_CODEC).decode(in),
                     ByteBufCodecs.STRING_UTF8.decode(in),
                     ResourceLocation.STREAM_CODEC.decode(in),
                     ByteBufCodecs.BYTE_ARRAY.decode(in)

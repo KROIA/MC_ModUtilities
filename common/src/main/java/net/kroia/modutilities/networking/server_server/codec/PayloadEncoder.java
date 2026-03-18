@@ -3,6 +3,7 @@ package net.kroia.modutilities.networking.server_server.codec;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
+import net.kroia.modutilities.networking.ExtraCodecUtils;
 import net.kroia.modutilities.networking.server_server.payload.BroadcastPayload;
 import net.kroia.modutilities.networking.server_server.payload.ForwardPacketPayload;
 import net.kroia.modutilities.networking.server_server.payload.HandshakePayload;
@@ -15,16 +16,6 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * Converts a {@link Payload} Java object into raw bytes to send over TCP.
- *
- * Wire format per message (after LengthFieldPrepender adds the frame length):
- * ┌──────────┬──────────────────────────────────────────┐
- * │  ID (1B) │  Fields (variable)                       │
- * └──────────┴──────────────────────────────────────────┘
- *
- * Strings are encoded as:
- * ┌──────────────┬───────────────┐
- * │ length (2B)  │ UTF-8 bytes   │
- * └──────────────┴───────────────┘
  */
 public class PayloadEncoder extends MessageToByteEncoder<Payload> {
 
@@ -44,9 +35,8 @@ public class PayloadEncoder extends MessageToByteEncoder<Payload> {
                 writeString(out, bc.message());
             }
             case ForwardPacketPayload bb -> {
-                UUIDUtil.STREAM_CODEC.encode(out, bb.senderId());
+                ExtraCodecUtils.nullable(UUIDUtil.STREAM_CODEC).encode(out, bb.senderPlayerUUID());
                 ByteBufCodecs.STRING_UTF8.encode(out, bb.senderServerID());
-                ByteBufCodecs.STRING_UTF8.encode(out, bb.targetServerID());
                 ResourceLocation.STREAM_CODEC.encode(out, bb.packetType());
                 ByteBufCodecs.BYTE_ARRAY.encode(out, bb.data());
             }

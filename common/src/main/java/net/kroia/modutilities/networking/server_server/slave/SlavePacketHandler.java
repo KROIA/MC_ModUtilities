@@ -1,14 +1,15 @@
 package net.kroia.modutilities.networking.server_server.slave;
 
-import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import net.kroia.modutilities.ModUtilitiesMod;
+import net.kroia.modutilities.networking.server_server.ForwardPacketContext;
 import net.kroia.modutilities.networking.server_server.ServerServerPacketRegistry;
 import net.kroia.modutilities.networking.server_server.payload.BroadcastPayload;
 import net.kroia.modutilities.networking.server_server.payload.ForwardPacketPayload;
 import net.kroia.modutilities.networking.server_server.payload.Payload;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.resources.ResourceLocation;
@@ -49,11 +50,11 @@ public class SlavePacketHandler extends SimpleChannelInboundHandler<Payload> {
             }
             case ForwardPacketPayload bb -> {
                 debug("bytes received from: "+bb.senderServerID()+" "+bb.data().length+" bytes");
-
                 ResourceLocation packetResouceLoc = bb.packetType();
-                ByteBuf dataBuf =  Unpooled.buffer();
+                RegistryFriendlyByteBuf dataBuf =  new RegistryFriendlyByteBuf(Unpooled.buffer(), mcServer.registryAccess());
                 ByteBufCodecs.BYTE_ARRAY.encode(dataBuf, bb.data());
-                ServerServerPacketRegistry.handleByteBufOnSlaveSide(packetResouceLoc, dataBuf, ctx);
+                ForwardPacketContext context = new ForwardPacketContext(ctx, bb.senderServerID(), bb.senderPlayerUUID());
+                ServerServerPacketRegistry.handleByteBufOnSlaveSide(packetResouceLoc, dataBuf, context);
             }
 
             default ->
