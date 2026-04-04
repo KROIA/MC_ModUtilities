@@ -5,6 +5,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -36,6 +37,11 @@ public abstract class GenericRequest<IN, OUT>
      */
     public abstract String getRequestTypeID();
 
+
+
+    public boolean needsRoutingToMaster() { return false; }
+
+
     /**
      * Handles the request on the client side.
      * This method is called when the request is processed on the client. (Server is requestor)
@@ -63,6 +69,9 @@ public abstract class GenericRequest<IN, OUT>
      */
     public CompletableFuture<OUT> handleOnServer(IN input, ServerPlayer sender) {
         throw new AssertionError("handleOnServer() is not implemented in " + this.getRequestTypeID() + ". Please implement this method to handle the request on the server side.");
+    }
+    public CompletableFuture<OUT> handleOnMasterServer(IN input, UUID playerSender) {
+        throw new AssertionError("handleOnMasterServer() is not implemented in " + this.getRequestTypeID() + ". Please implement this method to handle the request on the server side.");
     }
 
 
@@ -200,6 +209,18 @@ public abstract class GenericRequest<IN, OUT>
     {
         IN input = decodeInput(inputBuf);
         CompletableFuture<OUT> output = handleOnServer(input, sender);
+        CompletableFuture<RegistryFriendlyByteBuf> byteBufFut = new CompletableFuture<>();
+        output.thenAccept(responseData -> {
+            encodeOutput(outputBuf, responseData);
+            byteBufFut.complete(outputBuf);
+        });
+        return byteBufFut;
+    }
+
+    public CompletableFuture<RegistryFriendlyByteBuf> decodeHandleEncodeOnMasterServer(RegistryFriendlyByteBuf inputBuf, RegistryFriendlyByteBuf outputBuf, UUID playerSender)
+    {
+        IN input = decodeInput(inputBuf);
+        CompletableFuture<OUT> output = handleOnMasterServer(input, playerSender);
         CompletableFuture<RegistryFriendlyByteBuf> byteBufFut = new CompletableFuture<>();
         output.thenAccept(responseData -> {
             encodeOutput(outputBuf, responseData);

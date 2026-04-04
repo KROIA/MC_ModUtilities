@@ -41,6 +41,7 @@ public class PayloadDecoder extends ByteToMessageDecoder {
             );
             case PacketIds.FORWARD_PACKET -> new ForwardPacketPayload(
                     ExtraCodecUtils.nullable(UUIDUtil.STREAM_CODEC).decode(in),
+                    ExtraCodecUtils.nullable(UUIDUtil.STREAM_CODEC).decode(in),
                     ByteBufCodecs.STRING_UTF8.decode(in),
                     ResourceLocation.STREAM_CODEC.decode(in),
                     ByteBufCodecs.BYTE_ARRAY.decode(in)

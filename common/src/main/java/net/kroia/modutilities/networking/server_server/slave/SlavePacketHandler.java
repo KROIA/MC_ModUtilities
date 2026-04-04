@@ -1,5 +1,6 @@
 package net.kroia.modutilities.networking.server_server.slave;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -51,9 +52,12 @@ public class SlavePacketHandler extends SimpleChannelInboundHandler<Payload> {
             case ForwardPacketPayload bb -> {
                 debug("bytes received from: "+bb.senderServerID()+" "+bb.data().length+" bytes");
                 ResourceLocation packetResouceLoc = bb.packetType();
-                RegistryFriendlyByteBuf dataBuf =  new RegistryFriendlyByteBuf(Unpooled.buffer(), mcServer.registryAccess());
-                ByteBufCodecs.BYTE_ARRAY.encode(dataBuf, bb.data());
-                ForwardPacketContext context = new ForwardPacketContext(ctx, bb.senderServerID(), bb.senderPlayerUUID());
+                ByteBuf buf = Unpooled.buffer();
+                buf.writeBytes(bb.data());
+                RegistryFriendlyByteBuf dataBuf =  new RegistryFriendlyByteBuf(buf, mcServer.registryAccess());
+                //RegistryFriendlyByteBuf dataBuf =  new RegistryFriendlyByteBuf(Unpooled.buffer(), mcServer.registryAccess());
+                //ByteBufCodecs.BYTE_ARRAY.encode(dataBuf, bb.data());
+                ForwardPacketContext context = new ForwardPacketContext(ctx, bb.senderServerID(), bb.senderPlayerUUID(), bb.packetIdentifier());
                 ServerServerPacketRegistry.handleByteBufOnSlaveSide(packetResouceLoc, dataBuf, context);
             }
 

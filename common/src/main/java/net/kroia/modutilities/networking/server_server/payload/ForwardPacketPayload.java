@@ -6,6 +6,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 
 public record ForwardPacketPayload(
+        @Nullable UUID packetIdentifier,
         @Nullable UUID senderPlayerUUID,
         String senderServerID,
         ResourceLocation packetType,

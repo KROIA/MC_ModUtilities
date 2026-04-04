@@ -169,6 +169,11 @@ public class ServerServerManager
         if(checkSendToMaster())
             instance.slaveClient.sendToMaster(senderPlayerUUID, packet);
     }
+    public static void sendToMaster(@Nullable UUID packetIdentifier, @Nullable UUID senderPlayerUUID, CustomPacketPayload packet)
+    {
+        if(checkSendToMaster())
+            instance.slaveClient.sendToMaster(packetIdentifier, senderPlayerUUID, packet);
+    }
 
 
 

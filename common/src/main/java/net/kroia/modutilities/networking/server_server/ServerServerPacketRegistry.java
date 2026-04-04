@@ -23,13 +23,16 @@ public class ServerServerPacketRegistry
     {
         public final StreamCodec<RegistryFriendlyByteBuf, T> streamCodec;
         public final ForwardPacketHandler<? super T> handler;
+        public final String name;
 
 
         public RegistryObject(StreamCodec<RegistryFriendlyByteBuf, T> streamCodec,
-                              ForwardPacketHandler<? super T> handler)
+                              ForwardPacketHandler<? super T> handler,
+                              String name)
         {
             this.streamCodec = streamCodec;
             this.handler = handler;
+            this.name = name;
         }
 
         public RegistryFriendlyByteBuf encode(T packet)
@@ -73,7 +76,7 @@ public class ServerServerPacketRegistry
             throw new RuntimeException("ServerServerPacketRegistry.register(...): Packet with packetID = "+loc+" is already registered!");
         }
 
-        RegistryObject registryObject = new RegistryObject(codec, handler);
+        RegistryObject registryObject = new RegistryObject(codec, handler, packetType.id().toString());
         registry.put(loc, registryObject);
     }
 
@@ -136,7 +139,8 @@ public class ServerServerPacketRegistry
     }
 
 
-    public static ForwardPacketPayload createForwardPacketPayload(@Nullable UUID senderPlayerUUID,
+    public static ForwardPacketPayload createForwardPacketPayload(@Nullable UUID packetIdentifier,
+                                                                  @Nullable UUID senderPlayerUUID,
                                                                   String senderServerID,
                                                                   CustomPacketPayload packet)
     {
@@ -144,8 +148,10 @@ public class ServerServerPacketRegistry
         RegistryObject  registryObject = registry.get(packetType);
         if(registryObject==null)
             return null;
-        byte[] data = ByteBufCodecs.BYTE_ARRAY.decode(registryObject.encode(packet));
-        ForwardPacketPayload payload = new ForwardPacketPayload(senderPlayerUUID, senderServerID, packetType, data);
+        RegistryFriendlyByteBuf encoded = registryObject.encode(packet);
+        //byte[] data = ByteBufCodecs.BYTE_ARRAY.decode(encoded);
+        byte[] data = encoded.array();
+        ForwardPacketPayload payload = new ForwardPacketPayload(packetIdentifier, senderPlayerUUID, senderServerID, packetType, data);
         return payload;
     }
 

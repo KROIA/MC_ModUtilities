@@ -2,15 +2,19 @@ package net.kroia.modutilities.networking.client_server.arrs;
 
 import dev.architectury.networking.NetworkManager;
 import net.kroia.modutilities.ModUtilitiesMod;
+import net.kroia.modutilities.UtilitiesPlatform;
 import net.kroia.modutilities.networking.ExtraCodecUtils;
 import net.kroia.modutilities.networking.client_server.NetworkPacket;
 import net.kroia.modutilities.networking.client_server.PacketHandler;
+import net.kroia.modutilities.networking.server_server.ForwardPacketContext;
+import net.kroia.modutilities.networking.server_server.ForwardPacketHandler;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.UUID;
@@ -31,8 +35,10 @@ public final class GenericResponsePacket extends NetworkPacket
             GenericResponsePacket::new
     );
 
-    public static final PacketHandler<GenericResponsePacket> HANDLER = new PacketHandler<>(){
-
+    public static class GenericResponsePacketHandler implements
+            PacketHandler<GenericResponsePacket>,
+            ForwardPacketHandler<GenericResponsePacket>
+    {
         @Override
         public void handleServer(GenericResponsePacket packet, NetworkManager.PacketContext context) {
             try {
@@ -48,6 +54,7 @@ public final class GenericResponsePacket extends NetworkPacket
         @Override
         public void handleClient(GenericResponsePacket packet, NetworkManager.PacketContext context) {
             try{
+                ModUtilitiesMod.LOGGER.info("Handling GenericResponsePacket on client: "+packet.requestTypeID);
                 AsynchronousRequestResponseSystem.processResponseOnClient(packet);
             }
             catch (Exception e) {
@@ -56,7 +63,39 @@ public final class GenericResponsePacket extends NetworkPacket
                 return; // Exit if an error occurs
             }
         }
-    };
+
+        @Override
+        public void handleMaster(GenericResponsePacket packet, ForwardPacketContext context) {
+
+        }
+
+        @Override
+        public void handleSlave(GenericResponsePacket packet, ForwardPacketContext context) {
+            var request = AsynchronousRequestResponseSystem.getRegisteredRequest(packet.requestTypeID);
+            if (request == null) {
+                return; // No factory found for this request type
+            }
+            ModUtilitiesMod.LOGGER.info("Handle response on slave server: "+packet.requestTypeID);
+            //RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
+            try {
+                MinecraftServer server = UtilitiesPlatform.getServer();
+                if(server == null)
+                    return;
+                ServerPlayer targetPlayer = server.getPlayerList().getPlayer(context.senderPlayerUUID);
+                if(targetPlayer == null)
+                    return;
+                request.getManager().getNetworkManager().sendToClient(targetPlayer, packet);
+            }
+            catch (Exception e) {
+                // Handle any exceptions that may occur during decoding/encoding
+                ModUtilitiesMod.LOGGER.error("Error handling GenericResponsePacket: " + e.getMessage(), e);
+                return; // Exit if an error occurs
+            }
+        }
+    }
+
+
+    public static final GenericResponsePacketHandler HANDLER = new GenericResponsePacketHandler();
 
 
 

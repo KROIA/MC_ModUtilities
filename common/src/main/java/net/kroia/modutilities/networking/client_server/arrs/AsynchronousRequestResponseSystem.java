@@ -1,6 +1,8 @@
 package net.kroia.modutilities.networking.client_server.arrs;
 
 import net.kroia.modutilities.networking.client_server.ClientServerPacketManager;
+import net.kroia.modutilities.networking.server_server.ServerServerManager;
+import net.kroia.modutilities.networking.server_server.ServerServerPacketRegistry;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.NotNull;
 
@@ -53,7 +55,9 @@ public class AsynchronousRequestResponseSystem {
 
         // Register packets for ARRS
         networkManager.registerC2S(GenericRequestPacket.TYPE, GenericRequestPacket.STREAM_CODEC, GenericRequestPacket.HANDLER);
+        ServerServerPacketRegistry.register(GenericRequestPacket.TYPE, GenericRequestPacket.STREAM_CODEC, GenericRequestPacket.HANDLER);
         networkManager.registerS2C(GenericResponsePacket.TYPE,  GenericResponsePacket.STREAM_CODEC, GenericResponsePacket.HANDLER);
+        ServerServerPacketRegistry.register(GenericResponsePacket.TYPE,  GenericResponsePacket.STREAM_CODEC, GenericResponsePacket.HANDLER);
     }
 
 

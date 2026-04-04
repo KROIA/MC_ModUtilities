@@ -1,5 +1,6 @@
 package net.kroia.modutilities.networking.server_server;
 
+import com.google.gson.JsonObject;
 import io.netty.channel.ChannelHandlerContext;
 import org.jetbrains.annotations.Nullable;
 
@@ -29,10 +30,25 @@ public class ForwardPacketContext
      */
     public final @Nullable UUID senderPlayerUUID;
 
-    public ForwardPacketContext(ChannelHandlerContext channelContext, String senderServerID, @Nullable UUID senderPlayerUUID)
+    public final @Nullable UUID packetIdentifier;
+
+    public ForwardPacketContext(ChannelHandlerContext channelContext, String senderServerID, @Nullable UUID senderPlayerUUID, @Nullable UUID packetIdentifier)
     {
         this.channelContext = channelContext;
         this.senderServerID = senderServerID;
         this.senderPlayerUUID = senderPlayerUUID;
+        this.packetIdentifier = packetIdentifier;
+    }
+
+    @Override
+    public String toString()
+    {
+        // this class to Json
+        JsonObject jsonObject = new JsonObject();
+        jsonObject.addProperty("channelContext", channelContext.toString());
+        jsonObject.addProperty("senderServerID", senderServerID);
+        jsonObject.addProperty("senderPlayerUUID", (senderPlayerUUID==null?"null":senderPlayerUUID.toString()));
+        jsonObject.addProperty("packetIdentifier", (packetIdentifier==null?"null":packetIdentifier.toString()));
+        return jsonObject.toString();
     }
 }
