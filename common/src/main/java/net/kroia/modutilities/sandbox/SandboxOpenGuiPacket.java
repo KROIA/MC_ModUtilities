@@ -5,6 +5,7 @@ import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.networking.ExtraCodecUtils;
 import net.kroia.modutilities.networking.client_server.NetworkPacket;
 import net.kroia.modutilities.networking.client_server.PacketHandler;
+import net.kroia.modutilities.networking.server_server.ForwardPacketContext;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -21,28 +22,6 @@ public class SandboxOpenGuiPacket extends NetworkPacket {
             SandboxOpenGuiPacket::new
     );
 
-    public static final PacketHandler<SandboxOpenGuiPacket> HANDLER = new PacketHandler<>(){
-
-        @Override
-        public void handleServer(SandboxOpenGuiPacket packet, NetworkManager.PacketContext context) {
-
-        }
-
-        @Override
-        public void handleClient(SandboxOpenGuiPacket packet, NetworkManager.PacketContext context) {
-            switch(packet.guiType) {
-                case TEST_SCREEN:
-                    TestScreen.open(); // Assuming TestScreen has a static method to open it
-                    //SandboxClientHooks.openTestScreen();
-                    break;
-                case ANOTHER_SCREEN:
-                    // Open another GUI
-                    break;
-                default:
-            }
-        }
-    };
-
     @Override
     public Type<? extends CustomPacketPayload> type() {
         return TYPE;
@@ -58,6 +37,35 @@ public class SandboxOpenGuiPacket extends NetworkPacket {
     }
     public SandboxOpenGuiPacket() {
         super();
+    }
+
+    @Override
+    protected void handleOnClient(NetworkManager.PacketContext context) {
+        switch(guiType) {
+            case TEST_SCREEN:
+                TestScreen.open(); // Assuming TestScreen has a static method to open it
+                //SandboxClientHooks.openTestScreen();
+                break;
+            case ANOTHER_SCREEN:
+                // Open another GUI
+                break;
+            default:
+        }
+    }
+
+    @Override
+    protected void handleOnServer(NetworkManager.PacketContext context) {
+
+    }
+
+    @Override
+    protected void handleOnMaster(ForwardPacketContext context) {
+
+    }
+
+    @Override
+    protected void handleOnSlave(ForwardPacketContext context) {
+
     }
 
 

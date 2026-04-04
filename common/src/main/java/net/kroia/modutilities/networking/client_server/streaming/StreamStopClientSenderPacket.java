@@ -4,6 +4,7 @@ import dev.architectury.networking.NetworkManager;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.networking.client_server.NetworkPacket;
 import net.kroia.modutilities.networking.client_server.PacketHandler;
+import net.kroia.modutilities.networking.server_server.ForwardPacketContext;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -25,19 +26,6 @@ public class StreamStopClientSenderPacket extends NetworkPacket {
             StreamStopClientSenderPacket::new
     );
 
-    public static final PacketHandler<StreamStopClientSenderPacket> HANDLER = new PacketHandler<>(){
-
-        @Override
-        public void handleServer(StreamStopClientSenderPacket packet, NetworkManager.PacketContext context) {
-            StreamSystem.handlePacket(packet, (ServerPlayer) context.getPlayer());
-        }
-
-        @Override
-        public void handleClient(StreamStopClientSenderPacket packet, NetworkManager.PacketContext context) {
-            //StreamSystem.handlePacket(packet);
-        }
-    };
-
     UUID streamID;
 
     public StreamStopClientSenderPacket(UUID streamID) {
@@ -54,5 +42,25 @@ public class StreamStopClientSenderPacket extends NetworkPacket {
     @Override
     public Type<? extends CustomPacketPayload> type() {
         return TYPE;
+    }
+
+    @Override
+    protected void handleOnClient(NetworkManager.PacketContext context) {
+        //StreamSystem.handlePacket(packet);
+    }
+
+    @Override
+    protected void handleOnServer(NetworkManager.PacketContext context) {
+        StreamSystem.handlePacket(this, (ServerPlayer) context.getPlayer());
+    }
+
+    @Override
+    protected void handleOnMaster(ForwardPacketContext context) {
+
+    }
+
+    @Override
+    protected void handleOnSlave(ForwardPacketContext context) {
+
     }
 }

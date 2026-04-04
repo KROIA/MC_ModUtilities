@@ -5,6 +5,8 @@ package net.kroia.modutilities.networking.client_server;
 import dev.architectury.networking.NetworkManager;
 import net.kroia.modutilities.networking.client_server.arrs.AsynchronousRequestResponseSystem;
 import net.kroia.modutilities.networking.client_server.streaming.StreamSystem;
+import net.kroia.modutilities.networking.server_server.ForwardPacketHandler;
+import net.kroia.modutilities.networking.server_server.ServerServerPacketRegistry;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -55,10 +57,35 @@ public abstract class ClientServerPacketManager {
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, packetType, streamCodec, handler::handleClient);
         //NetworkManager.registerReceiver(NetworkManager.Side.C2S, packetType, streamCodec, handler::handleServer);
     }
+    public <T extends NetworkPacket> void registerS2C(CustomPacketPayload.Type<T> packetType, StreamCodec<RegistryFriendlyByteBuf, T> streamCodec, PacketHandler<? super T> handler, ForwardPacketHandler<? super T> forwardHandler) {
+
+        NetworkManager.registerReceiver(NetworkManager.Side.S2C, packetType, streamCodec, handler::handleClient);
+        ServerServerPacketRegistry.register(packetType, streamCodec, forwardHandler);
+        //NetworkManager.registerReceiver(NetworkManager.Side.C2S, packetType, streamCodec, handler::handleServer);
+    }
+    public <T extends NetworkPacket> void registerS2C(CustomPacketPayload.Type<T> packetType, StreamCodec<RegistryFriendlyByteBuf, T> streamCodec) {
+
+        NetworkManager.registerReceiver(NetworkManager.Side.S2C, packetType, streamCodec, NetworkPacket.HANDLER::handleClient);
+        ServerServerPacketRegistry.register(packetType, streamCodec, NetworkPacket.HANDLER);
+        //NetworkManager.registerReceiver(NetworkManager.Side.C2S, packetType, streamCodec, NetworkPacket.HANDLER::handleServer);
+    }
+
     public <T extends NetworkPacket> void registerC2S(CustomPacketPayload.Type<T> packetType, StreamCodec<RegistryFriendlyByteBuf, T> streamCodec, PacketHandler<? super T> handler) {
 
         //NetworkManager.registerReceiver(NetworkManager.Side.S2C, packetType, streamCodec, handler::handleClient);
         NetworkManager.registerReceiver(NetworkManager.Side.C2S, packetType, streamCodec, handler::handleServer);
+    }
+    public <T extends NetworkPacket> void registerC2S(CustomPacketPayload.Type<T> packetType, StreamCodec<RegistryFriendlyByteBuf, T> streamCodec, PacketHandler<? super T> handler, ForwardPacketHandler<? super T> forwardHandler) {
+
+        //NetworkManager.registerReceiver(NetworkManager.Side.S2C, packetType, streamCodec, handler::handleClient);
+        NetworkManager.registerReceiver(NetworkManager.Side.C2S, packetType, streamCodec, handler::handleServer);
+        ServerServerPacketRegistry.register(packetType, streamCodec, forwardHandler);
+    }
+    public <T extends NetworkPacket> void registerC2S(CustomPacketPayload.Type<T> packetType, StreamCodec<RegistryFriendlyByteBuf, T> streamCodec) {
+
+        //NetworkManager.registerReceiver(NetworkManager.Side.S2C, packetType, streamCodec, NetworkPacket.HANDLER::handleClient);
+        NetworkManager.registerReceiver(NetworkManager.Side.C2S, packetType, streamCodec, NetworkPacket.HANDLER::handleServer);
+        ServerServerPacketRegistry.register(packetType, streamCodec, NetworkPacket.HANDLER);
     }
 
     /**

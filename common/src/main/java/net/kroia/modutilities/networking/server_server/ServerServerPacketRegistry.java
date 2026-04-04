@@ -3,6 +3,7 @@ package net.kroia.modutilities.networking.server_server;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import net.kroia.modutilities.ModUtilitiesMod;
+import net.kroia.modutilities.networking.client_server.NetworkPacket;
 import net.kroia.modutilities.networking.server_server.payload.ForwardPacketPayload;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -77,6 +78,18 @@ public class ServerServerPacketRegistry
         }
 
         RegistryObject registryObject = new RegistryObject(codec, handler, packetType.id().toString());
+        registry.put(loc, registryObject);
+    }
+    public static <T extends CustomPacketPayload> void register(CustomPacketPayload.Type<T> packetType,
+                                                                StreamCodec<RegistryFriendlyByteBuf, T> codec)
+    {
+        ResourceLocation loc = packetType.id();
+        if(registry.containsKey(loc))
+        {
+            throw new RuntimeException("ServerServerPacketRegistry.register(...): Packet with packetID = "+loc+" is already registered!");
+        }
+
+        RegistryObject registryObject = new RegistryObject(codec, NetworkPacket.HANDLER, packetType.id().toString());
         registry.put(loc, registryObject);
     }
 

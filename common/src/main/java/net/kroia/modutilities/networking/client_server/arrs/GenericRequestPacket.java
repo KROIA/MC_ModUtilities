@@ -42,148 +42,85 @@ public final class GenericRequestPacket extends NetworkPacket
             GenericRequestPacket::new
     );
 
+    @Override
+    protected void handleOnClient(NetworkManager.PacketContext context) {
+        var request = AsynchronousRequestResponseSystem.getRegisteredRequest(requestTypeID);
 
-    public static class GenericRequestPacketHandler implements
-            PacketHandler<GenericRequestPacket>,
-            ForwardPacketHandler<GenericRequestPacket>
+        if (request == null) {
+            return; // No factory found for this request type
+        }
+        ModUtilitiesMod.LOGGER.info("Handle request on client: "+requestTypeID);
+        RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufClientSide();
+        try {
+            CompletableFuture<RegistryFriendlyByteBuf> fut = request.decodeHandleEncodeOnClient(data, responseData);
+            fut.thenAccept(responseBuf -> {
+                sendResponseToServer(request.getManager(), new GenericResponsePacket(requestID, requestTypeID, responseBuf));
+            });
+        }
+        catch (Exception e) {
+            // Handle any exceptions that may occur during decoding/encoding
+            ModUtilitiesMod.LOGGER.error("Error handling GenericRequestPacket: " + e.getMessage(), e);
+            return; // Exit if an error occurs
+        }
+    }
+
+    @Override
+    protected void handleOnServer(NetworkManager.PacketContext context) {
+        var request = AsynchronousRequestResponseSystem.getRegisteredRequest(requestTypeID);
+        if (request == null) {
+            return; // No factory found for this request type
+        }
+        /*boolean canRouteToMaster = ServerServerManager.isRunning() && ServerServerManager.isSlave() && request.needsRoutingToMaster();
+        if(canRouteToMaster)
+        {
+            ModUtilitiesMod.LOGGER.info("Redirecting request to master: "+requestTypeID);
+            ServerServerManager.sendToMaster(requestID, context.getPlayer().getUUID(), this);
+        }
+        else
+        {*/
+            ModUtilitiesMod.LOGGER.info("Handle request internally: "+requestTypeID);
+            RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
+            try {
+                CompletableFuture<RegistryFriendlyByteBuf> fut = request.decodeHandleEncodeOnServer(data, responseData, (ServerPlayer) context.getPlayer());
+                fut.thenAccept(responseBuf -> {
+                    sendResponseToClient(request.getManager(), (ServerPlayer) context.getPlayer(), new GenericResponsePacket(requestID, requestTypeID, responseBuf));
+                });
+            }
+            catch (Exception e) {
+                // Handle any exceptions that may occur during decoding/encoding
+                ModUtilitiesMod.LOGGER.error("Error handling GenericRequestPacket: " + e.getMessage(), e);
+            }
+        //}
+    }
+    @Override
+    protected boolean needsRoutingToMaster()
     {
-
-        @Override
-        public void handleServer(GenericRequestPacket packet, NetworkManager.PacketContext context) {
-
-            var request = AsynchronousRequestResponseSystem.getRegisteredRequest(packet.requestTypeID);
-            if (request == null) {
-                return; // No factory found for this request type
-            }
-            boolean canRouteToMaster = ServerServerManager.isRunning() && ServerServerManager.isSlave() && request.needsRoutingToMaster();
-            if(canRouteToMaster)
-            {
-                ModUtilitiesMod.LOGGER.info("Redirecting request to master: "+packet.requestTypeID);
-                ServerServerManager.sendToMaster(packet.requestID, context.getPlayer().getUUID(), packet);
-            }
-            else
-            {
-                ModUtilitiesMod.LOGGER.info("Handle request internally: "+packet.requestTypeID);
-                RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
-                try {
-                    CompletableFuture<RegistryFriendlyByteBuf> fut = request.decodeHandleEncodeOnServer(packet.data, responseData, (ServerPlayer) context.getPlayer());
-                    fut.thenAccept(responseBuf -> {
-                        sendResponseToClient(request.getManager(), (ServerPlayer) context.getPlayer(), new GenericResponsePacket(packet.requestID, packet.requestTypeID, responseBuf));
-                    });
-                }
-                catch (Exception e) {
-                    // Handle any exceptions that may occur during decoding/encoding
-                    ModUtilitiesMod.LOGGER.error("Error handling GenericRequestPacket: " + e.getMessage(), e);
-                    return; // Exit if an error occurs
-                }
-            }
+        var request = AsynchronousRequestResponseSystem.getRegisteredRequest(requestTypeID);
+        if (request == null) {
+            return false; // No factory found for this request type
         }
-
-        @Override
-        public void handleClient(GenericRequestPacket packet, NetworkManager.PacketContext context) {
-            var request = AsynchronousRequestResponseSystem.getRegisteredRequest(packet.requestTypeID);
-
-            if (request == null) {
-                return; // No factory found for this request type
-            }
-            ModUtilitiesMod.LOGGER.info("Handle request on client: "+packet.requestTypeID);
-            RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufClientSide();
-            try {
-                CompletableFuture<RegistryFriendlyByteBuf> fut = request.decodeHandleEncodeOnClient(packet.data, responseData);
-                fut.thenAccept(responseBuf -> {
-                    sendResponseToServer(request.getManager(), new GenericResponsePacket(packet.requestID, packet.requestTypeID, responseBuf));
-                });
-            }
-            catch (Exception e) {
-                // Handle any exceptions that may occur during decoding/encoding
-                ModUtilitiesMod.LOGGER.error("Error handling GenericRequestPacket: " + e.getMessage(), e);
-                return; // Exit if an error occurs
-            }
+        return request.needsRoutingToMaster();
+    }
+    @Override
+    protected void handleOnMaster(ForwardPacketContext context) {
+        var request = AsynchronousRequestResponseSystem.getRegisteredRequest(requestTypeID);
+        if (request == null) {
+            return; // No factory found for this request type
         }
-
-        @Override
-        public void handleMaster(GenericRequestPacket packet, ForwardPacketContext context) {
-            var request = AsynchronousRequestResponseSystem.getRegisteredRequest(packet.requestTypeID);
-            if (request == null) {
-                return; // No factory found for this request type
-            }
-            ModUtilitiesMod.LOGGER.info("Handle request on master: "+packet.requestTypeID);
-            RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
-            try {
-                CompletableFuture<RegistryFriendlyByteBuf> fut = request.decodeHandleEncodeOnMasterServer(packet.data, responseData, context.senderPlayerUUID);
-                fut.thenAccept(responseBuf -> {
-                    sendResponseToSlave(context.senderServerID, context.senderPlayerUUID, new GenericResponsePacket(packet.requestID, packet.requestTypeID, responseBuf));
-                });
-            }
-            catch (Exception e) {
-                // Handle any exceptions that may occur during decoding/encoding
-                ModUtilitiesMod.LOGGER.error("Error handling GenericRequestPacket: " + e.getMessage(), e);
-                return; // Exit if an error occurs
-            }
+        ModUtilitiesMod.LOGGER.info("Handle request on master: "+requestTypeID);
+        RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
+        try {
+            CompletableFuture<RegistryFriendlyByteBuf> fut = request.decodeHandleEncodeOnMasterServer(data, responseData, context.senderPlayerUUID);
+            fut.thenAccept(responseBuf -> {
+                sendResponseToSlave(context.senderServerID, context.senderPlayerUUID, new GenericResponsePacket(requestID, requestTypeID, responseBuf));
+            });
         }
-
-        @Override
-        public void handleSlave(GenericRequestPacket packet, ForwardPacketContext context) {
-            /*var request = AsynchronousRequestResponseSystem.getRegisteredRequest(packet.requestTypeID);
-            if (request == null) {
-                return; // No factory found for this request type
-            }
-            RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
-            try {
-                MinecraftServer server = UtilitiesPlatform.getServer();
-                if(server == null)
-                    return;
-                ServerPlayer targetPlayer = server.getPlayerList().getPlayer(context.senderPlayerUUID);
-                if(targetPlayer == null)
-                    return;
-                sendResponseToClient(request.getManager(), targetPlayer, packet);
-            }
-            catch (Exception e) {
-                // Handle any exceptions that may occur during decoding/encoding
-                ModUtilitiesMod.LOGGER.error("Error handling GenericResponsePacket: " + e.getMessage(), e);
-                return; // Exit if an error occurs
-            }*/
-
+        catch (Exception e) {
+            // Handle any exceptions that may occur during decoding/encoding
+            ModUtilitiesMod.LOGGER.error("Error handling GenericRequestPacket: " + e.getMessage(), e);
+            return; // Exit if an error occurs
         }
-
-
-        /**
-         * Sends a response packet back to the client or server based on the environment.
-         * This method can be called from within the handleOnClient or handleOnServer methods.
-         *
-         * @param packet The packet to send as a response.
-         * @return true if the response was sent successfully, false otherwise.
-         */
-        private static boolean sendResponseToClient(RequestManager manager, ServerPlayer player, GenericResponsePacket packet)
-        {
-            if(player == null)
-                return false;
-            manager.getNetworkManager().sendToClient(player, packet);
-            return true;
-        }
-
-        private static boolean sendResponseToSlave(String slaveName, UUID player, GenericResponsePacket packet)
-        {
-            if(player == null)
-                return false;
-            if(ServerServerManager.isRunning() && ServerServerManager.isMaster())
-            {
-                ServerServerManager.sendToSlave(player, slaveName,  packet);
-            }
-
-            return true;
-        }
-
-        private static boolean sendResponseToServer(RequestManager manager, GenericResponsePacket packet)
-        {
-            manager.getNetworkManager().sendToServer(packet);
-            return true;
-        }
-
-
-    };
-
-    public static final GenericRequestPacketHandler HANDLER = new GenericRequestPacketHandler();
+    }
 
     /**
      * Unique identifier for the request.
@@ -235,5 +172,38 @@ public final class GenericRequestPacket extends NetworkPacket
 
 
 
+
+    /**
+     * Sends a response packet back to the client or server based on the environment.
+     * This method can be called from within the handleOnClient or handleOnServer methods.
+     *
+     * @param packet The packet to send as a response.
+     * @return true if the response was sent successfully, false otherwise.
+     */
+    private static boolean sendResponseToClient(RequestManager manager, ServerPlayer player, GenericResponsePacket packet)
+    {
+        if(player == null)
+            return false;
+        manager.getNetworkManager().sendToClient(player, packet);
+        return true;
+    }
+
+    private static boolean sendResponseToSlave(String slaveName, UUID player, GenericResponsePacket packet)
+    {
+        if(player == null)
+            return false;
+        if(ServerServerManager.isRunning() && ServerServerManager.isMaster())
+        {
+            ServerServerManager.sendToSlave(player, slaveName,  packet);
+        }
+
+        return true;
+    }
+
+    private static boolean sendResponseToServer(RequestManager manager, GenericResponsePacket packet)
+    {
+        manager.getNetworkManager().sendToServer(packet);
+        return true;
+    }
 
 }

@@ -35,68 +35,59 @@ public final class GenericResponsePacket extends NetworkPacket
             GenericResponsePacket::new
     );
 
-    public static class GenericResponsePacketHandler implements
-            PacketHandler<GenericResponsePacket>,
-            ForwardPacketHandler<GenericResponsePacket>
-    {
-        @Override
-        public void handleServer(GenericResponsePacket packet, NetworkManager.PacketContext context) {
-            try {
-                AsynchronousRequestResponseSystem.processResponseOnServer(packet, (ServerPlayer) context.getPlayer());
-            }
-            catch (Exception e) {
-                // Handle any exceptions that may occur during decoding/encoding
-                ModUtilitiesMod.LOGGER.error("Error processing GenericResponsePacket on server: " + e.getMessage(), e);
-                return; // Exit if an error occurs
-            }
+    @Override
+    protected void handleOnClient(NetworkManager.PacketContext context) {
+        try{
+            ModUtilitiesMod.LOGGER.info("Handling GenericResponsePacket on client: "+requestTypeID);
+            AsynchronousRequestResponseSystem.processResponseOnClient(this);
         }
-
-        @Override
-        public void handleClient(GenericResponsePacket packet, NetworkManager.PacketContext context) {
-            try{
-                ModUtilitiesMod.LOGGER.info("Handling GenericResponsePacket on client: "+packet.requestTypeID);
-                AsynchronousRequestResponseSystem.processResponseOnClient(packet);
-            }
-            catch (Exception e) {
-                // Handle any exceptions that may occur during decoding/encoding
-                ModUtilitiesMod.LOGGER.error("Error processing GenericResponsePacket on client: " + e.getMessage(), e);
-                return; // Exit if an error occurs
-            }
-        }
-
-        @Override
-        public void handleMaster(GenericResponsePacket packet, ForwardPacketContext context) {
-
-        }
-
-        @Override
-        public void handleSlave(GenericResponsePacket packet, ForwardPacketContext context) {
-            var request = AsynchronousRequestResponseSystem.getRegisteredRequest(packet.requestTypeID);
-            if (request == null) {
-                return; // No factory found for this request type
-            }
-            ModUtilitiesMod.LOGGER.info("Handle response on slave server: "+packet.requestTypeID);
-            //RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
-            try {
-                MinecraftServer server = UtilitiesPlatform.getServer();
-                if(server == null)
-                    return;
-                ServerPlayer targetPlayer = server.getPlayerList().getPlayer(context.senderPlayerUUID);
-                if(targetPlayer == null)
-                    return;
-                request.getManager().getNetworkManager().sendToClient(targetPlayer, packet);
-            }
-            catch (Exception e) {
-                // Handle any exceptions that may occur during decoding/encoding
-                ModUtilitiesMod.LOGGER.error("Error handling GenericResponsePacket: " + e.getMessage(), e);
-                return; // Exit if an error occurs
-            }
+        catch (Exception e) {
+            // Handle any exceptions that may occur during decoding/encoding
+            ModUtilitiesMod.LOGGER.error("Error processing GenericResponsePacket on client: " + e.getMessage(), e);
+            return; // Exit if an error occurs
         }
     }
 
+    @Override
+    protected void handleOnServer(NetworkManager.PacketContext context) {
+        try {
+            AsynchronousRequestResponseSystem.processResponseOnServer(this, (ServerPlayer) context.getPlayer());
+        }
+        catch (Exception e) {
+            // Handle any exceptions that may occur during decoding/encoding
+            ModUtilitiesMod.LOGGER.error("Error processing GenericResponsePacket on server: " + e.getMessage(), e);
+            return; // Exit if an error occurs
+        }
+    }
 
-    public static final GenericResponsePacketHandler HANDLER = new GenericResponsePacketHandler();
+    @Override
+    protected void handleOnMaster(ForwardPacketContext context) {
 
+    }
+
+    @Override
+    protected void handleOnSlave(ForwardPacketContext context) {
+        var request = AsynchronousRequestResponseSystem.getRegisteredRequest(requestTypeID);
+        if (request == null) {
+            return; // No factory found for this request type
+        }
+        ModUtilitiesMod.LOGGER.info("Handle response on slave server: "+requestTypeID);
+        //RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
+        try {
+            MinecraftServer server = UtilitiesPlatform.getServer();
+            if(server == null)
+                return;
+            ServerPlayer targetPlayer = server.getPlayerList().getPlayer(context.senderPlayerUUID);
+            if(targetPlayer == null)
+                return;
+            request.getManager().getNetworkManager().sendToClient(targetPlayer, this);
+        }
+        catch (Exception e) {
+            // Handle any exceptions that may occur during decoding/encoding
+            ModUtilitiesMod.LOGGER.error("Error handling GenericResponsePacket: " + e.getMessage(), e);
+            return; // Exit if an error occurs
+        }
+    }
 
 
     /**

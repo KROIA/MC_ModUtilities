@@ -5,6 +5,7 @@ import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.networking.ExtraCodecUtils;
 import net.kroia.modutilities.networking.client_server.NetworkPacket;
 import net.kroia.modutilities.networking.client_server.PacketHandler;
+import net.kroia.modutilities.networking.server_server.ForwardPacketContext;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -32,19 +33,6 @@ public class StreamStartPacket extends NetworkPacket {
             StreamStartPacket::new
 
     );
-
-    public static final PacketHandler<StreamStartPacket> HANDLER = new PacketHandler<>(){
-
-        @Override
-        public void handleServer(StreamStartPacket packet, NetworkManager.PacketContext context) {
-            StreamSystem.handlePacket(packet, (ServerPlayer) context.getPlayer());
-        }
-
-        @Override
-        public void handleClient(StreamStartPacket packet, NetworkManager.PacketContext context) {
-            StreamSystem.handlePacket(packet);
-        }
-    };
 
 
 
@@ -84,5 +72,25 @@ public class StreamStartPacket extends NetworkPacket {
     @Override
     public Type<? extends CustomPacketPayload> type() {
         return TYPE;
+    }
+
+    @Override
+    protected void handleOnClient(NetworkManager.PacketContext context) {
+        StreamSystem.handlePacket(this);
+    }
+
+    @Override
+    protected void handleOnServer(NetworkManager.PacketContext context) {
+        StreamSystem.handlePacket(this, (ServerPlayer) context.getPlayer());
+    }
+
+    @Override
+    protected void handleOnMaster(ForwardPacketContext context) {
+
+    }
+
+    @Override
+    protected void handleOnSlave(ForwardPacketContext context) {
+
     }
 }
