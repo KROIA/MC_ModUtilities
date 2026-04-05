@@ -6,6 +6,8 @@ import net.kroia.modutilities.networking.ExtraCodecUtils;
 import net.kroia.modutilities.networking.client_server.NetworkPacket;
 import net.kroia.modutilities.networking.client_server.PacketHandler;
 import net.kroia.modutilities.networking.server_server.ForwardPacketContext;
+import net.kroia.modutilities.networking.server_server.ForwardPacketHandler;
+import net.kroia.modutilities.networking.server_server.ServerServerManager;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -37,6 +39,36 @@ public class GenericStreamPacket extends NetworkPacket {
     RegistryFriendlyByteBuf data;
 
 
+    public static class GenericStreamPacketHandler implements
+            PacketHandler<GenericStreamPacket>,
+            ForwardPacketHandler<GenericStreamPacket>
+    {
+
+        @Override
+        public void handleServer(GenericStreamPacket packet, NetworkManager.PacketContext context) {
+            packet.handleOnServer(context);
+        }
+
+        @Override
+        public void handleClient(GenericStreamPacket packet, NetworkManager.PacketContext context) {
+            packet.handleOnClient(context);
+        }
+
+        @Override
+        public void handleMaster(GenericStreamPacket packet, ForwardPacketContext context) {
+            packet.handleOnMaster(context);
+        }
+
+        @Override
+        public void handleSlave(GenericStreamPacket packet, ForwardPacketContext context) {
+            packet.handleOnSlave(context);
+        }
+    }
+
+    public static final GenericStreamPacketHandler HANDLER = new GenericStreamPacketHandler();
+
+
+
     public GenericStreamPacket(UUID streamID, RegistryFriendlyByteBuf data) {
         super();
         this.streamID = streamID;
@@ -58,12 +90,12 @@ public class GenericStreamPacket extends NetworkPacket {
 
     @Override
     protected void handleOnClient(NetworkManager.PacketContext context) {
-        StreamSystem.handlePacket(this);
+        StreamSystem.handlePacketOnClient(this);
     }
 
     @Override
     protected void handleOnServer(NetworkManager.PacketContext context) {
-        StreamSystem.handlePacket(this, (ServerPlayer) context.getPlayer());
+        //StreamSystem.handlePacket(this, (ServerPlayer) context.getPlayer());
     }
 
     @Override
@@ -73,6 +105,6 @@ public class GenericStreamPacket extends NetworkPacket {
 
     @Override
     protected void handleOnSlave(ForwardPacketContext context) {
-
+        StreamSystem.handleRedirectedPacket(this);
     }
 }

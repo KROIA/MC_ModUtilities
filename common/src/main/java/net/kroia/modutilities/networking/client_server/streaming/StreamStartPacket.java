@@ -6,6 +6,8 @@ import net.kroia.modutilities.networking.ExtraCodecUtils;
 import net.kroia.modutilities.networking.client_server.NetworkPacket;
 import net.kroia.modutilities.networking.client_server.PacketHandler;
 import net.kroia.modutilities.networking.server_server.ForwardPacketContext;
+import net.kroia.modutilities.networking.server_server.ForwardPacketHandler;
+import net.kroia.modutilities.networking.server_server.ServerServerManager;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -33,6 +35,34 @@ public class StreamStartPacket extends NetworkPacket {
             StreamStartPacket::new
 
     );
+
+    public static class StreamStartPacketHandler implements
+            PacketHandler<StreamStartPacket>,
+            ForwardPacketHandler<StreamStartPacket>
+    {
+
+        @Override
+        public void handleServer(StreamStartPacket packet, NetworkManager.PacketContext context) {
+            packet.handleOnServer(context);
+        }
+
+        @Override
+        public void handleClient(StreamStartPacket packet, NetworkManager.PacketContext context) {
+            packet.handleOnClient(context);
+        }
+
+        @Override
+        public void handleMaster(StreamStartPacket packet, ForwardPacketContext context) {
+            packet.handleOnMaster(context);
+        }
+
+        @Override
+        public void handleSlave(StreamStartPacket packet, ForwardPacketContext context) {
+            packet.handleOnSlave(context);
+        }
+    }
+
+    public static final StreamStartPacketHandler HANDLER = new StreamStartPacketHandler();
 
 
 
@@ -76,17 +106,17 @@ public class StreamStartPacket extends NetworkPacket {
 
     @Override
     protected void handleOnClient(NetworkManager.PacketContext context) {
-        StreamSystem.handlePacket(this);
+        //StreamSystem.handlePacket(this);
     }
 
     @Override
     protected void handleOnServer(NetworkManager.PacketContext context) {
-        StreamSystem.handlePacket(this, (ServerPlayer) context.getPlayer());
+        StreamSystem.handlePacket(this, null, context.getPlayer().getUUID());
     }
 
     @Override
     protected void handleOnMaster(ForwardPacketContext context) {
-
+        StreamSystem.handlePacket(this, context.senderServerID, context.senderPlayerUUID);
     }
 
     @Override

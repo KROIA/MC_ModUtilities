@@ -7,6 +7,7 @@ import net.kroia.modutilities.UtilitiesPlatform;
 import net.kroia.modutilities.networking.client_server.ClientServerPacketManager;
 import net.kroia.modutilities.networking.client_server.streaming.streamholder.ClientReceiverStreamHolder;
 import net.kroia.modutilities.networking.client_server.streaming.streamholder.ServerSenderStreamHolder;
+import net.kroia.modutilities.networking.server_server.ServerServerManager;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.MinecraftServer;
@@ -38,6 +39,7 @@ public class StreamManager {
      * The keys are the stream IDs, and the values are the stream holders.
      */
     private final Map<UUID, ServerSenderStreamHolder<?,?>> activeServerSenderStreams;
+    private final Map<UUID, ServerSenderStreamHolder<?,?>> redirectedServerSenderStreams;
     //private final Map<UUID, ClientSenderStreamHolder<?,?>> activeClientSenderStreams;    // Only Streams from server to client are supported
     //private final Map<UUID, ServerReceiverStreamHolder<?,?>> activeServerReceiverStreams; // Only Streams from server to client are supported
     private final Map<UUID, ClientReceiverStreamHolder<?,?>> activeClientReceiverStreams;
@@ -66,6 +68,7 @@ public class StreamManager {
         this.networkManager = networkManager;
 
         activeServerSenderStreams = new java.util.concurrent.ConcurrentHashMap<>();
+        redirectedServerSenderStreams = new java.util.concurrent.ConcurrentHashMap<>();
         //activeClientSenderStreams = new java.util.concurrent.ConcurrentHashMap<>();   // Only Streams from server to client are supported
         //activeServerReceiverStreams = new java.util.concurrent.ConcurrentHashMap<>(); // Only Streams from server to client are supported
         activeClientReceiverStreams = new java.util.concurrent.ConcurrentHashMap<>();
@@ -162,18 +165,9 @@ public class StreamManager {
             }
         }*/
         if(activeServerSenderStreams != null && isServer) {
-            if(isInServerTickUpdate)
-            {
-                toRemoveServerSenderLater.add(streamID);
-            }
-            else {
-                var stream = activeServerSenderStreams.remove(streamID);
-                if (stream != null) {
-                    ServerPlayer targetPlayer = ServerPlayerUtilities.getOnlinePlayer(stream.playerUUID);
-                    if (targetPlayer != null) {
-                        stream.streamEnd();
-                    }
-                }
+            var stream = activeServerSenderStreams.remove(streamID);
+            if (stream != null) {
+                stream.streamEnd();
             }
         }
 
@@ -361,18 +355,19 @@ public class StreamManager {
      * @param stream The registered stream object used for the stream.
      * @param streamID The ID of the stream that is being started.
      * @param contextDataBuffer The context data buffer that contains the context data for the stream.
-     * @param targetPlayer The player that the stream is being sent to.
+     * @param targetPlayerUUID The player UUID that the stream is being sent to.
      * @param <CONTEXT_DATA> The type of context data associated with the stream.
      * @param <DATA>         The type of data that the stream will handle.
      */
     public <CONTEXT_DATA, DATA> void startServerSenderStream(@NotNull GenericStream<CONTEXT_DATA, DATA> stream,
                                                              @NotNull UUID streamID,
+                                                             @Nullable String slaveServerID,
                                                              @NotNull RegistryFriendlyByteBuf contextDataBuffer,
-                                                             @NotNull ServerPlayer targetPlayer)
+                                                             @NotNull UUID targetPlayerUUID)
     {
         if(isOnClient())
             throw new IllegalStateException("This method can only be called on the server side!");
-        ServerSenderStreamHolder<CONTEXT_DATA, DATA> streamData = new ServerSenderStreamHolder<>(networkManager, stream, contextDataBuffer, targetPlayer.getUUID(), streamID);
+        ServerSenderStreamHolder<CONTEXT_DATA, DATA> streamData = new ServerSenderStreamHolder<>(networkManager, stream, contextDataBuffer, targetPlayerUUID, streamID, slaveServerID);
         if(activeServerSenderStreams.containsKey(streamID))
         {
             error("Stream ID conflict! Stream with ID "+streamID+" is already active!");
@@ -380,6 +375,35 @@ public class StreamManager {
         }
         activeServerSenderStreams.put(streamID, streamData);
         streamData.stream.onStartStreamSendingOnSever();
+    }
+
+    /**
+     * INTERNAL METHODE, DO NOT CALL THIS METHOD MANUALLY!
+     *
+     * Gets called when a stream-start-request has been received on the server side.
+     * Starts a server to client stream.
+     * @param stream The registered stream object used for the stream.
+     * @param streamID The ID of the stream that is being started.
+     * @param contextDataBuffer The context data buffer that contains the context data for the stream.
+     * @param targetPlayerUUID The player UUID that the stream is being sent to.
+     * @param <CONTEXT_DATA> The type of context data associated with the stream.
+     * @param <DATA>         The type of data that the stream will handle.
+     */
+    public <CONTEXT_DATA, DATA> void startRedirectedServerSenderStream(@NotNull GenericStream<CONTEXT_DATA, DATA> stream,
+                                                             @NotNull UUID streamID,
+                                                             @NotNull RegistryFriendlyByteBuf contextDataBuffer,
+                                                             @NotNull UUID targetPlayerUUID)
+    {
+        if(isOnClient())
+            throw new IllegalStateException("This method can only be called on the server side!");
+        ServerSenderStreamHolder<CONTEXT_DATA, DATA> streamData = new ServerSenderStreamHolder<>(networkManager, stream, contextDataBuffer, targetPlayerUUID, streamID, null);
+        if(redirectedServerSenderStreams.containsKey(streamID))
+        {
+            error("Stream ID conflict! Stream with ID "+streamID+" is already active!");
+            return; // Stream ID already in use
+        }
+        redirectedServerSenderStreams.put(streamID, streamData);
+        //streamData.stream.onStartStreamSendingOnSever();
     }
 
 
@@ -446,13 +470,52 @@ public class StreamManager {
                     if (stream != null) {
                         RegistryFriendlyByteBuf buf = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
                         stream.createStreamPacketOnServer(buf);
+                        GenericStreamPacket streamPacket = new GenericStreamPacket(streamID, buf);
+                        if(streamData.needsRoutingToSlaveServer())
+                        {
+                            if(!ServerServerManager.sendToSlave(streamData.playerUUID, streamData.getSlaveServerID(), streamPacket))
+                            {
+                                // Slave server not connected anymore
+                                handleStreamStop(streamID);
+                            }
+                        }
+                        else
+                        {
+                            ServerPlayer targetPlayer = ServerPlayerUtilities.getOnlinePlayer(streamData.playerUUID);
+                            if (targetPlayer == null) {
+                                warn("sendStreamPacket(): Cannot send stream packet for stream ID " + streamID + " to player " + streamData.playerUUID + ", player is not online!");
+                                streamData.streamEnd();
+                                return; // Player not online, cannot send stream packet
+                            }
+                            networkManager.sendToClient(targetPlayer, streamPacket);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
+    public void redirectToClient(GenericStreamPacket packet)
+    {
+        if(isOnServer()) {
+            if (redirectedServerSenderStreams != null) {
+                ServerSenderStreamHolder<?, ?> streamData = redirectedServerSenderStreams.get(packet.getStreamID());
+                if (streamData != null) {
+                    GenericStream<?, ?> stream = streamData.stream;
+                    if (stream != null) {
                         ServerPlayer targetPlayer = ServerPlayerUtilities.getOnlinePlayer(streamData.playerUUID);
                         if (targetPlayer == null) {
-                            warn("Cannot send stream packet for stream ID "+streamID+" to player "+streamData.playerUUID+", player is not online!");
-                            streamData.streamEnd();
+                            warn("redirectToClient(): Cannot send stream packet for stream ID " + packet.getStreamID() + " to player " + streamData.playerUUID + ", player is not online!");
+                            //streamData.streamEnd();
+                            StreamStopClientSenderPacket stopPacket = new StreamStopClientSenderPacket(packet.getStreamID());
+                            if(ServerServerManager.isRunning() && ServerServerManager.isSlave())
+                            {
+                                ServerServerManager.sendToMaster(stopPacket);
+                            }
                             return; // Player not online, cannot send stream packet
                         }
-                        networkManager.sendToClient(targetPlayer, new GenericStreamPacket(streamID, buf));
+                        networkManager.sendToClient(targetPlayer, packet);
                     }
                 }
             }
@@ -485,6 +548,29 @@ public class StreamManager {
         }
     }
 
+    public void handlePacketOnServer(StreamStopServerSenderPacket packet)
+    {
+        UUID streamID = packet.getStreamID();
+        /*
+        // Only Streams from server to client are supported
+        if(activeClientSenderStreams != null) {
+            ClientSenderStreamHolder<?, ?> streamData = activeClientSenderStreams.remove(streamID);
+            if(streamData != null) {
+                streamData.streamStop();
+            }
+        }*/
+        if(redirectedServerSenderStreams != null) {
+            ServerSenderStreamHolder<?, ?> streamData = redirectedServerSenderStreams.remove(streamID);
+            ServerPlayer targetPlayer = ServerPlayerUtilities.getOnlinePlayer(streamData.playerUUID);
+            if (targetPlayer == null) {
+                warn("handlePacketOnServer(): Cannot send stream packet for stream ID " + packet.getStreamID() + " to player " + streamData.playerUUID + ", player is not online!");
+                //streamData.streamEnd();
+                return; // Player not online, cannot send stream packet
+            }
+            networkManager.sendToClient(targetPlayer, packet);
+        }
+    }
+
     /**
      * INTERNAL METHODE, DO NOT CALL THIS METHOD MANUALLY!
      *
@@ -495,10 +581,11 @@ public class StreamManager {
     public void handlePacketOnServer(StreamStopClientSenderPacket packet)
     {
         UUID streamID = packet.getStreamID();
-       if(activeServerSenderStreams != null) {
-            ServerSenderStreamHolder<?, ?> streamData = activeServerSenderStreams.remove(streamID);
+        handleStreamStop(streamID);
+        if(redirectedServerSenderStreams != null) {
+            ServerSenderStreamHolder<?, ?> streamData = redirectedServerSenderStreams.get(streamID);
             if(streamData != null) {
-                streamData.streamEnd();
+                ServerServerManager.sendToMaster(streamData.playerUUID, packet);
             }
         }
        /*
@@ -509,6 +596,26 @@ public class StreamManager {
                 streamData.onStreamStopped(); // No player context on server side
             }
         }*/
+    }
+    public void handleStreamStop(UUID streamID)
+    {
+        if(isInServerTickUpdate)
+        {
+            ServerSenderStreamHolder<?, ?> streamData = activeServerSenderStreams.get(streamID);
+            if(streamData != null) {
+                streamData.streamEnd();
+            }
+        }
+        else
+        {
+            if(activeServerSenderStreams != null) {
+                ServerSenderStreamHolder<?, ?> streamData = activeServerSenderStreams.remove(streamID);
+                if(streamData != null) {
+                    streamData.streamEnd();
+                }
+            }
+        }
+
     }
 
 

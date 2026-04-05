@@ -178,15 +178,17 @@ public class ServerServerManager
 
 
 
-    public static void sendToSlave(String serverId, CustomPacketPayload packet)
+    public static boolean sendToSlave(String serverId, CustomPacketPayload packet)
     {
         if(checkSendToSlave(serverId))
-            instance.tcpServer.sendToSlave(null,serverId, packet);
+            return instance.tcpServer.sendToSlave(null,serverId, packet);
+        return false;
     }
-    public static void sendToSlave(UUID senderPlayerUUID, String serverId, CustomPacketPayload packet)
+    public static boolean sendToSlave(UUID senderPlayerUUID, String serverId, CustomPacketPayload packet)
     {
         if(checkSendToSlave(serverId))
-            instance.tcpServer.sendToSlave(senderPlayerUUID,serverId, packet);
+            return instance.tcpServer.sendToSlave(senderPlayerUUID,serverId, packet);
+        return false;
     }
     public static void broadcastToSlaves(CustomPacketPayload packet)
     {

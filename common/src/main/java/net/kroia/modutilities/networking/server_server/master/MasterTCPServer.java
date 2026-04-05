@@ -103,13 +103,13 @@ public class MasterTCPServer {
     // ── Routing helpers ───────────────────────────────────────────────────────
 
     /** Send a payload to one specific child server. */
-    public void sendToSlave(@Nullable UUID packetIdentifier, @Nullable UUID senderPlayerUUID, String targetServerID, CustomPacketPayload packet) {
+    public boolean sendToSlave(@Nullable UUID packetIdentifier, @Nullable UUID senderPlayerUUID, String targetServerID, CustomPacketPayload packet) {
         ForwardPacketPayload payload = ServerServerPacketRegistry.createForwardPacketPayload(packetIdentifier, senderPlayerUUID, "", packet);
-        sendToSlave(targetServerID, payload);
+        return sendToSlave(targetServerID, payload);
     }
-    public void sendToSlave(@Nullable UUID senderPlayerUUID, String targetServerID, CustomPacketPayload packet) {
+    public boolean sendToSlave(@Nullable UUID senderPlayerUUID, String targetServerID, CustomPacketPayload packet) {
         ForwardPacketPayload payload = ServerServerPacketRegistry.createForwardPacketPayload(null, senderPlayerUUID, "", packet);
-        sendToSlave(targetServerID, payload);
+        return sendToSlave(targetServerID, payload);
     }
 
     /** Broadcast a payload to all connected child servers. */
@@ -144,12 +144,14 @@ public class MasterTCPServer {
 
 
     /** Send a payload to one specific child server. */
-    public void sendToSlave(String targetServerID, Payload payload) {
+    public boolean sendToSlave(String targetServerID, Payload payload) {
         Channel ch = CHILD_SERVERS.get(targetServerID);
         if (ch != null && ch.isActive()) {
             ch.writeAndFlush(payload);
+            return true;
         } else {
             warn("sendToChild: server '"+targetServerID+"' not connected");
+            return false;
         }
     }
 

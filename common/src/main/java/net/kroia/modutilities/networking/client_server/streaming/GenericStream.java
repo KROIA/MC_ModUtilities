@@ -39,6 +39,17 @@ public abstract class GenericStream<CONTEXT_DATA, DATA> {
     public abstract String getStreamTypeID();
 
     /**
+     * Returns true if the stream needs to be routed to the master server
+     * If true, the stream path is: Client <-- ClientServer <-- MasterServer
+     * If false, the stream path is: Client <-- ClientServer
+     * @return true if the stream gets redirected to the master server
+     */
+    public boolean needsRoutingToMaster()
+    {
+        return false;
+    }
+
+    /**
      * Updates the stream on the server side once per tick.
      * This function is used to trigger the sending of the next stream packet.
      */

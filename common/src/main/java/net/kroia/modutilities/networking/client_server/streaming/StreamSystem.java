@@ -1,6 +1,8 @@
 package net.kroia.modutilities.networking.client_server.streaming;
 
+import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.networking.client_server.ClientServerPacketManager;
+import net.kroia.modutilities.networking.server_server.ServerServerManager;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Tuple;
@@ -50,10 +52,10 @@ public class StreamSystem {
         }
 
         // Register packets for streaming
-        networkManager.registerS2C(GenericStreamPacket.TYPE, GenericStreamPacket.STREAM_CODEC, GenericStreamPacket.HANDLER);
-        networkManager.registerC2S(StreamStartPacket.TYPE, StreamStartPacket.STREAM_CODEC, StreamStartPacket.HANDLER);
-        networkManager.registerC2S(StreamStopClientSenderPacket.TYPE, StreamStopClientSenderPacket.STREAM_CODEC, StreamStopClientSenderPacket.HANDLER);
-        networkManager.registerS2C(StreamStopServerSenderPacket.TYPE, StreamStopServerSenderPacket.STREAM_CODEC, StreamStopServerSenderPacket.HANDLER);
+        networkManager.registerS2C(GenericStreamPacket.TYPE, GenericStreamPacket.STREAM_CODEC, GenericStreamPacket.HANDLER, GenericStreamPacket.HANDLER);
+        networkManager.registerC2S(StreamStartPacket.TYPE, StreamStartPacket.STREAM_CODEC, StreamStartPacket.HANDLER, StreamStartPacket.HANDLER);
+        networkManager.registerC2S(StreamStopClientSenderPacket.TYPE, StreamStopClientSenderPacket.STREAM_CODEC, StreamStopClientSenderPacket.HANDLER, StreamStopClientSenderPacket.HANDLER);
+        networkManager.registerS2C(StreamStopServerSenderPacket.TYPE, StreamStopServerSenderPacket.STREAM_CODEC, StreamStopServerSenderPacket.HANDLER, StreamStopServerSenderPacket.HANDLER);
     }
 
     /**
@@ -227,24 +229,32 @@ public class StreamSystem {
 
 
     // Server side handling
-    public static void handlePacket(StreamStartPacket packet, ServerPlayer target)
+    public static void handlePacket(StreamStartPacket packet, String slaveServerID, UUID targetPlayerUUID)
     {
         UUID streamID = packet.getStreamID();
         String StreamType = packet.getStreamTypeID();
         RegistryFriendlyByteBuf buf = packet.getData();
         var stream = REGISTRY.getRegisteredStream(StreamType);
-        STREAM_MANAGER.startServerSenderStream(stream, streamID, buf, target);
+        if(ServerServerManager.isRunning() && ServerServerManager.isSlave() && stream.needsRoutingToMaster())
+        {
+            STREAM_MANAGER.startRedirectedServerSenderStream(stream, streamID, buf, targetPlayerUUID);
+            ModUtilitiesMod.LOGGER.info("[StreamSystem] Redirecting packet: "+packet.streamTypeID+" to master");
+            ServerServerManager.sendToMaster(targetPlayerUUID,  packet);
+        }
+        else {
+            STREAM_MANAGER.startServerSenderStream(stream, streamID, slaveServerID, buf, targetPlayerUUID);
+        }
     }
 
 
     // Client side handling
     public static void handlePacket(StreamStartPacket packet)
     {
-        UUID streamID = packet.getStreamID();
+       /* UUID streamID = packet.getStreamID();
         String StreamType = packet.getStreamTypeID();
         RegistryFriendlyByteBuf buf = packet.getData();
         var stream = REGISTRY.getRegisteredStream(StreamType);
-        STREAM_MANAGER.startClientSenderStream(stream, streamID, buf);
+        STREAM_MANAGER.startClientSenderStream(stream, streamID, buf);*/
     }
 
     /*
@@ -262,9 +272,13 @@ public class StreamSystem {
      * Handles a StreamStopClientSenderPacket on the client side.
      * @param packet The StreamStopClientSenderPacket to handle.
      */
-    public static void handlePacket(StreamStopServerSenderPacket packet)
+    public static void handlePacketOnClient(StreamStopServerSenderPacket packet)
     {
         STREAM_MANAGER.handlePacketOnClient(packet);
+    }
+    public static void handleRedirectedPacket(StreamStopServerSenderPacket packet)
+    {
+        STREAM_MANAGER.handlePacketOnServer(packet);
     }
 
     /**
@@ -272,9 +286,8 @@ public class StreamSystem {
      *
      * Handles a StreamStopClientSenderPacket on the server side.
      * @param packet The StreamStopClientSenderPacket to handle.
-     * @param sender The player that sent the packet.
      */
-    public static void handlePacket(StreamStopClientSenderPacket packet, ServerPlayer sender)
+    public static void handlePacket(StreamStopClientSenderPacket packet)
     {
         STREAM_MANAGER.handlePacketOnServer(packet);
     }
@@ -286,9 +299,14 @@ public class StreamSystem {
      * Handles a GenericStreamPacket on the client side.
      * @param packet The GenericStreamPacket to handle.
      */
-    public static void handlePacket(GenericStreamPacket packet)
+    public static void handlePacketOnClient(GenericStreamPacket packet)
     {
         STREAM_MANAGER.handlePacketOnClient(packet);
+    }
+
+    public static void handleRedirectedPacket(GenericStreamPacket packet)
+    {
+        STREAM_MANAGER.redirectToClient(packet);
     }
 
     /**
@@ -300,7 +318,7 @@ public class StreamSystem {
      */
     public static void handlePacket(GenericStreamPacket packet, ServerPlayer sender)
     {
-        STREAM_MANAGER.handlePacketOnServer(packet, sender);
+        //STREAM_MANAGER.handlePacketOnServer(packet, sender);
     }
 
     private static void checkManagerExists()

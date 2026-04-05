@@ -5,6 +5,7 @@ import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.networking.client_server.NetworkPacket;
 import net.kroia.modutilities.networking.client_server.PacketHandler;
 import net.kroia.modutilities.networking.server_server.ForwardPacketContext;
+import net.kroia.modutilities.networking.server_server.ForwardPacketHandler;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -25,6 +26,34 @@ public class StreamStopClientSenderPacket extends NetworkPacket {
             UUIDUtil.STREAM_CODEC, p -> p.streamID,
             StreamStopClientSenderPacket::new
     );
+
+    public static class StreamStopClientSenderPacketHandler implements
+            PacketHandler<StreamStopClientSenderPacket>,
+            ForwardPacketHandler<StreamStopClientSenderPacket>
+    {
+
+        @Override
+        public void handleServer(StreamStopClientSenderPacket packet, NetworkManager.PacketContext context) {
+            packet.handleOnServer(context);
+        }
+
+        @Override
+        public void handleClient(StreamStopClientSenderPacket packet, NetworkManager.PacketContext context) {
+            packet.handleOnClient(context);
+        }
+
+        @Override
+        public void handleMaster(StreamStopClientSenderPacket packet, ForwardPacketContext context) {
+            packet.handleOnMaster(context);
+        }
+
+        @Override
+        public void handleSlave(StreamStopClientSenderPacket packet, ForwardPacketContext context) {
+            packet.handleOnSlave(context);
+        }
+    }
+
+    public static final StreamStopClientSenderPacketHandler HANDLER = new StreamStopClientSenderPacketHandler();
 
     UUID streamID;
 
@@ -51,12 +80,12 @@ public class StreamStopClientSenderPacket extends NetworkPacket {
 
     @Override
     protected void handleOnServer(NetworkManager.PacketContext context) {
-        StreamSystem.handlePacket(this, (ServerPlayer) context.getPlayer());
+        StreamSystem.handlePacket(this);
     }
 
     @Override
     protected void handleOnMaster(ForwardPacketContext context) {
-
+        StreamSystem.handlePacket(this);
     }
 
     @Override

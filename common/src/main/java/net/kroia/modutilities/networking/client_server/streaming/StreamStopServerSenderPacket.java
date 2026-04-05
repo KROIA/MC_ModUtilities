@@ -5,6 +5,7 @@ import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.networking.client_server.NetworkPacket;
 import net.kroia.modutilities.networking.client_server.PacketHandler;
 import net.kroia.modutilities.networking.server_server.ForwardPacketContext;
+import net.kroia.modutilities.networking.server_server.ForwardPacketHandler;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -20,6 +21,34 @@ public class StreamStopServerSenderPacket  extends NetworkPacket {
             UUIDUtil.STREAM_CODEC, p -> p.streamID,
             StreamStopServerSenderPacket::new
     );
+
+    public static class StreamStopServerSenderPacketHandler implements
+            PacketHandler<StreamStopServerSenderPacket>,
+            ForwardPacketHandler<StreamStopServerSenderPacket>
+    {
+
+        @Override
+        public void handleServer(StreamStopServerSenderPacket packet, NetworkManager.PacketContext context) {
+            packet.handleOnServer(context);
+        }
+
+        @Override
+        public void handleClient(StreamStopServerSenderPacket packet, NetworkManager.PacketContext context) {
+            packet.handleOnClient(context);
+        }
+
+        @Override
+        public void handleMaster(StreamStopServerSenderPacket packet, ForwardPacketContext context) {
+            packet.handleOnMaster(context);
+        }
+
+        @Override
+        public void handleSlave(StreamStopServerSenderPacket packet, ForwardPacketContext context) {
+            packet.handleOnSlave(context);
+        }
+    }
+
+    public static final StreamStopServerSenderPacketHandler HANDLER = new StreamStopServerSenderPacketHandler();
 
     UUID streamID;
 
@@ -41,7 +70,7 @@ public class StreamStopServerSenderPacket  extends NetworkPacket {
 
     @Override
     protected void handleOnClient(NetworkManager.PacketContext context) {
-        StreamSystem.handlePacket(this);
+        StreamSystem.handlePacketOnClient(this);
     }
 
     @Override
@@ -56,6 +85,6 @@ public class StreamStopServerSenderPacket  extends NetworkPacket {
 
     @Override
     protected void handleOnSlave(ForwardPacketContext context) {
-
+        StreamSystem.handleRedirectedPacket(this);
     }
 }

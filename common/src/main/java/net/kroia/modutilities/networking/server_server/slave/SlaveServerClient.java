@@ -127,6 +127,7 @@ public class SlaveServerClient {
         sendToMaster(payload);
     }
     public void sendToMaster(@Nullable UUID senderPlayerUUID, CustomPacketPayload packet) {
+        info("Sending packet: '"+packet.type().id()+"' to master for player '" + senderPlayerUUID+"'");
         ForwardPacketPayload payload = ServerServerPacketRegistry.createForwardPacketPayload(null, senderPlayerUUID, serverId, packet);
         sendToMaster(payload);
     }
