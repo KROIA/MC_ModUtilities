@@ -159,20 +159,23 @@ public class ServerServerManager
 
 
 
-    public static void sendToMaster(CustomPacketPayload packet)
+    public static boolean sendToMaster(CustomPacketPayload packet)
     {
         if(checkSendToMaster())
-            instance.slaveClient.sendToMaster(null, packet);
+            return instance.slaveClient.sendToMaster(null, packet);
+        return false;
     }
-    public static void sendToMaster(UUID senderPlayerUUID, CustomPacketPayload packet)
+    public static boolean sendToMaster(UUID senderPlayerUUID, CustomPacketPayload packet)
     {
         if(checkSendToMaster())
-            instance.slaveClient.sendToMaster(senderPlayerUUID, packet);
+            return instance.slaveClient.sendToMaster(senderPlayerUUID, packet);
+        return false;
     }
-    public static void sendToMaster(@Nullable UUID packetIdentifier, @Nullable UUID senderPlayerUUID, CustomPacketPayload packet)
+    public static boolean sendToMaster(@Nullable UUID packetIdentifier, @Nullable UUID senderPlayerUUID, CustomPacketPayload packet)
     {
         if(checkSendToMaster())
-            instance.slaveClient.sendToMaster(packetIdentifier, senderPlayerUUID, packet);
+            return instance.slaveClient.sendToMaster(packetIdentifier, senderPlayerUUID, packet);
+        return false;
     }
 
 

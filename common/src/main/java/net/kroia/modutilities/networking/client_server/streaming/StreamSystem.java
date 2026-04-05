@@ -1,7 +1,7 @@
 package net.kroia.modutilities.networking.client_server.streaming;
 
 import net.kroia.modutilities.ModUtilitiesMod;
-import net.kroia.modutilities.networking.client_server.ClientServerPacketManager;
+import net.kroia.modutilities.networking.NetworkPacketManager;
 import net.kroia.modutilities.networking.server_server.ServerServerManager;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
@@ -37,7 +37,7 @@ public class StreamSystem {
      *
      * @param networkManager The NetworkManager to use for packet handling.
      */
-    public static void setup(@NotNull ClientServerPacketManager networkManager) {
+    public static void setup(@NotNull NetworkPacketManager networkManager) {
         if (STREAM_MANAGER != null) {
             return;
         }

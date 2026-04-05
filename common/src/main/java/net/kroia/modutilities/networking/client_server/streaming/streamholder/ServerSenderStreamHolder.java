@@ -2,7 +2,7 @@ package net.kroia.modutilities.networking.client_server.streaming.streamholder;
 
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.ServerPlayerUtilities;
-import net.kroia.modutilities.networking.client_server.ClientServerPacketManager;
+import net.kroia.modutilities.networking.NetworkPacketManager;
 import net.kroia.modutilities.networking.client_server.streaming.GenericStream;
 import net.kroia.modutilities.networking.client_server.streaming.StreamStopServerSenderPacket;
 import net.kroia.modutilities.networking.server_server.ServerServerManager;
@@ -22,7 +22,7 @@ public class ServerSenderStreamHolder<CONTEXT_DATA, DATA>
     /**
      * The NetworkManager instance used to send packets to the target player.
      */
-    private final ClientServerPacketManager networkManager;
+    private final NetworkPacketManager networkManager;
 
     /**
      * A copy of the registered stream object.
@@ -48,7 +48,7 @@ public class ServerSenderStreamHolder<CONTEXT_DATA, DATA>
 
 
 
-    public ServerSenderStreamHolder(ClientServerPacketManager manager,
+    public ServerSenderStreamHolder(NetworkPacketManager manager,
                                     GenericStream<CONTEXT_DATA, DATA> stream,
                                     RegistryFriendlyByteBuf contextDataBuf,
                                     UUID playerUUID,

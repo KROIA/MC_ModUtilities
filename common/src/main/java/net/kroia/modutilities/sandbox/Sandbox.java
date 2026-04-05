@@ -5,7 +5,7 @@ import com.mojang.brigadier.CommandDispatcher;
 import dev.architectury.event.events.common.CommandRegistrationEvent;
 import net.kroia.modutilities.JsonUtilities;
 import net.kroia.modutilities.ModUtilitiesMod;
-import net.kroia.modutilities.networking.client_server.ClientServerPacketManager;
+import net.kroia.modutilities.networking.NetworkPacketManager;
 import net.kroia.modutilities.networking.client_server.streaming.StreamSystem;
 import net.kroia.modutilities.setting.parser.ItemStackJsonParser;
 import net.minecraft.commands.CommandSourceStack;
@@ -19,7 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class Sandbox {
-    public static class SandboxNetwork extends ClientServerPacketManager
+    public static class SandboxNetwork extends NetworkPacketManager
     {
 
         public static final SineStream SINUS_STREAM = (SineStream) StreamSystem.register(new SineStream());
@@ -28,6 +28,7 @@ public class Sandbox {
             super(ModUtilitiesMod.MOD_ID);
             setupClientReceiverPackets();
             setupServerReceiverPackets();
+            setupServerServerPackets();
             this.setupARRS(); // Setup the Asynchronous Request Response System (ARRS)
             this.setupStreamSystem();
 
@@ -42,6 +43,12 @@ public class Sandbox {
 
         @Override
         public void setupServerReceiverPackets() {
+
+        }
+
+        @Override
+        public void setupServerServerPackets()
+        {
 
         }
     }

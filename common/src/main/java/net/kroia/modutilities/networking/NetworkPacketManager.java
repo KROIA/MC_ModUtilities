@@ -1,8 +1,10 @@
-package net.kroia.modutilities.networking.client_server;
+package net.kroia.modutilities.networking;
 
 
 
 import dev.architectury.networking.NetworkManager;
+import net.kroia.modutilities.networking.client_server.NetworkPacket;
+import net.kroia.modutilities.networking.client_server.PacketHandler;
 import net.kroia.modutilities.networking.client_server.arrs.AsynchronousRequestResponseSystem;
 import net.kroia.modutilities.networking.client_server.streaming.StreamSystem;
 import net.kroia.modutilities.networking.server_server.ForwardPacketHandler;
@@ -12,14 +14,14 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 
-public abstract class ClientServerPacketManager {
+public abstract class NetworkPacketManager {
 
 
-    public ClientServerPacketManager(String modID) {
+    public NetworkPacketManager(String modID) {
         this(modID, "default_channel");
 
     }
-    public ClientServerPacketManager(String modID, String channelName) {
+    public NetworkPacketManager(String modID, String channelName) {
 
     }
 
@@ -44,6 +46,8 @@ public abstract class ClientServerPacketManager {
     abstract public void setupClientReceiverPackets();
 
     abstract public void setupServerReceiverPackets();
+
+    abstract public void setupServerServerPackets();
 
     /**
      * Registers a network packet type with the given encoder, decoder, and message consumer.
@@ -86,6 +90,13 @@ public abstract class ClientServerPacketManager {
         //NetworkManager.registerReceiver(NetworkManager.Side.S2C, packetType, streamCodec, NetworkPacket.HANDLER::handleClient);
         NetworkManager.registerReceiver(NetworkManager.Side.C2S, packetType, streamCodec, NetworkPacket.HANDLER::handleServer);
         ServerServerPacketRegistry.register(packetType, streamCodec, NetworkPacket.HANDLER);
+    }
+
+    public <T extends NetworkPacket> void registerS2S(CustomPacketPayload.Type<T> packetType, StreamCodec<RegistryFriendlyByteBuf, T> streamCodec) {
+        ServerServerPacketRegistry.register(packetType, streamCodec, NetworkPacket.HANDLER);
+    }
+    public <T extends NetworkPacket> void registerS2S(CustomPacketPayload.Type<T> packetType, StreamCodec<RegistryFriendlyByteBuf, T> streamCodec, ForwardPacketHandler<? super T> forwardHandler) {
+        ServerServerPacketRegistry.register(packetType, streamCodec, forwardHandler);
     }
 
     /**
