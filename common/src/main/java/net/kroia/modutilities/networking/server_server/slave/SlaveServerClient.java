@@ -122,13 +122,9 @@ public class SlaveServerClient {
      * Send any {@link Payload} to the master.
      * Thread-safe — Netty queues the write internally.
      */
-    public boolean sendToMaster(@Nullable UUID packetIdentifier, @Nullable UUID senderPlayerUUID, CustomPacketPayload packet) {
-        ForwardPacketPayload payload = ServerServerPacketRegistry.createForwardPacketPayload(packetIdentifier, senderPlayerUUID, serverId, packet);
-        return sendToMaster(payload);
-    }
     public boolean sendToMaster(@Nullable UUID senderPlayerUUID, CustomPacketPayload packet) {
         info("Sending packet: '"+packet.type().id()+"' to master for player '" + senderPlayerUUID+"'");
-        ForwardPacketPayload payload = ServerServerPacketRegistry.createForwardPacketPayload(null, senderPlayerUUID, serverId, packet);
+        ForwardPacketPayload payload = ServerServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID, serverId, packet);
         return sendToMaster(payload);
     }
     public boolean sendToMaster(Payload payload) {

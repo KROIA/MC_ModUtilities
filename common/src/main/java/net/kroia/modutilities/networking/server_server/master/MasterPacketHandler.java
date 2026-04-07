@@ -60,7 +60,7 @@ public class MasterPacketHandler extends SimpleChannelInboundHandler<Payload> {
                 RegistryFriendlyByteBuf dataBuf =  new RegistryFriendlyByteBuf(buf, mcServer.registryAccess());
                 //RegistryFriendlyByteBuf dataBuf =  new RegistryFriendlyByteBuf(Unpooled.buffer(), mcServer.registryAccess());
                 //ByteBufCodecs.BYTE_ARRAY.encode(dataBuf, bb.data());
-                ForwardPacketContext context = new ForwardPacketContext(ctx, bb.senderServerID(), bb.senderPlayerUUID(), bb.packetIdentifier());
+                ForwardPacketContext context = new ForwardPacketContext(ctx, bb.senderServerID(), bb.senderPlayerUUID());
                 ServerServerPacketRegistry.handleByteBufOnMasterSide(packetResouceLoc, dataBuf, context);
             }
 

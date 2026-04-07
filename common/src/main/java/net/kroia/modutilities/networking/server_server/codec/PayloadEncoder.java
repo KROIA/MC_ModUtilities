@@ -35,7 +35,6 @@ public class PayloadEncoder extends MessageToByteEncoder<Payload> {
                 writeString(out, bc.message());
             }
             case ForwardPacketPayload bb -> {
-                ExtraCodecUtils.nullable(UUIDUtil.STREAM_CODEC).encode(out, bb.packetIdentifier());
                 ExtraCodecUtils.nullable(UUIDUtil.STREAM_CODEC).encode(out, bb.senderPlayerUUID());
                 ByteBufCodecs.STRING_UTF8.encode(out, bb.senderServerID());
                 ResourceLocation.STREAM_CODEC.encode(out, bb.packetType());

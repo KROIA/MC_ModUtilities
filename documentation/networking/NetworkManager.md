@@ -33,14 +33,14 @@ public class MyExampleModNetworking extends NetworkManager {
     public void setupClientReceiverPackets()
     {
         // Register packets
-        register(SimpleDataPacketToClient.class, SimpleDataPacketToClient::encode, SimpleDataPacketToClient::new, SimpleDataPacketToClient::receive);
+        registerS2C(SimpleDataPacketToClient.TYPE, SimpleDataPacketToClient.STREAM_CODEC);
     }
 
     @Override
     public void setupServerReceiverPackets()
     {
         // Register packets
-        register(SimpleDataPacketToServer.class, SimpleDataPacketToServer::encode, SimpleDataPacketToServer::new, SimpleDataPacketToServer::receive);
+        registerC2S(SimpleDataPacketToServer.TYPE, SimpleDataPacketToServer.STREAM_CODEC);
     }
 }
 
@@ -62,6 +62,8 @@ public class MyExampleModNetworking extends NetworkManager {
 
         setupClientReceiverPackets();
         setupServerReceiverPackets();
+        setupServerServerPackets();
+
 
         // Setup the ARRS
         this.setupARRS(); 
@@ -88,6 +90,8 @@ public class MyExampleModNetworking extends NetworkManager {
 
         setupClientReceiverPackets();
         setupServerReceiverPackets();
+        setupServerServerPackets();
+
 
         // Setup the Stream System
         this.setupStreamSystem();

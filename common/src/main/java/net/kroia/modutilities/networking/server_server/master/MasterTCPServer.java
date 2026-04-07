@@ -103,41 +103,25 @@ public class MasterTCPServer {
     // ── Routing helpers ───────────────────────────────────────────────────────
 
     /** Send a payload to one specific child server. */
-    public boolean sendToSlave(@Nullable UUID packetIdentifier, @Nullable UUID senderPlayerUUID, String targetServerID, CustomPacketPayload packet) {
-        ForwardPacketPayload payload = ServerServerPacketRegistry.createForwardPacketPayload(packetIdentifier, senderPlayerUUID, "", packet);
-        return sendToSlave(targetServerID, payload);
-    }
     public boolean sendToSlave(@Nullable UUID senderPlayerUUID, String targetServerID, CustomPacketPayload packet) {
-        ForwardPacketPayload payload = ServerServerPacketRegistry.createForwardPacketPayload(null, senderPlayerUUID, "", packet);
+        ForwardPacketPayload payload = ServerServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID,"", packet);
         return sendToSlave(targetServerID, payload);
     }
 
     /** Broadcast a payload to all connected child servers. */
-    public void broadcastToSlaves(@Nullable UUID packetIdentifier, @Nullable UUID senderPlayerUUID, CustomPacketPayload packet) {
-        ForwardPacketPayload payload = ServerServerPacketRegistry.createForwardPacketPayload(packetIdentifier, senderPlayerUUID, "", packet);
-        broadcastToSlaves(payload);
-    }
     public void broadcastToSlaves(@Nullable UUID senderPlayerUUID, CustomPacketPayload packet) {
-        ForwardPacketPayload payload = ServerServerPacketRegistry.createForwardPacketPayload(null, senderPlayerUUID, "", packet);
+        ForwardPacketPayload payload = ServerServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID, "", packet);
         broadcastToSlaves(payload);
     }
 
     /** Broadcast to all children EXCEPT the one with {@code excludeServerId}. */
-    public void broadcastToSlaves(@Nullable UUID packetIdentifier, @Nullable UUID senderPlayerUUID, CustomPacketPayload packet, String excludeServerId) {
-        ForwardPacketPayload payload = ServerServerPacketRegistry.createForwardPacketPayload(packetIdentifier, senderPlayerUUID, "", packet);
-        broadcastToSlaves(payload, excludeServerId);
-    }
     public void broadcastToSlaves(@Nullable UUID senderPlayerUUID, CustomPacketPayload packet, String excludeServerId) {
-        ForwardPacketPayload payload = ServerServerPacketRegistry.createForwardPacketPayload(null, senderPlayerUUID, "", packet);
+        ForwardPacketPayload payload = ServerServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID, "", packet);
         broadcastToSlaves(payload, excludeServerId);
     }
 
-    public void broadcastToSlaves(@Nullable UUID packetIdentifier, @Nullable UUID senderPlayerUUID, CustomPacketPayload packet, List<String> excludeServerIds) {
-        ForwardPacketPayload payload = ServerServerPacketRegistry.createForwardPacketPayload(packetIdentifier, senderPlayerUUID, "", packet);
-        broadcastToSlaves(payload, excludeServerIds);
-    }
     public void broadcastToSlaves(@Nullable UUID senderPlayerUUID, CustomPacketPayload packet, List<String> excludeServerIds) {
-        ForwardPacketPayload payload = ServerServerPacketRegistry.createForwardPacketPayload(null, senderPlayerUUID, "", packet);
+        ForwardPacketPayload payload = ServerServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID, "", packet);
         broadcastToSlaves(payload, excludeServerIds);
     }
 

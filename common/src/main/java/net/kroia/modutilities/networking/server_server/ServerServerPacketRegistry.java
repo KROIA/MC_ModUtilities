@@ -152,8 +152,7 @@ public class ServerServerPacketRegistry
     }
 
 
-    public static ForwardPacketPayload createForwardPacketPayload(@Nullable UUID packetIdentifier,
-                                                                  @Nullable UUID senderPlayerUUID,
+    public static ForwardPacketPayload createForwardPacketPayload(@Nullable UUID senderPlayerUUID,
                                                                   String senderServerID,
                                                                   CustomPacketPayload packet)
     {
@@ -164,7 +163,7 @@ public class ServerServerPacketRegistry
         RegistryFriendlyByteBuf encoded = registryObject.encode(packet);
         //byte[] data = ByteBufCodecs.BYTE_ARRAY.decode(encoded);
         byte[] data = encoded.array();
-        ForwardPacketPayload payload = new ForwardPacketPayload(packetIdentifier, senderPlayerUUID, senderServerID, packetType, data);
+        ForwardPacketPayload payload = new ForwardPacketPayload(senderPlayerUUID, senderServerID, packetType, data);
         return payload;
     }
 

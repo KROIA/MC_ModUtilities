@@ -4,7 +4,7 @@ import net.kroia.modutilities.networking.client_server.arrs.GenericRequest;
 import net.kroia.modutilities.networking.client_server.arrs.GenericRequestPacket;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 
-import java.util.function.Consumer;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * This is an SRRS internal class and is not used for public API.
@@ -13,15 +13,15 @@ import java.util.function.Consumer;
  */
 public class ServerRequestHolder<IN, OUT>
 {
-    public Consumer<OUT> responseHandler;
+    public CompletableFuture<OUT> responseFuture;
     public GenericRequestPacket requestPacket;
     public GenericRequest<IN, OUT> request;
     public void processResponse(RegistryFriendlyByteBuf buf)
     {
         OUT response = request.decodeOutput(buf);
-        if(responseHandler != null)
+        if(responseFuture != null)
         {
-            responseHandler.accept(response);
+            responseFuture.complete(response);
         }
     }
 }

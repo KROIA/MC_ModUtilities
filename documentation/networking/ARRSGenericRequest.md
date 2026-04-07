@@ -31,45 +31,32 @@ public class TestRequest extends GenericRequest<Integer, String>
 {
     @Override
     public String getRequestTypeID() {
-        return "TestRequest_"+Integer.TYPE.getName()+"_"+String.class.getName();
+        return TestRequest.class.getName();
     }
 
     @Override
-    public String handleOnClient(Integer input) {
-        return "Hello, your request has been processed successfully by the client! Input: " + input;
-    }
-    @Override
-    public String handleOnServer(Integer input, ServerPlayer sender) {
-        return "Hello, your request has been processed successfully by the server! Input: " + input;
+    public CompletableFuture<String> handleOnServer(Integer input, ServerPlayer sender) {
+        return CompletableFuture.completedFuture("Hello, your request has been processed successfully by the server! Input: " + input);
     }
 
     @Override
     public void encodeInput(FriendlyByteBuf buf, Integer input) {
-        if (input != null) {
-            buf.writeInt(input.intValue());
-        } else {
-            buf.writeInt(0); // or some default value
-        }
+        ByteBufCodecs.INT.encode(buf, input);
     }
 
     @Override
     public void encodeOutput(FriendlyByteBuf buf, String output) {
-        if (output != null) {
-            buf.writeUtf(output);
-        } else {
-            buf.writeUtf(""); // or some default value
-        }
+        ByteBufCodecs.STRING_UTF8.encode(buf, output);
     }
 
     @Override
     public Integer decodeInput(FriendlyByteBuf buf) {
-        int value = buf.readInt();
-        return value;
+        return ByteBufCodecs.INT.decode(buf);
     }
 
     @Override
     public String decodeOutput(FriendlyByteBuf buf) {
-        return buf.readUtf(); // Assuming output is a String
+        return ByteBufCodecs.STRING_UTF8.decode(buf);
     }
 }
 ```
@@ -79,59 +66,43 @@ public class TestRequest extends GenericRequest<Integer, String>
 ``` Java
 @Override
 public String getRequestTypeID() {
-    return "TestRequest_"+Integer.TYPE.getName()+"_"+String.class.getName();
+    return TestRequest.class.getName();
 }
 ``` 
 The `getRequestTypeID` function needs to return a constant string. It is used to identify each request class. 
 Returning  `TestRequest.class.getName()` or `TestRequest.class.getSimpleName()` is also fine, as long as there is no other event with the same name.
 <br>
 
-##### handleOnClient()
-``` Java
-@Override
-public String handleOnClient(Integer input) {
-    return "Hello, your request has been processed successfully by the client! Input: " + input;
-}
-``` 
-The `handleOnClient` function gets called on the client side when receiving a request from the server.
-The input is provided by the server and the return value gets sent as response.
-<br>
-
 ##### handleOnServer()
 ``` Java
 @Override
-public String handleOnServer(Integer input, ServerPlayer sender) {
-    return "Hello, your request has been processed successfully by the server! Input: " + input;
+public CompletableFuture<String> handleOnServer(Integer input, ServerPlayer sender) {
+    return CompletableFuture.completedFuture("Hello, your request has been processed successfully by the server! Input: " + input);
 }
 ```
 The `handleOnServer` function gets called on the server sied when receiving a request from the client.
-The input is provided by the client and also the clients `ServerPlayer` instance is provided in case it is needed to process the request.
+The input is provided by the client and also the clients `ServerPlayer` instance is provided. In case it is not needed to process the request.
 The return value gets sent back to the client.
+Returning the value wrapped in a CompletableFuture<> to be able to have time for gathering the data for the response.
+Once the Future is completed, the response packet gets sent automatically.
 <br>
 
 ##### encodeInput()
 ``` Java
 @Override
 public void encodeInput(FriendlyByteBuf buf, Integer input) {
-    if (input != null) {
-        buf.writeInt(input.intValue());
-    } else {
-        buf.writeInt(0); // or some default value
-    }
+    ByteBufCodecs.INT.encode(buf, input);
 }
 ```
 The `encodeInput` function fills the `buf` with the `input` data. Only the data stored in the `buf` will be sent to the request receiver.
+Use the new CODEC feature for encoding
 <br>
 
 ##### encodeOutput()
 ``` Java
 @Override
 public void encodeOutput(FriendlyByteBuf buf, String output) {
-    if (output != null) {
-        buf.writeUtf(output);
-    } else {
-        buf.writeUtf(""); // or some default value
-    }
+    ByteBufCodecs.STRING_UTF8.encode(buf, output);
 }
 ```
 The response value also needs to be stored in the `buf` in order to send it to the requestor.
@@ -141,18 +112,17 @@ The response value also needs to be stored in the `buf` in order to send it to t
 ``` Java
 @Override
 public Integer decodeInput(FriendlyByteBuf buf) {
-    int value = buf.readInt();
-    return value;
+    return ByteBufCodecs.INT.decode(buf);
 }
 ``` 
-On the request receiver side, decoding the `buf` back to its original type is needed in order to pass it to the handle function
+On the request receiver side, decoding the `buf` back to its original type is needed in order to pass it to the request handler function
 <br>
 
 ##### decodeOutput()
 ``` Java
 @Override
 public String decodeOutput(FriendlyByteBuf buf) {
-    return buf.readUtf(); // Assuming output is a String
+    return ByteBufCodecs.STRING_UTF8.decode(buf);
 }
 ``` 
 On the request side, decoding the `buf` back to its original type is needed in order to pass it to the requestor.  

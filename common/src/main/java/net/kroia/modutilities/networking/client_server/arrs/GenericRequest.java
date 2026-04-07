@@ -53,7 +53,7 @@ public abstract class GenericRequest<IN, OUT>
      *
      * @return The output produced by the responder.
      */
-    public CompletableFuture<OUT> handleOnClient(IN input)  { throw new AssertionError("handleOnClient() is not implemented in" + this.getRequestTypeID() + ". Please implement this method to handle the request on the client side."); }
+    //public CompletableFuture<OUT> handleOnClient(IN input)  { throw new AssertionError("handleOnClient() is not implemented in" + this.getRequestTypeID() + ". Please implement this method to handle the request on the client side."); }
 
     /**
      * Handles the request on the server side.
@@ -132,14 +132,13 @@ public abstract class GenericRequest<IN, OUT>
      * The response handler will be called with the output once the server responds.
      *
      * @param input           The input to send to the server.
-     * @param responseHandler The handler to call with the output once received.
+     *
+     * @return                CompletableFuture object containing the response data
      *
      * @apiNote
      * This methode can be called manually on the clientside only (when the client is the requestor).
      */
-    public void sendRequestToServer(
-            IN input,
-            @NotNull Consumer<OUT> responseHandler)
+    public CompletableFuture<OUT> sendRequestToServer(IN input)
     {
         if(manager == null)
             throw new IllegalStateException("""
@@ -151,7 +150,7 @@ public abstract class GenericRequest<IN, OUT>
                     once on the client and server side.
                     """);
 
-        manager.sendRequestToServer(this, input, responseHandler);
+        return manager.sendRequestToServer(this, input);
     }
 
 
@@ -166,7 +165,7 @@ public abstract class GenericRequest<IN, OUT>
      * @apiNote
      * This methode can be called manually on the serverside only (when the server is the requestor).
      */
-    public void sendRequestToClient(
+    /*public void sendRequestToClient(
             IN input,
             @NotNull ServerPlayer receiver,
             @NotNull BiConsumer<OUT, ServerPlayer> responseHandler)
@@ -182,7 +181,7 @@ public abstract class GenericRequest<IN, OUT>
                     """);
 
         manager.sendRequestToClient(this, input, receiver, responseHandler);
-    }
+    }*/
 
 
     /*
@@ -239,7 +238,7 @@ public abstract class GenericRequest<IN, OUT>
      * This methode gets called clientside only (when the server is the requestor).
      * This function is called by the ARRS (do not call this method manually).
      */
-    public CompletableFuture<RegistryFriendlyByteBuf> decodeHandleEncodeOnClient(RegistryFriendlyByteBuf inputBuf, RegistryFriendlyByteBuf outputBuf)
+    /*public CompletableFuture<RegistryFriendlyByteBuf> decodeHandleEncodeOnClient(RegistryFriendlyByteBuf inputBuf, RegistryFriendlyByteBuf outputBuf)
     {
         IN input = decodeInput(inputBuf);
         CompletableFuture<OUT> output = handleOnClient(input);
@@ -249,7 +248,7 @@ public abstract class GenericRequest<IN, OUT>
             byteBufFut.complete(outputBuf);
                 });
         return byteBufFut;
-    }
+    }*/
 
 
 

@@ -5,6 +5,7 @@ import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -53,9 +54,7 @@ public class AsynchronousRequestResponseSystem {
 
         // Register packets for ARRS
         networkManager.registerC2S(GenericRequestPacket.TYPE, GenericRequestPacket.STREAM_CODEC);
-        //ServerServerPacketRegistry.register(GenericRequestPacket.TYPE, GenericRequestPacket.STREAM_CODEC);
         networkManager.registerS2C(GenericResponsePacket.TYPE,  GenericResponsePacket.STREAM_CODEC);
-        //ServerServerPacketRegistry.register(GenericResponsePacket.TYPE,  GenericResponsePacket.STREAM_CODEC);
     }
 
 
@@ -134,13 +133,12 @@ public class AsynchronousRequestResponseSystem {
      *
      * @param request The request to send.
      * @param input The input data for the request delivered to the receiver.
-     * @param responseHandler The handler to call when the response is received.
      * @param <IN> The type of input data.
      * @param <OUT> The type of output data provided by the provider
      */
-    public static <IN, OUT> void sendRequestToServer(@NotNull GenericRequest<IN, OUT> request, IN input, @NotNull Consumer<OUT> responseHandler) {
+    public static <IN, OUT> CompletableFuture<OUT> sendRequestToServer(@NotNull GenericRequest<IN, OUT> request, IN input) {
         checkManagerExists();
-        REQUEST_MANAGER.sendRequestToServer(request, input, responseHandler);
+        return REQUEST_MANAGER.sendRequestToServer(request, input);
     }
 
 
@@ -155,10 +153,10 @@ public class AsynchronousRequestResponseSystem {
      * @param <IN> The type of input data.
      * @param <OUT> The type of output data provided by the provider
      */
-    public static <IN, OUT> void sendRequestToClient(@NotNull GenericRequest<IN, OUT> request, IN input, @NotNull ServerPlayer target, @NotNull BiConsumer<OUT, ServerPlayer> responseHandler) {
+    /* public static <IN, OUT> void sendRequestToClient(@NotNull GenericRequest<IN, OUT> request, IN input, @NotNull ServerPlayer target, @NotNull BiConsumer<OUT, ServerPlayer> responseHandler) {
         checkManagerExists();
         REQUEST_MANAGER.sendRequestToClient(request, input, target, responseHandler);
-    }
+    }*/
 
     /**
      * Gets the number of requests that have been sent to the server but have not yet received a response.

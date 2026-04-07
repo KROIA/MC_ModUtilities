@@ -1,9 +1,11 @@
 package net.kroia.modutilities.networking.client_server.streaming;
 
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
+import java.util.function.Consumer;
 
 /**
  * This class is used to create stream objects
@@ -237,6 +239,12 @@ public abstract class GenericStream<CONTEXT_DATA, DATA> {
         return this.contextData;
     }
 
+
+    public UUID startServerToClient(@NotNull CONTEXT_DATA startData, @NotNull Consumer<DATA> streamDataHandler, @Nullable Runnable streamStoppedHandler)
+    {
+        return StreamSystem.startServerToClientStream(this, startData, streamDataHandler, streamStoppedHandler);
+    }
+
     /*
      * ----------------------------------------------------------------------------------------------------
      *
@@ -246,10 +254,10 @@ public abstract class GenericStream<CONTEXT_DATA, DATA> {
      */
 
 
-    /**
-     * Fills the buf with a new stream packet on the server side.
-     * @param buf The buffer to write the stream packet data to.
-     */
+                                    /**
+                                     * Fills the buf with a new stream packet on the server side.
+                                     * @param buf The buffer to write the stream packet data to.
+                                     */
     public void createStreamPacketOnServer(RegistryFriendlyByteBuf buf)
     {
         try{

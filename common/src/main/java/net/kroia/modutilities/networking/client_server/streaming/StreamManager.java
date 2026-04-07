@@ -165,7 +165,7 @@ public class StreamManager {
             }
         }*/
         if(activeServerSenderStreams != null && isServer) {
-            var stream = activeServerSenderStreams.remove(streamID);
+            var stream = activeServerSenderStreams.get(streamID);
             if (stream != null) {
                 stream.streamEnd();
             }
@@ -581,13 +581,16 @@ public class StreamManager {
     public void handlePacketOnServer(StreamStopClientSenderPacket packet)
     {
         UUID streamID = packet.getStreamID();
-        handleStreamStop(streamID);
         if(redirectedServerSenderStreams != null) {
             ServerSenderStreamHolder<?, ?> streamData = redirectedServerSenderStreams.get(streamID);
             if(streamData != null) {
                 ServerServerManager.sendToMaster(streamData.playerUUID, packet);
             }
+            else
+                handleStreamStop(streamID);
         }
+        else
+            handleStreamStop(streamID);
        /*
        // Only Streams from server to client are supported
         if(activeServerReceiverStreams != null) {

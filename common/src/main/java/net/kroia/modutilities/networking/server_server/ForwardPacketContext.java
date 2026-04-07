@@ -30,14 +30,13 @@ public class ForwardPacketContext
      */
     public final @Nullable UUID senderPlayerUUID;
 
-    public final @Nullable UUID packetIdentifier;
+    //public final @Nullable UUID packetIdentifier;
 
-    public ForwardPacketContext(ChannelHandlerContext channelContext, String senderServerID, @Nullable UUID senderPlayerUUID, @Nullable UUID packetIdentifier)
+    public ForwardPacketContext(ChannelHandlerContext channelContext, String senderServerID, @Nullable UUID senderPlayerUUID)
     {
         this.channelContext = channelContext;
         this.senderServerID = senderServerID;
         this.senderPlayerUUID = senderPlayerUUID;
-        this.packetIdentifier = packetIdentifier;
     }
 
     @Override
@@ -48,7 +47,6 @@ public class ForwardPacketContext
         jsonObject.addProperty("channelContext", channelContext.toString());
         jsonObject.addProperty("senderServerID", senderServerID);
         jsonObject.addProperty("senderPlayerUUID", (senderPlayerUUID==null?"null":senderPlayerUUID.toString()));
-        jsonObject.addProperty("packetIdentifier", (packetIdentifier==null?"null":packetIdentifier.toString()));
         return jsonObject.toString();
     }
 }

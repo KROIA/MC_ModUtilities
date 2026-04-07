@@ -44,7 +44,7 @@ public final class GenericRequestPacket extends NetworkPacket
 
     @Override
     protected void handleOnClient(NetworkManager.PacketContext context) {
-        var request = AsynchronousRequestResponseSystem.getRegisteredRequest(requestTypeID);
+        /*var request = AsynchronousRequestResponseSystem.getRegisteredRequest(requestTypeID);
 
         if (request == null) {
             return; // No factory found for this request type
@@ -61,7 +61,7 @@ public final class GenericRequestPacket extends NetworkPacket
             // Handle any exceptions that may occur during decoding/encoding
             ModUtilitiesMod.LOGGER.error("Error handling GenericRequestPacket: " + e.getMessage(), e);
             return; // Exit if an error occurs
-        }
+        }*/
     }
 
     @Override

@@ -22,7 +22,16 @@ Visit the [NetworkManager](NetworkManager.md) documentation the see what the [My
 
 ``` Java
 public class SimpleDataPacketToClient extends NetworkPacket {
-
+    public static final Type<SimpleDataPacketToClient> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "simple_data_packet_to_client"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, SimpleDataPacketToClient> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.INT, p -> p.value,
+            SimpleDataPacketToClient::new
+    );
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+    
     // Data to be sent
     int value;
 
@@ -30,33 +39,22 @@ public class SimpleDataPacketToClient extends NetworkPacket {
         super();
         this.value = value;
     }
-    public SimpleDataPacketToClient(FriendlyByteBuf friendlyByteBuf) {
-        super(friendlyByteBuf);
-    }
 
     // Creates a packet and sends it using the MyExampleModNetworking
     public static void sendPacket(ServerPlayer receiver, int value) {
         MyExampleModNetworking.getInstance().sendToClient(receiver, new SimpleDataPacketToClient(value));
     }
-
-
+    
     // Called when the client has received a packet from the server
     @Override
-    protected void handleOnClient()
+    protected void handleOnClient(NetworkManager.PacketContext context)
     {
         System.out.println("[CLIENT SIDE] Received value from server: " + value);
     }
 
-    // Fill the data we want to send in the "buf"
     @Override
-    public void encode(FriendlyByteBuf buf) {
-        buf.writeInt(value);
-    }
+    protected void handleOnServer(NetworkManager.PacketContext context) {
 
-    // Read the received "buf" and save the data back to the members
-    @Override
-    public void decode(FriendlyByteBuf buf) {
-        value = buf.readInt();
     }
 }
 ```
@@ -68,7 +66,16 @@ Visit the [NetworkManager](NetworkManager.md) documentation the see what the [My
 
 ``` Java
 public class SimpleDataPacketToServer extends NetworkPacket {
-
+    public static final Type<SimpleDataPacketToServer> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "simple_data_packet_to_server"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, SimpleDataPacketToServer> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.INT, p -> p.value,
+            SimpleDataPacketToServer::new
+    );
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+    
     // Data to be sent
     int value;
 
@@ -76,33 +83,22 @@ public class SimpleDataPacketToServer extends NetworkPacket {
         super();
         this.value = value;
     }
-    public SimpleDataPacketToServer(FriendlyByteBuf friendlyByteBuf) {
-        super(friendlyByteBuf);
-    }
 
     // Creates a packet and sends it using the MyExampleModNetworking
-    public static void sendPacket(int value) {
+    public static void sendPacket(ServerPlayer receiver, int value) {
         MyExampleModNetworking.getInstance().sendToServer(new SimpleDataPacketToServer(value));
     }
-
-
-    // Called when the server has received a packet from the client
+    
+    // Called when the client has received a packet from the server
     @Override
-    protected void handleOnServer(ServerPlayer sender)
+    protected void handleOnClient(NetworkManager.PacketContext context)
     {
+        
+    }
+
+    @Override
+    protected void handleOnServer(NetworkManager.PacketContext context) {
         System.out.println("[SERVER SIDE] Received value from client: " + value);
-    }
-
-    // Fill the data we want to send in the "buf"
-    @Override
-    public void encode(FriendlyByteBuf buf) {
-        buf.writeInt(value);
-    }
-
-    // Read the received "buf" and save the data back to the members
-    @Override
-    public void decode(FriendlyByteBuf buf) {
-        value = buf.readInt();
     }
 }
 ```

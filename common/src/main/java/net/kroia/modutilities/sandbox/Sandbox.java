@@ -38,7 +38,7 @@ public class Sandbox {
         @Override
         public void setupClientReceiverPackets() {
             registerS2C(SandboxOpenGuiPacket.TYPE, SandboxOpenGuiPacket.STREAM_CODEC, SandboxOpenGuiPacket.HANDLER);
-
+            registerS2C(SimpleDataPacketToClient.TYPE, SimpleDataPacketToClient.STREAM_CODEC);
         }
 
         @Override
@@ -120,7 +120,7 @@ public class Sandbox {
         }
     }
 
-    private static SandboxNetwork network = null;
+    public static SandboxNetwork network = null;
 
     private static SandboxDataArchiveManager dataArchiveManager;
 

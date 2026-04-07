@@ -1,0 +1,64 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0">
+  <diagram name="Page-1" id="74e2e168-ea6b-b213-b513-2b3c1d86103e">
+    <mxGraphModel dx="685" dy="373" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" background="none" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="77e6c97f196da883-1" parent="1" style="swimlane;html=1;childLayout=stackLayout;startSize=20;rounded=0;shadow=0;labelBackgroundColor=none;strokeWidth=1;fontFamily=Verdana;fontSize=8;align=center;" value="NetworkPacket" vertex="1">
+          <mxGeometry height="320" width="480" x="70" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="77e6c97f196da883-2" parent="77e6c97f196da883-1" style="swimlane;html=1;startSize=20;" value="Slave Client" vertex="1">
+          <mxGeometry height="300" width="160" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="77e6c97f196da883-8" parent="77e6c97f196da883-2" style="rounded=1;whiteSpace=wrap;html=1;shadow=0;labelBackgroundColor=none;strokeWidth=1;fontFamily=Verdana;fontSize=8;align=center;" value="&lt;div style=&quot;line-height: 80%;&quot;&gt;&lt;div&gt;&lt;font style=&quot;font-size: 6px; line-height: 80%;&quot;&gt;NetworkManager.&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;font-size: 6px; line-height: 80%;&quot;&gt;sendToServer(packet)&lt;/font&gt;&lt;/div&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="100" x="20" y="65" as="geometry" />
+        </mxCell>
+        <mxCell id="77e6c97f196da883-3" parent="77e6c97f196da883-1" style="swimlane;html=1;startSize=20;" value="Slave Server" vertex="1">
+          <mxGeometry height="300" width="160" x="160" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="2bTlU1LAlTtfe1bL9s95-4" edge="1" parent="77e6c97f196da883-3" source="77e6c97f196da883-11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="2bTlU1LAlTtfe1bL9s95-3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="77e6c97f196da883-11" parent="77e6c97f196da883-3" style="rounded=1;whiteSpace=wrap;html=1;shadow=0;labelBackgroundColor=none;strokeWidth=1;fontFamily=Verdana;fontSize=8;align=center;" value="&lt;div style=&quot;line-height: 100%;&quot;&gt;&lt;div&gt;&lt;font style=&quot;font-size: 6px; line-height: 100%;&quot;&gt;NetworkPacketHandler.&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;font-size: 6px; line-height: 100%;&quot;&gt;handleServer(packet, context)&lt;/font&gt;&lt;/div&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="100" x="30" y="65" as="geometry" />
+        </mxCell>
+        <mxCell id="2bTlU1LAlTtfe1bL9s95-9" edge="1" parent="77e6c97f196da883-3" source="2bTlU1LAlTtfe1bL9s95-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="2bTlU1LAlTtfe1bL9s95-7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="2bTlU1LAlTtfe1bL9s95-10" connectable="0" parent="2bTlU1LAlTtfe1bL9s95-9" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="No" vertex="1">
+          <mxGeometry relative="1" x="0.4042" as="geometry">
+            <mxPoint x="-32" y="-60" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2bTlU1LAlTtfe1bL9s95-3" parent="77e6c97f196da883-3" style="rhombus;whiteSpace=wrap;html=1;rounded=0;shadow=0;labelBackgroundColor=none;strokeWidth=1;fontFamily=Verdana;fontSize=8;align=center;" value="&lt;div style=&quot;line-height: 70%;&quot;&gt;&lt;div&gt;&lt;font style=&quot;font-size: 5px; line-height: 70%;&quot;&gt;packet.needsRoutingToMaster()?&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;font-size: 5px; line-height: 70%;&quot;&gt;&lt;br&gt;&lt;/font&gt;&lt;/div&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="100" x="30" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="2bTlU1LAlTtfe1bL9s95-7" parent="77e6c97f196da883-3" style="rounded=1;whiteSpace=wrap;html=1;shadow=0;labelBackgroundColor=none;strokeWidth=1;fontFamily=Verdana;fontSize=8;align=center;" value="&lt;div style=&quot;line-height: 60%;&quot;&gt;&lt;font style=&quot;font-size: 5px; line-height: 60%;&quot;&gt;packet.handleOnServer(context)&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="20" width="100" x="30" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="2bTlU1LAlTtfe1bL9s95-5" edge="1" parent="77e6c97f196da883-1" source="2bTlU1LAlTtfe1bL9s95-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fillColor=#fff2cc;strokeColor=#d6b656;" target="77e6c97f196da883-12">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="2bTlU1LAlTtfe1bL9s95-6" connectable="0" parent="2bTlU1LAlTtfe1bL9s95-5" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Yes" vertex="1">
+          <mxGeometry relative="1" x="-0.5426" y="1" as="geometry">
+            <mxPoint y="-9" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2bTlU1LAlTtfe1bL9s95-8" connectable="0" parent="2bTlU1LAlTtfe1bL9s95-5" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="&lt;div style=&quot;line-height: 30%;&quot;&gt;&lt;font style=&quot;font-size: 5px; line-height: 30%;&quot;&gt;Forwarding packet to master&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry relative="1" x="-0.6722" y="-1" as="geometry">
+            <mxPoint x="17" y="6" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="77e6c97f196da883-4" parent="77e6c97f196da883-1" style="swimlane;html=1;startSize=20;" value="Master Server" vertex="1">
+          <mxGeometry height="300" width="160" x="320" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="77e6c97f196da883-12" parent="77e6c97f196da883-4" style="rounded=1;whiteSpace=wrap;html=1;shadow=0;labelBackgroundColor=none;strokeWidth=1;fontFamily=Verdana;fontSize=8;align=center;" value="&lt;div style=&quot;line-height: 60%;&quot;&gt;&lt;font style=&quot;font-size: 5px; line-height: 60%;&quot;&gt;packet.handleOnMaster(context)&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="20" width="100" x="30" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="2bTlU1LAlTtfe1bL9s95-11" edge="1" parent="77e6c97f196da883-1" source="77e6c97f196da883-8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fillColor=#fff2cc;strokeColor=#d6b656;" target="77e6c97f196da883-11">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

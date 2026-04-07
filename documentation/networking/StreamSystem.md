@@ -63,7 +63,7 @@ public class ExampleScreen extends GuiScreen {
     public ExampleScreen()
     {
         // Store the returned stream ID
-        sinusStreamID = StreamSystem.startServerToClientStream(MyExampleModNetworking.SINUS_STREAM, 0.0f,
+        sinusStreamID = MyExampleModNetworking.SINUS_STREAM.startServerToClient(0.0f,
             (value)-> // Callback handler for stream data
             {
                 LOGGER.info("New value: " + value);

@@ -11,6 +11,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -57,24 +58,23 @@ public class RequestManager {
      *
      * @param request The request to send.
      * @param input The input data for the request delivered to the receiver.
-     * @param responseHandler The handler to call when the response is received.
      * @param <IN> The type of input data.
      * @param <OUT> The type of output data provided by the provider
      */
-    public <IN, OUT> void sendRequestToServer(@NotNull GenericRequest<IN, OUT> request,
-                                              IN input,
-                                              @NotNull Consumer<OUT> responseHandler) {
+    public <IN, OUT> CompletableFuture<OUT> sendRequestToServer(@NotNull GenericRequest<IN, OUT> request,
+                                                                IN input) {
         RegistryFriendlyByteBuf buf = UtilitiesPlatform.createRegistryFriendlyByteBufClientSide();
         request.encodeInput(buf, input);
         GenericRequestPacket requestPacket = new GenericRequestPacket(request.getRequestTypeID(), buf);
         ServerRequestHolder<IN, OUT> requestData = new ServerRequestHolder<>();
-        requestData.responseHandler = responseHandler;
+        requestData.responseFuture = new CompletableFuture<>();
         requestData.requestPacket = requestPacket;
         requestData.request = request;
         UUID requestId = requestPacket.getRequestID();
 
         pendingServerRequests.put(requestId, requestData);
         networkManager.sendToServer(requestPacket);
+        return requestData.responseFuture;
     }
 
     /**
@@ -88,7 +88,7 @@ public class RequestManager {
      * @param <IN> The type of input data.
      * @param <OUT> The type of output data provided by the provider
      */
-    public <IN, OUT> void sendRequestToClient(@NotNull GenericRequest<IN, OUT> request,
+    /*public <IN, OUT> void sendRequestToClient(@NotNull GenericRequest<IN, OUT> request,
                                               IN input,
                                               @NotNull ServerPlayer target,
                                               @NotNull BiConsumer<OUT, ServerPlayer> responseHandler) {
@@ -104,7 +104,7 @@ public class RequestManager {
 
         pendingClientRequests.put(requestId, requestData);
         networkManager.sendToClient(target, requestPacket);
-    }
+    }*/
 
     /**
      * Gets the number of requests that have been sent to the server but have not yet received a response.

@@ -171,12 +171,6 @@ public class ServerServerManager
             return instance.slaveClient.sendToMaster(senderPlayerUUID, packet);
         return false;
     }
-    public static boolean sendToMaster(@Nullable UUID packetIdentifier, @Nullable UUID senderPlayerUUID, CustomPacketPayload packet)
-    {
-        if(checkSendToMaster())
-            return instance.slaveClient.sendToMaster(packetIdentifier, senderPlayerUUID, packet);
-        return false;
-    }
 
 
 
