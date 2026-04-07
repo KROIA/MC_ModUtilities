@@ -20,7 +20,7 @@ public abstract class NetworkPacket implements CustomPacketPayload {
             {
                 if(packet.needsRoutingToMaster())
                 {
-                    ModUtilitiesMod.LOGGER.info("[NetworkPacket] Redirecting packet: "+packet.type()+" to master");
+                    //ModUtilitiesMod.LOGGER.info("[NetworkPacket] Redirecting packet: "+packet.type()+" to master");
                     ServerServerManager.sendToMaster(context.getPlayer().getUUID(),  packet);
                 }
                 else

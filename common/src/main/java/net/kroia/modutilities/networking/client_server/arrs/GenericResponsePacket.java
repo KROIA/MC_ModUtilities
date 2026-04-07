@@ -38,7 +38,7 @@ public final class GenericResponsePacket extends NetworkPacket
     @Override
     protected void handleOnClient(NetworkManager.PacketContext context) {
         try{
-            ModUtilitiesMod.LOGGER.info("Handling GenericResponsePacket on client: "+requestTypeID);
+            //ModUtilitiesMod.LOGGER.info("Handling GenericResponsePacket on client: "+requestTypeID);
             AsynchronousRequestResponseSystem.processResponseOnClient(this);
         }
         catch (Exception e) {
@@ -71,7 +71,7 @@ public final class GenericResponsePacket extends NetworkPacket
         if (request == null) {
             return; // No factory found for this request type
         }
-        ModUtilitiesMod.LOGGER.info("Handle response on slave server: "+requestTypeID);
+        //ModUtilitiesMod.LOGGER.info("Handle response on slave server: "+requestTypeID);
         //RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
         try {
             MinecraftServer server = UtilitiesPlatform.getServer();

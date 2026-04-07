@@ -78,7 +78,7 @@ public final class GenericRequestPacket extends NetworkPacket
         }
         else
         {*/
-            ModUtilitiesMod.LOGGER.info("Handle request internally: "+requestTypeID);
+            //ModUtilitiesMod.LOGGER.info("Handle request internally: "+requestTypeID);
             RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
             try {
                 CompletableFuture<RegistryFriendlyByteBuf> fut = request.decodeHandleEncodeOnServer(data, responseData, (ServerPlayer) context.getPlayer());
@@ -107,7 +107,7 @@ public final class GenericRequestPacket extends NetworkPacket
         if (request == null) {
             return; // No factory found for this request type
         }
-        ModUtilitiesMod.LOGGER.info("Handle request on master: "+requestTypeID);
+        //ModUtilitiesMod.LOGGER.info("Handle request on master: "+requestTypeID);
         RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
         try {
             CompletableFuture<RegistryFriendlyByteBuf> fut = request.decodeHandleEncodeOnMasterServer(data, responseData, context.senderPlayerUUID);
