@@ -1,7 +1,9 @@
 package net.kroia.modutilities.networking;
 
+import com.google.gson.JsonElement;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import net.kroia.modutilities.JsonUtilities;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -137,4 +139,19 @@ public class ExtraCodecUtils {
                 buf -> buf.readBoolean() ? innerCodec.decode(buf) : null // decode based on flag
         );
     }
+
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, JsonElement> JSON_ELEMENT_CODEC = StreamCodec.of(
+            (buf, jsonElement) -> {
+                // To String
+                String jsonString = JsonUtilities.toString(jsonElement);
+                ByteBufCodecs.STRING_UTF8.encode(buf, jsonString);
+            },
+            (buf) ->
+            {
+                String jsonString = ByteBufCodecs.STRING_UTF8.decode(buf);
+                JsonElement jsonElement = JsonUtilities.fromString(jsonString);
+                return jsonElement;
+            }
+    );
 }

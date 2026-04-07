@@ -4,6 +4,7 @@ package net.kroia.modutilities.networking.client_server.arrs;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -70,7 +71,7 @@ public abstract class GenericRequest<IN, OUT>
     public CompletableFuture<OUT> handleOnServer(IN input, ServerPlayer sender) {
         throw new AssertionError("handleOnServer() is not implemented in " + this.getRequestTypeID() + ". Please implement this method to handle the request on the server side.");
     }
-    public CompletableFuture<OUT> handleOnMasterServer(IN input, UUID playerSender) {
+    public CompletableFuture<OUT> handleOnMasterServer(IN input, @Nullable UUID playerSender) {
         throw new AssertionError("handleOnMasterServer() is not implemented in " + this.getRequestTypeID() + ". Please implement this method to handle the request on the server side.");
     }
 
@@ -216,7 +217,7 @@ public abstract class GenericRequest<IN, OUT>
         return byteBufFut;
     }
 
-    public CompletableFuture<RegistryFriendlyByteBuf> decodeHandleEncodeOnMasterServer(RegistryFriendlyByteBuf inputBuf, RegistryFriendlyByteBuf outputBuf, UUID playerSender)
+    public CompletableFuture<RegistryFriendlyByteBuf> decodeHandleEncodeOnMasterServer(RegistryFriendlyByteBuf inputBuf, RegistryFriendlyByteBuf outputBuf, @Nullable UUID playerSender)
     {
         IN input = decodeInput(inputBuf);
         CompletableFuture<OUT> output = handleOnMasterServer(input, playerSender);
