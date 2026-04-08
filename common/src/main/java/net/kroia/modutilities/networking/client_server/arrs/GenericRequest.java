@@ -154,6 +154,21 @@ public abstract class GenericRequest<IN, OUT>
         return manager.sendRequestToServer(this, input);
     }
 
+    public CompletableFuture<OUT> sendRequestToMaster(IN input)
+    {
+        if(manager == null)
+            throw new IllegalStateException("""
+                    RequestManager is not set. Cannot send request to server.
+                    Make sure to setup the ARRS correctly.
+                    Call AsynchronousRequestResponseSystem.setup() once on the client and server side.
+                    Also register this Request class with
+                    AsynchronousRequestResponseSystem.register(new GenericRequestType());
+                    once on the client and server side.
+                    """);
+
+        return manager.sendRequestToMaster(this, input);
+    }
+
 
     /**
      * Sends this request to a specific client with the provided input and a response handler.

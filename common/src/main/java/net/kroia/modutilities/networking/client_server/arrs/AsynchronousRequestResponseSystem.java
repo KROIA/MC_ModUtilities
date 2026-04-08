@@ -1,6 +1,7 @@
 package net.kroia.modutilities.networking.client_server.arrs;
 
 import net.kroia.modutilities.networking.NetworkPacketManager;
+import net.kroia.modutilities.networking.server_server.ForwardPacketContext;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.NotNull;
 
@@ -212,6 +213,10 @@ public class AsynchronousRequestResponseSystem {
     public static void processResponseOnClient(@NotNull GenericResponsePacket responsePacket)
     {
         REQUEST_MANAGER.processResponseOnClient(responsePacket);
+    }
+    public static void processResponseOnSlave(@NotNull GenericResponsePacket responsePacket, ForwardPacketContext context)
+    {
+        REQUEST_MANAGER.processResponseOnSlave(responsePacket, context);
     }
 
     /**

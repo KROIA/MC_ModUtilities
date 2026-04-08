@@ -181,7 +181,7 @@ public class ServerServerManager
             return instance.tcpServer.sendToSlave(null,serverId, packet);
         return false;
     }
-    public static boolean sendToSlave(UUID senderPlayerUUID, String serverId, CustomPacketPayload packet)
+    public static boolean sendToSlave(@Nullable UUID senderPlayerUUID, String serverId, CustomPacketPayload packet)
     {
         if(checkSendToSlave(serverId))
             return instance.tcpServer.sendToSlave(senderPlayerUUID,serverId, packet);
@@ -192,7 +192,7 @@ public class ServerServerManager
         if(checkBroadcastToSlaves())
             instance.tcpServer.broadcastToSlaves(null,packet);
     }
-    public static void broadcastToSlaves(UUID senderPlayerUUID, CustomPacketPayload packet)
+    public static void broadcastToSlaves(@Nullable UUID senderPlayerUUID, CustomPacketPayload packet)
     {
         if(checkBroadcastToSlaves())
             instance.tcpServer.broadcastToSlaves(senderPlayerUUID,packet);
@@ -202,17 +202,17 @@ public class ServerServerManager
         if(checkBroadcastToSlaves())
             instance.tcpServer.broadcastToSlaves(null,packet, excludeServerId);
     }
-    public static void broadcastToSlaves(UUID senderPlayerUUID, CustomPacketPayload packet, String excludeServerId)
+    public static void broadcastToSlaves(@Nullable UUID senderPlayerUUID, CustomPacketPayload packet, String excludeServerId)
     {
         if(checkBroadcastToSlaves())
-            instance.tcpServer.broadcastToSlaves(senderPlayerUUID,packet, excludeServerId);
+            instance.tcpServer.broadcastToSlaves(senderPlayerUUID, packet, excludeServerId);
     }
     public static void broadcastToSlaves(CustomPacketPayload packet, List<String> excludeServerIds)
     {
         if(checkBroadcastToSlaves())
             instance.tcpServer.broadcastToSlaves(null,packet, excludeServerIds);
     }
-    public static void broadcastToSlaves(UUID senderPlayerUUID, CustomPacketPayload packet, List<String> excludeServerIds)
+    public static void broadcastToSlaves(@Nullable UUID senderPlayerUUID, CustomPacketPayload packet, List<String> excludeServerIds)
     {
         if(checkBroadcastToSlaves())
             instance.tcpServer.broadcastToSlaves(senderPlayerUUID,packet, excludeServerIds);

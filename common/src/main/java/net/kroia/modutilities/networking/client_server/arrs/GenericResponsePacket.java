@@ -44,7 +44,6 @@ public final class GenericResponsePacket extends NetworkPacket
         catch (Exception e) {
             // Handle any exceptions that may occur during decoding/encoding
             ModUtilitiesMod.LOGGER.error("Error processing GenericResponsePacket on client: " + e.getMessage(), e);
-            return; // Exit if an error occurs
         }
     }
 
@@ -56,7 +55,6 @@ public final class GenericResponsePacket extends NetworkPacket
         catch (Exception e) {
             // Handle any exceptions that may occur during decoding/encoding
             ModUtilitiesMod.LOGGER.error("Error processing GenericResponsePacket on server: " + e.getMessage(), e);
-            return; // Exit if an error occurs
         }
     }
 
@@ -67,25 +65,12 @@ public final class GenericResponsePacket extends NetworkPacket
 
     @Override
     protected void handleOnSlave(ForwardPacketContext context) {
-        var request = AsynchronousRequestResponseSystem.getRegisteredRequest(requestTypeID);
-        if (request == null) {
-            return; // No factory found for this request type
-        }
-        //ModUtilitiesMod.LOGGER.info("Handle response on slave server: "+requestTypeID);
-        //RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
-        try {
-            MinecraftServer server = UtilitiesPlatform.getServer();
-            if(server == null)
-                return;
-            ServerPlayer targetPlayer = server.getPlayerList().getPlayer(context.senderPlayerUUID);
-            if(targetPlayer == null)
-                return;
-            request.getManager().getNetworkManager().sendToClient(targetPlayer, this);
-        }
-        catch (Exception e) {
+
+        try{
+            AsynchronousRequestResponseSystem.processResponseOnSlave(this, context);
+        }catch (Exception e) {
             // Handle any exceptions that may occur during decoding/encoding
-            ModUtilitiesMod.LOGGER.error("Error handling GenericResponsePacket: " + e.getMessage(), e);
-            return; // Exit if an error occurs
+            ModUtilitiesMod.LOGGER.error("Error processing GenericResponsePacket on slave: " + e.getMessage(), e);
         }
     }
 

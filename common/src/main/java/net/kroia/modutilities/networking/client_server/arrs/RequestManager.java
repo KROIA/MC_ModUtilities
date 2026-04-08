@@ -1,11 +1,15 @@
 package net.kroia.modutilities.networking.client_server.arrs;
 
 
+import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.UtilitiesPlatform;
 import net.kroia.modutilities.networking.NetworkPacketManager;
 import net.kroia.modutilities.networking.client_server.arrs.requestholder.ClientRequestHolder;
 import net.kroia.modutilities.networking.client_server.arrs.requestholder.ServerRequestHolder;
+import net.kroia.modutilities.networking.server_server.ForwardPacketContext;
+import net.kroia.modutilities.networking.server_server.ServerServerManager;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.NotNull;
 
@@ -28,6 +32,7 @@ public class RequestManager {
 
     private final NetworkPacketManager networkManager;
     private final Map<UUID, ServerRequestHolder<?,?>> pendingServerRequests = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<UUID, ServerRequestHolder<?,?>> pendingServerServerRequests = new java.util.concurrent.ConcurrentHashMap<>();
     private final Map<UUID, ClientRequestHolder<?,?>> pendingClientRequests = new java.util.concurrent.ConcurrentHashMap<>();
 
 
@@ -74,6 +79,31 @@ public class RequestManager {
 
         pendingServerRequests.put(requestId, requestData);
         networkManager.sendToServer(requestPacket);
+        return requestData.responseFuture;
+    }
+
+    /**
+     * Sends a request to the master server and registers a response handler.
+     * The request will be sent using the NetworkManager set in this RequestManager.
+     *
+     * @param request The request to send.
+     * @param input The input data for the request delivered to the receiver.
+     * @param <IN> The type of input data.
+     * @param <OUT> The type of output data provided by the provider
+     */
+    public <IN, OUT> CompletableFuture<OUT> sendRequestToMaster(@NotNull GenericRequest<IN, OUT> request,
+                                                                IN input) {
+        RegistryFriendlyByteBuf buf = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
+        request.encodeInput(buf, input);
+        GenericRequestPacket requestPacket = new GenericRequestPacket(request.getRequestTypeID(), buf);
+        ServerRequestHolder<IN, OUT> requestData = new ServerRequestHolder<>();
+        requestData.responseFuture = new CompletableFuture<>();
+        requestData.requestPacket = requestPacket;
+        requestData.request = request;
+        UUID requestId = requestPacket.getRequestID();
+
+        pendingServerServerRequests.put(requestId, requestData);
+        ServerServerManager.sendToMaster(requestPacket);
         return requestData.responseFuture;
     }
 
@@ -160,6 +190,38 @@ public class RequestManager {
             return;
 
         requestData.processResponse(responsePacket.getData());
+    }
+
+    public void processResponseOnSlave(GenericResponsePacket responsePacket, ForwardPacketContext context)
+    {
+        UUID requestId = responsePacket.getRequestID();
+        ServerRequestHolder<?, ?> requestData = pendingServerServerRequests.remove(requestId);
+        if(requestData == null)
+        {
+            // Forward the response to the client
+            var request = AsynchronousRequestResponseSystem.getRegisteredRequest(responsePacket.getRequestTypeID());
+            if (request == null) {
+                return; // No factory found for this request type
+            }
+            //ModUtilitiesMod.LOGGER.info("Handle response on slave server: "+requestTypeID);
+            //RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
+            try {
+                MinecraftServer server = UtilitiesPlatform.getServer();
+                if(server == null)
+                    return;
+                ServerPlayer targetPlayer = server.getPlayerList().getPlayer(context.senderPlayerUUID);
+                if(targetPlayer == null)
+                    return;
+                request.getManager().getNetworkManager().sendToClient(targetPlayer, responsePacket);
+            }
+            catch (Exception e) {
+                // Handle any exceptions that may occur during decoding/encoding
+                ModUtilitiesMod.LOGGER.error("Error handling GenericResponsePacket: " + e.getMessage(), e);
+                return; // Exit if an error occurs
+            }
+        }
+        else
+            requestData.processResponse(responsePacket.getData());
     }
 
     /**
