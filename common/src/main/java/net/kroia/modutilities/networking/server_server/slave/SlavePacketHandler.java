@@ -9,12 +9,14 @@ import net.kroia.modutilities.networking.server_server.ForwardPacketContext;
 import net.kroia.modutilities.networking.server_server.ServerServerPacketRegistry;
 import net.kroia.modutilities.networking.server_server.payload.BroadcastPayload;
 import net.kroia.modutilities.networking.server_server.payload.ForwardPacketPayload;
+import net.kroia.modutilities.networking.server_server.payload.HandshakeResultPayload;
 import net.kroia.modutilities.networking.server_server.payload.Payload;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
+
+import java.util.function.Consumer;
 
 public class SlavePacketHandler extends SimpleChannelInboundHandler<Payload> {
 
@@ -22,10 +24,12 @@ public class SlavePacketHandler extends SimpleChannelInboundHandler<Payload> {
     private final MinecraftServer mcServer;
 
     private final SlaveServerClient connector;
+    private final Consumer<SlaveServerClient.ConnectionEstablishState> onConnection;
 
-    public SlavePacketHandler(MinecraftServer mcServer, SlaveServerClient connector) {
+    public SlavePacketHandler(MinecraftServer mcServer, SlaveServerClient connector, Consumer<SlaveServerClient.ConnectionEstablishState> onConnection) {
         this.mcServer = mcServer;
         this.connector = connector;
+        this.onConnection = onConnection;
     }
 
     // ── Inbound packets from hub ──────────────────────────────────────────────
@@ -33,7 +37,16 @@ public class SlavePacketHandler extends SimpleChannelInboundHandler<Payload> {
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, Payload payload) {
         switch (payload) {
+            case HandshakeResultPayload hp ->
+            {
+                if(!hp.accepted()) {
+                    ctx.close();
+                    onConnection.accept(SlaveServerClient.ConnectionEstablishState.BAD_TOKEN);
+                }
+                else
+                    onConnection.accept(SlaveServerClient.ConnectionEstablishState.SUCCESS);
 
+            }
             // Hub routed a string message to this server — display it to players
             case BroadcastPayload bc -> {
                 info("Received from master: ["+bc.fromServer()+"] "+bc.senderName()+": "+bc.message());
@@ -50,7 +63,7 @@ public class SlavePacketHandler extends SimpleChannelInboundHandler<Payload> {
                 }
             }
             case ForwardPacketPayload bb -> {
-                debug("bytes received from: "+bb.senderServerID()+" "+bb.data().length+" bytes");
+               // debug("bytes received from: "+bb.senderServerID()+" "+bb.data().length+" bytes");
                 ResourceLocation packetResouceLoc = bb.packetType();
                 ByteBuf buf = Unpooled.buffer();
                 buf.writeBytes(bb.data());

@@ -4,10 +4,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
 import net.kroia.modutilities.networking.ExtraCodecUtils;
-import net.kroia.modutilities.networking.server_server.payload.BroadcastPayload;
-import net.kroia.modutilities.networking.server_server.payload.ForwardPacketPayload;
-import net.kroia.modutilities.networking.server_server.payload.HandshakePayload;
-import net.kroia.modutilities.networking.server_server.payload.Payload;
+import net.kroia.modutilities.networking.server_server.payload.*;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.resources.ResourceLocation;
@@ -28,6 +25,9 @@ public class PayloadEncoder extends MessageToByteEncoder<Payload> {
             case HandshakePayload hs -> {
                 writeString(out, hs.serverId());
                 writeString(out, hs.token());
+            }
+            case HandshakeResultPayload hr -> {
+                ByteBufCodecs.BOOL.encode(out, hr.accepted());
             }
             case BroadcastPayload bc -> {
                 writeString(out, bc.senderName());

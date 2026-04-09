@@ -2,6 +2,7 @@ package net.kroia.modutilities.networking.server_server.master;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import net.kroia.modutilities.ModUtilitiesMod;
@@ -9,6 +10,7 @@ import net.kroia.modutilities.networking.server_server.ForwardPacketContext;
 import net.kroia.modutilities.networking.server_server.ServerServerPacketRegistry;
 import net.kroia.modutilities.networking.server_server.payload.HandshakePayload;
 import net.kroia.modutilities.networking.server_server.payload.ForwardPacketPayload;
+import net.kroia.modutilities.networking.server_server.payload.HandshakeResultPayload;
 import net.kroia.modutilities.networking.server_server.payload.Payload;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -40,11 +42,16 @@ public class MasterPacketHandler extends SimpleChannelInboundHandler<Payload> {
             case HandshakePayload hs -> {
                 if (!hs.token().equals(masterTCPServer.getSharedSecret())) {
                     warn("Rejected connection from '"+hs.serverId()+"' — bad token");
+                    Channel channel = ctx.channel();
+                    if (channel != null && channel.isActive()) {
+                        channel.writeAndFlush(new HandshakeResultPayload(false));
+                    }
                     ctx.close();
                     return;
                 }
                 serverId = hs.serverId();
                 masterTCPServer.putChildConnection(serverId, ctx.channel());
+                masterTCPServer.sendToSlave(serverId, new HandshakeResultPayload(true));
             }
             case ForwardPacketPayload bb -> {
                 if (serverId == null) {
@@ -52,7 +59,7 @@ public class MasterPacketHandler extends SimpleChannelInboundHandler<Payload> {
                     ctx.close();
                     return;
                 }
-                info("Received ForwardPacketPayload from child server: "+bb.senderServerID());
+                //info("Received ForwardPacketPayload from child server: "+bb.senderServerID());
 
                 ResourceLocation packetResouceLoc = bb.packetType();
                 ByteBuf buf = Unpooled.buffer();

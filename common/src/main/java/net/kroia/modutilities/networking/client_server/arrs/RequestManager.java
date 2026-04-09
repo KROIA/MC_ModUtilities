@@ -106,6 +106,22 @@ public class RequestManager {
         ServerServerManager.sendToMaster(requestPacket);
         return requestData.responseFuture;
     }
+    public <IN, OUT> CompletableFuture<OUT> sendRequestToSlave(@NotNull GenericRequest<IN, OUT> request,
+                                                               String slaveID,
+                                                               IN input) {
+        RegistryFriendlyByteBuf buf = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
+        request.encodeInput(buf, input);
+        GenericRequestPacket requestPacket = new GenericRequestPacket(request.getRequestTypeID(), buf);
+        ServerRequestHolder<IN, OUT> requestData = new ServerRequestHolder<>();
+        requestData.responseFuture = new CompletableFuture<>();
+        requestData.requestPacket = requestPacket;
+        requestData.request = request;
+        UUID requestId = requestPacket.getRequestID();
+
+        pendingServerServerRequests.put(requestId, requestData);
+        ServerServerManager.sendToSlave(slaveID, requestPacket);
+        return requestData.responseFuture;
+    }
 
     /**
      * Sends a request to a specific client and registers a response handler.
@@ -192,6 +208,36 @@ public class RequestManager {
         requestData.processResponse(responsePacket.getData());
     }
 
+
+    public void processResponseOnMaster(GenericResponsePacket responsePacket, ForwardPacketContext context)
+    {
+        UUID requestId = responsePacket.getRequestID();
+        ServerRequestHolder<?, ?> requestData = pendingServerServerRequests.remove(requestId);
+        if(requestData == null)
+        {
+            // Forward the response to the client
+            var request = AsynchronousRequestResponseSystem.getRegisteredRequest(responsePacket.getRequestTypeID());
+            if (request == null) {
+                return; // No factory found for this request type
+            }
+            try {
+                MinecraftServer server = UtilitiesPlatform.getServer();
+                if(server == null)
+                    return;
+                ServerPlayer targetPlayer = server.getPlayerList().getPlayer(context.senderPlayerUUID);
+                if(targetPlayer == null)
+                    return;
+                request.getManager().getNetworkManager().sendToClient(targetPlayer, responsePacket);
+            }
+            catch (Exception e) {
+                // Handle any exceptions that may occur during decoding/encoding
+                ModUtilitiesMod.LOGGER.error("Error handling GenericResponsePacket: " + e.getMessage(), e);
+                return; // Exit if an error occurs
+            }
+        }
+        else
+            requestData.processResponse(responsePacket.getData());
+    }
     public void processResponseOnSlave(GenericResponsePacket responsePacket, ForwardPacketContext context)
     {
         UUID requestId = responsePacket.getRequestID();

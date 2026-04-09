@@ -34,6 +34,9 @@ public class PayloadDecoder extends ByteToMessageDecoder {
                     readString(in),  // serverId
                     readString(in)   // token
             );
+            case PacketIds.HANDSHAKE_RESULT ->  new HandshakeResultPayload(
+                    ByteBufCodecs.BOOL.decode(in)
+            );
             case PacketIds.BROADCAST -> new BroadcastPayload(
                     readString(in),  // senderName
                     readString(in),  // fromServer

@@ -6,6 +6,7 @@ package net.kroia.modutilities.networking.server_server.payload;
  */
 public sealed interface Payload permits
         HandshakePayload,
+        HandshakeResultPayload,
         BroadcastPayload,
         ForwardPacketPayload {
 

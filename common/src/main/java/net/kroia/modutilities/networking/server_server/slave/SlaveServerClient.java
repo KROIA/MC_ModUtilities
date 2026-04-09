@@ -21,9 +21,18 @@ import net.minecraft.server.MinecraftServer;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 public class SlaveServerClient {
+    public enum ConnectionEstablishState
+    {
+        SUCCESS,
+        BAD_TOKEN
+    }
+
+
     private final String masterHost;
     private final int    masterPort;
     private final String serverId;
@@ -36,15 +45,26 @@ public class SlaveServerClient {
 
     private @Nullable Throwable connectionFailReason = null;
 
-    public SlaveServerClient(MinecraftServer mcServer, String sharedSecret, String slaveServerID, String masterHostIP, int masterHostTcpPort)
+    private final Runnable onConnectionAccepted;
+    private final Consumer<ConnectionEstablishState> onConnectionFailed;
+    private final Consumer<Throwable> onConnectionLost;
+    private final Runnable onDisconnect;
+
+    public SlaveServerClient(MinecraftServer mcServer, String sharedSecret, String slaveServerID, String masterHostIP, int masterHostTcpPort,
+                             Runnable  onConnectionAccepted, Consumer<ConnectionEstablishState> onConnectionFailed, Consumer<Throwable>  onConnectionLost, Runnable onDisconnect)
     {
         this.masterHost = masterHostIP;
         this.masterPort = masterHostTcpPort;
         this.serverId = slaveServerID;
         this.sharedSecret = sharedSecret;
         this.mcServer = mcServer;
+        this.onConnectionAccepted = onConnectionAccepted;
+        this.onConnectionFailed = onConnectionFailed;
+        this.onConnectionLost = onConnectionLost;
+        this.onDisconnect = onDisconnect;
 
         group = new NioEventLoopGroup();
+
     }
 
     // ── Connect / Disconnect ──────────────────────────────────────────────────
@@ -56,6 +76,7 @@ public class SlaveServerClient {
         info("Connecting to " + masterHost + ":" + masterPort);
 
         SlaveServerClient client = this;
+        Consumer<SlaveServerClient.ConnectionEstablishState> onConnectionSuccess = this::onConnectionEstablishedResult;
         Bootstrap bootstrap = new Bootstrap()
                 .group(group)
                 .channel(NioSocketChannel.class)
@@ -72,7 +93,7 @@ public class SlaveServerClient {
                                 // ④ masterPayload → bytes
                                 .addLast(new PayloadEncoder())
                                 // ⑤ Handle packets received FROM the master
-                                .addLast(new SlavePacketHandler(mcServer, client));
+                                .addLast(new SlavePacketHandler(mcServer, client, onConnectionSuccess));
                     }
                 });
 
@@ -87,6 +108,7 @@ public class SlaveServerClient {
                 connectionFailReason =  future.cause();
                 warn("Could not connect to master — retrying in 5s... Reason: "+connectionFailReason);
                 scheduleReconnect();
+                onConnectionLost.accept(connectionFailReason);
             }
         });
     }
@@ -103,6 +125,7 @@ public class SlaveServerClient {
         group.shutdownGracefully();
         connectionFailReason = null;
         info("Disconnected from master.");
+        onDisconnect.run();
     }
 
     public boolean isConnected() {
@@ -123,7 +146,7 @@ public class SlaveServerClient {
      * Thread-safe — Netty queues the write internally.
      */
     public boolean sendToMaster(@Nullable UUID senderPlayerUUID, CustomPacketPayload packet) {
-        info("Sending packet: '"+packet.type().id()+"' to master for player '" + senderPlayerUUID+"'");
+        //info("Sending packet: '"+packet.type().id()+"' to master for player '" + senderPlayerUUID+"'");
         ForwardPacketPayload payload = ServerServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID, serverId, packet);
         return sendToMaster(payload);
     }
@@ -143,6 +166,27 @@ public class SlaveServerClient {
 
     public String getServerId() { return serverId; }
 
+    private void onConnectionEstablishedResult(ConnectionEstablishState state) {
+        switch(state)
+        {
+            case ConnectionEstablishState.SUCCESS ->  {
+                info("Master accepts connection");
+                try {
+                    onConnectionAccepted.run();
+                }catch (Exception e) {
+                    error("Failed to call callback: onConnectionAccepted. Reason: "+e.getMessage(),e);
+                }
+            }
+            case ConnectionEstablishState.BAD_TOKEN -> {
+                info("Can't connect to master");
+                try {
+                    onConnectionFailed.accept(state);
+                }catch (Exception e) {
+                    error("Failed to call callback: onConnectionFailed. Reason: "+e.getMessage(),e);
+                }
+            }
+        }
+    }
 
     private static void info(String message) {
         ModUtilitiesMod.LOGGER.info("[SlaveServerClient]: "+message);

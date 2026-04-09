@@ -214,6 +214,10 @@ public class AsynchronousRequestResponseSystem {
     {
         REQUEST_MANAGER.processResponseOnClient(responsePacket);
     }
+    public static void processResponseOnMaster(@NotNull GenericResponsePacket responsePacket, ForwardPacketContext context)
+    {
+        REQUEST_MANAGER.processResponseOnMaster(responsePacket, context);
+    }
     public static void processResponseOnSlave(@NotNull GenericResponsePacket responsePacket, ForwardPacketContext context)
     {
         REQUEST_MANAGER.processResponseOnSlave(responsePacket, context);

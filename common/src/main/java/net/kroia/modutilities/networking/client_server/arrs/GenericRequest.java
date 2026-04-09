@@ -71,8 +71,11 @@ public abstract class GenericRequest<IN, OUT>
     public CompletableFuture<OUT> handleOnServer(IN input, ServerPlayer sender) {
         throw new AssertionError("handleOnServer() is not implemented in " + this.getRequestTypeID() + ". Please implement this method to handle the request on the server side.");
     }
-    public CompletableFuture<OUT> handleOnMasterServer(IN input, @Nullable UUID playerSender) {
+    public CompletableFuture<OUT> handleOnMasterServer(IN input, String slaveID, @Nullable UUID playerSender) {
         throw new AssertionError("handleOnMasterServer() is not implemented in " + this.getRequestTypeID() + ". Please implement this method to handle the request on the server side.");
+    }
+    public CompletableFuture<OUT> handleOnSlaveServer(IN input, @Nullable UUID playerSender) {
+        throw new AssertionError("handleOnMasterSlave() is not implemented in " + this.getRequestTypeID() + ". Please implement this method to handle the request on the server side.");
     }
 
 
@@ -168,6 +171,20 @@ public abstract class GenericRequest<IN, OUT>
 
         return manager.sendRequestToMaster(this, input);
     }
+    public CompletableFuture<OUT> sendRequestToSlave(String slaveID, IN input)
+    {
+        if(manager == null)
+            throw new IllegalStateException("""
+                    RequestManager is not set. Cannot send request to server.
+                    Make sure to setup the ARRS correctly.
+                    Call AsynchronousRequestResponseSystem.setup() once on the client and server side.
+                    Also register this Request class with
+                    AsynchronousRequestResponseSystem.register(new GenericRequestType());
+                    once on the client and server side.
+                    """);
+
+        return manager.sendRequestToSlave( this, slaveID, input);
+    }
 
 
     /**
@@ -232,10 +249,21 @@ public abstract class GenericRequest<IN, OUT>
         return byteBufFut;
     }
 
-    public CompletableFuture<RegistryFriendlyByteBuf> decodeHandleEncodeOnMasterServer(RegistryFriendlyByteBuf inputBuf, RegistryFriendlyByteBuf outputBuf, @Nullable UUID playerSender)
+    public CompletableFuture<RegistryFriendlyByteBuf> decodeHandleEncodeOnMasterServer(RegistryFriendlyByteBuf inputBuf, RegistryFriendlyByteBuf outputBuf, String slaveID, @Nullable UUID playerSender)
     {
         IN input = decodeInput(inputBuf);
-        CompletableFuture<OUT> output = handleOnMasterServer(input, playerSender);
+        CompletableFuture<OUT> output = handleOnMasterServer(input, slaveID, playerSender);
+        CompletableFuture<RegistryFriendlyByteBuf> byteBufFut = new CompletableFuture<>();
+        output.thenAccept(responseData -> {
+            encodeOutput(outputBuf, responseData);
+            byteBufFut.complete(outputBuf);
+        });
+        return byteBufFut;
+    }
+    public CompletableFuture<RegistryFriendlyByteBuf> decodeHandleEncodeOnSlaveServer(RegistryFriendlyByteBuf inputBuf, RegistryFriendlyByteBuf outputBuf, @Nullable UUID playerSender)
+    {
+        IN input = decodeInput(inputBuf);
+        CompletableFuture<OUT> output = handleOnSlaveServer(input, playerSender);
         CompletableFuture<RegistryFriendlyByteBuf> byteBufFut = new CompletableFuture<>();
         output.thenAccept(responseData -> {
             encodeOutput(outputBuf, responseData);

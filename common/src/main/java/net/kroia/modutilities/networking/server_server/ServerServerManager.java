@@ -9,6 +9,8 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.function.Consumer;
 
 public class ServerServerManager
 {
@@ -31,7 +33,9 @@ public class ServerServerManager
      * @param tcpPort
      * @return
      */
-    public static boolean createMaster(MinecraftServer mcServer, String sharedSecret, int tcpPort)
+    public static boolean createMaster(MinecraftServer mcServer, String sharedSecret, int tcpPort,
+                                       Runnable onServerStartSuccess, Consumer<Throwable> onServerStartFailure,
+                                       Consumer<String> onSlaveConnected, Consumer<String> onSlaveDisconnected)
     {
         if(instance != null)
         {
@@ -39,11 +43,14 @@ public class ServerServerManager
             return false;
         }
         ServerServerPacketRegistry.onCreate(mcServer);
-        MasterTCPServer master = new MasterTCPServer(mcServer, sharedSecret, tcpPort);
+        MasterTCPServer master = new MasterTCPServer(mcServer, sharedSecret, tcpPort,
+                onServerStartSuccess, onServerStartFailure,
+                onSlaveConnected, onSlaveDisconnected);
         instance = new ServerServerManager(master, null);
         return true;
     }
-    public static boolean createSlave(MinecraftServer mcServer, String sharedSecret, String slaveServerID, String masterHostIP, int masterHostTcpPort)
+    public static boolean createSlave(MinecraftServer mcServer, String sharedSecret, String slaveServerID, String masterHostIP, int masterHostTcpPort,
+                                      Runnable onConnectionAccepted, Consumer<SlaveServerClient.ConnectionEstablishState> onConnectionFailure, Consumer<Throwable> onConnectionLost, Runnable onDisconnect)
     {
         if(instance != null)
         {
@@ -51,7 +58,8 @@ public class ServerServerManager
             return false;
         }
         ServerServerPacketRegistry.onCreate(mcServer);
-        SlaveServerClient slave = new SlaveServerClient(mcServer, sharedSecret, slaveServerID,  masterHostIP, masterHostTcpPort);
+        SlaveServerClient slave = new SlaveServerClient(mcServer, sharedSecret, slaveServerID,  masterHostIP, masterHostTcpPort,
+                onConnectionAccepted,  onConnectionFailure, onConnectionLost, onDisconnect);
         instance = new ServerServerManager(null, slave);
         return true;
     }

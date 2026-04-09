@@ -60,7 +60,12 @@ public final class GenericResponsePacket extends NetworkPacket
 
     @Override
     protected void handleOnMaster(ForwardPacketContext context) {
-
+        try{
+            AsynchronousRequestResponseSystem.processResponseOnMaster(this, context);
+        }catch (Exception e) {
+            // Handle any exceptions that may occur during decoding/encoding
+            ModUtilitiesMod.LOGGER.error("Error processing GenericResponsePacket on master: " + e.getMessage(), e);
+        }
     }
 
     @Override

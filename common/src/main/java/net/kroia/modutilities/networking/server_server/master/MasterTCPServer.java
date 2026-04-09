@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 public class MasterTCPServer {
 
@@ -39,12 +40,23 @@ public class MasterTCPServer {
 
     private @Nullable Throwable startupFailReason = null;
 
+    private final Runnable onServerStartSuccess;
+    private final Consumer<Throwable> onServerStartFailure;
+    private final Consumer<String> onSlaveConnected;
+    private final Consumer<String> onSlaveDisconnected;
 
-    public MasterTCPServer(MinecraftServer mcServer, String sharedSecret, int tcpPort)
+
+    public MasterTCPServer(MinecraftServer mcServer, String sharedSecret, int tcpPort,
+                           Runnable onServerStartSuccess, Consumer<Throwable> onServerStartFailure,
+                           Consumer<String> onSlaveConnected, Consumer<String> onSlaveDisconnected)
     {
         this.mcServer = mcServer;
         this.sharedSecret = sharedSecret;
         this.tcpPort = tcpPort;
+        this.onServerStartSuccess = onServerStartSuccess;
+        this.onServerStartFailure = onServerStartFailure;
+        this.onSlaveConnected = onSlaveConnected;
+        this.onSlaveDisconnected = onSlaveDisconnected;
     }
 
     // ── Start / Stop ─────────────────────────────────────────────────────────
@@ -85,9 +97,11 @@ public class MasterTCPServer {
                 serverChannel = future.channel();
                 startupFailReason = null;
                 info("TCP listener started on port "+ tcpPort);
+                onServerStartSuccess.run();
             } else {
                 startupFailReason = future.cause();
                 error("Failed to bind TCP port: "+ tcpPort, startupFailReason);
+                onServerStartFailure.accept(startupFailReason);
             }
         });
     }
@@ -171,10 +185,12 @@ public class MasterTCPServer {
     void putChildConnection(String serverId, Channel channel) {
         CHILD_SERVERS.put(serverId, channel);
         info("Child server '"+serverId+"' connected to this server.");
+        onSlaveConnected.accept(serverId);
     }
     void removeChildConnection(String serverId) {
         CHILD_SERVERS.remove(serverId);
         info("Child server '"+serverId+"' disconnected.");
+        onSlaveDisconnected.accept(serverId);
     }
 
 
