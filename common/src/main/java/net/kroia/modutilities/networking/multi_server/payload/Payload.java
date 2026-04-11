@@ -1,4 +1,4 @@
-package net.kroia.modutilities.networking.server_server.payload;
+package net.kroia.modutilities.networking.multi_server.payload;
 
 /**
  * Base interface for all packets sent over the TCP hub connection.
@@ -8,6 +8,7 @@ public sealed interface Payload permits
         HandshakePayload,
         HandshakeResultPayload,
         BroadcastPayload,
+        ManualDisconnectionPayload,
         ForwardPacketPayload {
 
     /** Unique byte ID used to identify this packet type on the wire. */

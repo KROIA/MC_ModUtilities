@@ -1,4 +1,4 @@
-package net.kroia.modutilities.networking.server_server.payload;
+package net.kroia.modutilities.networking.multi_server.payload;
 
 /**
  * Sent FROM the hub TO all child servers — e.g. to display a received message.

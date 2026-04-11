@@ -1,4 +1,4 @@
-package net.kroia.modutilities.networking.server_server.slave;
+package net.kroia.modutilities.networking.multi_server.slave;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
@@ -10,21 +10,19 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
 import net.kroia.modutilities.ModUtilitiesMod;
-import net.kroia.modutilities.networking.server_server.ServerServerPacketRegistry;
-import net.kroia.modutilities.networking.server_server.codec.PayloadDecoder;
-import net.kroia.modutilities.networking.server_server.codec.PayloadEncoder;
-import net.kroia.modutilities.networking.server_server.payload.ForwardPacketPayload;
-import net.kroia.modutilities.networking.server_server.payload.HandshakePayload;
-import net.kroia.modutilities.networking.server_server.payload.Payload;
+import net.kroia.modutilities.networking.multi_server.MultiServerPacketRegistry;
+import net.kroia.modutilities.networking.multi_server.codec.PayloadDecoder;
+import net.kroia.modutilities.networking.multi_server.codec.PayloadEncoder;
+import net.kroia.modutilities.networking.multi_server.payload.ForwardPacketPayload;
+import net.kroia.modutilities.networking.multi_server.payload.HandshakePayload;
+import net.kroia.modutilities.networking.multi_server.payload.Payload;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.MinecraftServer;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.UUID;
-import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -32,7 +30,8 @@ public class SlaveServerClient {
     public enum ConnectionEstablishState
     {
         SUCCESS,
-        BAD_TOKEN
+        INVALID_SHARED_SECRET,
+        SLAVE_ID_ALREADY_USED
     }
 
 
@@ -53,6 +52,9 @@ public class SlaveServerClient {
     private final Consumer<ConnectionEstablishState> onConnectionFailed;
     private final Consumer<Throwable> onConnectionLost;
     private final Runnable onDisconnect;
+
+    private boolean masterDisconnected = false;
+    private String masterDisconnectReason = "";
 
     public SlaveServerClient(MinecraftServer mcServer, String sharedSecret, String slaveServerID, String masterHostIP, int masterHostTcpPort,
                              Runnable  onConnectionAccepted, Consumer<ConnectionEstablishState> onConnectionFailed, Consumer<Throwable>  onConnectionLost, Runnable onDisconnect)
@@ -150,6 +152,16 @@ public class SlaveServerClient {
     public @Nullable Throwable getConnectionFailReason() {
         return connectionFailReason;
     }
+    public boolean isShuttingDown() {
+        return shuttingDown;
+    }
+
+    public void onMasterDisconnected(String reason)
+    {
+        masterDisconnected = true;
+        masterDisconnectReason = reason;
+        disconnect();
+    }
 
     // ── Send ──────────────────────────────────────────────────────────────────
 
@@ -159,7 +171,7 @@ public class SlaveServerClient {
      */
     public boolean sendToMaster(@Nullable UUID senderPlayerUUID, CustomPacketPayload packet) {
         //info("Sending packet: '"+packet.type().id()+"' to master for player '" + senderPlayerUUID+"'");
-        ForwardPacketPayload payload = ServerServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID, serverId, packet);
+        ForwardPacketPayload payload = MultiServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID, serverId, packet);
         return sendToMaster(payload);
     }
     public boolean sendToMaster(Payload payload) {
@@ -189,6 +201,14 @@ public class SlaveServerClient {
     {
         return masterPort;
     }
+    public boolean masterHasDisconnected()
+    {
+        return masterDisconnected;
+    }
+    public String getMasterDisconnectReason()
+    {
+        return masterDisconnectReason;
+    }
 
     private void onConnectionEstablishedResult(ConnectionEstablishState state) {
         switch(state)
@@ -201,8 +221,16 @@ public class SlaveServerClient {
                     error("Failed to call callback: onConnectionAccepted. Reason: "+e.getMessage(),e);
                 }
             }
-            case ConnectionEstablishState.BAD_TOKEN -> {
-                info("Can't connect to master");
+            case ConnectionEstablishState.INVALID_SHARED_SECRET -> {
+                info("Can't connect to master. The shared secret does not match wit the secret from the server.");
+                try {
+                    onConnectionFailed.accept(state);
+                }catch (Exception e) {
+                    error("Failed to call callback: onConnectionFailed. Reason: "+e.getMessage(),e);
+                }
+            }
+            case ConnectionEstablishState.SLAVE_ID_ALREADY_USED -> {
+                info("Can't connect to master. A slave with the same slave ID: '"+getServerID()+"' is already connected to the master.");
                 try {
                     onConnectionFailed.accept(state);
                 }catch (Exception e) {

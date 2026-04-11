@@ -1,4 +1,4 @@
-package net.kroia.modutilities.networking.server_server;
+package net.kroia.modutilities.networking.multi_server;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -10,9 +10,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 /**
- * Simple JSON config loaded from {@code config/ServerServerConfig.json}.
+ * Simple JSON config loaded from {@code config/MultiServerConfig.json}.
  *
- * Example master config (ServerServerConfig.json on the master server):
+ * Example master config (MultiServerConfig.json on the master server):
  * <pre>
  * {
  *   "enable": true,
@@ -22,7 +22,7 @@ import java.nio.file.Paths;
  * }
  * </pre>
  *
- * Example slave config (ServerServerConfig.json on slave_a / slave_b):
+ * Example slave config (MultiServerConfig.json on slave_a / slave_b):
  * <pre>
  * {
  *   "enable": true,
@@ -34,11 +34,11 @@ import java.nio.file.Paths;
  * }
  * </pre>
  */
-public class ServerServerConfig {
+public class MultiServerConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Path CONFIG_PATH = Paths.get("config", "ServerServerConfig.json");
+    private static final Path CONFIG_PATH = Paths.get("config", "MultiServerConfig.json");
 
-    private static ServerServerConfig instance = null;
+    private static MultiServerConfig instance = null;
 
     // ── Fields (mapped from JSON) ────────────────────────────────────────────
 
@@ -62,26 +62,26 @@ public class ServerServerConfig {
 
     // ── Load / Save ──────────────────────────────────────────────────────────
 
-    public static ServerServerConfig get() {
+    public static MultiServerConfig get() {
         if (instance == null)
             instance = load();
         return instance;
     }
 
-    private static ServerServerConfig load() {
+    private static MultiServerConfig load() {
         if (!Files.exists(CONFIG_PATH)) {
-            ServerServerConfig defaults = new ServerServerConfig();
+            MultiServerConfig defaults = new MultiServerConfig();
             defaults.save();
             info("Created default config at "+ CONFIG_PATH);
             return defaults;
         }
         try (Reader reader = new FileReader(CONFIG_PATH.toFile())) {
-            ServerServerConfig cfg = GSON.fromJson(reader, ServerServerConfig.class);
+            MultiServerConfig cfg = GSON.fromJson(reader, MultiServerConfig.class);
             info("Config loaded — isMaster="+cfg.isMaster+", slaveID="+cfg.slaveID);
             return cfg;
         } catch (IOException e) {
             error("Failed to read config, using defaults", e);
-            return new ServerServerConfig();
+            return new MultiServerConfig();
         }
     }
 
@@ -98,18 +98,18 @@ public class ServerServerConfig {
 
 
     protected static void info(String message) {
-        ModUtilitiesMod.LOGGER.info("[ServerServerConfig]"+message);
+        ModUtilitiesMod.LOGGER.info("[MultiServerConfig]"+message);
     }
     protected static void error(String message) {
-        ModUtilitiesMod.LOGGER.error("[ServerServerConfig]"+message);
+        ModUtilitiesMod.LOGGER.error("[MultiServerConfig]"+message);
     }
     protected static void error(String message, Throwable throwable) {
-        ModUtilitiesMod.LOGGER.error("[ServerServerConfig]"+message, throwable);
+        ModUtilitiesMod.LOGGER.error("[MultiServerConfig]"+message, throwable);
     }
     protected static void warn(String message) {
-        ModUtilitiesMod.LOGGER.warn("[ServerServerConfig]"+message);
+        ModUtilitiesMod.LOGGER.warn("[MultiServerConfig]"+message);
     }
     protected static void debug(String message) {
-        ModUtilitiesMod.LOGGER.debug("[ServerServerConfig]"+message);
+        ModUtilitiesMod.LOGGER.debug("[MultiServerConfig]"+message);
     }
 }

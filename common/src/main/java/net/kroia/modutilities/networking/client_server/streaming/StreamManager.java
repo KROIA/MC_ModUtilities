@@ -7,7 +7,7 @@ import net.kroia.modutilities.UtilitiesPlatform;
 import net.kroia.modutilities.networking.NetworkPacketManager;
 import net.kroia.modutilities.networking.client_server.streaming.streamholder.ClientReceiverStreamHolder;
 import net.kroia.modutilities.networking.client_server.streaming.streamholder.ServerSenderStreamHolder;
-import net.kroia.modutilities.networking.server_server.ServerServerManager;
+import net.kroia.modutilities.networking.multi_server.MultiServerManager;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.MinecraftServer;
@@ -473,7 +473,7 @@ public class StreamManager {
                         GenericStreamPacket streamPacket = new GenericStreamPacket(streamID, buf);
                         if(streamData.needsRoutingToSlaveServer())
                         {
-                            if(!ServerServerManager.sendToSlave(streamData.playerUUID, streamData.getSlaveServerID(), streamPacket))
+                            if(!MultiServerManager.sendToSlave(streamData.playerUUID, streamData.getSlaveServerID(), streamPacket))
                             {
                                 // Slave server not connected anymore
                                 handleStreamStop(streamID);
@@ -509,9 +509,9 @@ public class StreamManager {
                             warn("redirectToClient(): Cannot send stream packet for stream ID " + packet.getStreamID() + " to player " + streamData.playerUUID + ", player is not online!");
                             //streamData.streamEnd();
                             StreamStopClientSenderPacket stopPacket = new StreamStopClientSenderPacket(packet.getStreamID());
-                            if(ServerServerManager.isRunning() && ServerServerManager.isSlave())
+                            if(MultiServerManager.isRunning() && MultiServerManager.isSlave())
                             {
-                                ServerServerManager.sendToMaster(stopPacket);
+                                MultiServerManager.sendToMaster(stopPacket);
                             }
                             return; // Player not online, cannot send stream packet
                         }
@@ -584,7 +584,7 @@ public class StreamManager {
         if(redirectedServerSenderStreams != null) {
             ServerSenderStreamHolder<?, ?> streamData = redirectedServerSenderStreams.get(streamID);
             if(streamData != null) {
-                ServerServerManager.sendToMaster(streamData.playerUUID, packet);
+                MultiServerManager.sendToMaster(streamData.playerUUID, packet);
             }
             else
                 handleStreamStop(streamID);

@@ -1,4 +1,4 @@
-package net.kroia.modutilities.networking.server_server.master;
+package net.kroia.modutilities.networking.multi_server.master;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
@@ -10,17 +10,17 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
 import net.kroia.modutilities.ModUtilitiesMod;
-import net.kroia.modutilities.networking.server_server.ServerServerPacketRegistry;
-import net.kroia.modutilities.networking.server_server.codec.PayloadDecoder;
-import net.kroia.modutilities.networking.server_server.codec.PayloadEncoder;
-import net.kroia.modutilities.networking.server_server.payload.ForwardPacketPayload;
-import net.kroia.modutilities.networking.server_server.payload.Payload;
+import net.kroia.modutilities.networking.multi_server.MultiServerPacketRegistry;
+import net.kroia.modutilities.networking.multi_server.codec.PayloadDecoder;
+import net.kroia.modutilities.networking.multi_server.codec.PayloadEncoder;
+import net.kroia.modutilities.networking.multi_server.payload.ForwardPacketPayload;
+import net.kroia.modutilities.networking.multi_server.payload.ManualDisconnectionPayload;
+import net.kroia.modutilities.networking.multi_server.payload.Payload;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.MinecraftServer;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
@@ -132,24 +132,24 @@ public class MasterTCPServer {
 
     /** Send a payload to one specific child server. */
     public boolean sendToSlave(@Nullable UUID senderPlayerUUID, String targetServerID, CustomPacketPayload packet) {
-        ForwardPacketPayload payload = ServerServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID,"", packet);
+        ForwardPacketPayload payload = MultiServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID,"", packet);
         return sendToSlave(targetServerID, payload);
     }
 
     /** Broadcast a payload to all connected child servers. */
     public void broadcastToSlaves(@Nullable UUID senderPlayerUUID, CustomPacketPayload packet) {
-        ForwardPacketPayload payload = ServerServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID, "", packet);
+        ForwardPacketPayload payload = MultiServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID, "", packet);
         broadcastToSlaves(payload);
     }
 
     /** Broadcast to all children EXCEPT the one with {@code excludeServerId}. */
     public void broadcastToSlaves(@Nullable UUID senderPlayerUUID, CustomPacketPayload packet, String excludeServerId) {
-        ForwardPacketPayload payload = ServerServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID, "", packet);
+        ForwardPacketPayload payload = MultiServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID, "", packet);
         broadcastToSlaves(payload, excludeServerId);
     }
 
     public void broadcastToSlaves(@Nullable UUID senderPlayerUUID, CustomPacketPayload packet, List<String> excludeServerIds) {
-        ForwardPacketPayload payload = ServerServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID, "", packet);
+        ForwardPacketPayload payload = MultiServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID, "", packet);
         broadcastToSlaves(payload, excludeServerIds);
     }
 
@@ -202,9 +202,10 @@ public class MasterTCPServer {
         onSlaveConnected.accept(serverId);
     }
     void removeChildConnection(String serverId) {
-        CHILD_SERVERS.remove(serverId);
-        info("Child server '"+serverId+"' disconnected.");
-        onSlaveDisconnected.accept(serverId);
+        if(CHILD_SERVERS.remove(serverId) != null) {
+            info("Child server '" + serverId + "' disconnected.");
+            onSlaveDisconnected.accept(serverId);
+        }
     }
 
 
@@ -233,6 +234,12 @@ public class MasterTCPServer {
             slaves.add(id);
         });
         return slaves;
+    }
+    public void disconnectSlave(String slaveID, String reason) {
+        info("Disconnecting slave: '"+slaveID+"' for reason:\n"+reason);
+        ManualDisconnectionPayload payload = new ManualDisconnectionPayload(reason);
+        sendToSlave(slaveID,  payload);
+        removeChildConnection(slaveID);
     }
 
 

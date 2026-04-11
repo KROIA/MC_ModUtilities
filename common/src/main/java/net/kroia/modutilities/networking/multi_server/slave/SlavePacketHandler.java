@@ -1,16 +1,13 @@
-package net.kroia.modutilities.networking.server_server.slave;
+package net.kroia.modutilities.networking.multi_server.slave;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import net.kroia.modutilities.ModUtilitiesMod;
-import net.kroia.modutilities.networking.server_server.ForwardPacketContext;
-import net.kroia.modutilities.networking.server_server.ServerServerPacketRegistry;
-import net.kroia.modutilities.networking.server_server.payload.BroadcastPayload;
-import net.kroia.modutilities.networking.server_server.payload.ForwardPacketPayload;
-import net.kroia.modutilities.networking.server_server.payload.HandshakeResultPayload;
-import net.kroia.modutilities.networking.server_server.payload.Payload;
+import net.kroia.modutilities.networking.multi_server.ForwardPacketContext;
+import net.kroia.modutilities.networking.multi_server.MultiServerPacketRegistry;
+import net.kroia.modutilities.networking.multi_server.payload.*;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -39,17 +36,21 @@ public class SlavePacketHandler extends SimpleChannelInboundHandler<Payload> {
         switch (payload) {
             case HandshakeResultPayload hp ->
             {
-                if(!hp.accepted()) {
-                    ctx.close();
-                    onConnection.accept(SlaveServerClient.ConnectionEstablishState.BAD_TOKEN);
+                info("HandshakeResultPayload received from master '"+hp.result()+"'");
+                switch(hp.result())
+                {
+                    case SlaveServerClient.ConnectionEstablishState.SUCCESS:
+                        break;
+                    case SlaveServerClient.ConnectionEstablishState.INVALID_SHARED_SECRET,
+                         SlaveServerClient.ConnectionEstablishState.SLAVE_ID_ALREADY_USED:
+                        ctx.close();
+                        break;
                 }
-                else
-                    onConnection.accept(SlaveServerClient.ConnectionEstablishState.SUCCESS);
-
+                onConnection.accept(hp.result());
             }
             // Hub routed a string message to this server — display it to players
             case BroadcastPayload bc -> {
-                info("Received from master: ["+bc.fromServer()+"] "+bc.senderName()+": "+bc.message());
+                info("BroadcastPayload received from master: ["+bc.fromServer()+"] "+bc.senderName()+": "+bc.message());
 
                 if (mcServer != null) {
                     // mcServer.execute() ensures we run on the MC main thread
@@ -62,6 +63,10 @@ public class SlavePacketHandler extends SimpleChannelInboundHandler<Payload> {
                     });
                 }
             }
+            case ManualDisconnectionPayload dp -> {
+                info("ManualDisconnectionPayload received from master with message:\n"+dp.reason());
+                connector.onMasterDisconnected(dp.reason());
+            }
             case ForwardPacketPayload bb -> {
                // debug("bytes received from: "+bb.senderServerID()+" "+bb.data().length+" bytes");
                 ResourceLocation packetResouceLoc = bb.packetType();
@@ -71,7 +76,7 @@ public class SlavePacketHandler extends SimpleChannelInboundHandler<Payload> {
                 //RegistryFriendlyByteBuf dataBuf =  new RegistryFriendlyByteBuf(Unpooled.buffer(), mcServer.registryAccess());
                 //ByteBufCodecs.BYTE_ARRAY.encode(dataBuf, bb.data());
                 ForwardPacketContext context = new ForwardPacketContext(ctx, bb.senderServerID(), bb.senderPlayerUUID());
-                ServerServerPacketRegistry.handleByteBufOnSlaveSide(packetResouceLoc, dataBuf, context);
+                MultiServerPacketRegistry.handleByteBufOnSlaveSide(packetResouceLoc, dataBuf, context);
             }
 
             default ->
@@ -83,7 +88,9 @@ public class SlavePacketHandler extends SimpleChannelInboundHandler<Payload> {
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) {
-        warn("Lost connection to master — scheduling reconnect...");
+        if(connector.isShuttingDown())
+            return;
+        warn("Lost connection to master - scheduling reconnect...");
         connector.scheduleReconnect();
     }
 

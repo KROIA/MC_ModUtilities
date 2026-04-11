@@ -5,7 +5,7 @@ import net.kroia.modutilities.ServerPlayerUtilities;
 import net.kroia.modutilities.networking.NetworkPacketManager;
 import net.kroia.modutilities.networking.client_server.streaming.GenericStream;
 import net.kroia.modutilities.networking.client_server.streaming.StreamStopServerSenderPacket;
-import net.kroia.modutilities.networking.server_server.ServerServerManager;
+import net.kroia.modutilities.networking.multi_server.MultiServerManager;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
@@ -87,9 +87,9 @@ public class ServerSenderStreamHolder<CONTEXT_DATA, DATA>
                 error("Error while stopping stream: "+stream, e);
             }
             StreamStopServerSenderPacket stopPacket = new StreamStopServerSenderPacket(stream.getStreamID());
-            if(ServerServerManager.isRunning() && ServerServerManager.isMaster() && needsRoutingToSlaveServer())
+            if(MultiServerManager.isRunning() && MultiServerManager.isMaster() && needsRoutingToSlaveServer())
             {
-                ServerServerManager.sendToSlave(slaveServerID, stopPacket);
+                MultiServerManager.sendToSlave(slaveServerID, stopPacket);
             }
             else
             {

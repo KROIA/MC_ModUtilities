@@ -1,13 +1,12 @@
-package net.kroia.modutilities.networking.server_server;
+package net.kroia.modutilities.networking.multi_server;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.networking.client_server.NetworkPacket;
-import net.kroia.modutilities.networking.server_server.payload.ForwardPacketPayload;
+import net.kroia.modutilities.networking.multi_server.payload.ForwardPacketPayload;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
@@ -18,7 +17,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-public class ServerServerPacketRegistry
+public class MultiServerPacketRegistry
 {
     private static class RegistryObject<T extends CustomPacketPayload>
     {
@@ -74,7 +73,7 @@ public class ServerServerPacketRegistry
         ResourceLocation loc = packetType.id();
         if(registry.containsKey(loc))
         {
-            throw new RuntimeException("ServerServerPacketRegistry.register(...): Packet with packetID = "+loc+" is already registered!");
+            throw new RuntimeException("MultiServerPacketRegistry.register(...): Packet with packetID = "+loc+" is already registered!");
         }
 
         RegistryObject registryObject = new RegistryObject(codec, handler, packetType.id().toString());
@@ -86,7 +85,7 @@ public class ServerServerPacketRegistry
         ResourceLocation loc = packetType.id();
         if(registry.containsKey(loc))
         {
-            throw new RuntimeException("ServerServerPacketRegistry.register(...): Packet with packetID = "+loc+" is already registered!");
+            throw new RuntimeException("MultiServerPacketRegistry.register(...): Packet with packetID = "+loc+" is already registered!");
         }
 
         RegistryObject registryObject = new RegistryObject(codec, NetworkPacket.HANDLER, packetType.id().toString());
@@ -117,7 +116,7 @@ public class ServerServerPacketRegistry
         RegistryObject  registryObject = registry.get(loc);
         if(registryObject==null)
         {
-            throw new RuntimeException("ServerServerPacketRegistry.register(...): Packet with packetID = "+loc+" is not registered!");
+            throw new RuntimeException("MultiServerPacketRegistry.register(...): Packet with packetID = "+loc+" is not registered!");
         }
         return registryObject.encode(packet);
     }
@@ -126,7 +125,7 @@ public class ServerServerPacketRegistry
         RegistryObject  registryObject = registry.get(loc);
         if(registryObject==null)
         {
-            throw new RuntimeException("ServerServerPacketRegistry.register(...): Packet with packetID = "+loc+" is not registered!");
+            throw new RuntimeException("MultiServerPacketRegistry.register(...): Packet with packetID = "+loc+" is not registered!");
         }
         return registryObject.decode(buf);
     }
@@ -136,7 +135,7 @@ public class ServerServerPacketRegistry
         RegistryObject  registryObject = registry.get(loc);
         if(registryObject==null)
         {
-            throw new RuntimeException("ServerServerPacketRegistry.register(...): Packet with packetID = "+loc+" is not registered!");
+            throw new RuntimeException("MultiServerPacketRegistry.register(...): Packet with packetID = "+loc+" is not registered!");
         }
         registryObject.handleByteBufOnMasterSide(buf, context);
     }
@@ -146,7 +145,7 @@ public class ServerServerPacketRegistry
         RegistryObject  registryObject = registry.get(loc);
         if(registryObject==null)
         {
-            throw new RuntimeException("ServerServerPacketRegistry.register(...): Packet with packetID = "+loc+" is not registered!");
+            throw new RuntimeException("MultiServerPacketRegistry.register(...): Packet with packetID = "+loc+" is not registered!");
         }
         registryObject.handleByteBufOnSlaveSide(buf, context);
     }
@@ -170,18 +169,18 @@ public class ServerServerPacketRegistry
 
 
     private static void info(String message) {
-        ModUtilitiesMod.LOGGER.info("[ServerServerPacketRegistry]: "+message);
+        ModUtilitiesMod.LOGGER.info("[MultiServerPacketRegistry]: "+message);
     }
     private static void error(String message) {
-        ModUtilitiesMod.LOGGER.error("[ServerServerPacketRegistry]: "+message);
+        ModUtilitiesMod.LOGGER.error("[MultiServerPacketRegistry]: "+message);
     }
     private static void error(String message, Throwable throwable) {
-        ModUtilitiesMod.LOGGER.error("[ServerServerPacketRegistry]: "+message, throwable);
+        ModUtilitiesMod.LOGGER.error("[MultiServerPacketRegistry]: "+message, throwable);
     }
     private static void warn(String message) {
-        ModUtilitiesMod.LOGGER.warn("[ServerServerPacketRegistry]: "+message);
+        ModUtilitiesMod.LOGGER.warn("[MultiServerPacketRegistry]: "+message);
     }
     private static void debug(String message) {
-        ModUtilitiesMod.LOGGER.debug("[ServerServerPacketRegistry]: "+message);
+        ModUtilitiesMod.LOGGER.debug("[MultiServerPacketRegistry]: "+message);
     }
 }

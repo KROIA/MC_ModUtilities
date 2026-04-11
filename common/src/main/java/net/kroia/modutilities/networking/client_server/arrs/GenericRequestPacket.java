@@ -6,10 +6,8 @@ import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.UtilitiesPlatform;
 import net.kroia.modutilities.networking.ExtraCodecUtils;
 import net.kroia.modutilities.networking.client_server.NetworkPacket;
-import net.kroia.modutilities.networking.client_server.PacketHandler;
-import net.kroia.modutilities.networking.server_server.ForwardPacketContext;
-import net.kroia.modutilities.networking.server_server.ForwardPacketHandler;
-import net.kroia.modutilities.networking.server_server.ServerServerManager;
+import net.kroia.modutilities.networking.multi_server.ForwardPacketContext;
+import net.kroia.modutilities.networking.multi_server.MultiServerManager;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -17,10 +15,8 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
-import javax.swing.text.Utilities;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -186,17 +182,17 @@ public final class GenericRequestPacket extends NetworkPacket
 
     private static boolean sendResponseToSlave(String slaveName, UUID player, GenericResponsePacket packet)
     {
-        if(ServerServerManager.isRunning() && ServerServerManager.isMaster())
+        if(MultiServerManager.isRunning() && MultiServerManager.isMaster())
         {
-            ServerServerManager.sendToSlave(player, slaveName,  packet);
+            MultiServerManager.sendToSlave(player, slaveName,  packet);
         }
         return true;
     }
     private static boolean sendResponseToMaster(UUID player, GenericResponsePacket packet)
     {
-        if(ServerServerManager.isRunning() && ServerServerManager.isSlave())
+        if(MultiServerManager.isRunning() && MultiServerManager.isSlave())
         {
-            ServerServerManager.sendToMaster(player,  packet);
+            MultiServerManager.sendToMaster(player,  packet);
         }
         return true;
     }

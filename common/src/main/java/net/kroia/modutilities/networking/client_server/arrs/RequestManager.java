@@ -6,8 +6,8 @@ import net.kroia.modutilities.UtilitiesPlatform;
 import net.kroia.modutilities.networking.NetworkPacketManager;
 import net.kroia.modutilities.networking.client_server.arrs.requestholder.ClientRequestHolder;
 import net.kroia.modutilities.networking.client_server.arrs.requestholder.ServerRequestHolder;
-import net.kroia.modutilities.networking.server_server.ForwardPacketContext;
-import net.kroia.modutilities.networking.server_server.ServerServerManager;
+import net.kroia.modutilities.networking.multi_server.ForwardPacketContext;
+import net.kroia.modutilities.networking.multi_server.MultiServerManager;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -16,8 +16,6 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 /**
  * The RequestManager class executes and keeps track of requests sent between the client and server.
@@ -103,7 +101,7 @@ public class RequestManager {
         UUID requestId = requestPacket.getRequestID();
 
         pendingServerServerRequests.put(requestId, requestData);
-        ServerServerManager.sendToMaster(requestPacket);
+        MultiServerManager.sendToMaster(requestPacket);
         return requestData.responseFuture;
     }
     public <IN, OUT> CompletableFuture<OUT> sendRequestToSlave(@NotNull GenericRequest<IN, OUT> request,
@@ -119,7 +117,7 @@ public class RequestManager {
         UUID requestId = requestPacket.getRequestID();
 
         pendingServerServerRequests.put(requestId, requestData);
-        ServerServerManager.sendToSlave(slaveID, requestPacket);
+        MultiServerManager.sendToSlave(slaveID, requestPacket);
         return requestData.responseFuture;
     }
 

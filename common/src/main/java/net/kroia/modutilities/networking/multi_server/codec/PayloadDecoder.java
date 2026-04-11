@@ -1,11 +1,11 @@
-package net.kroia.modutilities.networking.server_server.codec;
+package net.kroia.modutilities.networking.multi_server.codec;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
 import io.netty.handler.codec.DecoderException;
 import net.kroia.modutilities.networking.ExtraCodecUtils;
-import net.kroia.modutilities.networking.server_server.payload.*;
+import net.kroia.modutilities.networking.multi_server.payload.*;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.resources.ResourceLocation;
@@ -34,14 +34,13 @@ public class PayloadDecoder extends ByteToMessageDecoder {
                     readString(in),  // serverId
                     readString(in)   // token
             );
-            case PacketIds.HANDSHAKE_RESULT ->  new HandshakeResultPayload(
-                    ByteBufCodecs.BOOL.decode(in)
-            );
+            case PacketIds.HANDSHAKE_RESULT ->  HandshakeResultPayload.STREAM_CODEC.decode(in);
             case PacketIds.BROADCAST -> new BroadcastPayload(
                     readString(in),  // senderName
                     readString(in),  // fromServer
                     readString(in)   // message
             );
+            case PacketIds.MANUAL_DISCONNECT ->  ManualDisconnectionPayload.STREAM_CODEC.decode(in);
             case PacketIds.FORWARD_PACKET -> new ForwardPacketPayload(
                     ExtraCodecUtils.nullable(UUIDUtil.STREAM_CODEC).decode(in),
                     ByteBufCodecs.STRING_UTF8.decode(in),

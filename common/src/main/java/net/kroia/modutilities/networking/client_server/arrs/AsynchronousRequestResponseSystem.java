@@ -1,14 +1,12 @@
 package net.kroia.modutilities.networking.client_server.arrs;
 
 import net.kroia.modutilities.networking.NetworkPacketManager;
-import net.kroia.modutilities.networking.server_server.ForwardPacketContext;
+import net.kroia.modutilities.networking.multi_server.ForwardPacketContext;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 
 /**

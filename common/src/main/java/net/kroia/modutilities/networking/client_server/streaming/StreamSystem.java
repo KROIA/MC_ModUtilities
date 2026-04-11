@@ -2,7 +2,7 @@ package net.kroia.modutilities.networking.client_server.streaming;
 
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.networking.NetworkPacketManager;
-import net.kroia.modutilities.networking.server_server.ServerServerManager;
+import net.kroia.modutilities.networking.multi_server.MultiServerManager;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Tuple;
@@ -235,11 +235,11 @@ public class StreamSystem {
         String StreamType = packet.getStreamTypeID();
         RegistryFriendlyByteBuf buf = packet.getData();
         var stream = REGISTRY.getRegisteredStream(StreamType);
-        if(ServerServerManager.isRunning() && ServerServerManager.isSlave() && stream.needsRoutingToMaster())
+        if(MultiServerManager.isRunning() && MultiServerManager.isSlave() && stream.needsRoutingToMaster())
         {
             STREAM_MANAGER.startRedirectedServerSenderStream(stream, streamID, buf, targetPlayerUUID);
             ModUtilitiesMod.LOGGER.info("[StreamSystem] Redirecting packet: "+packet.streamTypeID+" to master");
-            ServerServerManager.sendToMaster(targetPlayerUUID,  packet);
+            MultiServerManager.sendToMaster(targetPlayerUUID,  packet);
         }
         else {
             STREAM_MANAGER.startServerSenderStream(stream, streamID, slaveServerID, buf, targetPlayerUUID);

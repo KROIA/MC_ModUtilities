@@ -1,4 +1,4 @@
-package net.kroia.modutilities.networking.server_server;
+package net.kroia.modutilities.networking.multi_server;
 
 import com.google.gson.JsonObject;
 import io.netty.channel.ChannelHandlerContext;

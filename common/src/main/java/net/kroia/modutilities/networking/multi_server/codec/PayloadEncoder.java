@@ -1,10 +1,10 @@
-package net.kroia.modutilities.networking.server_server.codec;
+package net.kroia.modutilities.networking.multi_server.codec;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
 import net.kroia.modutilities.networking.ExtraCodecUtils;
-import net.kroia.modutilities.networking.server_server.payload.*;
+import net.kroia.modutilities.networking.multi_server.payload.*;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.resources.ResourceLocation;
@@ -26,14 +26,13 @@ public class PayloadEncoder extends MessageToByteEncoder<Payload> {
                 writeString(out, hs.serverId());
                 writeString(out, hs.token());
             }
-            case HandshakeResultPayload hr -> {
-                ByteBufCodecs.BOOL.encode(out, hr.accepted());
-            }
+            case HandshakeResultPayload hr -> HandshakeResultPayload.STREAM_CODEC.encode(out, hr);
             case BroadcastPayload bc -> {
                 writeString(out, bc.senderName());
                 writeString(out, bc.fromServer());
                 writeString(out, bc.message());
             }
+            case ManualDisconnectionPayload dp -> ManualDisconnectionPayload.STREAM_CODEC.encode(out, dp);
             case ForwardPacketPayload bb -> {
                 ExtraCodecUtils.nullable(UUIDUtil.STREAM_CODEC).encode(out, bb.senderPlayerUUID());
                 ByteBufCodecs.STRING_UTF8.encode(out, bb.senderServerID());

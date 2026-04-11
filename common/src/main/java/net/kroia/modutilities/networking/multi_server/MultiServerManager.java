@@ -1,8 +1,8 @@
-package net.kroia.modutilities.networking.server_server;
+package net.kroia.modutilities.networking.multi_server;
 
 import net.kroia.modutilities.ModUtilitiesMod;
-import net.kroia.modutilities.networking.server_server.master.MasterTCPServer;
-import net.kroia.modutilities.networking.server_server.slave.SlaveServerClient;
+import net.kroia.modutilities.networking.multi_server.master.MasterTCPServer;
+import net.kroia.modutilities.networking.multi_server.slave.SlaveServerClient;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.MinecraftServer;
 import org.jetbrains.annotations.Nullable;
@@ -10,25 +10,24 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 
-public class ServerServerManager
+public class MultiServerManager
 {
-    private static ServerServerManager instance;
+    private static MultiServerManager instance;
 
     private final @Nullable MasterTCPServer  tcpServer;
     private final @Nullable SlaveServerClient slaveClient;
 
 
 
-    private ServerServerManager(@Nullable MasterTCPServer master, @Nullable SlaveServerClient slave) {
+    private MultiServerManager(@Nullable MasterTCPServer master, @Nullable SlaveServerClient slave) {
         this.tcpServer = master;
         this.slaveClient = slave;
     }
 
     /**
-     * ServerServerManager factory
+     * MultiServerManager factory
      * @param mcServer
      * @param sharedSecret
      * @param tcpPort
@@ -43,11 +42,12 @@ public class ServerServerManager
             warn("Can't create master since there is already an existing instance of type: "+ ((instance.isSlave())?"Slave":"Master"));
             return false;
         }
-        ServerServerPacketRegistry.onCreate(mcServer);
+        info("Create master on port: "+tcpPort);
+        MultiServerPacketRegistry.onCreate(mcServer);
         MasterTCPServer master = new MasterTCPServer(mcServer, sharedSecret, tcpPort,
                 onServerStartSuccess, onServerStartFailure,
                 onSlaveConnected, onSlaveDisconnected);
-        instance = new ServerServerManager(master, null);
+        instance = new MultiServerManager(master, null);
         return true;
     }
     public static boolean createSlave(MinecraftServer mcServer, String sharedSecret, String slaveServerID, String masterHostIP, int masterHostTcpPort,
@@ -55,13 +55,14 @@ public class ServerServerManager
     {
         if(instance != null)
         {
-            warn("Can't create master since there is already an existing instance of type: "+ ((instance.isSlave())?"Slave":"Master"));
+            warn("Can't create slave since there is already an existing instance of type: "+ ((instance.isSlave())?"Slave":"Master"));
             return false;
         }
-        ServerServerPacketRegistry.onCreate(mcServer);
+        info("Create slave and connect to master:"+ masterHostIP+":"+masterHostTcpPort);
+        MultiServerPacketRegistry.onCreate(mcServer);
         SlaveServerClient slave = new SlaveServerClient(mcServer, sharedSecret, slaveServerID,  masterHostIP, masterHostTcpPort,
                 onConnectionAccepted,  onConnectionFailure, onConnectionLost, onDisconnect);
-        instance = new ServerServerManager(null, slave);
+        instance = new MultiServerManager(null, slave);
         return true;
     }
 
@@ -123,6 +124,29 @@ public class ServerServerManager
         if(instance.tcpServer != null)
             return instance.tcpServer.getConnectedSlaveIDs();
         return Collections.emptyList();
+    }
+    public static void disconnectSlave(String slaveID, String reason)
+    {
+        if(instance == null)
+            return;
+        if(instance.tcpServer != null)
+            instance.tcpServer.disconnectSlave(slaveID, reason);
+    }
+    public static boolean masterHasDisconnected()
+    {
+        if(instance == null)
+            return false;
+        if(instance.slaveClient != null)
+            return instance.slaveClient.masterHasDisconnected();
+        return false;
+    }
+    public static String getMasterDisconnectReason()
+    {
+        if(instance == null)
+            return "";
+        if(instance.slaveClient != null)
+            return instance.slaveClient.getMasterDisconnectReason();
+        return "";
     }
 
 
@@ -281,17 +305,17 @@ public class ServerServerManager
     {
         if(instance == null)
         {
-            error("sendToMaster(packet): Cant send a packet before initializing the ServerServerManager as slave by calling ServerServerManager.createSlave(...)");
+            error("sendToMaster(packet): Cant send a packet before initializing the MultiServerManager as slave by calling MultiServerManager.createSlave(...)");
             return false;
         }
         if(instance.slaveClient == null)
         {
             if(instance.tcpServer != null)
             {
-                error("sendToMaster(packet): It seems like this ServerServerManager is initialized as master. A master can't send packets to another master!");
+                error("sendToMaster(packet): It seems like this MultiServerManager is initialized as master. A master can't send packets to another master!");
             }
             else  {
-                throw new IllegalStateException("sendToMaster(packet): It should not be possible that the ServerServerManager is initialized, but neither as master nor as slave");
+                throw new IllegalStateException("sendToMaster(packet): It should not be possible that the MultiServerManager is initialized, but neither as master nor as slave");
             }
             return false;
         }
@@ -302,7 +326,7 @@ public class ServerServerManager
                 error("sendToMaster(packet): Failed to establish a connection to the Master during initialization. Reason: "+instance.slaveClient.getConnectionFailReason());
             }
             else
-                error("sendToMaster(packet): The connection to the Master has not yet been established. Have you forgotten to call ServerServerManager.start()?");
+                error("sendToMaster(packet): The connection to the Master has not yet been established. Have you forgotten to call MultiServerManager.start()?");
             return false;
         }
         return true;
@@ -311,7 +335,7 @@ public class ServerServerManager
     {
         if(instance == null)
         {
-            error("sendToSlave(targetServer='"+serverId+"', packet): Cant send a packet before initializing the ServerServerManager as master by calling ServerServerManager.createMaster(...)");
+            error("sendToSlave(targetServer='"+serverId+"', packet): Cant send a packet before initializing the MultiServerManager as master by calling MultiServerManager.createMaster(...)");
             return false;
         }
 
@@ -319,10 +343,10 @@ public class ServerServerManager
         {
             if(instance.slaveClient != null)
             {
-                error("sendToSlave(targetServer='"+serverId+"', packet): It seems like this ServerServerManager is initialized as slave. A slave can't send packets to another slave!");
+                error("sendToSlave(targetServer='"+serverId+"', packet): It seems like this MultiServerManager is initialized as slave. A slave can't send packets to another slave!");
             }
             else  {
-                throw new IllegalStateException("sendToSlave(targetServer='"+serverId+"', packet): It should not be possible that the ServerServerManager is initialized, but neither as master nor as slave");
+                throw new IllegalStateException("sendToSlave(targetServer='"+serverId+"', packet): It should not be possible that the MultiServerManager is initialized, but neither as master nor as slave");
             }
             return false;
         }
@@ -333,7 +357,7 @@ public class ServerServerManager
                 error("sendToSlave(targetServer='"+serverId+"', packet): The TCP server had failed to startup during initialization. Reason: "+instance.tcpServer.getStartupFailReason());
             }
             else
-                error("sendToSlave(targetServer='"+serverId+"', packet): The TCP server is not running. Have you forgotten to call ServerServerManager.start()?");
+                error("sendToSlave(targetServer='"+serverId+"', packet): The TCP server is not running. Have you forgotten to call MultiServerManager.start()?");
             return false;
         }
         return true;
@@ -342,7 +366,7 @@ public class ServerServerManager
     {
         if(instance == null)
         {
-            error("broadcastToSlaves(...): Cant broadcast a packet before initializing the ServerServerManager as master by calling ServerServerManager.createMaster(...)");
+            error("broadcastToSlaves(...): Cant broadcast a packet before initializing the MultiServerManager as master by calling MultiServerManager.createMaster(...)");
             return false;
         }
 
@@ -350,10 +374,10 @@ public class ServerServerManager
         {
             if(instance.slaveClient != null)
             {
-                error("broadcastToSlaves(...): It seems like this ServerServerManager is initialized as slave. A slave can't broadcast packets to another slave!");
+                error("broadcastToSlaves(...): It seems like this MultiServerManager is initialized as slave. A slave can't broadcast packets to another slave!");
             }
             else  {
-                throw new IllegalStateException("broadcastToSlaves(...): It should not be possible that the ServerServerManager is initialized, but neither as master nor as slave");
+                throw new IllegalStateException("broadcastToSlaves(...): It should not be possible that the MultiServerManager is initialized, but neither as master nor as slave");
             }
             return false;
         }
@@ -364,25 +388,25 @@ public class ServerServerManager
                 error("broadcastToSlaves(...): The TCP server had failed to startup during initialization. Reason: "+instance.tcpServer.getStartupFailReason());
             }
             else
-                error("broadcastToSlaves(...): The TCP server is not running. Have you forgotten to call ServerServerManager.start()?");
+                error("broadcastToSlaves(...): The TCP server is not running. Have you forgotten to call MultiServerManager.start()?");
             return false;
         }
         return true;
     }
 
     private static void info(String message) {
-        ModUtilitiesMod.LOGGER.info("[ServerServerManager]: "+message);
+        ModUtilitiesMod.LOGGER.info("[MultiServerManager]: "+message);
     }
     private static void error(String message) {
-        ModUtilitiesMod.LOGGER.error("[ServerServerManager]: "+message);
+        ModUtilitiesMod.LOGGER.error("[MultiServerManager]: "+message);
     }
     private static void error(String message, Throwable throwable) {
-        ModUtilitiesMod.LOGGER.error("[ServerServerManager]: "+message, throwable);
+        ModUtilitiesMod.LOGGER.error("[MultiServerManager]: "+message, throwable);
     }
     private static void warn(String message) {
-        ModUtilitiesMod.LOGGER.warn("[ServerServerManager]: "+message);
+        ModUtilitiesMod.LOGGER.warn("[MultiServerManager]: "+message);
     }
     private static void debug(String message) {
-        ModUtilitiesMod.LOGGER.debug("[ServerServerManager]: "+message);
+        ModUtilitiesMod.LOGGER.debug("[MultiServerManager]: "+message);
     }
 }

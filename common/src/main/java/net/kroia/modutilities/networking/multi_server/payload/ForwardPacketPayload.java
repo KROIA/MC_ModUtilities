@@ -1,4 +1,4 @@
-package net.kroia.modutilities.networking.server_server.payload;
+package net.kroia.modutilities.networking.multi_server.payload;
 
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;

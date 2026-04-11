@@ -1,10 +1,9 @@
 package net.kroia.modutilities.networking.client_server;
 
 import dev.architectury.networking.NetworkManager;
-import net.kroia.modutilities.ModUtilitiesMod;
-import net.kroia.modutilities.networking.server_server.ForwardPacketContext;
-import net.kroia.modutilities.networking.server_server.ForwardPacketHandler;
-import net.kroia.modutilities.networking.server_server.ServerServerManager;
+import net.kroia.modutilities.networking.multi_server.ForwardPacketContext;
+import net.kroia.modutilities.networking.multi_server.ForwardPacketHandler;
+import net.kroia.modutilities.networking.multi_server.MultiServerManager;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 
 public abstract class NetworkPacket implements CustomPacketPayload {
@@ -16,12 +15,12 @@ public abstract class NetworkPacket implements CustomPacketPayload {
 
         @Override
         public void handleServer(NetworkPacket packet, NetworkManager.PacketContext context) {
-            if(ServerServerManager.isRunning() && ServerServerManager.isSlave())
+            if(MultiServerManager.isRunning() && MultiServerManager.isSlave())
             {
                 if(packet.needsRoutingToMaster())
                 {
                     //ModUtilitiesMod.LOGGER.info("[NetworkPacket] Redirecting packet: "+packet.type()+" to master");
-                    ServerServerManager.sendToMaster(context.getPlayer().getUUID(),  packet);
+                    MultiServerManager.sendToMaster(context.getPlayer().getUUID(),  packet);
                 }
                 else
                     packet.handleOnServer(context);
