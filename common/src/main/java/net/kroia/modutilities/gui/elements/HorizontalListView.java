@@ -2,9 +2,11 @@ package net.kroia.modutilities.gui.elements;
 
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.elements.base.ListView;
+import net.kroia.modutilities.gui.geometry.Rectangle;
 
 public class HorizontalListView extends ListView {
 
+    private final Rectangle scissorRect = new Rectangle(0, 0, 0, 0);
     public HorizontalListView() {
         super();
         scrollContainer.setBounds(1, 1, 0, 0);
@@ -23,6 +25,16 @@ public class HorizontalListView extends ListView {
         if(enableOutline)
             renderOutline();
     }
+    @Override
+    public int getSizeHintWidth()
+    {
+        return allObjectSize + 2*outlineThickness;
+    }
+    @Override
+    public int getSizeHintHeight()
+    {
+        return getHeight();
+    }
 
     @Override
     protected int getContentDimension2()
@@ -32,7 +44,7 @@ public class HorizontalListView extends ListView {
 
     @Override
     protected void layoutChanged() {
-        scrollContainer.setSize(getWidth()-2, getHeight()- scrollbarThickness-1);
+        scrollContainer.setBounds(1,1,getWidth()-2, getHeight()- scrollbarThickness-1);
         childsChanged();
         setScrollBarBounds();
         updateElementPositions();
@@ -107,5 +119,15 @@ public class HorizontalListView extends ListView {
         scrollOffset = Math.max(Math.min(scrollOffset + delta, allObjectSize - getContentDimension2()), 0);
         updateElementPositions();
         setScrollBarBounds();
+    }
+
+    @Override
+    protected Rectangle getScissorRect()
+    {
+        scissorRect.x = scrollOffset;
+        scissorRect.y = 0;
+        scissorRect.width = getWidth()-2;
+        scissorRect.height = scrollContainer.getHeight();
+        return scissorRect;
     }
 }

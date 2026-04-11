@@ -1,7 +1,10 @@
 package net.kroia.modutilities.gui.layout;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 
+@Environment(EnvType.CLIENT)
 public abstract class Layout {
     public boolean enabled = true;
     public int padding = GuiElement.DEFAULT_PADDING;

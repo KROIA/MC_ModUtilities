@@ -11,9 +11,12 @@ public class TextBox extends GuiElement {
 
     boolean allowNumbers = true;
     boolean allowDecimal = true;
+    boolean allowNegativeNumbers = true;
     boolean allowLetters = true;
+
     private final Label textLabel;
     private int maxChars = 20;
+    private int maxDecimalChar = 20;
     private int cursorColor = 0xFF222222;
     private int backgroundColor = DEFAULT_BACKGROUND_COLOR;
     private int hoverBackgroundColor = DEFAULT_HOVER_BACKGROUND_COLOR;
@@ -22,13 +25,13 @@ public class TextBox extends GuiElement {
     private int cursorBlinkCounter = 0;
     private boolean cursorVisible = false;
 
-    private int marginX = 4;
+    private int labelPadding = 2;
 
     Consumer<String> textChangedFromUser = null;
     public TextBox(int x, int y, int width) {
         super(x, y, width, Label.DEFAULT_HEIGHT);
         textLabel = new Label("");
-        textLabel.setBounds(marginX, 0, width-2*marginX, Label.DEFAULT_HEIGHT);
+        textLabel.setBounds(labelPadding, 0, width-2*labelPadding, Label.DEFAULT_HEIGHT);
         textLabel.setAlignment(Alignment.LEFT);
 
         addChild(textLabel);
@@ -43,11 +46,24 @@ public class TextBox extends GuiElement {
         this.allowNumbers = allowNumbers;
         this.allowDecimal = allowDecimal;
     }
+
     public boolean isAllowingNumbers() {
         return allowNumbers;
     }
     public boolean isAllowingDecimal() {
         return allowDecimal;
+    }
+    public void setAllowNegativeNumbers(boolean allowNegativeNumbers) {
+        this.allowNegativeNumbers = allowNegativeNumbers;
+    }
+    public boolean isAllowingNegativeNumbers() {
+        return allowNegativeNumbers;
+    }
+    public void setMaxDecimalChar(int maxDecimalChar) {
+        this.maxDecimalChar = maxDecimalChar;
+    }
+    public int getMaxDecimalChar() {
+        return maxDecimalChar;
     }
     public void setAllowLetters(boolean allowLetters) {
         this.allowLetters = allowLetters;
@@ -86,6 +102,23 @@ public class TextBox extends GuiElement {
         this.textChangedFromUser = textChangedFromUser;
     }
 
+    @Override
+    public void setTextColor(int color) {
+        textLabel.setTextColor(color);
+    }
+    @Override
+    public int getTextColor() {
+        return textLabel.getTextColor();
+    }
+    @Override
+    public void setTextFontScale(float scale) {
+        textLabel.setTextFontScale(scale);
+    }
+    @Override
+    public float getTextFontScale() {
+        return textLabel.getTextFontScale();
+    }
+
     public String getText() {
         return text;
     }
@@ -113,7 +146,7 @@ public class TextBox extends GuiElement {
 
     public void setText(String text) {
         this.text = text;
-        currentCursorPos = text.length();
+        currentCursorPos = Math.min(text.length(), currentCursorPos);
         updateTextLabel();
     }
     public void setText(double value) {
@@ -154,7 +187,8 @@ public class TextBox extends GuiElement {
                 cursorVisible = !cursorVisible;
             }
             if(cursorVisible) {
-                int cursorX = textLabel.getFont().width(text.substring(0, currentCursorPos)) + textLabel.getX();
+
+                int cursorX = textLabel.getTextWidth(text.substring(0, currentCursorPos)) + textLabel.getX();
                 drawRect(cursorX+1, 3,1, getHeight()-6, cursorColor);
                 drawRect(cursorX, 2,3, 1, cursorColor);
                 drawRect(cursorX, getHeight()-4,3, 1, cursorColor);
@@ -164,7 +198,7 @@ public class TextBox extends GuiElement {
 
     @Override
     protected void layoutChanged() {
-        textLabel.setBounds(marginX, 0, getWidth()-2*marginX, getHeight());
+        textLabel.setBounds(labelPadding, labelPadding, getWidth()-2*labelPadding, getHeight()-2*labelPadding);
     }
 
     @Override
@@ -176,7 +210,7 @@ public class TextBox extends GuiElement {
         int cursorPos = 0;
         for (int i = 0; i < text.length(); i++) {
             String subString = text.substring(0, i);
-            int textWidth = textLabel.getFont().width(subString);
+            int textWidth = textLabel.getTextWidth(subString);
             if(textWidth >= mouseX)
             {
                 break;
@@ -410,10 +444,52 @@ public class TextBox extends GuiElement {
     }
     private boolean canConsume(char codePoint)
     {
-        boolean number = Character.isDigit(codePoint) ||
-                (allowDecimal && codePoint == '.' && text.indexOf('.')==-1) ||
-                (allowDecimal && codePoint == '-' && currentCursorPos == 0 && text.indexOf('-')==-1);
-        boolean letter = !Character.isDigit(codePoint);
-        return (number && allowNumbers) || (letter && allowLetters);
+        if(text.length() >= maxChars)
+            return false;
+        if(allowLetters && Character.isLetter(codePoint)) {
+            return true; // Allow letters
+        }
+
+        if(allowNumbers)
+        {
+            if(!allowDecimal && codePoint == '.')
+                return false; // Disallow decimal point if not allowed
+            if((!allowNegativeNumbers || currentCursorPos > 0) && codePoint == '-')
+                return false; // Disallow negative sign if not allowed
+            //boolean isDigit = Character.isDigit(codePoint);
+            String newStr = text.substring(0, currentCursorPos) + codePoint + text.substring(currentCursorPos);
+            int decimalIndex = newStr.indexOf('.');
+            String leftPart = newStr;
+            String rightPart = "";
+            if(decimalIndex != -1)
+            {
+                leftPart = newStr.substring(0, decimalIndex);
+                rightPart = newStr.substring(decimalIndex + 1);
+            }
+
+            // Check if the right part has more than maxDecimalChar digits
+            if(rightPart.length() > maxDecimalChar)
+                return false; // Disallow more than maxDecimalChar digits in the right part
+
+            boolean isDigit = Character.isDigit(codePoint);
+            if(isDigit)
+            {
+                if(rightPart.indexOf('.') != -1)
+                    return false; // Disallow multiple decimal points
+
+                return true; // Allow digits
+            }
+
+            else if(allowDecimal && codePoint == '.')
+            {
+                // Allow decimal point only if it is at the position of the cursor
+                return text.indexOf('.') == -1;
+            }
+            else if(allowNegativeNumbers && codePoint == '-' && currentCursorPos == 0)
+            {
+                return text.indexOf('-') == -1; // Allow negative sign only at the beginning and only once
+            }
+        }
+        return false; // Disallow all other characters
     }
 }

@@ -1,10 +1,19 @@
 package net.kroia.modutilities;
 
+import dev.architectury.platform.Platform;
+import dev.architectury.utils.Env;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class UtilitiesPlatform {
     public enum Type {
@@ -22,6 +31,107 @@ public class UtilitiesPlatform {
         return platform;
     }
 
+    public static boolean codeCalledFromServerSide()
+    {
+        if(Platform.getEnvironment() == Env.SERVER)
+            return true;
+
+        try {
+            MinecraftServer server = getServer();
+            if (server != null && server.isRunning()) {
+                return server.isSameThread();
+            }
+        }catch(Exception ignored) {
+
+        }
+        /*
+        if(Platform.getEnvironment() == Env.CLIENT)
+        {
+            Minecraft mc = Minecraft.getInstance();
+            if(mc.level != null && !mc.level.isClientSide()) {
+                return true; // Called from server side in a client environment
+            }
+        }*/
+        return false; // Called from client side or unknown environment
+    }
+    public static boolean codeCalledFromCliendSide()
+    {
+        if(Platform.getEnvironment() == Env.SERVER)
+            return false;
+
+        try {
+            MinecraftServer server = getServer();
+            if (server != null && server.isRunning()) {
+                return !server.isSameThread();
+            }
+        }catch(Exception ignored) {
+
+        }
+        return true;
+
+/*
+        try {
+            Minecraft mc = Minecraft.getInstance();
+            return mc.isSameThread();
+        }catch(Exception ignored) {
+
+        }
+        return false; // Called from server side or unknown environment*/
+    }
+    public static boolean isClient()
+    {
+        return Platform.getEnvironment() == Env.CLIENT;
+    }
+    public static boolean isServer()
+    {
+        return Platform.getEnvironment() == Env.SERVER;
+    }
+
+    /*public static RegistryAccess getRegistryAccess() {
+        if(codeCalledFromCliendSide())
+            return getRegistryAccessClientSide();
+
+        if(codeCalledFromServerSide())
+            return getRegistryAccessServerSide();
+        return null;
+    }*/
+    public static RegistryAccess getRegistryAccessClientSide() {
+        Minecraft mc = Minecraft.getInstance();
+        if(mc.level != null) {
+            return mc.level.registryAccess();
+        }
+        return null;
+    }
+    public static RegistryAccess getRegistryAccessServerSide() {
+        MinecraftServer server = getServer();
+        if(server != null) {
+            return server.registryAccess();
+        }
+        return null;
+    }
+    public static RegistryAccess getRegistryAccess() {
+        RegistryAccess reg = getRegistryAccessClientSide();
+        if(reg != null) {
+            return reg;
+        }
+        return getRegistryAccessServerSide();
+    }
+
+    public static RegistryFriendlyByteBuf createRegistryFriendlyByteBufClientSide()
+    {
+        RegistryAccess access = getRegistryAccessClientSide();
+        if(access == null)
+            return null;
+        return new RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(), access);
+    }
+    public static RegistryFriendlyByteBuf createRegistryFriendlyByteBufServerSide()
+    {
+        RegistryAccess access = getRegistryAccessServerSide();
+        if(access == null)
+            return null;
+        return new RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(), access);
+    }
+
     public static void setPlatform(PlatformAbstraction platform) {
         UtilitiesPlatform.platform = platform;
         ModUtilitiesMod.LOGGER.info("UtilitiesPlatform set to: " + platform.getPlatformType().name());
@@ -32,12 +142,16 @@ public class UtilitiesPlatform {
         return getPlatform().getItemStack(itemID);
     }
 
-    public static String getItemID(Item item) {
-        return getPlatform().getItemID(item);
+    public static String getItemIDStr(Item item) {
+        return getPlatform().getItemIDStr(item);
     }
 
-    public static HashMap<String, ItemStack> getAllItems() {
-        return getPlatform().getAllItems();
+    public static ArrayList<ItemStack> getAllItems() {
+
+        ArrayList<ItemStack> itemStacks = new ArrayList<>();
+        List<Item> items = BuiltInRegistries.ITEM.stream().toList();
+        itemStacks.addAll(items.stream().map(ItemStack::new).toList());
+        return itemStacks;
     }
     public static MinecraftServer getServer() {
         return getPlatform().getServer();

@@ -3,6 +3,7 @@ package net.kroia.modutilities.gui.layout;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class LayoutHorizontal extends Layout {
 
@@ -14,7 +15,7 @@ public class LayoutHorizontal extends Layout {
     }
     @Override
     public void apply(GuiElement element) {
-        ArrayList<GuiElement> childs = element.getChilds();
+        List<GuiElement> childs = element.getChilds();
         if(childs.isEmpty())
             return;
         int x = padding;

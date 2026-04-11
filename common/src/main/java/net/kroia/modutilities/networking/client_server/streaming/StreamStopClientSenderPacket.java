@@ -1,0 +1,94 @@
+package net.kroia.modutilities.networking.client_server.streaming;
+
+import dev.architectury.networking.NetworkManager;
+import net.kroia.modutilities.ModUtilitiesMod;
+import net.kroia.modutilities.networking.client_server.NetworkPacket;
+import net.kroia.modutilities.networking.client_server.PacketHandler;
+import net.kroia.modutilities.networking.multi_server.ForwardPacketContext;
+import net.kroia.modutilities.networking.multi_server.ForwardPacketHandler;
+import net.minecraft.core.UUIDUtil;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+
+import java.util.UUID;
+
+/**
+ * This Class is used by the "streaming system".
+ * The packet is used to stop the stream or to notify the other side that the stream has stopped.
+ */
+public class StreamStopClientSenderPacket extends NetworkPacket {
+    public static final Type<StreamStopClientSenderPacket> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "stream_stop_client_sender_packet"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, StreamStopClientSenderPacket> STREAM_CODEC = StreamCodec.composite(
+            UUIDUtil.STREAM_CODEC, p -> p.streamID,
+            StreamStopClientSenderPacket::new
+    );
+
+    public static class StreamStopClientSenderPacketHandler implements
+            PacketHandler<StreamStopClientSenderPacket>,
+            ForwardPacketHandler<StreamStopClientSenderPacket>
+    {
+
+        @Override
+        public void handleServer(StreamStopClientSenderPacket packet, NetworkManager.PacketContext context) {
+            packet.handleOnServer(context);
+        }
+
+        @Override
+        public void handleClient(StreamStopClientSenderPacket packet, NetworkManager.PacketContext context) {
+            packet.handleOnClient(context);
+        }
+
+        @Override
+        public void handleMaster(StreamStopClientSenderPacket packet, ForwardPacketContext context) {
+            packet.handleOnMaster(context);
+        }
+
+        @Override
+        public void handleSlave(StreamStopClientSenderPacket packet, ForwardPacketContext context) {
+            packet.handleOnSlave(context);
+        }
+    }
+
+    public static final StreamStopClientSenderPacketHandler HANDLER = new StreamStopClientSenderPacketHandler();
+
+    UUID streamID;
+
+    public StreamStopClientSenderPacket(UUID streamID) {
+        super();
+        this.streamID = streamID;
+    }
+
+
+    public UUID getStreamID() {
+        return streamID;
+    }
+
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    @Override
+    protected void handleOnClient(NetworkManager.PacketContext context) {
+        //StreamSystem.handlePacket(packet);
+    }
+
+    @Override
+    protected void handleOnServer(NetworkManager.PacketContext context) {
+        StreamSystem.handlePacket(this);
+    }
+
+    @Override
+    protected void handleOnMaster(ForwardPacketContext context) {
+        StreamSystem.handlePacket(this);
+    }
+
+    @Override
+    protected void handleOnSlave(ForwardPacketContext context) {
+
+    }
+}

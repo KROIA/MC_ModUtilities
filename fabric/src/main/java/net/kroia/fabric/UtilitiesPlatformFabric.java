@@ -9,6 +9,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 
 public class UtilitiesPlatformFabric implements PlatformAbstraction {
@@ -26,24 +27,29 @@ public class UtilitiesPlatformFabric implements PlatformAbstraction {
     }
     @Override
     public ItemStack getItemStack(String itemID) {
-        Item item = BuiltInRegistries.ITEM.get(new ResourceLocation(itemID));
-        return item != null ? new ItemStack(item) : ItemStack.EMPTY;
+        if(itemID.indexOf(":") == -1) {
+            itemID = "minecraft:"+itemID;
+        }
+        String namespace = itemID.split(":")[0];
+        String path = itemID.split(":")[1];
+        Item item = BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(namespace, path));
+        return new ItemStack(item);
     }
 
     @Override
-    public String getItemID(Item item) {
+    public String getItemIDStr(Item item) {
         return BuiltInRegistries.ITEM.getKey(item).toString();
     }
 
     @Override
-    public HashMap<String, ItemStack> getAllItems() {
-        HashMap<String, ItemStack> itemsMap = new HashMap<>();
+    public ArrayList<ItemStack> getAllItems() {
+        ArrayList<ItemStack> items = new ArrayList<>();
 
         for (Item item : BuiltInRegistries.ITEM) {
-            itemsMap.put(getItemID(item), new ItemStack(item));
+            items.add(new ItemStack(item));
         }
 
-        return itemsMap;
+        return items;
     }
 
     @Override
