@@ -8,10 +8,7 @@ import net.minecraft.server.players.PlayerList;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 public class ServerPlayerUtilities {
 
@@ -146,6 +143,10 @@ public class ServerPlayerUtilities {
 
         for(int i=0; i<inventory.getContainerSize(); i++)
         {
+            // Check if the index is one of armor slots or side hand
+            if(!isMainInventorySlot(i))
+                continue;
+
             ItemStack currentStack = inventory.getItem(i);
             if(currentStack.isEmpty() || (currentStack.is(stackCpy.getItem()) && currentStack.getCount() < maxStackSize))
             {
@@ -166,6 +167,24 @@ public class ServerPlayerUtilities {
         }
         stack.setCount(remainingAmount); // Update the original stack with the remaining amount
         return remainingAmount;
+    }
+
+    /**
+     * Checks if the given index is one of the normal inventory slots:
+     *  - Large inventory container
+     *  - Toolbar
+     * @param slotIndex
+     * @return true if index is a normal item slot
+     */
+    public static boolean isMainInventorySlot(int slotIndex)
+    {
+        /*for(int i=0; i<Inventory.ALL_ARMOR_SLOTS.length; i++)
+        {
+            if(Inventory.ALL_ARMOR_SLOTS[i] == slotIndex)
+                return false;
+        }
+        return slotIndex != Inventory.SLOT_OFFHAND;*/
+        return slotIndex < 36 && slotIndex >= 0;
     }
 
 
