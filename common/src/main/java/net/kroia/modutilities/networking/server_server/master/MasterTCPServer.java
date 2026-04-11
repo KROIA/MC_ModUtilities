@@ -19,6 +19,10 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.MinecraftServer;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -37,6 +41,7 @@ public class MasterTCPServer {
     private final String sharedSecret;
     private final MinecraftServer mcServer;
     private final int tcpPort;
+    private String serverIP = "";
 
     private @Nullable Throwable startupFailReason = null;
 
@@ -96,10 +101,19 @@ public class MasterTCPServer {
             if (future.isSuccess()) {
                 serverChannel = future.channel();
                 startupFailReason = null;
+
+                // Get real outbound IP instead of relying on localAddress()
+                try (Socket s = new Socket("8.8.8.8", 80)) {
+                    serverIP = s.getLocalAddress().getHostAddress();
+                } catch (IOException e) {
+                    serverIP = "127.0.0.1"; // fallback
+                }
+
                 info("TCP listener started on port "+ tcpPort);
                 onServerStartSuccess.run();
             } else {
                 startupFailReason = future.cause();
+                serverIP = "";
                 error("Failed to bind TCP port: "+ tcpPort, startupFailReason);
                 onServerStartFailure.accept(startupFailReason);
             }
@@ -204,6 +218,22 @@ public class MasterTCPServer {
         return startupFailReason;
     }
 
+    public int getPort()
+    {
+        return tcpPort;
+    }
+    public String getMasterIP()
+    {
+        return serverIP;
+    }
+    public List<String> getConnectedSlaveIDs()
+    {
+        List<String> slaves = new ArrayList<>();
+        CHILD_SERVERS.forEach((id, ch) -> {
+            slaves.add(id);
+        });
+        return slaves;
+    }
 
 
     private static void info(String message) {

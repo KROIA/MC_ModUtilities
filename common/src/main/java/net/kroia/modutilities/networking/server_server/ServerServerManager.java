@@ -7,6 +7,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.MinecraftServer;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
@@ -65,7 +66,10 @@ public class ServerServerManager
     }
 
 
-
+    public static boolean isInUse()
+    {
+        return instance != null;
+    }
     public static boolean isSlave()
     {
         if(instance == null)
@@ -78,6 +82,51 @@ public class ServerServerManager
             return false;
         return instance.tcpServer != null;
     }
+
+
+    public static String getSlaveID()
+    {
+        if(instance == null || instance.slaveClient  == null)
+            return "";
+        return instance.slaveClient.getServerID();
+    }
+    public static String getSlaveIP()
+    {
+        if(instance == null || instance.slaveClient  == null)
+            return "";
+        return instance.slaveClient.getSlaveIP();
+    }
+    public static String getMasterIP()
+    {
+        if(instance == null)
+            return "";
+        if(instance.slaveClient  != null)
+            return instance.slaveClient.getMasterIP();
+        if(instance.tcpServer != null)
+            return instance.tcpServer.getMasterIP();
+        return "";
+    }
+    public static int getMasterPort()
+    {
+        if(instance == null)
+            return -1;
+        if(instance.slaveClient  != null)
+            return instance.slaveClient.getMasterPort();
+        if(instance.tcpServer != null)
+            return instance.tcpServer.getPort();
+        return -1;
+    }
+    public static List<String> getConnectedSlaveIDs()
+    {
+        if(instance == null)
+            return Collections.emptyList();
+        if(instance.tcpServer != null)
+            return instance.tcpServer.getConnectedSlaveIDs();
+        return Collections.emptyList();
+    }
+
+
+
 
     public static boolean start()
     {

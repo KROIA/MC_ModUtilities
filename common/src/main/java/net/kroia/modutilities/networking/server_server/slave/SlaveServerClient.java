@@ -20,6 +20,9 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.MinecraftServer;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
@@ -35,6 +38,7 @@ public class SlaveServerClient {
 
     private final String masterHost;
     private final int    masterPort;
+    private String slaveIP = "";
     private final String serverId;
     private final String sharedSecret;
     private final MinecraftServer  mcServer;
@@ -101,6 +105,14 @@ public class SlaveServerClient {
             if (future.isSuccess()) {
                 channel = future.channel();
                 connectionFailReason = null;
+
+                // Get real outbound IP instead of relying on localAddress()
+                try (Socket s = new Socket("8.8.8.8", 80)) {
+                    slaveIP = s.getLocalAddress().getHostAddress();
+                } catch (IOException e) {
+                    slaveIP = "127.0.0.1"; // fallback
+                }
+
                 info("Connected to master at "+masterHost+":" + masterPort);
                 // Immediately authenticate with the master
                 sendToMaster(new HandshakePayload(serverId, sharedSecret));
@@ -164,7 +176,19 @@ public class SlaveServerClient {
         return true;
     }
 
-    public String getServerId() { return serverId; }
+    public String getServerID() { return serverId; }
+    public String getSlaveIP()
+    {
+        return slaveIP;
+    }
+    public String getMasterIP()
+    {
+        return masterHost;
+    }
+    public int getMasterPort()
+    {
+        return masterPort;
+    }
 
     private void onConnectionEstablishedResult(ConnectionEstablishState state) {
         switch(state)
