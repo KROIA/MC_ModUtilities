@@ -4,6 +4,7 @@ import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
@@ -21,6 +22,7 @@ import net.minecraft.server.MinecraftServer;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -86,6 +88,7 @@ public class SlaveServerClient {
         Bootstrap bootstrap = new Bootstrap()
                 .group(group)
                 .channel(NioSocketChannel.class)
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000)
                 .handler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     protected void initChannel(SocketChannel ch) {
@@ -109,10 +112,17 @@ public class SlaveServerClient {
                 connectionFailReason = null;
 
                 // Get real outbound IP instead of relying on localAddress()
-                try (Socket s = new Socket("8.8.8.8", 80)) {
+                /*try (Socket s = new Socket("8.8.8.8", 80)) {
                     slaveIP = s.getLocalAddress().getHostAddress();
                 } catch (IOException e) {
                     slaveIP = "127.0.0.1"; // fallback
+                }*/
+                try {
+                    slaveIP = ((InetSocketAddress) future.channel().localAddress())
+                            .getAddress().getHostAddress();
+                }catch(Throwable e)
+                {
+
                 }
 
                 info("Connected to master at "+masterHost+":" + masterPort);
