@@ -93,8 +93,8 @@ public class StreamManager {
             @NotNull CONTEXT_DATA contextData,
             @NotNull Consumer<DATA> streamHandler,
             @Nullable Runnable streamStoppedHandler) {
-        if(!isOnClient())
-            throw new IllegalStateException("This method can only be called on the client side!");
+        //if(!isOnClient())
+        //   throw new IllegalStateException("This method can only be called on the client side!");
 
         RegistryFriendlyByteBuf buf = UtilitiesPlatform.createRegistryFriendlyByteBufClientSide();
         stream.encodeContextData(buf, contextData);
@@ -148,8 +148,8 @@ public class StreamManager {
      */
     public void stopStream(@NotNull UUID streamID)
     {
-        boolean isClient = isOnClient();
-        boolean isServer = isOnServer();
+        //boolean isClient = isOnClient();
+        //boolean isServer = isOnServer();
         /*
         // Only Streams from server to client are supported
         if(activeClientSenderStreams != null && isClient) {
@@ -164,14 +164,14 @@ public class StreamManager {
                 }
             }
         }*/
-        if(activeServerSenderStreams != null && isServer) {
+        if(activeServerSenderStreams != null/* && isServer*/) {
             var stream = activeServerSenderStreams.get(streamID);
             if (stream != null) {
                 stream.streamEnd();
             }
         }
 
-        if(activeClientReceiverStreams != null && isClient)
+        if(activeClientReceiverStreams != null/* && isClient*/)
         {
             var stream = activeClientReceiverStreams.remove(streamID);
             if(stream != null)
@@ -257,19 +257,19 @@ public class StreamManager {
      * Checks if the code is running on the client side.
      * @return true if the code is running on the client side, false otherwise.
      */
-    public static boolean isOnClient()
+    /*public static boolean isOnClient()
     {
         return UtilitiesPlatform.codeCalledFromCliendSide();
-    }
+    }*/
 
     /**
      * Checks if the code is running on the server side.
      * @return true if the code is running on the server side, false otherwise.
      */
-    public static boolean isOnServer()
+    /*public static boolean isOnServer()
     {
         return UtilitiesPlatform.codeCalledFromServerSide();
-    }
+    }*/
 
 
 
@@ -365,8 +365,8 @@ public class StreamManager {
                                                              @NotNull RegistryFriendlyByteBuf contextDataBuffer,
                                                              @NotNull UUID targetPlayerUUID)
     {
-        if(isOnClient())
-            throw new IllegalStateException("This method can only be called on the server side!");
+        //if(isOnClient())
+        //    throw new IllegalStateException("This method can only be called on the server side!");
         ServerSenderStreamHolder<CONTEXT_DATA, DATA> streamData = new ServerSenderStreamHolder<>(networkManager, stream, contextDataBuffer, targetPlayerUUID, streamID, slaveServerID);
         if(activeServerSenderStreams.containsKey(streamID))
         {
@@ -394,8 +394,8 @@ public class StreamManager {
                                                              @NotNull RegistryFriendlyByteBuf contextDataBuffer,
                                                              @NotNull UUID targetPlayerUUID)
     {
-        if(isOnClient())
-            throw new IllegalStateException("This method can only be called on the server side!");
+        //if(isOnClient())
+        //    throw new IllegalStateException("This method can only be called on the server side!");
         ServerSenderStreamHolder<CONTEXT_DATA, DATA> streamData = new ServerSenderStreamHolder<>(networkManager, stream, contextDataBuffer, targetPlayerUUID, streamID, null);
         if(redirectedServerSenderStreams.containsKey(streamID))
         {
@@ -462,7 +462,8 @@ public class StreamManager {
                 }
             }
         }*/
-        if(isOnServer()) {
+        //if(isOnServer())
+        //{
             if (activeServerSenderStreams != null) {
                 ServerSenderStreamHolder<?, ?> streamData = activeServerSenderStreams.get(streamID);
                 if (streamData != null) {
@@ -491,14 +492,14 @@ public class StreamManager {
                         }
                     }
                 }
-            }
+            //}
         }
     }
 
 
     public void redirectToClient(GenericStreamPacket packet)
     {
-        if(isOnServer()) {
+        //if(isOnServer()) {
             if (redirectedServerSenderStreams != null) {
                 ServerSenderStreamHolder<?, ?> streamData = redirectedServerSenderStreams.get(packet.getStreamID());
                 if (streamData != null) {
@@ -519,7 +520,7 @@ public class StreamManager {
                     }
                 }
             }
-        }
+        //}
     }
 
     /**
