@@ -21,6 +21,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.item.ItemStack;
 import org.joml.Quaternionf;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -642,6 +643,7 @@ public abstract class GuiElement {
     /**
      * Called when the mouse is clicked over the element
      * @param button The mouse button that was clicked
+     * @see GLFW.GLFW_MOUSE_BUTTON_LEFT
      * @return true if the click was consumed, false otherwise
      */
     protected boolean mouseClickedOverElement(int button) {
@@ -650,6 +652,7 @@ public abstract class GuiElement {
 
     /**
      * Called when the mouse is dragged
+     * @see GLFW.GLFW_MOUSE_BUTTON_LEFT
      * @param button The mouse button that was dragged
      * @param deltaX The change in the x position of the mouse
      * @param deltaY The change in the y position of the mouse
@@ -661,6 +664,7 @@ public abstract class GuiElement {
 
     /**
      * Called when the mouse is released
+     * @see GLFW.GLFW_MOUSE_BUTTON_LEFT
      * @param button The mouse button that was released
      */
     protected void mouseReleased(int button) {
@@ -668,6 +672,7 @@ public abstract class GuiElement {
 
     /**
      * Called when the mouse is released over the element
+     * @see GLFW.GLFW_MOUSE_BUTTON_LEFT
      * @param button The mouse button that was released
      * @return true if the release was consumed, false otherwise
      */
@@ -694,6 +699,7 @@ public abstract class GuiElement {
     /**
      * Called when a key is pressed
      * @param keyCode The key code of the pressed key
+     *                @see GLFW.GLFW_MOUSE_BUTTON_LEFT
      * @param scanCode The scan code of the pressed key
      * @param modifiers The modifiers that were pressed (e.g. shift, ctrl, alt)
      * @return true if the key press was consumed, false otherwise
@@ -711,6 +717,31 @@ public abstract class GuiElement {
     protected boolean charTyped(char codePoint, int modifiers) {
         return false;
     }
+
+
+    /**
+     * Checks if the the keyboard key is pressed down.
+     * @see GLFW.GLFW_KEY_SPACE... Keys
+     *
+     * @return true if the given key is pressed
+     */
+    protected boolean isKeyPressed(int keyCode)
+    {
+        return GLFW.glfwGetKey(getRoot().getWindowHandle(), keyCode) == GLFW.GLFW_PRESS;
+    }
+    protected boolean isControlPressed()
+    {
+        return GLFW.glfwGetKey(getRoot().getWindowHandle(), GLFW.GLFW_KEY_LEFT_CONTROL) == GLFW.GLFW_PRESS;
+    }
+    protected boolean isShiftPressed()
+    {
+        return GLFW.glfwGetKey(getRoot().getWindowHandle(), GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS;
+    }
+    protected boolean isAltPressed()
+    {
+        return GLFW.glfwGetKey(getRoot().getWindowHandle(), GLFW.GLFW_KEY_LEFT_ALT) == GLFW.GLFW_PRESS;
+    }
+
     public boolean mouseClickedInternal(int button, boolean isOverParent)
     {
         if(!isEnabled)

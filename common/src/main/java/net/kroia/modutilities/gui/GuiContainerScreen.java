@@ -227,6 +227,29 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
         return new Point(gui.getMousePosX(), gui.getMousePosY());
     }
 
+    /**
+     * Checks if the the keyboard key is pressed down.
+     * @see GLFW.GLFW_KEY_SPACE... Keys
+     *
+     * @return true if the given key is pressed
+     */
+    protected boolean isKeyPressed(int keyCode)
+    {
+        return GLFW.glfwGetKey(gui.getWindowHandle(), keyCode) == GLFW.GLFW_PRESS;
+    }
+    protected boolean isControlPressed()
+    {
+        return GLFW.glfwGetKey(gui.getWindowHandle(), GLFW.GLFW_KEY_LEFT_CONTROL) == GLFW.GLFW_PRESS;
+    }
+    protected boolean isShiftPressed()
+    {
+        return GLFW.glfwGetKey(gui.getWindowHandle(), GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS;
+    }
+    protected boolean isAltPressed()
+    {
+        return GLFW.glfwGetKey(gui.getWindowHandle(), GLFW.GLFW_KEY_LEFT_ALT) == GLFW.GLFW_PRESS;
+    }
+
     public void setMousePos(int x, int y)
     {
         gui.moveMouseToPos(x, y);
