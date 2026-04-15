@@ -9,6 +9,7 @@ public class TextBox extends GuiElement {
 
     String text = "";
 
+    boolean allowAllChars = true;
     boolean allowNumbers = true;
     boolean allowDecimal = true;
     boolean allowNegativeNumbers = true;
@@ -58,6 +59,12 @@ public class TextBox extends GuiElement {
     }
     public boolean isAllowingNegativeNumbers() {
         return allowNegativeNumbers;
+    }
+    public void setAllowAllChars(boolean allowAllChars) {
+        this.allowAllChars = allowAllChars;
+    }
+    public boolean isAllowAllChars() {
+        return allowAllChars;
     }
     public void setMaxDecimalChar(int maxDecimalChar) {
         this.maxDecimalChar = maxDecimalChar;
@@ -446,6 +453,8 @@ public class TextBox extends GuiElement {
     {
         if(text.length() >= maxChars)
             return false;
+        if(allowAllChars)
+            return true;
         if(allowLetters && Character.isLetter(codePoint)) {
             return true; // Allow letters
         }
@@ -459,11 +468,11 @@ public class TextBox extends GuiElement {
             //boolean isDigit = Character.isDigit(codePoint);
             String newStr = text.substring(0, currentCursorPos) + codePoint + text.substring(currentCursorPos);
             int decimalIndex = newStr.indexOf('.');
-            String leftPart = newStr;
+            //String leftPart = newStr;
             String rightPart = "";
             if(decimalIndex != -1)
             {
-                leftPart = newStr.substring(0, decimalIndex);
+                //leftPart = newStr.substring(0, decimalIndex);
                 rightPart = newStr.substring(decimalIndex + 1);
             }
 

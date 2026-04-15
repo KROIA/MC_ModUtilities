@@ -67,6 +67,11 @@ public class RequestManager {
     public <IN, OUT> CompletableFuture<OUT> sendRequestToServer(@NotNull GenericRequest<IN, OUT> request,
                                                                 IN input) {
         RegistryFriendlyByteBuf buf = UtilitiesPlatform.createRegistryFriendlyByteBufClientSide();
+        if(buf == null)
+        {
+            error("sendRequestToServer(request, input): Can't create byte buf to encode the input data. Is the client in a active world?");
+            return CompletableFuture.completedFuture(null);
+        }
         request.encodeInput(buf, input);
         GenericRequestPacket requestPacket = new GenericRequestPacket(request.getRequestTypeID(), buf);
         ServerRequestHolder<IN, OUT> requestData = new ServerRequestHolder<>();
@@ -92,6 +97,11 @@ public class RequestManager {
     public <IN, OUT> CompletableFuture<OUT> sendRequestToMaster(@NotNull GenericRequest<IN, OUT> request,
                                                                 IN input) {
         RegistryFriendlyByteBuf buf = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
+        if(buf == null)
+        {
+            error("GenericResponsePacket(request, input): Can't create byte buf to encode the input data. Is the server running?");
+            return CompletableFuture.completedFuture(null);
+        }
         request.encodeInput(buf, input);
         GenericRequestPacket requestPacket = new GenericRequestPacket(request.getRequestTypeID(), buf);
         ServerRequestHolder<IN, OUT> requestData = new ServerRequestHolder<>();
@@ -108,6 +118,11 @@ public class RequestManager {
                                                                String slaveID,
                                                                IN input) {
         RegistryFriendlyByteBuf buf = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
+        if(buf == null)
+        {
+            error("sendRequestToSlave(request, slaveID, input): Can't create byte buf to encode the input data. Is the server running?");
+            return CompletableFuture.completedFuture(null);
+        }
         request.encodeInput(buf, input);
         GenericRequestPacket requestPacket = new GenericRequestPacket(request.getRequestTypeID(), buf);
         ServerRequestHolder<IN, OUT> requestData = new ServerRequestHolder<>();
@@ -229,7 +244,7 @@ public class RequestManager {
             }
             catch (Exception e) {
                 // Handle any exceptions that may occur during decoding/encoding
-                ModUtilitiesMod.LOGGER.error("Error handling GenericResponsePacket: " + e.getMessage(), e);
+                error("Error handling GenericResponsePacket: " + e.getMessage(), e);
                 return; // Exit if an error occurs
             }
         }
@@ -260,7 +275,7 @@ public class RequestManager {
             }
             catch (Exception e) {
                 // Handle any exceptions that may occur during decoding/encoding
-                ModUtilitiesMod.LOGGER.error("Error handling GenericResponsePacket: " + e.getMessage(), e);
+                error("Error handling GenericResponsePacket: " + e.getMessage(), e);
                 return; // Exit if an error occurs
             }
         }
@@ -283,5 +298,14 @@ public class RequestManager {
             return;
 
         requestData.processResponse(responsePacket.getData(), player);
+    }
+
+    protected void error(String msg)
+    {
+        ModUtilitiesMod.LOGGER.error("[RequestManager] " + msg);
+    }
+    protected void error(String msg, Throwable e)
+    {
+        ModUtilitiesMod.LOGGER.error("[RequestManager] " + msg, e);
     }
 }
