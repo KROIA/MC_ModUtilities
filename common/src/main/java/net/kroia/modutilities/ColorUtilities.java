@@ -25,11 +25,11 @@ public class ColorUtilities {
     }
     public static int getRGB(int red, int green, int blue, int alpha)
     {
-        return (alpha << 24) | (red << 16) | (green << 8) | blue;
+        return ((alpha & 0xFF) << 24) | ((red & 0xFF) << 16) | ((green & 0xFF) << 8) | (blue & 0xFF);
     }
     public static int setAlpha(int color, int alpha)
     {
-        return (color & 0x00FFFFFF) | (alpha << 24);
+        return (color & 0x00FFFFFF) | ((alpha & 0xFF) << 24);
     }
     public static int setAlpha(int color, float alpha)
     {
@@ -37,7 +37,7 @@ public class ColorUtilities {
     }
     public static int setRed(int color, int red)
     {
-        return (color & 0xFF00FFFF) | (red << 16);
+        return (color & 0xFF00FFFF) | ((red & 0xFF) << 16);
     }
     public static int setRed(int color, float red)
     {
@@ -45,7 +45,7 @@ public class ColorUtilities {
     }
     public static int setGreen(int color, int green)
     {
-        return (color & 0xFFFF00FF) | (green << 8);
+        return (color & 0xFFFF00FF) | ((green & 0xFF) << 8);
     }
     public static int setGreen(int color, float green)
     {
@@ -53,7 +53,7 @@ public class ColorUtilities {
     }
     public static int setBlue(int color, int blue)
     {
-        return (color & 0xFFFFFF00) | blue;
+        return (color & 0xFFFFFF00) | (blue & 0xFF);
     }
     public static int setBlue(int color, float blue)
     {
@@ -63,7 +63,7 @@ public class ColorUtilities {
 
     public static int getRGB(int color, int alpha)
     {
-        return (alpha << 24) | (color & 0x00FFFFFF);
+        return ((alpha & 0xFF) << 24) | (color & 0x00FFFFFF);
     }
 
     public static int getRGB(int color, float alpha)
@@ -78,9 +78,9 @@ public class ColorUtilities {
         int blue = getBlue(color);
         int alpha = getAlpha(color);
 
-        red = (int)(red * brightness);
-        green = (int)(green * brightness);
-        blue = (int)(blue * brightness);
+        red = (int)Math.min(Math.max((red * brightness), 0), 255);
+        green = (int)Math.min(Math.max((green * brightness), 0), 255);
+        blue = (int)Math.min(Math.max((blue * brightness), 0), 255);
 
         return getRGB(red, green, blue, alpha);
     }
@@ -96,10 +96,10 @@ public class ColorUtilities {
         int blue2 = getBlue(color2);
         int alpha2 = getAlpha(color2);
 
-        int red = (int)(red1 + (red2 - red1) * ratio);
-        int green = (int)(green1 + (green2 - green1) * ratio);
-        int blue = (int)(blue1 + (blue2 - blue1) * ratio);
-        int alpha = (int)(alpha1 + (alpha2 - alpha1) * ratio);
+        int red = (int)Math.max(Math.min((red1 + (red2 - red1) * ratio), 255), 0);
+        int green = (int)Math.max(Math.min((green1 + (green2 - green1) * ratio), 255), 0);
+        int blue = (int)Math.max(Math.min((blue1 + (blue2 - blue1) * ratio), 255), 0);
+        int alpha = (int)Math.max(Math.min((alpha1 + (alpha2 - alpha1) * ratio), 255), 0);
 
         return getRGB(red, green, blue, alpha);
     }

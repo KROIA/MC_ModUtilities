@@ -1,8 +1,10 @@
 package net.kroia.modutilities.gui.elements;
 
 import net.kroia.modutilities.gui.elements.base.GuiElement;
+import net.minecraft.client.Minecraft;
 import org.lwjgl.glfw.GLFW;
 
+import java.awt.event.InputEvent;
 import java.util.function.Consumer;
 
 public class TextBox extends GuiElement {
@@ -19,6 +21,7 @@ public class TextBox extends GuiElement {
     private int maxChars = 20;
     private int maxDecimalChar = 20;
     private int cursorColor = 0xFF222222;
+    private int selectionColor = 0xAA222222;
     private int backgroundColor = DEFAULT_BACKGROUND_COLOR;
     private int hoverBackgroundColor = DEFAULT_HOVER_BACKGROUND_COLOR;
     private int focusedBackgroundColor = DEFAULT_FOCUSED_BACKGROUND_COLOR;
@@ -27,6 +30,9 @@ public class TextBox extends GuiElement {
     private boolean cursorVisible = false;
 
     private int labelPadding = 2;
+
+    private int selectionCursonIdxStart = -1;
+    private int selectionCursonIdxEnd = -1;
 
     Consumer<String> textChangedFromUser = null;
     public TextBox(int x, int y, int width) {
@@ -48,6 +54,9 @@ public class TextBox extends GuiElement {
         this.allowDecimal = allowDecimal;
     }
 
+    public void setAlignment(Alignment alignment) {
+        this.textLabel.setAlignment(alignment);
+    }
     public boolean isAllowingNumbers() {
         return allowNumbers;
     }
@@ -180,9 +189,17 @@ public class TextBox extends GuiElement {
     {
         super.setBackgroundColor(isFocused()?focusedBackgroundColor:(isMouseOver()?hoverBackgroundColor:backgroundColor));
         super.renderBackground();
+
+        if(selectionCursonIdxStart > -1 && selectionCursonIdxEnd > -1)
+        {
+            int startX = getCursorXPos(selectionCursonIdxStart);
+            int endX = getCursorXPos(selectionCursonIdxEnd);
+            drawRect(startX, textLabel.getTop(), endX-startX, textLabel.getHeight(), selectionColor);
+        }
     }
     @Override
     protected void render() {
+
 
         // Draw cursor
         if(isFocused())
@@ -195,12 +212,28 @@ public class TextBox extends GuiElement {
             }
             if(cursorVisible) {
 
-                int cursorX = textLabel.getTextWidth(text.substring(0, currentCursorPos)) + textLabel.getX();
+                int cursorX = getCursorXPos(currentCursorPos);
                 drawRect(cursorX+1, 3,1, getHeight()-6, cursorColor);
                 drawRect(cursorX, 2,3, 1, cursorColor);
                 drawRect(cursorX, getHeight()-4,3, 1, cursorColor);
             }
         }
+    }
+    private int getCursorXPos(int cursorPos)
+    {
+        int cursorX;
+        if(cursorPos >= text.length())
+            cursorX = textLabel.getTextWidth(text);
+        else
+            cursorX = textLabel.getTextWidth(text.substring(0, cursorPos));
+        if(textLabel.getAlignment() == Alignment.RIGHT)
+        {
+            int textWidth = textLabel.getTextWidth(text);
+            cursorX = textLabel.getWidth() - textWidth + cursorX;
+        }
+        else
+            cursorX += textLabel.getX();
+        return cursorX;
     }
 
     @Override
@@ -213,17 +246,25 @@ public class TextBox extends GuiElement {
     {
         setFocused();
         // Get cursor position
-        double mouseX = getMouseX()-textLabel.getX();
+        double mouseX = getMouseX();
         int cursorPos = 0;
+        if(textLabel.getAlignment() == Alignment.RIGHT)
+        {
+            int textWidth = textLabel.getTextWidth(text);
+            mouseX -= textLabel.getWidth()-textWidth;
+        }
+        else
+            mouseX -= textLabel.getX();
+
         for (int i = 0; i < text.length(); i++) {
             String subString = text.substring(0, i);
             int textWidth = textLabel.getTextWidth(subString);
-            if(textWidth >= mouseX)
-            {
+            if (textWidth >= mouseX) {
                 break;
             }
             cursorPos++;
         }
+
         currentCursorPos = cursorPos;
         return true;
     }
@@ -242,6 +283,11 @@ public class TextBox extends GuiElement {
         {
             removeFocus();
         }
+        else
+        {
+            selectionCursonIdxStart = -1;
+            selectionCursonIdxEnd = -1;
+        }
     }
 
     @Override
@@ -249,12 +295,89 @@ public class TextBox extends GuiElement {
         if(!isFocused())
             return false;
 
+        boolean isShiftDown = isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT);
+        boolean isControlDown = isKeyPressed(GLFW.GLFW_KEY_LEFT_CONTROL);
+
+
+
         switch(keyCode)
         {
+            case GLFW.GLFW_KEY_A:
+            {
+                if(isControlDown) {
+                    // select all
+                    selectionCursonIdxStart = 0;
+                    selectionCursonIdxEnd = text.length();
+                    return true;
+                }
+                return false;
+            }
+            case GLFW.GLFW_KEY_C:
+            {
+                if(isControlDown && selectionCursonIdxStart != -1 && selectionCursonIdxEnd != -1)
+                {
+                    String subString = text.substring(selectionCursonIdxStart, selectionCursonIdxEnd);
+                    // put substring into clipboard
+                    Minecraft.getInstance().keyboardHandler.setClipboard(subString);
+                    return true;
+                }
+                return false;
+            }
+            case GLFW.GLFW_KEY_X:
+            {
+                if(isControlDown && selectionCursonIdxStart != -1 && selectionCursonIdxEnd != -1)
+                {
+                    String subString = text.substring(selectionCursonIdxStart, selectionCursonIdxEnd);
+                    text = text.substring(0, selectionCursonIdxStart) +  text.substring(selectionCursonIdxEnd);
+                    // put substring into clipboard
+                    Minecraft.getInstance().keyboardHandler.setClipboard(subString);
+                    selectionCursonIdxStart = -1;
+                    selectionCursonIdxEnd = -1;
+                    updateTextLabel();
+                    emitTextChanged();
+                    return true;
+                }
+                return false;
+            }
+            case GLFW.GLFW_KEY_V:
+            {
+                if(isControlDown)
+                {
+                    boolean hasChanged = false;
+                    if(selectionCursonIdxStart != -1 && selectionCursonIdxEnd != -1)
+                    {
+                        // overwrite the current selection
+                        // remove selected text section
+                        String newText = text.substring(0, selectionCursonIdxStart) + text.substring(selectionCursonIdxEnd);
+                        text = newText;
+                        currentCursorPos = selectionCursonIdxStart;
+                        selectionCursonIdxStart = -1;
+                        selectionCursonIdxEnd = -1;
+                        hasChanged = true;
+                    }
+
+                    String clipboard = Minecraft.getInstance().keyboardHandler.getClipboard();
+                    // Insert text
+                    if(!clipboard.isEmpty()) {
+                        String textToCursor = text.substring(0, currentCursorPos);
+                        String textAfterCursor = text.substring(currentCursorPos);
+                        text = textToCursor + clipboard + textAfterCursor;
+                        hasChanged = true;
+                    }
+                    if(hasChanged) {
+                        selectionCursonIdxStart = -1;
+                        selectionCursonIdxEnd = -1;
+                        updateTextLabel();
+                        emitTextChanged();
+                        return true;
+                    }
+                }
+                return false;
+            }
             case GLFW.GLFW_KEY_BACKSPACE:
             {
                 // Check if CTRL is pressed, if so, remove last word
-                if((modifiers & GLFW.GLFW_MOD_CONTROL) == GLFW.GLFW_MOD_CONTROL)
+                if(isControlDown)
                 {
                     String textToCursor = text.substring(0, currentCursorPos);
                     String textAfterCursor = text.substring(currentCursorPos);
@@ -285,6 +408,17 @@ public class TextBox extends GuiElement {
                         return true;
                     }
                 }
+                else if(selectionCursonIdxStart != -1 && selectionCursonIdxEnd != -1)
+                {
+                    // remove selected text section
+                    text = text.substring(0, selectionCursonIdxStart) + text.substring(selectionCursonIdxEnd);
+                    currentCursorPos = selectionCursonIdxStart;
+                    selectionCursonIdxStart = -1;
+                    selectionCursonIdxEnd = -1;
+                    updateTextLabel();
+                    emitTextChanged();
+                    return true;
+                }
                 else
                 {
                     String textToCursor = text.substring(0, currentCursorPos);
@@ -304,7 +438,7 @@ public class TextBox extends GuiElement {
             case GLFW.GLFW_KEY_DELETE:
             {
                 // Check if CTRL is pressed, if so, remove next word
-                if((modifiers & GLFW.GLFW_MOD_CONTROL) == GLFW.GLFW_MOD_CONTROL)
+                if(isControlDown)
                 {
                     String textToCursor = text.substring(0, currentCursorPos);
                     String textAfterCursor = text.substring(currentCursorPos);
@@ -334,6 +468,18 @@ public class TextBox extends GuiElement {
                         return true;
                     }
                 }
+                else if(selectionCursonIdxStart != -1 && selectionCursonIdxEnd != -1)
+                {
+                    // remove selected text section
+                    String newText = text.substring(0, selectionCursonIdxStart) + text.substring(selectionCursonIdxEnd);
+                    text = newText;
+                    currentCursorPos = selectionCursonIdxStart;
+                    selectionCursonIdxStart = -1;
+                    selectionCursonIdxEnd = -1;
+                    updateTextLabel();
+                    emitTextChanged();
+                    return true;
+                }
                 else
                 {
                     String textToCursor = text.substring(0, currentCursorPos);
@@ -353,7 +499,7 @@ public class TextBox extends GuiElement {
             {
                 if(currentCursorPos > 0)
                 {
-                    if((modifiers & GLFW.GLFW_MOD_CONTROL) == GLFW.GLFW_MOD_CONTROL)
+                    if(isControlDown && !isShiftDown)
                     {
                         String textToCursor = text.substring(0, currentCursorPos);
                         int lastSpace = textToCursor.length()-1;
@@ -374,9 +520,50 @@ public class TextBox extends GuiElement {
                         {
                             currentCursorPos = 0;
                         }
+                        selectionCursonIdxStart = -1;
+                        selectionCursonIdxEnd = -1;
                     }
-                    else
+                    else if(isShiftDown && !isControlDown)
+                    {
+                        if(selectionCursonIdxEnd == -1)
+                        {
+                            selectionCursonIdxEnd =  currentCursorPos;
+                        }
                         currentCursorPos--;
+                        selectionCursonIdxStart = currentCursorPos;
+                    }
+                    else if(isShiftDown)
+                    {
+                        if(selectionCursonIdxEnd == -1)
+                        {
+                            selectionCursonIdxEnd =  currentCursorPos;
+                        }
+                        String textToCursor = text.substring(0, currentCursorPos);
+                        int lastSpace = textToCursor.length()-1;
+                        // Find first char that is not a space
+                        while(lastSpace > 0 && textToCursor.charAt(lastSpace) == ' ')
+                        {
+                            lastSpace--;
+                        }
+                        // Find next space
+                        lastSpace = textToCursor.lastIndexOf(' ', lastSpace);
+
+
+                        if(lastSpace != -1)
+                        {
+                            currentCursorPos = lastSpace+1;
+                        }
+                        else
+                        {
+                            currentCursorPos = 0;
+                        }
+                        selectionCursonIdxStart = currentCursorPos;
+                    }
+                    else {
+                        selectionCursonIdxStart = -1;
+                        selectionCursonIdxEnd = -1;
+                        currentCursorPos--;
+                    }
                 }
                 return true;
             }
@@ -384,7 +571,7 @@ public class TextBox extends GuiElement {
             {
                 if(currentCursorPos < text.length())
                 {
-                    if((modifiers & GLFW.GLFW_MOD_CONTROL) == GLFW.GLFW_MOD_CONTROL)
+                    if(isControlDown && !isShiftDown)
                     {
                         String textAfterCursor = text.substring(currentCursorPos);
                         int nextSpace = 0;
@@ -404,9 +591,48 @@ public class TextBox extends GuiElement {
                         {
                             currentCursorPos = text.length();
                         }
+                        selectionCursonIdxStart = -1;
+                        selectionCursonIdxEnd = -1;
                     }
-                    else
+                    else if(isShiftDown && !isControlDown)
+                    {
+                        if(selectionCursonIdxStart == -1)
+                        {
+                            selectionCursonIdxStart =  currentCursorPos;
+                        }
                         currentCursorPos++;
+                        selectionCursonIdxEnd = Math.min(currentCursorPos, text.length());
+                    }
+                    else if(isShiftDown)
+                    {
+                        String textAfterCursor = text.substring(currentCursorPos);
+                        int nextSpace = 0;
+                        // Find first char that is not a space
+                        while(nextSpace < textAfterCursor.length() && textAfterCursor.charAt(nextSpace) == ' ')
+                        {
+                            nextSpace++;
+                        }
+                        // Find next space
+                        nextSpace = textAfterCursor.indexOf(' ', nextSpace);
+                        if(selectionCursonIdxStart == -1)
+                        {
+                            selectionCursonIdxStart =  currentCursorPos;
+                        }
+                        if(nextSpace != -1)
+                        {
+                            currentCursorPos += nextSpace;
+                        }
+                        else
+                        {
+                            currentCursorPos = text.length();
+                        }
+                        selectionCursonIdxEnd = Math.min(currentCursorPos, text.length());
+                    }
+                    else {
+                        selectionCursonIdxStart = -1;
+                        selectionCursonIdxEnd = -1;
+                        currentCursorPos++;
+                    }
                 }
                 return true;
             }
@@ -414,6 +640,8 @@ public class TextBox extends GuiElement {
             case GLFW.GLFW_KEY_KP_ENTER:
             case GLFW.GLFW_KEY_ESCAPE:
             {
+                selectionCursonIdxEnd = -1;
+                selectionCursonIdxStart = -1;
                 removeFocus();
                 return true;
             }
@@ -429,6 +657,17 @@ public class TextBox extends GuiElement {
 
         if(canConsume(codePoint))
         {
+            if(selectionCursonIdxStart != -1 && selectionCursonIdxEnd != -1)
+            {
+                // remove selected text section
+                text = text.substring(0, selectionCursonIdxStart) + text.substring(selectionCursonIdxEnd);
+                currentCursorPos = selectionCursonIdxStart;
+                selectionCursonIdxStart = -1;
+                selectionCursonIdxEnd = -1;
+                //updateTextLabel();
+                //emitTextChanged();
+            }
+
             if(text.length() >= maxChars)
                 return false;
             // Insert character at cursor position

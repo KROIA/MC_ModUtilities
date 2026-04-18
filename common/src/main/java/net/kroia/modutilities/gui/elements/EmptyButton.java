@@ -1,11 +1,11 @@
 package net.kroia.modutilities.gui.elements;
 
+import net.kroia.modutilities.ColorUtilities;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.minecraft.sounds.SoundEvents;
 
 public class EmptyButton extends GuiElement {
     protected boolean isPressed = false;
-    protected int colorIdle = DEFAULT_BACKGROUND_COLOR;
     protected int colorHover = DEFAULT_HOVER_BACKGROUND_COLOR;
     protected int colorPressed = DEFAULT_FOCUSED_BACKGROUND_COLOR;
 
@@ -17,6 +17,11 @@ public class EmptyButton extends GuiElement {
 
     public EmptyButton() {
         super();
+        int defaultColor = ColorUtilities.setBrightness(DEFAULT_BACKGROUND_COLOR, 0.8f);
+        setBackgroundColor(defaultColor);
+        setHoverColor(ColorUtilities.setBrightness(defaultColor, 0.8f));
+        setPressedColor(ColorUtilities.setBrightness(defaultColor, 0.6f));
+        setOutlineColor(ColorUtilities.setBrightness(defaultColor, 0.4f));
     }
     public EmptyButton(int x, int y, int width, int height) {
         super(x, y, width, height);
@@ -44,10 +49,10 @@ public class EmptyButton extends GuiElement {
         this.onDown = onDown;
     }
 
-    public void setIdleColor(int color)
+    /*public void setIdleColor(int color)
     {
         this.colorIdle = color;
-    }
+    }*/
     public void setHoverColor(int color)
     {
         this.colorHover = color;
@@ -56,10 +61,10 @@ public class EmptyButton extends GuiElement {
     {
         this.colorPressed = color;
     }
-    public int getIdleColor()
+    /*public int getIdleColor()
     {
         return this.colorIdle;
-    }
+    }*/
     public int getHoverColor()
     {
         return this.colorHover;
@@ -91,7 +96,7 @@ public class EmptyButton extends GuiElement {
 
     @Override
     protected void renderBackground() {
-        int color = colorIdle;
+        int color = super.getBackgroundColor();
         if(isClickable) {
             if (isPressed)
             {
