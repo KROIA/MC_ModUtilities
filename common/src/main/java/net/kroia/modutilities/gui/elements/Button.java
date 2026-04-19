@@ -43,6 +43,10 @@ public class Button extends EmptyButton {
     {
         label.setText(text);
     }
+    public String getText()
+    {
+        return label.getText();
+    }
 
     public void setLayoutType(Alignment layoutType)
     {
@@ -67,6 +71,7 @@ public class Button extends EmptyButton {
     @Override
     public void setTextColor(int color) {
         label.setTextColor(color);
+        super.setTextColor(color);
     }
     @Override
     public int getTextColor() {
@@ -75,6 +80,7 @@ public class Button extends EmptyButton {
     @Override
     public void setTextFontScale(float scale) {
         label.setTextFontScale(scale);
+        super.setTextFontScale(scale);
     }
     @Override
     public float getTextFontScale() {

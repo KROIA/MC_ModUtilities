@@ -4,6 +4,8 @@ import net.kroia.modutilities.persistence.ServerSaveable;
 import net.minecraft.nbt.CompoundTag;
 
 public class TimerMillis implements ServerSaveable {
+    public static long TIMER_OFFSET_MS = 0;
+
     private long startTime;
     private long duration;
     private boolean autoRestart;
@@ -17,7 +19,7 @@ public class TimerMillis implements ServerSaveable {
     }
 
     public void start(long duration) {
-        this.startTime = System.currentTimeMillis();
+        this.startTime = currentTimeMillis();
         this.duration = duration;
         this.isRunning = true;
     }
@@ -26,7 +28,7 @@ public class TimerMillis implements ServerSaveable {
         return isRunning;
     }
     public boolean isFinished() {
-        if(startTime > 0 && (System.currentTimeMillis() - startTime) > duration)
+        if(startTime > 0 && (currentTimeMillis() - startTime) > duration)
         {
             isRunning = false; // Mark as not running if duration exceeded
             return true; // Timer has finished
@@ -50,13 +52,13 @@ public class TimerMillis implements ServerSaveable {
         if (startTime == 0) {
             return 0;
         }
-        return System.currentTimeMillis() - startTime;
+        return currentTimeMillis() - startTime;
     }
     public long getRemainingTime() {
         if (startTime == 0) {
             return 0;
         }
-        long elapsed = System.currentTimeMillis() - startTime;
+        long elapsed = currentTimeMillis() - startTime;
         return Math.max(0, duration - elapsed);
     }
     public long getStartTime() {
@@ -74,6 +76,12 @@ public class TimerMillis implements ServerSaveable {
     public boolean isAutoRestart() {
         return autoRestart;
     }
+
+    public long currentTimeMillis()
+    {
+        return TIMER_OFFSET_MS + System.currentTimeMillis();
+    }
+
     @Override
     public String toString() {
         return "TimerMillis{" +
