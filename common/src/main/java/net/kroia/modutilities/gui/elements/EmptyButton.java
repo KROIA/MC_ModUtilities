@@ -3,6 +3,7 @@ package net.kroia.modutilities.gui.elements;
 import net.kroia.modutilities.ColorUtilities;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.minecraft.sounds.SoundEvents;
+import org.lwjgl.glfw.GLFW;
 
 public class EmptyButton extends GuiElement {
     protected boolean isPressed = false;
@@ -13,7 +14,7 @@ public class EmptyButton extends GuiElement {
     protected Runnable onRisingEdge = null;
     protected Runnable onDown = null;
     protected boolean isClickable = true;
-    protected int triggerButton = 0;
+    protected int triggerButton = GLFW.GLFW_MOUSE_BUTTON_LEFT;
 
     public EmptyButton() {
         super();
@@ -98,6 +99,7 @@ public class EmptyButton extends GuiElement {
     protected void renderBackground() {
         int color = super.getBackgroundColor();
         if(isClickable) {
+            isPressed &= isMouseButtonDown(triggerButton);
             if (isPressed)
             {
                 if(onDown != null) {
@@ -131,11 +133,11 @@ public class EmptyButton extends GuiElement {
 
         if(!isPressed) {
             playLocalSound(SoundEvents.UI_BUTTON_CLICK.value(),0.5F);
+            isPressed = true;
             if(onFallingEdge != null) {
                 onFallingEdge.run();
             }
         }
-        isPressed = true;
         return true;
     }
     @Override
@@ -146,7 +148,14 @@ public class EmptyButton extends GuiElement {
         if(isPressed){
             if(onRisingEdge != null)
                 onRisingEdge.run();
+            isPressed = false;
         }
+    }
+
+    @Override
+    public void setEnabled(boolean visible)
+    {
+        super.setEnabled(visible);
         isPressed = false;
     }
 }

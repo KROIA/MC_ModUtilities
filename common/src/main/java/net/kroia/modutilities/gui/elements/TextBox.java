@@ -386,7 +386,17 @@ public class TextBox extends GuiElement {
                 if(isControlDown)
                 {
                     String clipboard = Minecraft.getInstance().keyboardHandler.getClipboard();
-                    if(!strIsAllowed(matchRegex))
+                    String newText = text;
+                    int currentCursorPosTmp = currentCursorPos;
+                    if(selectionCursonIdxStart != -1 && selectionCursonIdxEnd != -1)
+                    {
+                        newText = text.substring(0, selectionCursonIdxStart) + text.substring(selectionCursonIdxEnd);
+                        currentCursorPosTmp =  selectionCursonIdxStart;
+                    }
+                    String textToCursorTmp = newText.substring(0, currentCursorPosTmp);
+                    String textAfterCursorTmp = newText.substring(currentCursorPosTmp);
+                    newText = textToCursorTmp + clipboard + textAfterCursorTmp;
+                    if(!strIsAllowed(newText))
                         return false;
 
                     boolean hasChanged = false;

@@ -741,6 +741,23 @@ public abstract class GuiElement {
     {
         return GLFW.glfwGetKey(getRoot().getWindowHandle(), GLFW.GLFW_KEY_LEFT_ALT) == GLFW.GLFW_PRESS;
     }
+    public boolean isMouseButtonDown(int button)
+    {
+        return GLFW.glfwGetMouseButton(getRoot().getWindowHandle(), button) == GLFW.GLFW_PRESS;
+    }
+    public boolean isLeftMouseButtonDown()
+    {
+        return GLFW.glfwGetMouseButton(getRoot().getWindowHandle(), GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
+    }
+    public boolean isRightMouseButtonDown()
+    {
+        return GLFW.glfwGetMouseButton(getRoot().getWindowHandle(), GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS;
+    }
+    public boolean isMiddleMouseButtonDown()
+    {
+        return GLFW.glfwGetMouseButton(getRoot().getWindowHandle(), GLFW.GLFW_MOUSE_BUTTON_MIDDLE) == GLFW.GLFW_PRESS;
+    }
+
 
     public boolean mouseClickedInternal(int button, boolean isOverParent)
     {
