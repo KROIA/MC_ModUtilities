@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui.elements;
 
+import net.kroia.modutilities.ColorUtilities;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.minecraft.client.Minecraft;
 import org.lwjgl.glfw.GLFW;
@@ -11,20 +12,21 @@ public class TextBox extends GuiElement {
 
     String text = "";
 
-    boolean allowAllChars = true;
-    boolean allowNumbers = true;
-    boolean allowDecimal = true;
-    boolean allowNegativeNumbers = true;
-    boolean allowLetters = true;
+    //boolean allowAllChars = true;
+    //boolean allowNumbers = true;
+    //boolean allowDecimal = true;
+    //boolean allowNegativeNumbers = true;
+    //boolean allowLetters = true;
+    private String matchRegex;
 
     private final Label textLabel;
     private int maxChars = 20;
-    private int maxDecimalChar = 20;
+    //private int maxDecimalChar = 20;
     private int cursorColor = 0xFF222222;
     private int selectionColor = 0xAA222222;
-    private int backgroundColor = DEFAULT_BACKGROUND_COLOR;
-    private int hoverBackgroundColor = DEFAULT_HOVER_BACKGROUND_COLOR;
-    private int focusedBackgroundColor = DEFAULT_FOCUSED_BACKGROUND_COLOR;
+    private int backgroundColor;
+    private int hoverBackgroundColor;
+    private int focusedBackgroundColor;
     private int currentCursorPos = 0;
     private int cursorBlinkCounter = 0;
     private boolean cursorVisible = false;
@@ -37,6 +39,13 @@ public class TextBox extends GuiElement {
     Consumer<String> textChangedFromUser = null;
     public TextBox(int x, int y, int width) {
         super(x, y, width, Label.DEFAULT_HEIGHT);
+        matchRegex = ".*";
+
+        backgroundColor = ColorUtilities.setBrightness(DEFAULT_BACKGROUND_COLOR, 0.8f);
+        hoverBackgroundColor = ColorUtilities.setBrightness(backgroundColor, 0.8f);
+        focusedBackgroundColor = ColorUtilities.setBrightness(backgroundColor, 0.6f);
+        setOutlineColor(ColorUtilities.setBrightness(backgroundColor, 0.4f));
+
         textLabel = new Label("");
         textLabel.setBounds(labelPadding, 0, width-2*labelPadding, Label.DEFAULT_HEIGHT);
         textLabel.setAlignment(Alignment.LEFT);
@@ -49,15 +58,48 @@ public class TextBox extends GuiElement {
         this(0,0,100);
     }
 
-    public void setAllowNumbers(boolean allowNumbers, boolean allowDecimal) {
-        this.allowNumbers = allowNumbers;
-        this.allowDecimal = allowDecimal;
+    //public void setAllowNumbers(boolean allowNumbers, boolean allowDecimal) {
+    //    this.allowNumbers = allowNumbers;
+    //    this.allowDecimal = allowDecimal;
+    //}
+
+    public void setMatchRegex(String matchRegex) {
+        this.matchRegex = matchRegex;
     }
+    public String getMatchRegex() {
+        return matchRegex;
+    }
+    public static String createRegex_onlyNumerical(boolean allowPositive, boolean allowNegative, int maxDigits, int maxDecimalDigits)
+    {
+        // Build the sign part
+        String sign;
+        if (allowPositive && allowNegative) {
+            sign = "-?";
+        } else if (allowNegative) {
+            sign = "-";
+        } else {
+            sign = "";
+        }
+
+        // Build the digits part — use {0,} instead of {1,} to allow mid-typing e.g. "-"
+        String digits = maxDigits > 0 ? "\\d{0," + maxDigits + "}" : "\\d*";
+
+        // Build the decimal part — digits after "." are optional to allow mid-typing e.g. "123."
+        String decimal = maxDecimalDigits > 0 ? "(\\.\\d{0," + maxDecimalDigits + "})?" : "";
+
+        // Combine into final regex
+        return "^" + sign + digits + decimal + "$";
+    }
+    public static String createRegex_noNumbers()
+    {
+        return "^[^\\d]+$";
+    }
+
 
     public void setAlignment(Alignment alignment) {
         this.textLabel.setAlignment(alignment);
     }
-    public boolean isAllowingNumbers() {
+    /*public boolean isAllowingNumbers() {
         return allowNumbers;
     }
     public boolean isAllowingDecimal() {
@@ -86,7 +128,7 @@ public class TextBox extends GuiElement {
     }
     public boolean isAllowingLetters() {
         return allowLetters;
-    }
+    }*/
     public void setCursorColor(int cursorColor) {
         this.cursorColor = cursorColor;
     }
@@ -166,15 +208,15 @@ public class TextBox extends GuiElement {
         updateTextLabel();
     }
     public void setText(double value) {
-        setAllowNumbers(true, true);
+       // setAllowNumbers(true, true);
         setText(String.valueOf(value));
     }
     public void setText(int value) {
-        setAllowNumbers(true, false);
+       // setAllowNumbers(true, false);
         setText(String.valueOf(value));
     }
     public void setText(long value) {
-        setAllowNumbers(true, false);
+        //setAllowNumbers(true, false);
         setText(String.valueOf(value));
     }
     public void setMaxChars(int maxChars) {
@@ -343,20 +385,23 @@ public class TextBox extends GuiElement {
             {
                 if(isControlDown)
                 {
+                    String clipboard = Minecraft.getInstance().keyboardHandler.getClipboard();
+                    if(!strIsAllowed(matchRegex))
+                        return false;
+
                     boolean hasChanged = false;
                     if(selectionCursonIdxStart != -1 && selectionCursonIdxEnd != -1)
                     {
                         // overwrite the current selection
                         // remove selected text section
-                        String newText = text.substring(0, selectionCursonIdxStart) + text.substring(selectionCursonIdxEnd);
-                        text = newText;
+                        text = text.substring(0, selectionCursonIdxStart) + text.substring(selectionCursonIdxEnd);
                         currentCursorPos = selectionCursonIdxStart;
                         selectionCursonIdxStart = -1;
                         selectionCursonIdxEnd = -1;
                         hasChanged = true;
                     }
 
-                    String clipboard = Minecraft.getInstance().keyboardHandler.getClipboard();
+
                     // Insert text
                     if(!clipboard.isEmpty()) {
                         String textToCursor = text.substring(0, currentCursorPos);
@@ -668,8 +713,8 @@ public class TextBox extends GuiElement {
                 //emitTextChanged();
             }
 
-            if(text.length() >= maxChars)
-                return false;
+            //if(text.length() >= maxChars)
+            //    return false;
             // Insert character at cursor position
             text = text.substring(0, currentCursorPos) + codePoint + text.substring(currentCursorPos);
             currentCursorPos++;
@@ -688,9 +733,19 @@ public class TextBox extends GuiElement {
         if(textChangedFromUser != null)
             textChangedFromUser.accept(getText());
     }
+
+    private boolean strIsAllowed(String str)
+    {
+        if(str.length() > maxChars)
+            return false;
+        return str.matches(matchRegex);
+    }
     private boolean canConsume(char codePoint)
     {
-        if(text.length() >= maxChars)
+        String newText = text.substring(0, currentCursorPos) + codePoint + text.substring(currentCursorPos);
+        return strIsAllowed(newText);
+
+       /* if(text.length() >= maxChars)
             return false;
         if(allowAllChars)
             return true;
@@ -738,6 +793,6 @@ public class TextBox extends GuiElement {
                 return text.indexOf('-') == -1; // Allow negative sign only at the beginning and only once
             }
         }
-        return false; // Disallow all other characters
+        return false; // Disallow all other characters*/
     }
 }

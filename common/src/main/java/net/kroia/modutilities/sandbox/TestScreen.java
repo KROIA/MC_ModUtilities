@@ -86,6 +86,9 @@ class MyElement extends GuiElement
         textBox.setAlignment(GuiElement.Alignment.RIGHT);
         textBox2.setAlignment(GuiElement.Alignment.LEFT);
 
+        textBox.setMatchRegex(TextBox.createRegex_onlyNumerical(true,true,5,2));
+        textBox2.setMatchRegex(TextBox.createRegex_onlyNumerical(true,false,4,3));
+
         addElement(textBox);
         addElement(textBox2);
 

@@ -48,8 +48,8 @@ public class TabElement extends GuiElement {
     private int selectedTitleHeight = 20; // Scale for selected tab titles, can be adjusted
     private int unselectedTitleHeight = 15; // Scale for unselected tab titles, can be adjusted
     private int mouseOverTitleIndex = -1; // Index of the tab title currently under mouse cursor
-    private int titleHoverColor = ColorUtilities.getRGB(255, 255, 255, 30); // Color for hovered tab title
-    private int titleSelectColor = ColorUtilities.getRGB(255, 255, 255, 50); // Color for hovered tab title
+    private int titleHoverColor = ColorUtilities.setBrightness(DEFAULT_BACKGROUND_COLOR, 0.8f);; // Color for hovered tab title
+    private int titleSelectColor = ColorUtilities.setBrightness(titleHoverColor, 0.8f); // Color for hovered tab title
     private int selectOutlineThickness = 2; // Thickness of the outline around the selected tab title
     private Alignment selectedTitleLabelAlignment = Alignment.BOTTOM; // Alignment for the selected tab title label
     private Alignment unselectedTitleLabelAlignment = Alignment.CENTER; // Alignment for unselected tab title labels
