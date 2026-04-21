@@ -8,6 +8,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -154,4 +155,25 @@ public class ExtraCodecUtils {
                 return jsonElement;
             }
     );
+
+
+    public static StreamCodec<RegistryFriendlyByteBuf, float[]> FLOAT_ARRAY_CODEC = new StreamCodec<RegistryFriendlyByteBuf, float[]>() {
+        @Override
+        public float @NotNull [] decode(RegistryFriendlyByteBuf buf) {
+            int tiles = buf.readInt();
+            float[] volume = new float[tiles];
+            for (int i = 0; i < tiles; i++) {
+                volume[i] = buf.readFloat();
+            }
+            return volume;
+        }
+
+        @Override
+        public void encode(RegistryFriendlyByteBuf buf, float[] data) {
+            buf.writeInt(data.length);
+            for (float v : data) {
+                buf.writeFloat(v);
+            }
+        }
+    };
 }
