@@ -306,10 +306,17 @@ public class DataPersistence {
         // Split the data into chunks
         List<CompoundTag> chunks = new ArrayList<>();
         int processedTagCount = 0;
+        boolean firstChunk = true;
         while(processedTagCount < dataList.size())
         {
             CompoundTag chunk = new CompoundTag();
             ListTag chunkList = new ListTag();
+            if(firstChunk)
+            {
+                byte dataType = dataList.getElementType();
+                chunk.putByte("elementType", dataType);
+                firstChunk = false;
+            }
             chunk.put("data", chunkList);
             for(; processedTagCount<dataList.size(); ++processedTagCount)
             {
@@ -359,10 +366,21 @@ public class DataPersistence {
         // If it's a folder, read all chunk files
         try {
             List<Path> chunkFiles = getFiles(folderPath, ".nbt");
+            // Sort files
+            chunkFiles.sort(Comparator.naturalOrder());
+            boolean firstChunk = true;
+            byte elementType = Tag.TAG_COMPOUND;
             for (Path chunkFile : chunkFiles) {
                 CompoundTag chunkData = readDataCompound(chunkFile);
+                if(firstChunk) {
+                    if(chunkData != null && chunkData.contains("elementType", Tag.TAG_BYTE))
+                    {
+                        elementType = chunkData.getByte("elementType");
+                        firstChunk = false;
+                    }
+                }
                 if (chunkData != null && chunkData.contains("data", Tag.TAG_LIST)) {
-                    dataOut.addAll(chunkData.getList("data", Tag.TAG_COMPOUND));
+                    dataOut.addAll(chunkData.getList("data", elementType));
                 } else {
                     error("No valid 'data' list found in chunk file: " + chunkFile);
                 }
@@ -397,7 +415,7 @@ public class DataPersistence {
             }
         }
 
-        CompoundTag allDataCompound = new CompoundTag();
+        /*CompoundTag allDataCompound = new CompoundTag();
         // Create a ListTag to hold all ListTags
         for(Map.Entry<String, ListTag> entry : dataListMap.entrySet()) {
             String fileName = entry.getKey();
@@ -407,7 +425,7 @@ public class DataPersistence {
             } else {
                 error("No valid ListTag found for key: " + fileName);
             }
-        }
+        }*/
 
         //saveDataCompoundChunked(absolutePath.resolve("all_data"), allDataCompound);
 
