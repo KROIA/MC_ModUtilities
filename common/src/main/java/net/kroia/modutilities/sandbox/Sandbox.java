@@ -11,6 +11,10 @@ import net.kroia.modutilities.setting.parser.ItemStackJsonParser;
 import net.kroia.modutilities.testing.TestCommandRegistration;
 import net.kroia.modutilities.testing.TestRegistry;
 import net.kroia.modutilities.testing.tests.EventTests;
+import net.kroia.modutilities.testing.tests.GuiLogicTests;
+import net.kroia.modutilities.testing.tests.PersistenceTests;
+import net.kroia.modutilities.testing.tests.NetworkingTests;
+import net.kroia.modutilities.testing.tests.SettingsTests;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
@@ -206,6 +210,10 @@ public class Sandbox {
     {
         if (TestRegistry.ENABLE_TESTS) {
             TestRegistry.register(new EventTests());
+            TestRegistry.register(new GuiLogicTests());
+            TestRegistry.register(new PersistenceTests());
+            TestRegistry.register(new SettingsTests());
+            TestRegistry.register(new NetworkingTests());
         }
 
         CommandRegistrationEvent.EVENT.register((dispatcher, registryAccess, environment) -> {

@@ -21,4 +21,7 @@ public class ModUtilitiesTestCategories {
     public static final TestCategory MULTI_SERVER = new TestCategory(
         "mu_multi_server", "Master/slave communication tests",
         TestCategory.ServerType.BOTH, true);
+    public static final TestCategory GUI = new TestCategory(
+        "mu_gui", "GUI element logic tests",
+        TestCategory.ServerType.BOTH, false);
 }
