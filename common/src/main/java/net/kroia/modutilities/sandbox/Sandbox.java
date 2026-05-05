@@ -8,6 +8,9 @@ import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.networking.NetworkPacketManager;
 import net.kroia.modutilities.networking.client_server.streaming.StreamSystem;
 import net.kroia.modutilities.setting.parser.ItemStackJsonParser;
+import net.kroia.modutilities.testing.TestCommandRegistration;
+import net.kroia.modutilities.testing.TestRegistry;
+import net.kroia.modutilities.testing.tests.EventTests;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
@@ -201,8 +204,14 @@ public class Sandbox {
 
     public static void init()
     {
+        if (TestRegistry.ENABLE_TESTS) {
+            TestRegistry.register(new EventTests());
+        }
+
         CommandRegistrationEvent.EVENT.register((dispatcher, registryAccess, environment) -> {
             SandboxCommand.register(dispatcher);
+            boolean isSlave = false; // TODO: detect from MultiServerManager if available
+            TestCommandRegistration.register(dispatcher, "modutilities", "ModUtilities", isSlave);
         });
         network = new SandboxNetwork();
         //TABS.register();

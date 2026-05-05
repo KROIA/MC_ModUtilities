@@ -1,8 +1,16 @@
-# Gui Screen
-The GuiScreen class is used to create Graphical user interfaces what are not in combination of any inventory like for example when you open a chest.
-If you need an inventory to be displayed, then you need the [Gui Container Screen](GuiContainerScreen.md)
+# GuiScreen
 
-The GuiScreen is the base for the GUI stuff, it needs to be filled with some GuiElements which are the widgets. For example buttons, listview or custom GuiElements.
+## Overview
+
+The GuiScreen class is used to create graphical user interfaces that are not associated with any inventory (unlike chest GUIs, for example). If you need an inventory to be displayed, use [GuiContainerScreen](GuiContainerScreen.md) instead.
+
+The GuiScreen is the foundation for GUI creation. It needs to be populated with GuiElements (widgets) such as buttons, list views, or custom components.
+
+## Prerequisites
+
+- Basic understanding of the [GUI Library](GuiLibrary.md)
+- Knowledge of Minecraft's Screen class
+- Understanding of component lifecycle (construction, layout, rendering)
 
 ---
 ## Content
@@ -154,3 +162,11 @@ The Gui Screen renders in different steps:
 2) Foreground which will be the `GuiElement.render()` for the child elements.
 3) Tooltips
 4) Gizmos (Used for drawing the Bounding boxes which gets toggled by the **F3** Key). For the GuiElement it is the `GuiElement.renderGizmos()` which can be overwritten to draw custom stuff for debugging.
+
+---
+## See Also
+
+- [GUI Library Overview](GuiLibrary.md) - Introduction to the GUI system
+- [GuiContainerScreen](GuiContainerScreen.md) - For inventory-based screens
+- [GuiElement](GuiElement.md) - Base class for all GUI widgets
+- [Sandbox System](../development/Sandbox.md) - TestScreen implementation example

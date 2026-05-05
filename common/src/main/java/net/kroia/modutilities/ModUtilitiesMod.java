@@ -12,7 +12,7 @@ public class ModUtilitiesMod {
 
     public static void init()
     {
-        //Sandbox.init();
+        Sandbox.init();
     }
 
     /*public static void onClientSetup()

@@ -1,9 +1,15 @@
 # Stream System
-The stream system allows multiple packets to be sent from the server to the client or vice versa.
-A stream can contain custom payloads.
-Multiple streams of the same type can run concurrently.
 
+## Overview
 
+The Stream System allows continuous transmission of multiple packets between server and client (or vice versa). Each stream can contain custom payloads, and multiple streams of the same type can run concurrently. Each stream instance is identified by a unique UUID for independent lifecycle management.
+
+## Prerequisites
+
+- Understanding of the [Networking Library](Networking.md)
+- Familiarity with [NetworkManager](NetworkManager.md) setup
+- Knowledge of callback/lambda patterns in Java
+- Understanding of asynchronous data flows
 
 ---
 ## Content
@@ -103,3 +109,11 @@ public class ExampleScreen extends GuiScreen {
 }
 
 ```
+
+---
+## See Also
+
+- [Networking Library](Networking.md) - Overview of networking features
+- [NetworkManager](NetworkManager.md) - Setting up the network manager
+- [GenericStream](GenericStream.md) - Creating custom stream implementations
+- [Sandbox System](../development/Sandbox.md) - SineStream example implementation
