@@ -14,6 +14,21 @@ import org.lwjgl.glfw.GLFW;
 import java.util.List;
 
 
+/**
+ * Abstract Minecraft {@link Screen} that hosts a {@link Gui} root.
+ * <p>
+ * Subclasses provide their layout in {@link #updateLayout(Gui)}, which is called
+ * by {@link #init()} after the underlying screen state has been prepared. After
+ * {@link #init()} completes, {@link #isInitialized()} returns {@code true}.
+ * <p>
+ * The screen forwards all mouse, keyboard and render callbacks from Minecraft
+ * to the embedded {@link Gui}, and exposes a number of debug toggles that can
+ * be controlled with the F3-F6 keys when {@link #setDebugKeysEnabled(boolean)
+ * debug keys} are enabled.
+ *
+ * @apiNote The whole {@code gui/} package is client-only
+ *          ({@code @Environment(EnvType.CLIENT)}).
+ */
 @Environment(EnvType.CLIENT)
 public abstract class GuiScreen extends Screen {
 
@@ -24,17 +39,38 @@ public abstract class GuiScreen extends Screen {
     protected boolean enableBackground = true;
     protected boolean enableForeground = true;
     protected boolean enableTooltip = true; // Enable tooltip rendering by default
+
+    /**
+     * Creates a new {@code GuiScreen} without a parent screen. Closing this
+     * screen will return to no screen at all.
+     *
+     * @param pTitle the screen title
+     */
     protected GuiScreen(Component pTitle) {
         super(pTitle);
         this.gui = new Gui(this);
         this.parent = null;
     }
+
+    /**
+     * Creates a new {@code GuiScreen} that returns to the given parent screen
+     * when closed.
+     *
+     * @param pTitle the screen title
+     * @param parent the screen to display after this one is closed
+     */
     protected GuiScreen(Component pTitle, Screen parent) {
         super(pTitle);
         this.gui = new Gui(this);
         this.parent = parent;
     }
 
+    /**
+     * Replaces Minecraft's currently active screen with the given one, but only
+     * if it is not already active.
+     *
+     * @param screen the screen to display
+     */
     public static void setScreen(Screen screen)
     {
         Minecraft mc = Minecraft.getInstance();
@@ -43,48 +79,117 @@ public abstract class GuiScreen extends Screen {
             mc.setScreen(screen);
         }
     }
+
     protected boolean isInitialized = false;
+
+    /**
+     * Sets whether the F3-F6 debug toggle keys are processed by this screen.
+     *
+     * @param debugKeysEnabled {@code true} to enable the debug toggles
+     */
     public void setDebugKeysEnabled(boolean debugKeysEnabled) {
         this.debugKeysEnabled = debugKeysEnabled;
     }
+
+    /**
+     * @return {@code true} if F3-F6 debug toggle keys are processed
+     */
     public boolean isDebugKeysEnabled() {
         return debugKeysEnabled;
     }
+
+    /**
+     * Sets whether the gizmo (debug overlay) render pass is performed.
+     *
+     * @param enableGizmos {@code true} to render gizmos
+     */
     public void setEnableGizmos(boolean enableGizmos) {
         this.enableGizmos = enableGizmos;
     }
+
+    /**
+     * @return {@code true} if the gizmo render pass is enabled
+     */
     public boolean isEnableGizmos() {
         return enableGizmos;
     }
+
+    /**
+     * Sets whether the background render pass is performed.
+     *
+     * @param enableBackground {@code true} to render backgrounds
+     */
     public void setEnableBackground(boolean enableBackground) {
         this.enableBackground = enableBackground;
     }
+
+    /**
+     * @return {@code true} if the background render pass is enabled
+     */
     public boolean isEnableBackground() {
         return enableBackground;
     }
+
+    /**
+     * Sets whether the foreground render pass is performed.
+     *
+     * @param enableForeground {@code true} to render foreground content
+     */
     public void setEnableForeground(boolean enableForeground) {
         this.enableForeground = enableForeground;
     }
+
+    /**
+     * @return {@code true} if the foreground render pass is enabled
+     */
     public boolean isEnableForeground() {
         return enableForeground;
     }
+
+    /**
+     * Sets whether the tooltip render pass is performed.
+     *
+     * @param enableTooltip {@code true} to render tooltips
+     */
     public void setEnableTooltip(boolean enableTooltip) {
         this.enableTooltip = enableTooltip;
     }
+
+    /**
+     * @return {@code true} if the tooltip render pass is enabled
+     */
     public boolean isEnableTooltip() {
         return enableTooltip;
     }
+
+    /**
+     * @return the {@link Gui} root managed by this screen
+     */
     public Gui getGui() {
         return gui;
     }
 
+    /**
+     * @return the GUI scale factor of the embedded {@link Gui}
+     */
     public float getGuiScale() {
         return gui.getGuiScale();
     }
+
+    /**
+     * Sets the GUI scale factor of the embedded {@link Gui}.
+     *
+     * @param guiScale the new scale factor
+     */
     public void setGuiScale(float guiScale) {
         gui.setGuiScale(guiScale);
     }
 
+    /**
+     * Initializes the screen. Calls {@code super.init()}, initializes the
+     * embedded {@link Gui}, invokes {@link #updateLayout(Gui)}, and finally
+     * marks this screen as initialized.
+     */
     @Override
     public final void init() {
         super.init();
@@ -92,44 +197,91 @@ public abstract class GuiScreen extends Screen {
         updateLayout(gui);
         isInitialized = true;
     }
+
     @Override
     protected void rebuildWidgets() {
         super.rebuildWidgets();
     }
+
+    /**
+     * @return {@code true} once {@link #init()} has finished, indicating that
+     *         the embedded {@link Gui} is ready to be rendered and interacted with
+     */
     public boolean isInitialized()
     {
         return isInitialized;
     }
 
+    /**
+     * Subclass hook invoked at the end of {@link #init()} to populate or
+     * re-arrange the embedded {@link Gui}.
+     *
+     * @param gui the embedded GUI root to lay out
+     */
     protected abstract void updateLayout(Gui gui);
 
+    /**
+     * Adds a top-level element to the embedded {@link Gui}.
+     *
+     * @param element the element to add
+     */
     protected void addElement(GuiElement element) {
         gui.addElement(element);
     }
+
+    /**
+     * Removes a top-level element from the embedded {@link Gui}.
+     *
+     * @param element the element to remove
+     */
     protected void removeElement(GuiElement element) {
         gui.removeElement(element);
     }
+
+    /**
+     * Removes every top-level element from the embedded {@link Gui}.
+     */
     protected void removeAllElements() {
         gui.removeAllElements();
     }
+
+    /**
+     * @return the currently focused element of the embedded {@link Gui}, or
+     *         {@code null} if no element has focus
+     */
     protected GuiElement getFocusedElement() {
         return gui.getFocusedElement();
     }
+
+    /**
+     * @return the live list of top-level elements on the embedded {@link Gui}
+     */
     public List<GuiElement> getElements() {
         return gui.getElements();
     }
 
+    /**
+     * @return the screen width converted to GUI element coordinates
+     */
     protected int getWidth() {
         return (int)((float)width*gui.getInvGuiScale());
     }
+
+    /**
+     * @return the screen height converted to GUI element coordinates
+     */
     protected int getHeight() {
         return (int)((float)height*gui.getInvGuiScale());
     }
+
     @Override
     public boolean isPauseScreen() {
         return false;
     }
 
+    /**
+     * Convenience wrapper around {@link #onClose()}.
+     */
     public void close()
     {
         this.onClose();
@@ -222,12 +374,24 @@ public abstract class GuiScreen extends Screen {
         return gui.mouseScrolled(mouseX, mouseY, scrollY);
     }
 
+    /**
+     * @return the current mouse x position in GUI element coordinates
+     */
     public int getMouseX() {
         return gui.getMousePosX();
     }
+
+    /**
+     * @return the current mouse y position in GUI element coordinates
+     */
     public int getMouseY() {
         return gui.getMousePosY();
     }
+
+    /**
+     * @return the current mouse position as a {@link Point} in GUI element
+     *         coordinates
+     */
     public Point getMousePos() {
         return new Point(gui.getMousePosX(), gui.getMousePosY());
     }
@@ -242,19 +406,36 @@ public abstract class GuiScreen extends Screen {
     {
         return GLFW.glfwGetKey(gui.getWindowHandle(), keyCode) == GLFW.GLFW_PRESS;
     }
+    /**
+     * @return {@code true} if the left control key is currently pressed
+     */
     protected boolean isControlPressed()
     {
         return GLFW.glfwGetKey(gui.getWindowHandle(), GLFW.GLFW_KEY_LEFT_CONTROL) == GLFW.GLFW_PRESS;
     }
+
+    /**
+     * @return {@code true} if the left shift key is currently pressed
+     */
     protected boolean isShiftPressed()
     {
         return GLFW.glfwGetKey(gui.getWindowHandle(), GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS;
     }
+
+    /**
+     * @return {@code true} if the left alt key is currently pressed
+     */
     protected boolean isAltPressed()
     {
         return GLFW.glfwGetKey(gui.getWindowHandle(), GLFW.GLFW_KEY_LEFT_ALT) == GLFW.GLFW_PRESS;
     }
 
+    /**
+     * Moves the OS-level cursor to the given position in GUI coordinates.
+     *
+     * @param x the target x position
+     * @param y the target y position
+     */
     public void setMousePos(int x, int y)
     {
         gui.moveMouseToPos(x, y);

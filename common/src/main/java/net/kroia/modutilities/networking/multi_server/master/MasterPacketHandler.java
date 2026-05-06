@@ -19,6 +19,19 @@ import net.minecraft.server.MinecraftServer;
 
 import java.util.List;
 
+/**
+ * Netty inbound handler installed at the end of the master pipeline.
+ * <p>
+ * Responsible for processing the per-connection handshake from a slave server,
+ * registering the slave with the {@link MasterTCPServer} on success, and
+ * dispatching subsequent {@link ForwardPacketPayload}s to the
+ * {@link MultiServerPacketRegistry}.
+ *
+ * @apiNote
+ * Methods on this class run on the Netty I/O thread for the connection. The
+ * shared-secret check uses {@link java.security.MessageDigest#isEqual(byte[], byte[])},
+ * which is constant-time and therefore resistant to timing attacks.
+ */
 public class MasterPacketHandler extends SimpleChannelInboundHandler<Payload> {
 
 
@@ -29,6 +42,14 @@ public class MasterPacketHandler extends SimpleChannelInboundHandler<Payload> {
     /** Set after a successful handshake. Null until then. */
     private String serverId = null;
 
+    /**
+     * Constructs a new handler bound to the given Minecraft server and master TCP server.
+     *
+     * @param mcServer        The Minecraft server instance, used for registry access when
+     *                        decoding forwarded packets.
+     * @param serverTCPServer The owning {@link MasterTCPServer}, used to register/unregister
+     *                        slave connections and to access the shared secret.
+     */
     public MasterPacketHandler(MinecraftServer mcServer, MasterTCPServer serverTCPServer) {
         this.mcServer = mcServer;
         this.masterTCPServer = serverTCPServer;
@@ -36,6 +57,21 @@ public class MasterPacketHandler extends SimpleChannelInboundHandler<Payload> {
 
     // ── Channel events ────────────────────────────────────────────────────────
 
+    /**
+     * Dispatches an incoming {@link Payload} based on its concrete type.
+     * <p>
+     * Handles the slave handshake (validating the shared secret and rejecting
+     * duplicate slave IDs) and forwards data packets to the
+     * {@link MultiServerPacketRegistry}. Unknown payload types are logged and ignored.
+     *
+     * @param ctx     The Netty channel handler context for this connection.
+     * @param payload The decoded payload to dispatch.
+     *
+     * @apiNote
+     * Runs on the Netty I/O thread. The shared-secret comparison uses
+     * {@link java.security.MessageDigest#isEqual(byte[], byte[])} for
+     * constant-time evaluation.
+     */
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, Payload payload) {
         switch (payload) {
@@ -97,6 +133,14 @@ public class MasterPacketHandler extends SimpleChannelInboundHandler<Payload> {
         }
     }
 
+    /**
+     * Called by Netty when the underlying channel becomes inactive.
+     * <p>
+     * Removes the associated slave from the {@link MasterTCPServer} registry
+     * (only if the slave previously completed the handshake).
+     *
+     * @param ctx The Netty channel handler context for this connection.
+     */
     @Override
     public void channelInactive(ChannelHandlerContext ctx) {
         if (serverId != null) {
@@ -104,6 +148,14 @@ public class MasterPacketHandler extends SimpleChannelInboundHandler<Payload> {
         }
     }
 
+    /**
+     * Called by Netty when an uncaught exception bubbles up the pipeline.
+     * <p>
+     * Logs the exception and closes the connection.
+     *
+     * @param ctx   The Netty channel handler context for this connection.
+     * @param cause The exception that propagated through the pipeline.
+     */
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
         error("Exception in child handler for '"+ serverId+"'", cause);

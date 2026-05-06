@@ -3,11 +3,22 @@ package net.kroia.modutilities.gui.elements;
 import net.kroia.modutilities.gui.elements.base.Vertex;
 import net.kroia.modutilities.gui.elements.base.VertexBuffer;
 
+/**
+ * A pre-styled close button that renders a red square with an "X" cross.
+ * Commonly used as the close affordance on dialogs and windows.
+ * <p>
+ * Comes with default size 20x20 and red color theme; clicking triggers the
+ * runnable supplied at construction time.
+ */
 public class CloseButton extends Button{
 
     private final VertexBuffer line1;
     private final VertexBuffer line2;
 
+    /**
+     * Creates a close button with the default red color theme.
+     * @param onFallingEdge runnable executed when the close button is pressed (mouse-down)
+     */
     public CloseButton(Runnable onFallingEdge) {
         super(0,0,10,10,"", onFallingEdge);
         line1 = new VertexBuffer();

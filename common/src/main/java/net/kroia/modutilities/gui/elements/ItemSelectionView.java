@@ -19,16 +19,53 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+/**
+ * Searchable item picker that displays a scrollable grid of items with a
+ * filter text box and forwards selection events through a callback.
+ * <p>
+ * The displayed item list is configurable via the constructors and runtime
+ * mutators ({@link #addItem(ItemStack)}, {@link #setItems(List)}, etc.). A
+ * {@link Sorter} controls the ordering of the grid and a {@link Filter}
+ * controls which items pass the user-entered search text. Default
+ * implementations are provided as the inner classes {@link NameSorter},
+ * {@link TagSorter}, {@link SorterByIntID}, and {@link SearchFilter}.
+ *
+ * @apiNote The supplied {@code onItemSelected} consumer is invoked when the
+ *          user left-clicks an item entry; the consumer receives the selected
+ *          {@link ItemStack} and is responsible for closing/dismissing the
+ *          picker if desired.
+ */
 public class ItemSelectionView extends GuiElement {
+    /**
+     * Strategy interface that orders the displayed item list in place.
+     */
     public interface Sorter
     {
+        /**
+         * Sorts {@code items} in place using the implementation's ordering rule.
+         *
+         * @param items the list of items to sort
+         */
         public abstract void apply(List<ItemStack> items);
     }
+
+    /**
+     * Strategy interface that decides whether an item passes the active search.
+     */
     public interface Filter
     {
+        /**
+         * @param stack      the item being tested
+         * @param searchText the lowercased search text entered by the user
+         * @return {@code true} if {@code stack} should be visible in the grid
+         */
         public abstract boolean apply(ItemStack stack, String searchText);
     }
 
+    /**
+     * {@link Sorter} that orders items alphabetically by their localized
+     * hover name.
+     */
     public static final class NameSorter implements Sorter
     {
         @Override
@@ -38,6 +75,11 @@ public class ItemSelectionView extends GuiElement {
             }));
         }
     }
+
+    /**
+     * {@link Sorter} that orders items first by their concatenated, sorted
+     * tag set (descending) and breaks ties by description ID.
+     */
     public static final class TagSorter implements Sorter
     {
         @Override
@@ -80,6 +122,10 @@ public class ItemSelectionView extends GuiElement {
             });
         }
     }
+    /**
+     * {@link Sorter} that orders items by their numeric ID in
+     * {@link BuiltInRegistries#ITEM}.
+     */
     public static class SorterByIntID implements ItemSelectionView.Sorter {
         @Override
         public void apply(List<ItemStack> items) {
@@ -90,8 +136,20 @@ public class ItemSelectionView extends GuiElement {
             }));
         }
     }
+
+    /**
+     * Default {@link Filter} that matches the search text against the item's
+     * hover name, its display decoration text, and its tag identifiers
+     * (case-insensitive substring match).
+     */
     public static final class SearchFilter implements Filter
     {
+        /**
+         * Creates a new {@code SearchFilter} associated with the given view.
+         *
+         * @param view the owning view (currently unused but accepted for
+         *             extension parity with custom filters)
+         */
         public SearchFilter(ItemSelectionView view)
         {
 
@@ -165,9 +223,21 @@ public class ItemSelectionView extends GuiElement {
     private final TextBox searchField;
     private final ListView listView;
     private final LayoutGrid layoutGrid;
+    /**
+     * Creates an item selection view that lists every registered item.
+     *
+     * @param onItemSelected callback invoked with the selected stack on click
+     */
     public ItemSelectionView(Consumer<ItemStack> onItemSelected) {
         this(ItemUtilities.getAllItems(), onItemSelected);
     }
+
+    /**
+     * Creates an item selection view limited to the supplied items.
+     *
+     * @param allowedItemsIDs the items the user may pick from (copied internally)
+     * @param onItemSelected  callback invoked with the selected stack on click
+     */
     public ItemSelectionView(List<ItemStack> allowedItemsIDs, Consumer<ItemStack> onItemSelected) {
         this.onItemSelected = onItemSelected;
 
@@ -192,35 +262,85 @@ public class ItemSelectionView extends GuiElement {
         sortItems();
     }
 
+    /**
+     * Replaces the displayed item set with the supplied list and re-sorts.
+     *
+     * @param allowedItemsIDs the new list of selectable items
+     */
     public void setItems(List<ItemStack> allowedItemsIDs) {
         allowedItems.clear();
         allowedItems.addAll(allowedItemsIDs);
         sortItems();
     }
+
+    /**
+     * Appends a single item to the selectable list and re-sorts.
+     *
+     * @param stack the item to add
+     */
     public void addItem(ItemStack stack) {
         allowedItems.add(stack);
         sortItems();
     }
+
+    /**
+     * Appends multiple items to the selectable list and re-sorts.
+     *
+     * @param stacks the items to add
+     */
     public void addItems(List<ItemStack> stacks) {
         allowedItems.addAll(stacks);
         sortItems();
     }
+
+    /**
+     * Removes the first occurrence of the given item from the selectable list
+     * and refreshes the filtered display.
+     *
+     * @param stack the item to remove
+     */
     public void removeItem(ItemStack stack) {
         allowedItems.remove(stack);
         updateFilter();
     }
+
+    /**
+     * Removes all occurrences of the given items from the selectable list and
+     * refreshes the filtered display.
+     *
+     * @param stacks the items to remove
+     */
     public void removeItems(List<ItemStack> stacks) {
         allowedItems.removeAll(stacks);
         updateFilter();
     }
+
+    /**
+     * Removes every item from the selectable list and refreshes the
+     * filtered display.
+     */
     public void clearItems() {
         allowedItems.clear();
         updateFilter();
     }
+
+    /**
+     * Sets the {@link Sorter} that controls item ordering and re-sorts the
+     * selectable list immediately.
+     *
+     * @param sorter the new sorter, or {@code null} to leave the list as-is
+     */
     public void setSorter(Sorter sorter) {
         this.sorter = sorter;
         sortItems();
     }
+
+    /**
+     * Sets the {@link Filter} that decides which items pass the active search
+     * and refreshes the filtered display immediately.
+     *
+     * @param filter the new filter, or {@code null} to disable filtering
+     */
     public void setFilter(Filter filter) {
         this.filter = filter;
         updateFilter();
@@ -243,10 +363,19 @@ public class ItemSelectionView extends GuiElement {
         layoutGrid.columns = listView.getContainerWidth()/ItemView.DEFAULT_WIDTH;
     }
 
+    /**
+     * @return the text currently entered into the search box
+     */
     public String getSearchText() {
         return searchField.getText();
     }
 
+    /**
+     * Overrides the label rendered above the item grid (default is the
+     * "Items" translation).
+     *
+     * @param text the label text to display
+     */
     public void setItemLabelText(String text) {
         itemsLabel.setText(text);
     }
@@ -270,6 +399,12 @@ public class ItemSelectionView extends GuiElement {
         listView.layoutChangedInternal();
     }
 
+    /**
+     * Re-sorts the selectable item list using the active {@link Sorter} and
+     * refreshes the filtered display.
+     * <p>
+     * Has no effect if no sorter is set.
+     */
     public void sortItems() {
 
         if(sorter != null) {

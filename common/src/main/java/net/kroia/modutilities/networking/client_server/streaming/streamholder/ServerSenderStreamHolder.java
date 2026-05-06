@@ -48,6 +48,18 @@ public class ServerSenderStreamHolder<CONTEXT_DATA, DATA>
 
 
 
+    /**
+     * Creates a new ServerSenderStreamHolder tracking the server-side state of a server-to-client stream.
+     * The given stream definition is copied so each active stream has its own state.
+     *
+     * @param manager        The NetworkPacketManager used to send packets to the target player.
+     * @param stream         The registered stream definition (will be copied).
+     * @param contextDataBuf The encoded context data used to initialize the copy.
+     * @param playerUUID     The UUID of the player receiving the stream data.
+     * @param streamID       The unique stream UUID identifying this stream instance.
+     * @param slaveServerID  Optional slave server ID, set when packets need to be routed
+     *                       through a slave server in a multi-server setup; null otherwise.
+     */
     public ServerSenderStreamHolder(NetworkPacketManager manager,
                                     GenericStream<CONTEXT_DATA, DATA> stream,
                                     RegistryFriendlyByteBuf contextDataBuf,
@@ -101,13 +113,24 @@ public class ServerSenderStreamHolder<CONTEXT_DATA, DATA>
             }
         }
     }
+    /**
+     * @return True once {@link #streamEnd()} has been called and this holder is queued for removal.
+     */
     public boolean isDoRemove() {
         return doRemove;
     }
+
+    /**
+     * @return True if outgoing stream packets must be routed via a slave server before reaching the client.
+     */
     public boolean needsRoutingToSlaveServer()
     {
         return slaveServerID != null && !slaveServerID.isEmpty();
     }
+
+    /**
+     * @return The slave server ID through which packets are routed, or null if no routing is required.
+     */
     public  @Nullable String getSlaveServerID()
     {
         return slaveServerID;

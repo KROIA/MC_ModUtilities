@@ -8,6 +8,26 @@ import org.lwjgl.glfw.GLFW;
 import java.awt.event.InputEvent;
 import java.util.function.Consumer;
 
+/**
+ * A single-line text input field with cursor, text selection, and clipboard support.
+ * <p>
+ * Supports the following keyboard shortcuts while focused:
+ * <ul>
+ *     <li><b>Ctrl+A</b> - select all</li>
+ *     <li><b>Ctrl+C</b> - copy selection</li>
+ *     <li><b>Ctrl+X</b> - cut selection</li>
+ *     <li><b>Ctrl+V</b> - paste from clipboard</li>
+ *     <li><b>Ctrl+Left/Right</b> - move cursor by word</li>
+ *     <li><b>Shift+Left/Right</b> - extend selection</li>
+ *     <li><b>Backspace/Delete</b> - delete previous/next char (with Ctrl: by word)</li>
+ *     <li><b>Enter / Esc</b> - lose focus</li>
+ * </ul>
+ * Input can be restricted via a regex passed to {@link #setMatchRegex(String)}; convenience
+ * helpers like {@link #createRegex_onlyNumerical(boolean, boolean, int, int)} generate common patterns.
+ *
+ * @apiNote The maximum character count enforced by {@link #setMaxChars(int)} is checked
+ * against {@link #getText()}'s length and against the regex.
+ */
 public class TextBox extends GuiElement {
 
     String text = "";
@@ -37,6 +57,13 @@ public class TextBox extends GuiElement {
     private int selectionCursonIdxEnd = -1;
 
     Consumer<String> textChangedFromUser = null;
+    /**
+     * Creates a text box at the given position with the given width.
+     * The height defaults to {@link Label#DEFAULT_HEIGHT}.
+     * @param x the x-coordinate (relative to the parent)
+     * @param y the y-coordinate (relative to the parent)
+     * @param width the width in pixels
+     */
     public TextBox(int x, int y, int width) {
         super(x, y, width, Label.DEFAULT_HEIGHT);
         matchRegex = ".*";
@@ -53,6 +80,9 @@ public class TextBox extends GuiElement {
         addChild(textLabel);
         textLabel.setText(text);
     }
+    /**
+     * Creates a text box with default position (0,0) and a width of 100 pixels.
+     */
     public TextBox() {
         this(0,0,100);
     }
@@ -62,12 +92,32 @@ public class TextBox extends GuiElement {
     //    this.allowDecimal = allowDecimal;
     //}
 
+    /**
+     * Sets the regex pattern that input strings must fully match in order to be accepted.
+     * Both typing a character and pasting are validated against this pattern.
+     * Use {@link #createRegex_onlyNumerical(boolean, boolean, int, int)} or
+     * {@link #createRegex_noNumbers()} for common patterns, or {@code ".*"} to allow anything.
+     * @param matchRegex the regular expression
+     */
     public void setMatchRegex(String matchRegex) {
         this.matchRegex = matchRegex;
     }
+    /**
+     * @return the current regex used to validate input
+     */
     public String getMatchRegex() {
         return matchRegex;
     }
+    /**
+     * Builds a regex that matches numerical input with optional sign and decimal places.
+     * The regex permits intermediate states such as a lone {@code "-"} or a trailing {@code "."} to
+     * keep typing fluid.
+     * @param allowPositive whether positive (unsigned) numbers are allowed
+     * @param allowNegative whether negative numbers (with leading {@code -}) are allowed
+     * @param maxDigits the maximum digits before the decimal point, or {@code 0} for unlimited
+     * @param maxDecimalDigits the maximum digits after the decimal point ({@code 0} disables decimals)
+     * @return the regex string suitable for {@link #setMatchRegex(String)}
+     */
     public static String createRegex_onlyNumerical(boolean allowPositive, boolean allowNegative, int maxDigits, int maxDecimalDigits)
     {
         // Build the sign part
@@ -89,12 +139,19 @@ public class TextBox extends GuiElement {
         // Combine into final regex
         return "^" + sign + digits + decimal + "$";
     }
+    /**
+     * @return a regex that rejects any input containing digit characters
+     */
     public static String createRegex_noNumbers()
     {
         return "^[^\\d]+$";
     }
 
 
+    /**
+     * Sets the horizontal alignment of the text within the text box.
+     * @param alignment the alignment (e.g. {@link Alignment#LEFT}, {@link Alignment#RIGHT})
+     */
     public void setAlignment(Alignment alignment) {
         this.textLabel.setAlignment(alignment);
     }
@@ -128,9 +185,16 @@ public class TextBox extends GuiElement {
     public boolean isAllowingLetters() {
         return allowLetters;
     }*/
+    /**
+     * Sets the color of the blinking text cursor.
+     * @param cursorColor the ARGB color
+     */
     public void setCursorColor(int cursorColor) {
         this.cursorColor = cursorColor;
     }
+    /**
+     * @return the ARGB color of the blinking text cursor
+     */
     public int getCursorColor() {
         return cursorColor;
     }
@@ -142,19 +206,38 @@ public class TextBox extends GuiElement {
     public int getBackgroundColor() {
         return this.backgroundColor;
     }
+    /**
+     * Sets the background color shown when the mouse is hovering over the unfocused text box.
+     * @param hoverBackgroundColor the ARGB color
+     */
     public void setHoverBackgroundColor(int hoverBackgroundColor) {
         this.hoverBackgroundColor = hoverBackgroundColor;
     }
+    /**
+     * @return the ARGB color shown when hovering over the unfocused text box
+     */
     public int getHoverBackgroundColor() {
         return hoverBackgroundColor;
     }
+    /**
+     * Sets the background color shown while the text box has keyboard focus.
+     * @param focusedBackgroundColor the ARGB color
+     */
     public void setFocusedBackgroundColor(int focusedBackgroundColor) {
         this.focusedBackgroundColor = focusedBackgroundColor;
     }
+    /**
+     * @return the ARGB color shown while the text box has keyboard focus
+     */
     public int getFocusedBackgroundColor() {
         return focusedBackgroundColor;
     }
 
+    /**
+     * Sets a callback invoked when the user changes the text (typing, paste, delete, cut).
+     * Programmatic changes via {@link #setText(String)} do <i>not</i> trigger this callback.
+     * @param textChangedFromUser the consumer receiving the new text, or {@code null} to clear
+     */
     public void setOnTextChanged(Consumer<String> textChangedFromUser) {
         this.textChangedFromUser = textChangedFromUser;
     }
@@ -176,9 +259,16 @@ public class TextBox extends GuiElement {
         return textLabel.getTextFontScale();
     }
 
+    /**
+     * @return the current text content of the text box
+     */
     public String getText() {
         return text;
     }
+    /**
+     * Parses the current text as a {@code double}.
+     * @return the parsed value, or {@code 0} if the text is not a valid number
+     */
     public double getDouble() {
         try {
             return Double.parseDouble(text);
@@ -186,6 +276,10 @@ public class TextBox extends GuiElement {
             return 0;
         }
     }
+    /**
+     * Parses the current text as an {@code int}.
+     * @return the parsed value, or {@code 0} if the text is not a valid integer
+     */
     public int getInt() {
         try {
             return Integer.parseInt(text);
@@ -193,6 +287,10 @@ public class TextBox extends GuiElement {
             return 0;
         }
     }
+    /**
+     * Parses the current text as a {@code long}.
+     * @return the parsed value, or {@code 0} if the text is not a valid long
+     */
     public long getLong() {
         try {
             return Long.parseLong(text);
@@ -201,26 +299,52 @@ public class TextBox extends GuiElement {
         }
     }
 
+    /**
+     * Replaces the text content with the given string.
+     * The cursor is clamped to remain within the new text bounds.
+     * @param text the new text content
+     * @apiNote This bypasses regex validation and does not fire the text-changed callback.
+     */
     public void setText(String text) {
         this.text = text;
         currentCursorPos = Math.min(text.length(), currentCursorPos);
         updateTextLabel();
     }
+    /**
+     * Sets the text to the string representation of the given double value.
+     * @param value the value
+     */
     public void setText(double value) {
        // setAllowNumbers(true, true);
         setText(String.valueOf(value));
     }
+    /**
+     * Sets the text to the string representation of the given int value.
+     * @param value the value
+     */
     public void setText(int value) {
        // setAllowNumbers(true, false);
         setText(String.valueOf(value));
     }
+    /**
+     * Sets the text to the string representation of the given long value.
+     * @param value the value
+     */
     public void setText(long value) {
         //setAllowNumbers(true, false);
         setText(String.valueOf(value));
     }
+    /**
+     * Sets the maximum number of characters the user can input.
+     * Strings longer than this length are rejected by the regex/length validator.
+     * @param maxChars the maximum length
+     */
     public void setMaxChars(int maxChars) {
         this.maxChars = maxChars;
     }
+    /**
+     * @return the maximum number of characters the user can input
+     */
     public int getMaxChars() {
         return maxChars;
     }

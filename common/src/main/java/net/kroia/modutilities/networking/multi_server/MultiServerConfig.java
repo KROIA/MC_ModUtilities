@@ -62,6 +62,17 @@ public class MultiServerConfig {
 
     // ── Load / Save ──────────────────────────────────────────────────────────
 
+    /**
+     * Returns the singleton config instance, loading it from disk on first access.
+     * If no config file exists yet, a default one is created and persisted.
+     *
+     * @return The shared {@link MultiServerConfig} instance.
+     *
+     * @apiNote
+     * Subsequent calls reuse the same instance; the file is not re-read after the first
+     * call. Mutating the returned object's public fields will not automatically be
+     * persisted back to disk.
+     */
     public static MultiServerConfig get() {
         if (instance == null)
             instance = load();

@@ -17,6 +17,19 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+/**
+ * Manages a collection of {@link DataArchiveChunk}s persisted as individual
+ * NBT files inside a single archive folder. Files are named after their
+ * {@link DataArchiveChunk.TimeInterval} so that chunks can be located by
+ * start time or queried by interval overlap.
+ *
+ * @param <T> the concrete chunk subtype managed by this archive.
+ *
+ * @apiNote
+ * {@link #clearArchive()} uses {@link Files#walk(Path, java.nio.file.FileVisitOption...)}
+ * with reverse ordering to avoid {@code DirectoryNotEmptyException} when
+ * subdirectories are present.
+ */
 public abstract class DataArchiveManager<T extends DataArchiveChunk> {
 
     private final NBTFileParser nbtFileParser;
@@ -33,6 +46,15 @@ public abstract class DataArchiveManager<T extends DataArchiveChunk> {
     private Consumer<String> debugLogger = System.out::println;
 
 
+    /**
+     * Creates a new archive manager rooted at the given folder.
+     *
+     * @param archiveFolderPath the absolute path of the archive folder; the
+     *                          folder name is used as the archive's identifier
+     *                          for log messages.
+     * @param format            the NBT format used when reading and writing chunk files.
+     * @param chunkFactory      supplier that produces fresh chunk instances when loading.
+     */
     public DataArchiveManager(Path archiveFolderPath, NBTFileParser.NbtFormat format, Supplier<T> chunkFactory)
     {
         this.archiveFolderPath = archiveFolderPath;
@@ -41,6 +63,9 @@ public abstract class DataArchiveManager<T extends DataArchiveChunk> {
         this.chunkFactory = chunkFactory;
     }
 
+    /**
+     * @return the absolute path of this archive's folder.
+     */
     public Path getArchiveFolderPath() {
         return archiveFolderPath;
     }
@@ -238,6 +263,18 @@ public abstract class DataArchiveManager<T extends DataArchiveChunk> {
     }
 
 
+    /**
+     * Recursively deletes all files and sub-directories inside the archive
+     * folder, leaving the folder itself intact.
+     *
+     * @apiNote
+     * Uses {@link Files#walk(Path, java.nio.file.FileVisitOption...)} with
+     * reverse-order deletion so non-empty directories are not encountered
+     * before their children, avoiding {@code DirectoryNotEmptyException}.
+     *
+     * @return {@code true} if the archive folder is empty afterwards;
+     *         {@code false} if walking or deletion failed.
+     */
     public boolean clearArchive()
     {
         if (!Files.isDirectory(archiveFolderPath)) {
@@ -260,6 +297,13 @@ public abstract class DataArchiveManager<T extends DataArchiveChunk> {
         }
         return getFiles(archiveFolderPath).isEmpty();
     }
+    /**
+     * Clears the archive (see {@link #clearArchive()}) and then deletes the
+     * archive folder itself.
+     *
+     * @return {@code true} if the archive was fully removed; {@code false}
+     *         if clearing or directory deletion failed.
+     */
     public boolean removeArchive()
     {
         if(!clearArchive()) // Clear the archive first
@@ -273,6 +317,13 @@ public abstract class DataArchiveManager<T extends DataArchiveChunk> {
             return false; // Return false if directory deletion fails
         }
     }
+    /**
+     * Creates the archive folder (and any missing parents) if it does not
+     * already exist.
+     *
+     * @return {@code true} if the folder existed or was created successfully;
+     *         {@code false} on I/O failure.
+     */
     public boolean createArchiveFolder()
     {
         try {
@@ -308,6 +359,12 @@ public abstract class DataArchiveManager<T extends DataArchiveChunk> {
         return null; // Return null if no matching interval is found
     }
 
+    /**
+     * Returns the smallest start time across all stored chunk intervals.
+     *
+     * @return the smallest start time in milliseconds since the epoch, or
+     *         {@code -1} if the archive contains no chunks.
+     */
     public long getStartTime()
     {
         List<DataArchiveChunk.TimeInterval> intervals = getStoredIntervals();
@@ -357,12 +414,30 @@ public abstract class DataArchiveManager<T extends DataArchiveChunk> {
     }
 
 
+    /**
+     * Configures the logger callbacks used by this manager and its underlying
+     * {@link NBTFileParser}.
+     *
+     * @param errorLogger receives error messages.
+     * @param debugLogger receives debug messages.
+     * @param warnLogger  receives warning messages.
+     */
     public void setLogger(Consumer<String> errorLogger, Consumer<String> debugLogger, Consumer<String> warnLogger) {
         this.errorLogger = errorLogger;
         this.debugLogger = debugLogger;
         this.warnLogger = warnLogger;
         nbtFileParser.setLogger(errorLogger, debugLogger, warnLogger); // Set logger for NBTFileParser as well
     }
+    /**
+     * Configures the logger callbacks used by this manager and its underlying
+     * {@link NBTFileParser}, including a dedicated handler for errors with an
+     * associated {@link Throwable}.
+     *
+     * @param errorLogger          receives plain error messages.
+     * @param errorLoggerThrowable receives error messages paired with their causing throwable.
+     * @param debugLogger          receives debug messages.
+     * @param warnLogger           receives warning messages.
+     */
     public void setLogger(Consumer<String> errorLogger, BiConsumer<String, Throwable>errorLoggerThrowable, Consumer<String> debugLogger, Consumer<String> warnLogger) {
         this.errorLogger = errorLogger;
         this.errorLoggerThrowable = errorLoggerThrowable;

@@ -28,11 +28,35 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+/**
+ * TCP client side of the multi-server protocol that connects this Minecraft
+ * server (the "slave") to a remote master server.
+ * <p>
+ * Wraps a Netty {@link io.netty.bootstrap.Bootstrap} and pipeline configured to
+ * frame, encode/decode, and dispatch {@link Payload} messages exchanged with the
+ * master. Performs an initial handshake using a shared secret, exposes
+ * {@link #sendToMaster(Payload)} for outbound traffic, and automatically
+ * schedules reconnection attempts via {@link #scheduleReconnect()} if the
+ * connection drops.
+ *
+ * @apiNote
+ * Lifecycle callbacks ({@code onConnectionAccepted}, {@code onConnectionFailed},
+ * {@code onConnectionLost}, {@code onDisconnect}) are invoked from Netty I/O
+ * threads. Implementations that touch Minecraft world state must hop to the
+ * server thread themselves (e.g. via {@code MinecraftServer#execute}).
+ */
 public class SlaveServerClient {
+    /**
+     * Possible outcomes of an attempted handshake against the master server.
+     * Returned to the slave inside a {@link net.kroia.modutilities.networking.multi_server.payload.HandshakeResultPayload}.
+     */
     public enum ConnectionEstablishState
     {
+        /** The master accepted the slave's credentials and the connection is established. */
         SUCCESS,
+        /** The shared secret presented by the slave does not match the master's configuration. */
         INVALID_SHARED_SECRET,
+        /** Another slave is already registered with the same {@code serverId}. */
         SLAVE_ID_ALREADY_USED
     }
 
@@ -58,6 +82,23 @@ public class SlaveServerClient {
     private boolean masterDisconnected = false;
     private String masterDisconnectReason = "";
 
+    /**
+     * Creates a new slave client without yet opening a connection.
+     * Call {@link #connect()} to actually dial the master.
+     *
+     * @param mcServer             The Minecraft server instance, used to schedule callbacks on the main thread and access registry data.
+     * @param sharedSecret         The shared secret used during the handshake to authenticate against the master.
+     * @param slaveServerID        Unique identifier of this slave; must not collide with any other connected slave.
+     * @param masterHostIP         Hostname or IP address of the master server.
+     * @param masterHostTcpPort    TCP port the master is listening on.
+     * @param onConnectionAccepted Callback fired once the master has accepted the handshake.
+     * @param onConnectionFailed   Callback fired if the handshake is rejected, receiving the {@link ConnectionEstablishState} reason.
+     * @param onConnectionLost     Callback fired when an existing or pending connection drops, receiving the underlying {@link Throwable}.
+     * @param onDisconnect         Callback fired when the local {@link #disconnect()} method completes shutdown.
+     *
+     * @apiNote
+     * All callbacks are invoked from Netty event-loop threads.
+     */
     public SlaveServerClient(MinecraftServer mcServer, String sharedSecret, String slaveServerID, String masterHostIP, int masterHostTcpPort,
                              Runnable  onConnectionAccepted, Consumer<ConnectionEstablishState> onConnectionFailed, Consumer<Throwable>  onConnectionLost, Runnable onDisconnect)
     {
@@ -77,6 +118,18 @@ public class SlaveServerClient {
 
     // ── Connect / Disconnect ──────────────────────────────────────────────────
 
+    /**
+     * Asynchronously opens the TCP connection to the master and immediately
+     * sends a {@link HandshakePayload} on success.
+     * <p>
+     * On failure, schedules a reconnect attempt via {@link #scheduleReconnect()}
+     * and invokes the {@code onConnectionLost} callback with the cause.
+     *
+     * @apiNote
+     * This method returns immediately; the actual connect happens on a Netty
+     * worker thread. If the client is currently shutting down (see
+     * {@link #disconnect()}), the call is a no-op.
+     */
     public void connect()
     {
         if (shuttingDown)
@@ -137,12 +190,29 @@ public class SlaveServerClient {
         });
     }
 
+    /**
+     * Schedules another {@link #connect()} attempt after a fixed delay (5 seconds).
+     * Does nothing if the client is in the middle of shutting down.
+     *
+     * @apiNote
+     * Called automatically when a connect fails or the channel becomes inactive;
+     * may also be called manually if a higher-level component wants to force a
+     * reconnect cycle.
+     */
     public void scheduleReconnect() {
         if (!shuttingDown) {
             group.schedule(this::connect, 5, TimeUnit.SECONDS);
         }
     }
 
+    /**
+     * Closes the active channel (if any), tears down the Netty event-loop
+     * group, and invokes the {@code onDisconnect} callback.
+     * <p>
+     * Once called, further reconnect attempts are suppressed: the client is
+     * considered dead and a new {@link SlaveServerClient} must be created to
+     * reconnect.
+     */
     public void disconnect() {
         shuttingDown = true;
         if (channel != null) channel.close();
@@ -152,20 +222,47 @@ public class SlaveServerClient {
         onDisconnect.run();
     }
 
+    /**
+     * @return {@code true} if a Netty channel is open and active to the master,
+     *         {@code false} otherwise.
+     */
     public boolean isConnected() {
         return channel != null && channel.isActive();
     }
 
+    /**
+     * @return {@code true} if the most recent connect attempt failed and no
+     *         successful connection has been re-established since.
+     */
     public boolean isConnectionFailed() {
         return connectionFailReason != null;
     }
+    /**
+     * @return The {@link Throwable} that caused the most recent connect
+     *         failure, or {@code null} if the last attempt succeeded.
+     */
     public @Nullable Throwable getConnectionFailReason() {
         return connectionFailReason;
     }
+    /**
+     * @return {@code true} once {@link #disconnect()} has been called, after
+     *         which reconnect attempts are suppressed.
+     */
     public boolean isShuttingDown() {
         return shuttingDown;
     }
 
+    /**
+     * Records that the master has explicitly disconnected this slave and
+     * triggers a local shutdown.
+     *
+     * @param reason A human-readable explanation supplied by the master.
+     *
+     * @apiNote
+     * Called by {@link SlavePacketHandler} when a
+     * {@link net.kroia.modutilities.networking.multi_server.payload.ManualDisconnectionPayload}
+     * is received.
+     */
     public void onMasterDisconnected(String reason)
     {
         masterDisconnected = true;
@@ -176,7 +273,14 @@ public class SlaveServerClient {
     // ── Send ──────────────────────────────────────────────────────────────────
 
     /**
-     * Send any {@link Payload} to the master.
+     * Wraps a {@link CustomPacketPayload} in a {@link ForwardPacketPayload} and
+     * sends it to the master for relay.
+     *
+     * @param senderPlayerUUID UUID of the originating player, or {@code null} if the sender is the server itself.
+     * @param packet           The Minecraft custom packet payload to forward.
+     * @return {@code true} if the packet was queued for sending; {@code false} if no active connection was available.
+     *
+     * @apiNote
      * Thread-safe — Netty queues the write internally.
      */
     public boolean sendToMaster(@Nullable UUID senderPlayerUUID, CustomPacketPayload packet) {
@@ -184,6 +288,16 @@ public class SlaveServerClient {
         ForwardPacketPayload payload = MultiServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID, serverId, packet);
         return sendToMaster(payload);
     }
+    /**
+     * Sends an arbitrary {@link Payload} to the master.
+     *
+     * @param payload The payload to transmit.
+     * @return {@code true} if the payload was queued for sending; {@code false} if no active connection was available.
+     *
+     * @apiNote
+     * Thread-safe — Netty queues the write internally. Delivery failures are
+     * logged via the channel write listener but do not affect the return value.
+     */
     public boolean sendToMaster(Payload payload) {
         if (channel != null && channel.isActive()) {
             channel.writeAndFlush(payload).addListener(f -> {
@@ -198,23 +312,41 @@ public class SlaveServerClient {
         return true;
     }
 
+    /** @return The unique identifier this slave registered with the master. */
     public String getServerID() { return serverId; }
+    /**
+     * @return The local IP address the Netty channel is bound to, or an empty
+     *         string if it could not be determined or no connection has been
+     *         established yet.
+     */
     public String getSlaveIP()
     {
         return slaveIP;
     }
+    /** @return The hostname or IP address of the master this client is configured for. */
     public String getMasterIP()
     {
         return masterHost;
     }
+    /** @return The TCP port of the master this client is configured for. */
     public int getMasterPort()
     {
         return masterPort;
     }
+    /**
+     * @return {@code true} if the master has previously sent a
+     *         {@link net.kroia.modutilities.networking.multi_server.payload.ManualDisconnectionPayload}
+     *         to this slave.
+     */
     public boolean masterHasDisconnected()
     {
         return masterDisconnected;
     }
+    /**
+     * @return The reason string supplied by the master in its most recent
+     *         manual disconnect, or an empty string if no manual disconnect has
+     *         occurred.
+     */
     public String getMasterDisconnectReason()
     {
         return masterDisconnectReason;

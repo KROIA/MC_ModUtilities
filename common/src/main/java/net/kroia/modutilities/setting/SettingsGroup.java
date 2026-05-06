@@ -36,10 +36,20 @@ public class SettingsGroup {
      */
     private final String name;
 
+    /**
+     * Constructs a new SettingsGroup with the given identifying name.
+     *
+     * @param name The name of this group (e.g. "audio", "controls"). Used as the JSON key during serialization.
+     */
     public SettingsGroup(String name) {
         this.name = name;
     }
 
+    /**
+     * Returns the name of this settings group.
+     *
+     * @return The group name used for identification and JSON serialization.
+     */
     public String getName() {
         return name;
     }
@@ -108,9 +118,16 @@ public class SettingsGroup {
     }
 
     /**
-     * @usage
+     * Iterates over every setting in this group and applies the given action.
+     *
+     * @param action The action to perform on each {@link Setting} in the group.
+     *
+     * @apiNote
+     * Usage example:
+     * <pre>
      * SettingsGroup settings = new SettingsGroup("ExampleSettings");
-     * settings.forEachSetting(s -> System.out.println(" - " + s.get()));
+     * settings.forEachSetting(s -&gt; System.out.println(" - " + s.get()));
+     * </pre>
      */
     public void forEachSetting(java.util.function.Consumer<Setting<?>> action) {
         settings.forEach(action);

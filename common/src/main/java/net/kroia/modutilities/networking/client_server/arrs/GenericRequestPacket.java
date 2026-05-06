@@ -29,8 +29,10 @@ import java.util.concurrent.CompletableFuture;
 public final class GenericRequestPacket extends NetworkPacket
 {
 
+    /** The {@link CustomPacketPayload.Type} identifier for this packet. */
     public static final Type<GenericRequestPacket> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "generic_request"));
 
+    /** Stream codec used to (de)serialize the packet over the network. */
     public static final StreamCodec<RegistryFriendlyByteBuf, GenericRequestPacket> STREAM_CODEC = StreamCodec.composite(
             UUIDUtil.STREAM_CODEC, p -> p.requestID,
             ByteBufCodecs.STRING_UTF8, p -> p.requestTypeID,
@@ -133,6 +135,12 @@ public final class GenericRequestPacket extends NetworkPacket
      */
     RegistryFriendlyByteBuf data;
 
+    /**
+     * Constructs a new request packet with a freshly generated request ID.
+     *
+     * @param requestTypeID The identifier of the request type (see {@link GenericRequest#getRequestTypeID()}).
+     * @param data          The encoded input payload.
+     */
     public GenericRequestPacket(String requestTypeID, RegistryFriendlyByteBuf data) {
         super();
         this.requestID = UUID.randomUUID();
@@ -140,6 +148,14 @@ public final class GenericRequestPacket extends NetworkPacket
         this.data = data;
     }
 
+    /**
+     * Constructs a new request packet with an explicit request ID.
+     * Used by the stream codec when reconstructing a packet from the network.
+     *
+     * @param requestID     The unique identifier of this request.
+     * @param requestTypeID The identifier of the request type.
+     * @param data          The encoded input payload.
+     */
     public GenericRequestPacket(UUID requestID, String requestTypeID, RegistryFriendlyByteBuf data) {
         this.requestID = requestID;
         this.requestTypeID = requestTypeID;
@@ -147,12 +163,23 @@ public final class GenericRequestPacket extends NetworkPacket
     }
 
 
+    /**
+     * @return The unique identifier of this request, used to correlate it with its response.
+     */
     public UUID getRequestID() {
         return requestID;
     }
+
+    /**
+     * @return The request type identifier used to look up the registered {@link GenericRequest}.
+     */
     public String getRequestTypeID() {
         return requestTypeID;
     }
+
+    /**
+     * @return The encoded input payload buffer.
+     */
     public FriendlyByteBuf getData() {
         return data;
     }

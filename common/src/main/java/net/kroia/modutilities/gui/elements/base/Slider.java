@@ -9,6 +9,19 @@ import org.lwjgl.glfw.GLFW;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+/**
+ * Abstract base class for slider widgets in the GUI framework.
+ * <p>
+ * A slider exposes a normalized value in the range [0.0, 1.0] that can be
+ * adjusted by dragging a handle ({@link #sliderBounds}) inside the element.
+ * Concrete subclasses (e.g. horizontal/vertical sliders) implement
+ * {@link #sliderMovedToPos(int, int)} to translate handle motion into a value
+ * update and to lay the handle out within the slider's bounds.
+ *
+ * @apiNote The {@code gui/} package is client-only
+ *          ({@code @Environment(EnvType.CLIENT)}); slider widgets must only be
+ *          used on the client.
+ */
 public abstract class Slider extends GuiElement {
 
 
@@ -28,11 +41,23 @@ public abstract class Slider extends GuiElement {
     Consumer<Double> onValueChanged = null;
     Supplier<String> tooltipSupplier = null;
 
+    /**
+     * Creates a new slider with zero size at the origin.
+     */
     public Slider()
     {
         super();
         sliderBounds = new Rectangle(0,0,0,0);
     }
+
+    /**
+     * Creates a new slider with the given bounds.
+     *
+     * @param x      the x position
+     * @param y      the y position
+     * @param width  the width of the slider
+     * @param height the height of the slider
+     */
     public Slider(int x, int y, int width, int height) {
         super(x, y, width, height);
         sliderBounds = new Rectangle(0,0,0,0);
@@ -40,6 +65,12 @@ public abstract class Slider extends GuiElement {
 
 
 
+    /**
+     * Sets a callback to be invoked whenever the slider's normalized value changes
+     * due to user interaction. The new value is supplied to the consumer.
+     *
+     * @param onValueChanged the callback to invoke, or {@code null} to clear it
+     */
     public void setOnValueChanged(Consumer<Double> onValueChanged) {
         this.onValueChanged = onValueChanged;
     }
@@ -63,6 +94,14 @@ public abstract class Slider extends GuiElement {
         drawRect(sliderBounds.x+1, sliderBounds.y+1, sliderBounds.width-2, sliderBounds.height-2, color);
     }
 
+    /**
+     * Sets the slider's normalized value, clamped to {@code [0.0, 1.0]}.
+     * <p>
+     * This setter does not invoke the value-changed callback; it is intended for
+     * programmatic updates rather than mirroring user input.
+     *
+     * @param value the new value, clamped to the closed unit interval
+     */
     public void setSliderValue(double value) {
         if(value < 0.0)
             value = 0.0;
@@ -70,64 +109,155 @@ public abstract class Slider extends GuiElement {
             value = 1.0;
         this.sliderValue = value;
     }
+
+    /**
+     * @return the slider's current normalized value in the range {@code [0.0, 1.0]}
+     */
     public double getSliderValue() {
         return sliderValue;
     }
 
+    /**
+     * Sets a supplier for the tooltip shown while the mouse hovers over the
+     * slider handle.
+     *
+     * @param tooltipSupplier the supplier that yields the tooltip string, or
+     *                        {@code null} to disable the hover tooltip
+     */
     public void setTooltipSupplier(Supplier<String> tooltipSupplier) {
         this.tooltipSupplier = tooltipSupplier;
     }
+
+    /**
+     * Sets the color of the slider track/line.
+     *
+     * @param color the packed ARGB color
+     */
     public void setSliderLineColor(int color) {
         this.sliderLineColor = color;
     }
+
+    /**
+     * @return the packed ARGB color used for the slider track/line
+     */
     public int getSliderLineColor() {
         return sliderLineColor;
     }
 
+    /**
+     * Sets the color of the slider handle when it is in its idle (not hovered,
+     * not pressed) state.
+     *
+     * @param color the packed ARGB color
+     */
     public void setIdleColor(int color) {
         this.colorIdle = color;
     }
+
+    /**
+     * @return the packed ARGB color used for the idle handle
+     */
     public int getIdleColor() {
         return colorIdle;
     }
+
+    /**
+     * Sets the color of the outline drawn around the slider handle.
+     *
+     * @param color the packed ARGB color
+     */
     public void setSliderOutlineColor(int color) {
         this.sliderOutlineColor = color;
     }
+
+    /**
+     * @return the packed ARGB color used for the slider handle outline
+     */
     public int getSliderOutlineColor() {
         return sliderOutlineColor;
     }
 
+    /**
+     * Sets the color of the slider handle when the mouse hovers over it.
+     *
+     * @param color the packed ARGB color
+     */
     public void setHoverColor(int color)
     {
         this.colorHover = color;
     }
+
+    /**
+     * Sets the color of the slider handle while it is being pressed/dragged.
+     *
+     * @param color the packed ARGB color
+     */
     public void setPressedColor(int color)
     {
         this.colorPressed = color;
     }
+
+    /**
+     * @return the packed ARGB color used for the hovered handle
+     */
     public int getHoverColor()
     {
         return this.colorHover;
     }
+
+    /**
+     * @return the packed ARGB color used for the pressed handle
+     */
     public int getPressedColor()
     {
         return this.colorPressed;
     }
 
+    /**
+     * Sets whether the slider handle can currently be moved by the user.
+     * Disabling motion still allows the slider to be rendered, but mouse input
+     * does not affect its value.
+     *
+     * @param movable {@code true} to enable user interaction, {@code false} to
+     *                disable it
+     */
     public void setMovable(boolean movable) {
         isMovable = movable;
     }
+
+    /**
+     * @return {@code true} if the user can drag the slider handle
+     */
     public boolean isMovable() {
         return isMovable;
     }
+
+    /**
+     * Sets the GLFW mouse button that initiates a drag interaction.
+     *
+     * @param triggerButton the GLFW mouse button code (e.g.
+     *                      {@link GLFW#GLFW_MOUSE_BUTTON_LEFT})
+     */
     public void setTriggerButton(int triggerButton) {
         this.triggerButton = triggerButton;
     }
+
+    /**
+     * @return the GLFW mouse button code that triggers slider dragging
+     */
     public int getTriggerButton() {
         return triggerButton;
     }
 
 
+    /**
+     * Called by the framework when the mouse is dragged while pressing the slider
+     * handle. Implementations should update {@link #sliderValue} and any internal
+     * layout based on the requested handle position.
+     *
+     * @param x the desired new handle x position, in the slider's local coordinates
+     * @param y the desired new handle y position, in the slider's local coordinates
+     */
     abstract protected void sliderMovedToPos(int x, int y);
 
     @Override

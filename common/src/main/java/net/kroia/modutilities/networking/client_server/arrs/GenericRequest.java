@@ -40,6 +40,13 @@ public abstract class GenericRequest<IN, OUT>
 
 
 
+    /**
+     * Indicates whether requests of this type should be routed through the master server
+     * in a multi-server (master/slave) setup.
+     *
+     * @return {@code true} if the request should be forwarded to the master server, {@code false} otherwise.
+     * @apiNote Default implementation returns {@code false}. Override to enable master-routing.
+     */
     public boolean needsRoutingToMaster() { return false; }
 
 
@@ -71,9 +78,32 @@ public abstract class GenericRequest<IN, OUT>
     public CompletableFuture<OUT> handleOnServer(IN input, ServerPlayer sender) {
         throw new AssertionError("handleOnServer() is not implemented in " + this.getRequestTypeID() + ". Please implement this method to handle the request on the server side.");
     }
+
+    /**
+     * Handles the request on the master server in a master/slave multi-server topology.
+     * Called when a slave server forwards a request to the master.
+     *
+     * @param input        The input provided by the requestor.
+     * @param slaveID      The identifier of the slave server that forwarded the request.
+     * @param playerSender The UUID of the player that originated the request, or {@code null}
+     *                     if the request did not originate from a player.
+     * @return A future completing with the output produced by the responder.
+     * @apiNote This method gets called on the master server only. Override to provide an implementation.
+     */
     public CompletableFuture<OUT> handleOnMasterServer(IN input, String slaveID, @Nullable UUID playerSender) {
         throw new AssertionError("handleOnMasterServer() is not implemented in " + this.getRequestTypeID() + ". Please implement this method to handle the request on the server side.");
     }
+
+    /**
+     * Handles the request on a slave server in a master/slave multi-server topology.
+     * Called when the master server forwards a request to a slave.
+     *
+     * @param input        The input provided by the requestor.
+     * @param playerSender The UUID of the player that originated the request, or {@code null}
+     *                     if the request did not originate from a player.
+     * @return A future completing with the output produced by the responder.
+     * @apiNote This method gets called on a slave server only. Override to provide an implementation.
+     */
     public CompletableFuture<OUT> handleOnSlaveServer(IN input, @Nullable UUID playerSender) {
         throw new AssertionError("handleOnMasterSlave() is not implemented in " + this.getRequestTypeID() + ". Please implement this method to handle the request on the server side.");
     }
@@ -157,6 +187,18 @@ public abstract class GenericRequest<IN, OUT>
         return manager.sendRequestToServer(this, input);
     }
 
+    /**
+     * Sends this request to the master server with the provided input.
+     * Intended for use on a slave server in a multi-server topology.
+     *
+     * @param input The input to send to the master server.
+     * @return A future that completes with the response data produced by the master.
+     * @throws IllegalStateException If the {@link RequestManager} has not been set
+     *                               (i.e. the ARRS has not been initialized via
+     *                               {@link AsynchronousRequestResponseSystem#setup} or
+     *                               this request is not registered).
+     * @apiNote This method is intended to be called on the slave server side only.
+     */
     public CompletableFuture<OUT> sendRequestToMaster(IN input)
     {
         if(manager == null)
@@ -171,6 +213,19 @@ public abstract class GenericRequest<IN, OUT>
 
         return manager.sendRequestToMaster(this, input);
     }
+    /**
+     * Sends this request to a specific slave server with the provided input.
+     * Intended for use on the master server in a multi-server topology.
+     *
+     * @param slaveID The identifier of the target slave server.
+     * @param input   The input to send to the slave server.
+     * @return A future that completes with the response data produced by the slave.
+     * @throws IllegalStateException If the {@link RequestManager} has not been set
+     *                               (i.e. the ARRS has not been initialized via
+     *                               {@link AsynchronousRequestResponseSystem#setup} or
+     *                               this request is not registered).
+     * @apiNote This method is intended to be called on the master server side only.
+     */
     public CompletableFuture<OUT> sendRequestToSlave(String slaveID, IN input)
     {
         if(manager == null)
@@ -227,15 +282,16 @@ public abstract class GenericRequest<IN, OUT>
 
 
     /**
-     * Processes the request on the server side and encodes the response data into the output buffer.
+     * Decodes the input from {@code inputBuf}, dispatches the request handler,
+     * and on completion encodes the response into {@code outputBuf}.
      *
-     * @param inputBuf  The byte buffer to encode the input into.
+     * @param inputBuf  The byte buffer holding the encoded input.
      * @param outputBuf The byte buffer to encode the output into.
      * @param sender    The player who sent the request (for server-side handling).
-     *
-     * @apiNote
-     * This methode gets called serverside only (when the client is the requestor).
-     * This function is called by the ARRS (do not call this method manually).
+     * @return A future that completes with the {@code outputBuf} once the response has been
+     *         encoded, or completes exceptionally if the handler throws.
+     * @apiNote This method gets called serverside only (when the client is the requestor).
+     *          This function is called by the ARRS — do not call it manually.
      */
     public CompletableFuture<RegistryFriendlyByteBuf> decodeHandleEncodeOnServer(RegistryFriendlyByteBuf inputBuf, RegistryFriendlyByteBuf outputBuf, ServerPlayer sender)
     {
@@ -250,6 +306,19 @@ public abstract class GenericRequest<IN, OUT>
         return byteBufFut;
     }
 
+    /**
+     * Decodes the input from {@code inputBuf}, dispatches the master-server handler,
+     * and on completion encodes the response into {@code outputBuf}.
+     *
+     * @param inputBuf     The byte buffer holding the encoded input.
+     * @param outputBuf    The byte buffer to encode the output into.
+     * @param slaveID      The identifier of the slave server that forwarded the request.
+     * @param playerSender The UUID of the originating player, or {@code null} if not applicable.
+     * @return A future that completes with the {@code outputBuf} once the response has been
+     *         encoded, or completes exceptionally if the handler throws.
+     * @apiNote This method gets called on the master server only.
+     *          This function is called by the ARRS — do not call it manually.
+     */
     public CompletableFuture<RegistryFriendlyByteBuf> decodeHandleEncodeOnMasterServer(RegistryFriendlyByteBuf inputBuf, RegistryFriendlyByteBuf outputBuf, String slaveID, @Nullable UUID playerSender)
     {
         IN input = decodeInput(inputBuf);
@@ -262,6 +331,18 @@ public abstract class GenericRequest<IN, OUT>
         }
         return byteBufFut;
     }
+    /**
+     * Decodes the input from {@code inputBuf}, dispatches the slave-server handler,
+     * and on completion encodes the response into {@code outputBuf}.
+     *
+     * @param inputBuf     The byte buffer holding the encoded input.
+     * @param outputBuf    The byte buffer to encode the output into.
+     * @param playerSender The UUID of the originating player, or {@code null} if not applicable.
+     * @return A future that completes with the {@code outputBuf} once the response has been
+     *         encoded, or completes exceptionally if the handler throws.
+     * @apiNote This method gets called on a slave server only.
+     *          This function is called by the ARRS — do not call it manually.
+     */
     public CompletableFuture<RegistryFriendlyByteBuf> decodeHandleEncodeOnSlaveServer(RegistryFriendlyByteBuf inputBuf, RegistryFriendlyByteBuf outputBuf, @Nullable UUID playerSender)
     {
         IN input = decodeInput(inputBuf);
@@ -326,6 +407,11 @@ public abstract class GenericRequest<IN, OUT>
     {
         this.manager = manager;
     }
+    /**
+     * Returns the {@link RequestManager} associated with this request.
+     *
+     * @return The current {@link RequestManager}, or {@code null} if none has been assigned.
+     */
     public RequestManager getManager()
     {
         return this.manager;

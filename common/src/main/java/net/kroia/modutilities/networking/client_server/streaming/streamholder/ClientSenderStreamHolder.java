@@ -30,6 +30,16 @@ public class ClientSenderStreamHolder<CONTEXT_DATA, DATA>
      * This is used to prevent multiple calls to the stream stop method.
      */
     private boolean doRemove = false;
+
+    /**
+     * Creates a new ClientSenderStreamHolder tracking the client-side state of a client-to-server stream.
+     * The given stream definition is copied so each active stream has its own state.
+     *
+     * @param networkManager The NetworkPacketManager used to send packets to the server.
+     * @param stream         The registered stream definition (will be copied).
+     * @param contextDataBuf The encoded context data used to initialize the copy.
+     * @param streamID       The unique stream UUID identifying this stream instance.
+     */
     public ClientSenderStreamHolder(NetworkPacketManager networkManager,
                                     GenericStream<CONTEXT_DATA, DATA> stream,
                                     RegistryFriendlyByteBuf contextDataBuf,
@@ -69,6 +79,9 @@ public class ClientSenderStreamHolder<CONTEXT_DATA, DATA>
         }
 
     }
+    /**
+     * @return True once {@link #streamStop()} has been called and this holder is queued for removal.
+     */
     public boolean isDoRemove() {
         return doRemove;
     }

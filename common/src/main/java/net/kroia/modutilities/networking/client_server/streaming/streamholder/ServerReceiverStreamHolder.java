@@ -58,6 +58,16 @@ public class ServerReceiverStreamHolder<CONTEXT_DATA, DATA>
      */
     private boolean isStpped = false; // Flag to check if the stream is stopped
 
+    /**
+     * Creates a new ServerReceiverStreamHolder tracking the server-side state of a client-to-server stream.
+     *
+     * @param networkManager       The NetworkPacketManager used to send the stop notification back to the client.
+     * @param stream               The registered stream definition (used for decoding incoming data).
+     * @param streamHandler        The bi-consumer invoked for each decoded data chunk together with the sending player.
+     * @param streamStoppedHandler Optional runnable invoked once the stream has stopped.
+     * @param streamID             The unique stream UUID identifying this stream instance.
+     * @param playerSenderUUID     The UUID of the client sending the stream data.
+     */
     public ServerReceiverStreamHolder(NetworkPacketManager networkManager,
                                       GenericStream<CONTEXT_DATA, DATA> stream,
                                       BiConsumer<DATA, ServerPlayer> streamHandler,

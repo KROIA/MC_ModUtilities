@@ -13,6 +13,11 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
+/**
+ * {@link CustomJsonParser} implementation for Minecraft {@link ItemStack} values.
+ * Encodes the item ID, count, and any non-default {@link DataComponentPatch} components
+ * (custom NBT, enchantments, custom name, lore, etc.) into a JSON object.
+ */
 public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
     /*
     private static class EnchantmentData implements ServerSaveable
@@ -161,13 +166,19 @@ public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
     }
 */
     /**
-     * Serializes an ItemStack to a JsonElement.
+     * Serializes an {@link ItemStack} to a {@link JsonElement}.
+     * <p>
      * Output format:
+     * <pre>
      * {
      *   "id": "minecraft:diamond_sword",
      *   "count": 1,
      *   "components": { ... }  // only if non-default components exist
      * }
+     * </pre>
+     *
+     * @param stack The item stack to serialize. May be null or empty (returns {@link JsonNull}).
+     * @return A {@link JsonObject} describing the stack, or {@link JsonNull#INSTANCE} for empty stacks.
      */
     public JsonElement toJson(ItemStack stack) {
         if (stack == null || stack.isEmpty()) {
@@ -202,7 +213,12 @@ public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
     }
 
     /**
-     * Deserializes an ItemStack from a JsonElement produced by toJson().
+     * Deserializes an {@link ItemStack} from a {@link JsonElement} produced by {@link #toJson(ItemStack)}.
+     *
+     * @param json The JSON element to parse. May be null or {@link JsonNull} (returns {@link ItemStack#EMPTY}).
+     * @return The reconstructed {@link ItemStack}, or {@link ItemStack#EMPTY} for null/null-JSON input.
+     * @throws JsonParseException if the JSON is malformed, missing the required {@code id} field,
+     *                            references an unknown item, or carries an invalid component patch.
      */
     public ItemStack fromJson(JsonElement json) {
         if (json == null || json.isJsonNull()) {

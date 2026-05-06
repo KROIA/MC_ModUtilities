@@ -8,17 +8,36 @@ import java.util.List;
 
 
 /**
- * Plots points to a graph with X and Y axes.
+ * 2D line graph element that plots one or more {@link PlotData} series against
+ * shared X and Y axes.
+ * <p>
+ * The plot manages two internal axes (X and Y) with configurable value ranges,
+ * label counts, and printf-style label formats. X values for each plot are
+ * implied to be evenly distributed across the X range; only Y samples are
+ * stored on each {@link PlotData}.
+ *
+ * @apiNote The internal axes guard against zero value range and fall back to
+ *          a scale of 1.0 to avoid divide-by-zero in coordinate conversions.
  */
 public class Plot extends GuiElement
 {
     private final int pointCount = 100;
 
 
+    /**
+     * A single line series displayed on the {@link Plot}.
+     * <p>
+     * X positions are implied by the index of each value within
+     * {@link #yValues} mapped uniformly across the plot's X range; only Y
+     * samples are stored.
+     */
     public static class PlotData
     {
+        /** Line color in {@code 0xAARRGGBB} format. Default is opaque green. */
         public int color = 0xFF00FF00; // Default green color
+        /** Line thickness in pixels. */
         public float thickness = 1.0f; // Default thickness
+        /** Y values of the series in sample order. */
         public final List<Float> yValues = new ArrayList<>();
     }
 
@@ -110,21 +129,45 @@ public class Plot extends GuiElement
     private int yAxisLabelCount = 5; // Number of labels on Y axis
     private String yLabel = "Y Axis"; // Y axis label
     private String xLabel = "X Axis"; // X axis label
+    /**
+     * Creates a new {@code Plot} with default axis ranges, default labels,
+     * and a half-size text font scale.
+     */
     public Plot() {
         super();
         setTextFontScale(0.5f);
        // yAxis.enableLogScale(true);
     }
 
+    /**
+     * Sets the value range covered by the X axis.
+     *
+     * @param minValue the value at the left edge of the plot area
+     * @param maxValue the value at the right edge of the plot area
+     */
     public void setXRange(float minValue, float maxValue)
     {
         xAxis.setValueRange(minValue, maxValue);
     }
+
+    /**
+     * Sets the value range covered by the Y axis.
+     *
+     * @param minValue the value at the bottom edge of the plot area
+     * @param maxValue the value at the top edge of the plot area
+     */
     public void setYRange(float minValue, float maxValue)
     {
         yAxis.setValueRange(minValue, maxValue);
     }
 
+    /**
+     * Replaces all current plot series with a single series.
+     * <p>
+     * Has no effect when {@code data} is {@code null}.
+     *
+     * @param data the new plot series, or {@code null} to leave the plot unchanged
+     */
     public void setPlotData(PlotData data)
     {
         if(data != null)
@@ -133,6 +176,14 @@ public class Plot extends GuiElement
             plots.add(data);
         }
     }
+
+    /**
+     * Appends an additional series to the plot.
+     * <p>
+     * Has no effect when {@code data} is {@code null}.
+     *
+     * @param data the series to add, or {@code null} to no-op
+     */
     public void addPlotData(PlotData data)
     {
         if(data != null)
@@ -140,68 +191,151 @@ public class Plot extends GuiElement
             plots.add(data);
         }
     }
+
+    /**
+     * Removes all currently registered plot series.
+     */
     public void clearPlotData()
     {
         plots.clear();
     }
 
+    /**
+     * Sets the {@link String#format} pattern used to render X axis labels.
+     *
+     * @param format a printf-style format string (e.g. {@code "%.2f"})
+     */
     public void setXAxisValueConversion(String format)
     {
         this.xAxisValueConversion = format;
     }
+
+    /**
+     * Sets the {@link String#format} pattern used to render Y axis labels.
+     *
+     * @param format a printf-style format string (e.g. {@code "%.2f"})
+     */
     public void setYAxisValueConversion(String format)
     {
         this.yAxisValueConversion = format;
     }
+
+    /**
+     * Sets the color used to draw the X and Y axis lines.
+     *
+     * @param color the color in {@code 0xAARRGGBB} format
+     */
     public void setAxisColor(int color)
     {
         this.axisColor = color;
     }
+
+    /**
+     * @return the current axis line color in {@code 0xAARRGGBB} format
+     */
     public int getAxisColor()
     {
         return axisColor;
     }
+
+    /**
+     * Sets the color used to draw the background grid lines (one per label).
+     *
+     * @param color the color in {@code 0xAARRGGBB} format
+     */
     public void setBackgroundGridColor(int color)
     {
         this.backgroundGridColor = color;
     }
+
+    /**
+     * @return the current background grid color in {@code 0xAARRGGBB} format
+     */
     public int getBackgroundGridColor()
     {
         return backgroundGridColor;
     }
+
+    /**
+     * Sets the number of evenly distributed labels along the X axis.
+     *
+     * @param count the number of labels (and grid lines) to render along X
+     */
     public void setXAxisLabelCount(int count)
     {
         this.xAxisLabelCount = count;
     }
+
+    /**
+     * @return the number of labels rendered along the X axis
+     */
     public int getXAxisLabelCount()
     {
         return xAxisLabelCount;
     }
+
+    /**
+     * Sets the number of evenly distributed labels along the Y axis.
+     *
+     * @param count the number of labels (and grid lines) to render along Y
+     */
     public void setYAxisLabelCount(int count)
     {
         this.yAxisLabelCount = count;
     }
+
+    /**
+     * @return the number of labels rendered along the Y axis
+     */
     public int getYAxisLabelCount()
     {
         return yAxisLabelCount;
     }
+
+    /**
+     * Sets the descriptive Y axis title rendered alongside the axis.
+     *
+     * @param label the Y axis label, or empty/{@code null} to hide it
+     */
     public void setYAxisLabel(String label)
     {
         this.yLabel = label;
     }
+
+    /**
+     * @return the current Y axis title
+     */
     public String getYAxisLabel()
     {
         return yLabel;
     }
+
+    /**
+     * Sets the descriptive X axis title rendered alongside the axis.
+     *
+     * @param label the X axis label, or empty/{@code null} to hide it
+     */
     public void setXAxisLabel(String label)
     {
         this.xLabel = label;
     }
+
+    /**
+     * @return the current X axis title
+     */
     public String getXAxisLabel()
     {
         return xLabel;
     }
 
+    /**
+     * Converts a (X, Y) data-space coordinate to its corresponding pixel position
+     * within this element using the current axis ranges.
+     *
+     * @param xValue the X value in data-space
+     * @param yValue the Y value in data-space
+     * @return a new {@link Point} containing the pixel coordinates
+     */
     public Point getGuiPosFromXValue(float xValue, float yValue)
     {
         int xPos = xAxis.getPos(xValue);

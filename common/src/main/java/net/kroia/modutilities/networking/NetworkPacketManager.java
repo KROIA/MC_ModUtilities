@@ -14,13 +14,37 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 
+/**
+ * Per-mod registration entry point for the MC_ModUtilities networking layer.
+ * Mods extend this class and override {@link #setupClientReceiverPackets()},
+ * {@link #setupServerReceiverPackets()} and {@link #setupServerServerPackets()}
+ * to register their {@link NetworkPacket} types via the {@code registerS2C}, {@code registerC2S}
+ * and {@code registerS2S} helpers.
+ *
+ * @apiNote
+ * A single instance is typically created during mod construction. Optional subsystems such as the
+ * Asynchronous Request/Response System and the Stream System can be enabled from the constructor
+ * by calling {@link #setupARRS()} and/or {@link #setupStreamSystem()}.
+ */
 public abstract class NetworkPacketManager {
 
 
+    /**
+     * Creates a network packet manager bound to the given mod, using the default channel name.
+     *
+     * @param modID the namespace of the owning mod, typically used to derive packet type identifiers.
+     */
     public NetworkPacketManager(String modID) {
         this(modID, "default_channel");
 
     }
+
+    /**
+     * Creates a network packet manager bound to the given mod and channel name.
+     *
+     * @param modID       the namespace of the owning mod.
+     * @param channelName the network channel name to use for this manager.
+     */
     public NetworkPacketManager(String modID, String channelName) {
 
     }
@@ -43,30 +67,70 @@ public abstract class NetworkPacketManager {
         StreamSystem.setup(this);
     }
 
+    /**
+     * Registers all S2C (server-to-client) packet receivers handled by this mod.
+     *
+     * @apiNote
+     * Called once on the client side during mod setup. Implementations should call
+     * {@link #registerS2C(CustomPacketPayload.Type, StreamCodec)} (or one of its overloads) for each S2C packet type.
+     */
     abstract public void setupClientReceiverPackets();
 
+    /**
+     * Registers all C2S (client-to-server) packet receivers handled by this mod.
+     *
+     * @apiNote
+     * Called once on the server side during mod setup. Implementations should call
+     * {@link #registerC2S(CustomPacketPayload.Type, StreamCodec)} (or one of its overloads) for each C2S packet type.
+     */
     abstract public void setupServerReceiverPackets();
 
+    /**
+     * Registers all server-to-server packet types used by this mod for the multi-server relay system.
+     *
+     * @apiNote
+     * Called once during multi-server setup. Implementations should call
+     * {@link #registerS2S(CustomPacketPayload.Type, StreamCodec)} (or its overload) for each S2S packet type.
+     */
     abstract public void setupServerServerPackets();
 
     /**
-     * Registers a network packet type with the given encoder, decoder, and message consumer.
-     * The encoder is used to serialize the packet data into a FriendlyByteBuf,
-     * the decoder is used to deserialize the packet data from a FriendlyByteBuf,
-     * and the message consumer is used to handle the received packet.
+     * Registers a server-to-client packet type with a custom handler.
      *
+     * @param packetType  the packet payload type identifier.
+     * @param streamCodec the codec used to serialize/deserialize the packet on the wire.
+     * @param handler     the handler invoked on the client when a packet of this type is received.
+     * @param <T>         the concrete {@link NetworkPacket} subtype.
      */
     public <T extends NetworkPacket> void registerS2C(CustomPacketPayload.Type<T> packetType, StreamCodec<RegistryFriendlyByteBuf, T> streamCodec, PacketHandler<? super T> handler) {
 
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, packetType, streamCodec, handler::handleClient);
         //NetworkManager.registerReceiver(NetworkManager.Side.C2S, packetType, streamCodec, handler::handleServer);
     }
+    /**
+     * Registers a server-to-client packet type with a custom handler and a multi-server forward handler.
+     *
+     * @param packetType     the packet payload type identifier.
+     * @param streamCodec    the codec used to serialize/deserialize the packet on the wire.
+     * @param handler        the handler invoked on the client when a packet of this type is received.
+     * @param forwardHandler the handler used when the packet is relayed between master and slave servers.
+     * @param <T>            the concrete {@link NetworkPacket} subtype.
+     */
     public <T extends NetworkPacket> void registerS2C(CustomPacketPayload.Type<T> packetType, StreamCodec<RegistryFriendlyByteBuf, T> streamCodec, PacketHandler<? super T> handler, ForwardPacketHandler<? super T> forwardHandler) {
 
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, packetType, streamCodec, handler::handleClient);
         MultiServerPacketRegistry.register(packetType, streamCodec, forwardHandler);
         //NetworkManager.registerReceiver(NetworkManager.Side.C2S, packetType, streamCodec, handler::handleServer);
     }
+
+    /**
+     * Registers a server-to-client packet type using {@link NetworkPacket#HANDLER} for both the client receiver
+     * and the multi-server relay path.
+     *
+     * @param packetType  the packet payload type identifier.
+     * @param streamCodec the codec used to serialize/deserialize the packet on the wire.
+     * @param <T>         the concrete {@link NetworkPacket} subtype.
+     */
     public <T extends NetworkPacket> void registerS2C(CustomPacketPayload.Type<T> packetType, StreamCodec<RegistryFriendlyByteBuf, T> streamCodec) {
 
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, packetType, streamCodec, NetworkPacket.HANDLER::handleClient);
@@ -74,17 +138,44 @@ public abstract class NetworkPacketManager {
         //NetworkManager.registerReceiver(NetworkManager.Side.C2S, packetType, streamCodec, NetworkPacket.HANDLER::handleServer);
     }
 
+    /**
+     * Registers a client-to-server packet type with a custom handler.
+     *
+     * @param packetType  the packet payload type identifier.
+     * @param streamCodec the codec used to serialize/deserialize the packet on the wire.
+     * @param handler     the handler invoked on the server when a packet of this type is received.
+     * @param <T>         the concrete {@link NetworkPacket} subtype.
+     */
     public <T extends NetworkPacket> void registerC2S(CustomPacketPayload.Type<T> packetType, StreamCodec<RegistryFriendlyByteBuf, T> streamCodec, PacketHandler<? super T> handler) {
 
         //NetworkManager.registerReceiver(NetworkManager.Side.S2C, packetType, streamCodec, handler::handleClient);
         NetworkManager.registerReceiver(NetworkManager.Side.C2S, packetType, streamCodec, handler::handleServer);
     }
+
+    /**
+     * Registers a client-to-server packet type with a custom handler and a multi-server forward handler.
+     *
+     * @param packetType     the packet payload type identifier.
+     * @param streamCodec    the codec used to serialize/deserialize the packet on the wire.
+     * @param handler        the handler invoked on the server when a packet of this type is received.
+     * @param forwardHandler the handler used when the packet is relayed between master and slave servers.
+     * @param <T>            the concrete {@link NetworkPacket} subtype.
+     */
     public <T extends NetworkPacket> void registerC2S(CustomPacketPayload.Type<T> packetType, StreamCodec<RegistryFriendlyByteBuf, T> streamCodec, PacketHandler<? super T> handler, ForwardPacketHandler<? super T> forwardHandler) {
 
         //NetworkManager.registerReceiver(NetworkManager.Side.S2C, packetType, streamCodec, handler::handleClient);
         NetworkManager.registerReceiver(NetworkManager.Side.C2S, packetType, streamCodec, handler::handleServer);
         MultiServerPacketRegistry.register(packetType, streamCodec, forwardHandler);
     }
+
+    /**
+     * Registers a client-to-server packet type using {@link NetworkPacket#HANDLER} for both the server receiver
+     * and the multi-server relay path.
+     *
+     * @param packetType  the packet payload type identifier.
+     * @param streamCodec the codec used to serialize/deserialize the packet on the wire.
+     * @param <T>         the concrete {@link NetworkPacket} subtype.
+     */
     public <T extends NetworkPacket> void registerC2S(CustomPacketPayload.Type<T> packetType, StreamCodec<RegistryFriendlyByteBuf, T> streamCodec) {
 
         //NetworkManager.registerReceiver(NetworkManager.Side.S2C, packetType, streamCodec, NetworkPacket.HANDLER::handleClient);
@@ -92,9 +183,26 @@ public abstract class NetworkPacketManager {
         MultiServerPacketRegistry.register(packetType, streamCodec, NetworkPacket.HANDLER);
     }
 
+    /**
+     * Registers a server-to-server packet type for the multi-server relay system, using {@link NetworkPacket#HANDLER}
+     * as the forward handler.
+     *
+     * @param packetType  the packet payload type identifier.
+     * @param streamCodec the codec used to serialize/deserialize the packet on the wire.
+     * @param <T>         the concrete {@link NetworkPacket} subtype.
+     */
     public <T extends NetworkPacket> void registerS2S(CustomPacketPayload.Type<T> packetType, StreamCodec<RegistryFriendlyByteBuf, T> streamCodec) {
         MultiServerPacketRegistry.register(packetType, streamCodec, NetworkPacket.HANDLER);
     }
+
+    /**
+     * Registers a server-to-server packet type for the multi-server relay system, using a custom forward handler.
+     *
+     * @param packetType     the packet payload type identifier.
+     * @param streamCodec    the codec used to serialize/deserialize the packet on the wire.
+     * @param forwardHandler the handler used when the packet is relayed between master and slave servers.
+     * @param <T>            the concrete {@link NetworkPacket} subtype.
+     */
     public <T extends NetworkPacket> void registerS2S(CustomPacketPayload.Type<T> packetType, StreamCodec<RegistryFriendlyByteBuf, T> streamCodec, ForwardPacketHandler<? super T> forwardHandler) {
         MultiServerPacketRegistry.register(packetType, streamCodec, forwardHandler);
     }
@@ -120,6 +228,12 @@ public abstract class NetworkPacketManager {
         NetworkManager.sendToPlayer(receiver, packet);
     }
 
+    /**
+     * Sends a network packet from the server to a group of clients.
+     *
+     * @param players the players who will receive the packet.
+     * @param packet  the network packet to send.
+     */
     public void sendToClients(Iterable<ServerPlayer> players, NetworkPacket packet) {
         NetworkManager.sendToPlayers(players, packet);
     }

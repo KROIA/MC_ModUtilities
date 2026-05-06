@@ -14,6 +14,22 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * High-level helper for working with Minecraft {@link Item}s and {@link ItemStack}s.
+ * <p>
+ * Provides convenience methods for resolving items from string IDs, enumerating items
+ * (optionally filtered by tag), querying the creative inventory cache, performing search-by-name
+ * lookups, and dropping items into the world.
+ * <p>
+ * Many methods delegate to {@link UtilitiesPlatform} which abstracts platform-specific
+ * registry access between Fabric, Forge, NeoForge and Quilt.
+ *
+ * @apiNote
+ * The creative-item cache used by {@link #getSearchCreativeItems(String)} is populated lazily on
+ * first access and is otherwise never invalidated automatically. Call
+ * {@link #invalidateCreativeItemCache()} when the world is loaded or unloaded, when registries
+ * change, or when resource packs reload, so subsequent searches reflect the current state.
+ */
 public class ItemUtilities {
 
     private static class ItemCache
@@ -45,10 +61,27 @@ public class ItemUtilities {
         itemCache.invalidate();
     }
 
+    /**
+     * Creates a single-item {@link ItemStack} from a string item ID.
+     *
+     * @param itemId the item ID to resolve, with or without a namespace
+     *               (e.g. {@code "minecraft:stone"} or {@code "stone"}); {@code null} returns {@link ItemStack#EMPTY}
+     * @return an {@link ItemStack} of count 1, or {@link ItemStack#EMPTY} if the ID could not be resolved
+     */
     public static ItemStack createItemStackFromId(String itemId)
     {
         return createItemStackFromId(itemId, 1);
     }
+    /**
+     * Creates an {@link ItemStack} from a string item ID with the specified count.
+     * <p>
+     * If {@code itemId} contains no {@code ':'} separator, the {@code "minecraft:"} namespace
+     * is automatically prepended.
+     *
+     * @param itemId the item ID to resolve; {@code null} returns {@link ItemStack#EMPTY}
+     * @param amount the desired stack size
+     * @return an {@link ItemStack} of the given count, or {@link ItemStack#EMPTY} if the ID could not be resolved
+     */
     public static ItemStack createItemStackFromId(String itemId, int amount)
     {
         if(itemId == null) {
@@ -67,6 +100,18 @@ public class ItemUtilities {
 
         return ItemStack.EMPTY; // Return an empty stack if the item is not found
     }
+    /**
+     * Normalizes a possibly partial item ID into the canonical {@code namespace:path} form.
+     * <p>
+     * The given ID is resolved through {@link #createItemStackFromId(String)} and the resulting
+     * item's full registry ID string is returned.
+     *
+     * @param maybeNotCompleteItemID a partial or complete item ID; may be {@code null}
+     * @return the canonical item ID, or {@code null} if the input was {@code null},
+     *         the resolved stack is empty, or the item is air
+     * @apiNote Empty results are detected via {@link ItemStack#isEmpty()}, so unknown item IDs
+     *          (which resolve to {@link ItemStack#EMPTY}) yield {@code null}.
+     */
     public static String getNormalizedItemID(String maybeNotCompleteItemID)
     {
         if(maybeNotCompleteItemID == null) {
@@ -82,20 +127,43 @@ public class ItemUtilities {
         // Get the item's ResourceLocation
         return getItemIDStr(itemStack.getItem());
     }
+    /**
+     * Returns a debug-style name for the given item, derived from {@link Item#toString()}.
+     *
+     * @param item the item to name
+     * @return the item's string representation
+     */
     public static String getItemName(Item item)
     {
         return item.toString();
     }
+    /**
+     * Returns a debug-style name for the item identified by the given ID.
+     *
+     * @param itemID the item ID to resolve
+     * @return the resolved item's string representation
+     */
     public static String getItemName(String itemID)
     {
         return getItemName(createItemStackFromId(itemID).getItem());
     }
+    /**
+     * Returns the canonical {@code namespace:path} registry ID of the given item.
+     *
+     * @param item the item to look up
+     * @return the registry ID string for the item
+     */
     public static String getItemIDStr(Item item)
     {
         return UtilitiesPlatform.getItemIDStr(item);
     }
 
 
+    /**
+     * Returns the registry IDs of all items known to the platform.
+     *
+     * @return a list of unique item ID strings
+     */
     public static ArrayList<String> getAllItemIDStrs()
     {
         ArrayList<ItemStack> items = UtilitiesPlatform.getAllItems();
@@ -106,11 +174,22 @@ public class ItemUtilities {
         }
         return new ArrayList<>(itemTable.keySet());
     }
+    /**
+     * Returns all items known to the platform as {@link ItemStack}s.
+     *
+     * @return a list of item stacks, one per registered item
+     */
     public static ArrayList<ItemStack> getAllItems()
     {
         return UtilitiesPlatform.getAllItems();
     }
 
+    /**
+     * Returns the IDs of all items belonging to the given item tag.
+     *
+     * @param tag the tag path (without namespace) to filter items by
+     * @return a list of matching item ID strings
+     */
     public static ArrayList<String> getAllItemIDStrs(String tag)
     {
         ArrayList<String> itemIDs = new ArrayList<>();
@@ -124,6 +203,12 @@ public class ItemUtilities {
         }
         return itemIDs;
     }
+    /**
+     * Returns all item stacks belonging to the given item tag.
+     *
+     * @param tag the tag path (without namespace) to filter items by
+     * @return a list of matching item stacks
+     */
     public static ArrayList<ItemStack> getAllItems(String tag)
     {
         ArrayList<ItemStack> items = new ArrayList<>();
@@ -137,6 +222,17 @@ public class ItemUtilities {
         }
         return items;
     }
+    /**
+     * Returns the IDs of all items matching any of the provided tags or whose ID is contained
+     * in {@code containsInID}.
+     * <p>
+     * Tags are looked up under both the platform-specific common namespace
+     * ({@code c:} on Fabric/Quilt, {@code forge:} on Forge) and the {@code minecraft:} namespace.
+     *
+     * @param tags         tag paths (without namespace) to match against
+     * @param containsInID exact item ID strings to include unconditionally
+     * @return a list of matching item ID strings
+     */
     public static ArrayList<String> getAllItemIDStrs(ArrayList<String> tags, ArrayList<String> containsInID)
     {
         ArrayList<String> itemIDs = new ArrayList<>();
@@ -172,6 +268,17 @@ public class ItemUtilities {
         }
         return itemIDs;
     }
+    /**
+     * Returns the item stacks of all items matching any of the provided tags or whose ID is
+     * contained in {@code containsInID}.
+     * <p>
+     * Tags are looked up under both the platform-specific common namespace
+     * ({@code c:} on Fabric/Quilt, {@code forge:} on Forge) and the {@code minecraft:} namespace.
+     *
+     * @param tags         tag paths (without namespace) to match against
+     * @param containsInID exact item ID strings to include unconditionally
+     * @return a list of matching item stacks
+     */
     public static ArrayList<ItemStack> getAllItems(ArrayList<String> tags, ArrayList<String> containsInID)
     {
         ArrayList<ItemStack> items = new ArrayList<>();

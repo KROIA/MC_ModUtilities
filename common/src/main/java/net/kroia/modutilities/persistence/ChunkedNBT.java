@@ -13,6 +13,16 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
 
+/**
+ * Utility class for handling NBT data that exceeds Mojang's default 2 MB size limit.
+ * Provides helpers for splitting large NBT structures across multiple files (chunks)
+ * and measuring the uncompressed serialized size of arbitrary {@link Tag} instances.
+ *
+ * @apiNote
+ * Most of the chunking/rebuilding logic in this class is currently disabled
+ * (kept as commented reference). The active public surface is limited to
+ * {@link #getUncompressedSize(Tag)}.
+ */
 public class ChunkedNBT {
 /*
     private static final UUID sizeUUID = UUID.nameUUIDFromBytes("sizeUUID".getBytes());
@@ -464,6 +474,21 @@ public class ChunkedNBT {
 
 */
 
+    /**
+     * Computes the uncompressed serialized size in bytes of the given tag.
+     * Non-{@link CompoundTag} tags are wrapped into a temporary compound under
+     * the key {@code "d"} before measurement, since {@link NbtIo#write} requires
+     * a {@link CompoundTag} root.
+     *
+     * @param tag the tag whose serialized size should be measured.
+     *
+     * @apiNote
+     * Uses try-with-resources for the underlying streams to avoid leaking
+     * resources. Returns {@code 0} on I/O failure (the exception is logged to
+     * standard error).
+     *
+     * @return the uncompressed size in bytes, or {@code 0} if measurement failed.
+     */
     public static long getUncompressedSize(Tag tag)  {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
              DataOutputStream dos = new DataOutputStream(baos)) {

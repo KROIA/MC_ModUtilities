@@ -70,6 +70,12 @@ public class StreamStartPacket extends NetworkPacket {
 
 
 
+    /**
+     * Creates a new StreamStartPacket with a freshly generated stream UUID.
+     *
+     * @param streamTypeID The registered stream type ID identifying which stream definition to use.
+     * @param data         The encoded context data buffer used to initialize the stream.
+     */
     public StreamStartPacket(String streamTypeID, RegistryFriendlyByteBuf data) {
         super();
         this.streamID = UUID.randomUUID();
@@ -77,6 +83,14 @@ public class StreamStartPacket extends NetworkPacket {
         this.data = data;
     }
 
+    /**
+     * Creates a new StreamStartPacket with an explicitly supplied stream UUID.
+     * Used when the same stream is being routed across multiple servers and the ID must be preserved.
+     *
+     * @param streamID     The unique stream UUID identifying this stream instance.
+     * @param streamTypeID The registered stream type ID identifying which stream definition to use.
+     * @param data         The encoded context data buffer used to initialize the stream.
+     */
     public StreamStartPacket(UUID streamID, String streamTypeID, RegistryFriendlyByteBuf data) {
         super();
         this.streamID = streamID;
@@ -85,12 +99,23 @@ public class StreamStartPacket extends NetworkPacket {
     }
 
 
+    /**
+     * @return The unique stream UUID identifying this stream instance.
+     */
     public UUID getStreamID() {
         return streamID;
     }
+
+    /**
+     * @return The registered stream type ID, used to look up the stream definition in the registry.
+     */
     public String getStreamTypeID() {
         return streamTypeID;
     }
+
+    /**
+     * @return The encoded context data buffer associated with the start request.
+     */
     public RegistryFriendlyByteBuf getData() {
         return data;
     }

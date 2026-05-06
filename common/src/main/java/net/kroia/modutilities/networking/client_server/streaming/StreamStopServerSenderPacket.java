@@ -14,6 +14,10 @@ import net.minecraft.resources.ResourceLocation;
 
 import java.util.UUID;
 
+/**
+ * This Class is used by the "streaming system".
+ * The packet is sent from the server to the client to notify that a server-sender stream has been stopped.
+ */
 public class StreamStopServerSenderPacket  extends NetworkPacket {
     public static final Type<StreamStopServerSenderPacket> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "stream_stop_server_sender_packet"));
 
@@ -52,12 +56,20 @@ public class StreamStopServerSenderPacket  extends NetworkPacket {
 
     UUID streamID;
 
+    /**
+     * Creates a new StreamStopServerSenderPacket signaling that the server-side sender has stopped the stream.
+     *
+     * @param streamID The unique stream UUID identifying the stream to stop.
+     */
     public StreamStopServerSenderPacket(UUID streamID) {
         super();
         this.streamID = streamID;
     }
 
 
+    /**
+     * @return The unique stream UUID identifying which stream is being stopped.
+     */
     public UUID getStreamID() {
         return streamID;
     }

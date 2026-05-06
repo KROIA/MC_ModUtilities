@@ -5,16 +5,42 @@ import net.kroia.modutilities.gui.elements.base.GuiElement;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Layout that arranges children in a 2D grid.
+ * <p>
+ * The grid dimensions are controlled by {@link #rows} and {@link #columns}:
+ * <ul>
+ *   <li>If both are 0 a near-square grid is computed automatically from the child count.</li>
+ *   <li>If exactly one of them is 0 the other is computed to fit all children.</li>
+ *   <li>Negative values trigger a size-based estimation from average child sizes.</li>
+ * </ul>
+ * Each cell is sized equally; children are placed within their cell using {@link #alignment}.
+ */
 public class LayoutGrid extends Layout{
 
+    /** Desired number of rows. {@code 0} = auto, negative = derive from sizes. */
     public int rows = 4;
+    /** Desired number of columns. {@code 0} = auto, negative = derive from sizes. */
     public int columns = 0; // 0 means auto
 
+    /** Alignment used to position each child inside its grid cell. */
     public GuiElement.Alignment alignment = GuiElement.Alignment.TOP;
 
+    /** Creates a grid layout with default padding/spacing and four rows. */
     public LayoutGrid(){
         super();
     }
+
+    /**
+     * Creates a grid layout with the given parameters.
+     * @param padding padding in pixels around the grid
+     * @param spacing spacing in pixels between cells
+     * @param stretchX whether children should be stretched to fill the cell horizontally
+     * @param stretchY whether children should be stretched to fill the cell vertically
+     * @param rows desired number of rows (0 = auto, negative = derive from child sizes)
+     * @param columns desired number of columns (0 = auto, negative = derive from child sizes)
+     * @param alignment how to position the child within its cell
+     */
     public LayoutGrid(int padding, int spacing, boolean stretchX, boolean stretchY, int rows, int columns, GuiElement.Alignment alignment) {
         super(padding, spacing, stretchX, stretchY);
         this.rows = rows;
@@ -22,6 +48,10 @@ public class LayoutGrid extends Layout{
         this.alignment = alignment;
     }
 
+    /**
+     * Arranges the children of {@code element} into a grid.
+     * @param element the parent whose children will be laid out
+     */
     @Override
     public void apply(GuiElement element) {
         List<GuiElement> childs = element.getChilds();

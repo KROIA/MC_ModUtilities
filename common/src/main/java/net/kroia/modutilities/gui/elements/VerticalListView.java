@@ -5,13 +5,34 @@ import net.kroia.modutilities.gui.elements.base.ListView;
 import net.kroia.modutilities.gui.geometry.Rectangle;
 import org.spongepowered.asm.mixin.SoftOverride;
 
+/**
+ * Vertically scrolling concrete subclass of {@link ListView}.
+ * <p>
+ * Children are laid out top-to-bottom and the scrollbar is rendered along the
+ * right edge. Height is treated as the scrollable axis: {@link #getSizeHintHeight()}
+ * grows with content while {@link #getSizeHintWidth()} stays at the configured
+ * element width.
+ */
 public class VerticalListView extends ListView {
 
     private final Rectangle scissorRect = new Rectangle(0, 0, 0, 0);
+
+    /**
+     * Creates an empty vertical list view at the origin with default size.
+     */
     public VerticalListView() {
         super();
         scrollContainer.setBounds(1, 1, 0, 0);
     }
+
+    /**
+     * Creates an empty vertical list view at the given position and size.
+     *
+     * @param x      the x-coordinate relative to the parent
+     * @param y      the y-coordinate relative to the parent
+     * @param width  the width in pixels (includes scrollbar area along the right)
+     * @param height the height in pixels
+     */
     public VerticalListView(int x, int y, int width, int height) {
         super(x, y, width, height);
         scrollContainer.setBounds(1,1,width - scrollbarThickness-1, height-2);

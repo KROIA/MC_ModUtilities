@@ -10,14 +10,41 @@ import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
 
+/**
+ * Renders a Minecraft player {@link Inventory} (hotbar plus the 3x9 main grid)
+ * as an interactive GUI element with click-and-drag item movement.
+ * <p>
+ * The element draws the supplied background texture and overlays
+ * 9 hotbar slots (indices 0-8) and 27 main inventory slots (indices 9-35).
+ * Slot interaction supports left/right/middle clicks, shift-click quick move,
+ * and split/merge stack handling via an internal {@code dragingStack}.
+ *
+ * @apiNote The shift-click quick-move behavior intentionally targets only the
+ *          main inventory slots (range {@code 9-35}) so items are not pushed
+ *          into armor/offhand slots that this view does not render.
+ */
 public class InventoryView extends GuiElement {
 
+    /** Edge size in pixels of a single inventory slot. */
     public static final int SLOT_SIZE = 16;
     protected final Inventory inventory;
     protected ItemStack dragingStack = ItemStack.EMPTY;
     protected final GuiTexture backgroundTexture;
     protected final Point backgroundTexturePosition = new Point(0, 0);
     protected final ArrayList<Point> slotPositions = new ArrayList<>();
+
+    /**
+     * Creates a new {@code InventoryView} backed by the given player inventory
+     * and rendered behind the supplied background texture.
+     *
+     * @param x             the x-coordinate relative to the parent
+     * @param y             the y-coordinate relative to the parent
+     * @param inventory     the player inventory whose slots are rendered and mutated
+     * @param modID         the namespace of the background texture
+     * @param texturePath   the resource path of the background texture
+     * @param textureWidth  the texture's native width (also used as the element width)
+     * @param textureHeight the texture's native height (also used as the element height)
+     */
     public InventoryView(int x, int y, Inventory inventory, String modID, String texturePath, int textureWidth, int textureHeight) {
         super(x, y, textureWidth, textureHeight);
 

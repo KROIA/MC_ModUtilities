@@ -27,9 +27,40 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
+/**
+ * Abstract base class for every widget in the GUI framework.
+ * <p>
+ * Elements form a tree rooted at a {@link Gui} instance: each element has a
+ * {@link #getParent() parent}, a {@link #getRootParent() root parent} (the
+ * top-most non-{@code Gui} element in its branch), and a {@link #getRoot()
+ * root} reference back to the owning {@link Gui}. Children are added/removed
+ * with {@link #addChild(GuiElement)} and {@link #removeChild(GuiElement)};
+ * top-level elements are added directly to a {@link Gui} via
+ * {@link Gui#addElement(GuiElement)}.
+ * <p>
+ * Elements participate in a render lifecycle ({@link #init()},
+ * {@link #render()}, {@link #renderBackground()}, {@link #renderTooltipInternal()},
+ * {@link #renderGizmos()}) and an input lifecycle (mouse click/release/drag/scroll
+ * and key/char events). Most public methods that depend on a non-null
+ * {@link Gui} root null-check it (e.g. {@link #setFocused()},
+ * {@link #isFocused()}, {@link #isMouseOver()}, {@link #getMouseX()},
+ * {@link #getMouseY()}) and degrade gracefully when the element is detached.
+ * <p>
+ * Subclasses must implement {@link #render()} and {@link #layoutChanged()},
+ * and should override the appropriate {@code mouse*} / {@code key*} hooks to
+ * react to user input.
+ *
+ * @apiNote The whole {@code gui/} package is client-only
+ *          ({@code @Environment(EnvType.CLIENT)}); GUI elements must only be
+ *          used on the client.
+ */
 @Environment(EnvType.CLIENT)
 public abstract class GuiElement {
 
+    /**
+     * Anchor positions used when aligning sub-rectangles (e.g. labels, tooltip
+     * text or child elements) within a parent rectangle.
+     */
     public enum Alignment
     {
         CENTER,
@@ -43,6 +74,11 @@ public abstract class GuiElement {
         BOTTOM_RIGHT
     }
 
+    /**
+     * Mutable bundle of settings describing the tooltip that an element shows
+     * when the mouse hovers over it. Used by {@link #setHoverTooltipData(HoverTooltipData)}
+     * and the corresponding {@code setHoverTooltip*} convenience setters.
+     */
     public static final class HoverTooltipData
     {
         public Supplier<String> textSupplier = null;
@@ -117,20 +153,43 @@ public abstract class GuiElement {
 
 
 
+    /**
+     * Creates a new element with zero size at the origin.
+     */
     public GuiElement() {
         this(0, 0, 0, 0);
     }
+
+    /**
+     * Creates a new element with the given bounds.
+     *
+     * @param x      the x position
+     * @param y      the y position
+     * @param width  the width
+     * @param height the height
+     */
     public GuiElement(int x, int y, int width, int height) {
         bounds = new Rectangle(x,y,width, height);
         rootParent = this;
     }
 
+    /**
+     * Assigns the {@link Gui} that owns this element and propagates the same
+     * root to all descendants.
+     *
+     * @param root the new owning GUI, or {@code null} to detach
+     */
     public void setRoot(Gui root) {
         this.root = root;
         for (GuiElement child : childs) {
             child.setRoot(root);
         }
     }
+
+    /**
+     * Initializes this element and all of its descendants, then triggers a
+     * layout pass so initial positions are computed.
+     */
     public void init()
     {
         for (GuiElement child : childs) {
@@ -139,28 +198,66 @@ public abstract class GuiElement {
         layoutChangedInternal();
     }
 
+    /**
+     * Assigns a {@link Layout} algorithm responsible for arranging this
+     * element's children. The new layout is applied during the next layout
+     * pass; pass {@code null} to disable layouting.
+     *
+     * @param layout the layout to use, or {@code null} to disable
+     */
     public void setLayout(Layout layout)
     {
         this.layout = layout;
     }
+
+    /**
+     * @return the layout currently applied to this element, or {@code null} if
+     *         none is set
+     */
     public Layout getLayout()
     {
         return layout;
     }
 
+    /**
+     * @return the {@link Gui} that owns this element, or {@code null} if the
+     *         element is detached
+     */
     public Gui getRoot() {
         return root;
     }
+
+    /**
+     * @return this element's direct parent, or {@code null} if it is a top-level
+     *         element
+     */
     public GuiElement getParent() {
         return parent;
     }
+
+    /**
+     * @return the topmost element in this element's branch (the one that is
+     *         directly registered with the {@link Gui})
+     */
     public GuiElement getRootParent() {
         return rootParent;
     }
 
+    /**
+     * @return the active {@link Minecraft} client instance; falls back to
+     *         {@link Minecraft#getInstance()} when this element has no root
+     */
     public Minecraft getMinecraft() {
         return root != null ? root.getMinecraft() : Minecraft.getInstance();
     }
+
+    /**
+     * Enables or disables this element. Disabled elements are skipped during
+     * rendering and input dispatch; if the element being disabled currently
+     * holds focus, focus is cleared on the root.
+     *
+     * @param visible {@code true} to enable, {@code false} to disable
+     */
     public void setEnabled(boolean visible)
     {
         isEnabled = visible;
@@ -170,17 +267,40 @@ public abstract class GuiElement {
                 root.setFocusedElement(null);
         }
     }
+
+    /**
+     * @return {@code true} if this element is enabled
+     */
     public boolean isEnabled()
     {
         return isEnabled;
     }
+
+    /**
+     * Sets whether this element checks for overlap with its parent before
+     * rendering. When enabled, elements that lie entirely outside their parent
+     * are skipped during rendering.
+     *
+     * @param checkOverlapForRendering {@code true} to enable the visibility
+     *                                  check
+     */
     public void setCheckOverlapForRendering(boolean checkOverlapForRendering)
     {
         this.checkOverlapForRendering = checkOverlapForRendering;
     }
+
+    /**
+     * @return {@code true} if the parent-overlap visibility check is enabled
+     */
     public boolean isCheckOverlapForRendering() {
         return checkOverlapForRendering;
     }
+
+    /**
+     * @return {@code true} if this element should currently be rendered
+     *         (it is enabled, and either has no parent or intersects its
+     *         parent's bounds when overlap checking is enabled)
+     */
     public boolean isVisible()
     {
         if(!isEnabled)
@@ -195,56 +315,133 @@ public abstract class GuiElement {
         }
         return true;
     }
+
+    /**
+     * Marks this element as the focused element on its root {@link Gui}. Has
+     * no effect if the element is detached.
+     */
     public void setFocused()
     {
         if (root != null) root.setFocusedElement(this);
     }
+
+    /**
+     * Removes focus from this element if it currently holds it. Has no effect
+     * if the element is detached or another element is focused.
+     */
     public void removeFocus()
     {
         if(root != null && root.getFocusedElement() == this)
             root.setFocusedElement(null);
     }
+
+    /**
+     * @return {@code true} if this element currently holds keyboard focus on
+     *         its root {@link Gui}; always {@code false} when detached
+     */
     public boolean isFocused()
     {
         return root != null && root.getFocusedElement() == this;
     }
+    /**
+     * Sets the color used to draw the debug gizmo outline.
+     *
+     * @param color the packed ARGB color
+     */
     public void setGizmoColor(int color)
     {
         gizmoColor = color;
     }
+
+    /**
+     * @return the packed ARGB color used for the debug gizmo outline
+     */
     public int getGizmoColor()
     {
         return gizmoColor;
     }
+
+    /**
+     * Sets the background color drawn behind this element when its background
+     * is enabled.
+     *
+     * @param color the packed ARGB color
+     */
     public void setBackgroundColor(int color)
     {
         backgroundColor = color;
     }
+
+    /**
+     * @return the packed ARGB background color of this element
+     */
     public int getBackgroundColor()
     {
         return backgroundColor;
     }
+
+    /**
+     * Sets the color used to draw the element's outline.
+     *
+     * @param outlineColor the packed ARGB outline color
+     */
     public void setOutlineColor(int outlineColor) {
         this.outlineColor = outlineColor;
     }
+
+    /**
+     * @return the packed ARGB outline color of this element
+     */
     public int getOutlineColor() {
         return outlineColor;
     }
+
+    /**
+     * Sets the thickness of the element's outline in GUI pixels.
+     *
+     * @param outlineThickness the new thickness
+     * @return the value that was set (mirrors the standard setter pattern of
+     *         this class)
+     */
     public int setOutlineThickness(int outlineThickness) {
         return this.outlineThickness = outlineThickness;
     }
+
+    /**
+     * @return the outline thickness in GUI pixels
+     */
     public int getOutlineThickness() {
         return outlineThickness;
     }
+
+    /**
+     * Sets whether the element draws its background fill.
+     *
+     * @param enableBackground {@code true} to draw the background
+     */
     public void setEnableBackground(boolean enableBackground) {
         this.enableBackground = enableBackground;
     }
+
+    /**
+     * @return {@code true} if the background fill is enabled
+     */
     public boolean isBackgroundEnabled() {
         return enableBackground;
     }
+
+    /**
+     * Sets whether the element draws its outline.
+     *
+     * @param enableOutline {@code true} to draw the outline
+     */
     public void setEnableOutline(boolean enableOutline) {
         this.enableOutline = enableOutline;
     }
+
+    /**
+     * @return {@code true} if the outline is enabled
+     */
     public boolean isOutlineEnabled() {
         return enableOutline;
     }
@@ -376,6 +573,10 @@ public abstract class GuiElement {
         return textFontScale;
     }
 
+    /**
+     * Hook for subclasses to render the element's background. The default
+     * implementation draws the configured background fill and outline.
+     */
     protected void renderBackground()
     {
         if(enableBackground)
@@ -383,7 +584,18 @@ public abstract class GuiElement {
         if(enableOutline)
             renderOutline();
     }
+
+    /**
+     * Renders the foreground (main visual content) of the element. Implemented
+     * by every concrete subclass; the framework calls this from
+     * {@link #renderInternal()} after applying the local transform.
+     */
     protected abstract void render();
+
+    /**
+     * Hook for subclasses to render debug gizmos. The default implementation
+     * draws the element's bounding box in {@link #gizmoColor}.
+     */
     protected void renderGizmos()
     {
         // Draw debug infos to help debug the layout and so on
@@ -398,6 +610,12 @@ public abstract class GuiElement {
         drawFrame(0,0,getWidth(),getHeight(), outlineColor,outlineThickness);
     }
 
+    /**
+     * Framework hook that runs the background render pass for this element and
+     * its descendants, applying the local transform on the pose stack. Called
+     * by the parent {@link Gui} or parent element; subclasses normally do not
+     * need to override this.
+     */
     public void renderBackgroundInternal()
     {
         if(!isVisible())
@@ -411,6 +629,11 @@ public abstract class GuiElement {
         }
         graphics.popPose();
     }
+
+    /**
+     * Framework hook that runs the foreground render pass for this element and
+     * its descendants, applying the local transform on the pose stack.
+     */
     public void renderInternal()
     {
         if(!isVisible())
@@ -425,6 +648,11 @@ public abstract class GuiElement {
         graphics.popPose();
 
     }
+    /**
+     * Framework hook that runs the tooltip render pass for this element and
+     * its descendants. Handles the hover-tooltip delay timer and flushes any
+     * tooltips queued via {@code drawTooltip*} calls.
+     */
     public void renderTooltipInternal()
     {
         if(!isVisible())
@@ -527,6 +755,10 @@ public abstract class GuiElement {
         graphics.popPose();
 
     }
+    /**
+     * Framework hook that runs the gizmo (debug overlay) render pass for this
+     * element and its descendants.
+     */
     public void renderGizmosInternal()
     {
         if(!isVisible())
@@ -571,7 +803,18 @@ public abstract class GuiElement {
         root.scissorResume();
     }
 
+    /**
+     * Subclass hook called whenever the element's bounds, position, or layout
+     * change. Subclasses use this to recompute internal sub-element placements.
+     */
     protected abstract void layoutChanged();
+
+    /**
+     * Framework hook that runs a layout pass for this element and propagates
+     * it to all descendants. Applies an attached {@link Layout} (if enabled)
+     * before invoking {@link #layoutChanged()} and updates the cached global
+     * positions of this branch.
+     */
     public void layoutChangedInternal()
     {
         if(isRelayoutingThis)
@@ -608,28 +851,67 @@ public abstract class GuiElement {
         }
     }
 
+    /**
+     * Subclass hook invoked when this element becomes the focused element on
+     * its root {@link Gui}. The default implementation does nothing.
+     */
     public void focusGained()
     {
 
     }
+
+    /**
+     * Subclass hook invoked when this element loses focus. The default
+     * implementation does nothing.
+     */
     public void focusLost()
     {
 
     }
+    /**
+     * Checks whether the given global point lies inside this element's bounds,
+     * taking parent bounds into account (i.e. a point that is inside this
+     * element but clipped by an ancestor returns {@code false}).
+     *
+     * @param globalPosX the x coordinate in global GUI space
+     * @param globalPosY the y coordinate in global GUI space
+     * @return {@code true} if the point is over this element and visible
+     *         through all ancestors
+     */
     public boolean isOver(int globalPosX, int globalPosY) {
         if(parent != null && !parent.isOver(globalPosX, globalPosY))
             return false;
         return isOverIgoreParents(globalPosX, globalPosY);
     }
+
+    /**
+     * Checks whether the given global point lies inside this element's bounds,
+     * ignoring whether ancestors might clip the point.
+     *
+     * @param globalPosX the x coordinate in global GUI space
+     * @param globalPosY the y coordinate in global GUI space
+     * @return {@code true} if the point is inside this element's local bounds
+     */
     public boolean isOverIgoreParents(int globalPosX, int globalPosY) {
         return (globalPosX - globalPositon.x) >= 0 && (globalPosX - globalPositon.x) < bounds.width &&
                 (globalPosY - globalPositon.y) >= 0 && (globalPosY - globalPositon.y) < bounds.height;
     }
 
+    /**
+     * @return {@code true} if the mouse is currently over this element (and not
+     *         clipped by an ancestor); always {@code false} when the element is
+     *         detached
+     */
     public boolean isMouseOver() {
         if (root == null) return false;
         return isOver(root.getMousePosX(), root.getMousePosY());
     }
+
+    /**
+     * @return {@code true} if the mouse is over this element's local bounds,
+     *         ignoring ancestor clipping; always {@code false} when the element
+     *         is detached
+     */
     public boolean isMouseOverIgnoreParents() {
         if (root == null) return false;
         return isOverIgoreParents(root.getMousePosX(), root.getMousePosY());
@@ -743,18 +1025,36 @@ public abstract class GuiElement {
     {
         return GLFW.glfwGetKey(getRoot().getWindowHandle(), GLFW.GLFW_KEY_LEFT_ALT) == GLFW.GLFW_PRESS;
     }
+    /**
+     * Polls the OS for the state of a specific mouse button.
+     *
+     * @param button the GLFW mouse button code
+     * @return {@code true} if the button is currently held
+     */
     public boolean isMouseButtonDown(int button)
     {
         return GLFW.glfwGetMouseButton(getRoot().getWindowHandle(), button) == GLFW.GLFW_PRESS;
     }
+
+    /**
+     * @return {@code true} if the left mouse button is currently held
+     */
     public boolean isLeftMouseButtonDown()
     {
         return GLFW.glfwGetMouseButton(getRoot().getWindowHandle(), GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
     }
+
+    /**
+     * @return {@code true} if the right mouse button is currently held
+     */
     public boolean isRightMouseButtonDown()
     {
         return GLFW.glfwGetMouseButton(getRoot().getWindowHandle(), GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS;
     }
+
+    /**
+     * @return {@code true} if the middle mouse button is currently held
+     */
     public boolean isMiddleMouseButtonDown()
     {
         return GLFW.glfwGetMouseButton(getRoot().getWindowHandle(), GLFW.GLFW_MOUSE_BUTTON_MIDDLE) == GLFW.GLFW_PRESS;
@@ -848,9 +1148,18 @@ public abstract class GuiElement {
 
 
 
+    /**
+     * @return the {@link Graphics} wrapper of this element's root
+     * @throws NullPointerException if this element has no root
+     */
     public Graphics getGraphics() {
         return root.getGraphics();
     }
+
+    /**
+     * @return the active {@link PoseStack} of this element's root
+     * @throws NullPointerException if this element has no root
+     */
     public PoseStack getPoseStack()
     {
         return root.getPoseStack();
@@ -883,50 +1192,108 @@ public abstract class GuiElement {
     {
         root.rotateAround(quaternion, x, y, z);
     }
+    /**
+     * @return the {@link Gui} root of this element, or {@code null} if detached
+     */
     public Gui getGui()
     {
         return root;
     }
+
+    /**
+     * @return the Minecraft {@link Screen} that ultimately hosts this element,
+     *         or {@code null} if the element is detached
+     */
     public Screen getScreen()
     {
         if(root == null)
             return null;
         return root.getScreen();
     }
+
+    /**
+     * @return the default Minecraft font from the active client
+     */
     public Font getFont()
     {
         return Gui.getFont();
     }
+
+    /**
+     * @return the mouse x position relative to this element's local origin;
+     *         returns {@code 0} when the element is detached
+     */
     public int getMouseX() {
         return root != null ? root.getMousePosX()-globalPositon.x : 0;
     }
+
+    /**
+     * @return the mouse y position relative to this element's local origin;
+     *         returns {@code 0} when the element is detached
+     */
     public int getMouseY() {
         return root != null ? root.getMousePosY()-globalPositon.y : 0;
     }
+
+    /**
+     * @return the mouse position relative to this element's local origin
+     */
     public Point getMousePos()
     {
         return new Point(getMouseX(), getMouseY());
     }
+
+    /**
+     * @return the mouse x position in global GUI coordinates; returns {@code 0}
+     *         when the element is detached
+     */
     public int getMouseXGlobal() {
         return root != null ? root.getMousePosX() : 0;
     }
+
+    /**
+     * @return the mouse y position in global GUI coordinates; returns {@code 0}
+     *         when the element is detached
+     */
     public int getMouseYGlobal() {
         return root != null ? root.getMousePosY() : 0;
     }
+
+    /**
+     * @return the mouse position in global GUI coordinates
+     */
     public Point getMousePosGlobal()
     {
         return new Point(getMouseXGlobal(), getMouseYGlobal());
     }
 
+    /**
+     * Moves the OS-level cursor to the given position relative to this
+     * element's local origin.
+     *
+     * @param x the local x position
+     * @param y the local y position
+     */
     public void setMousePos(int x, int y)
     {
         root.moveMouseToPos(x + globalPositon.x, globalPositon.y + y);
     }
+
+    /**
+     * Moves the OS-level cursor to the given position in global GUI
+     * coordinates.
+     *
+     * @param x the global x position
+     * @param y the global y position
+     */
     public void setMousePosGlobal(int x, int y)
     {
         root.moveMouseToPos(x, y);
     }
 
+    /**
+     * @return the partial tick value of the current frame from the root
+     */
     public float getPartialTick() {
         return root.getPartialTick();
     }
@@ -940,6 +1307,13 @@ public abstract class GuiElement {
             child.setParent(this, rootParent);
         }
     }
+    /**
+     * Adds a child element to this element. If the child already has a parent,
+     * it is first detached from that parent. The child's root and parent
+     * references are updated, and a layout pass is triggered.
+     *
+     * @param el the child element to add
+     */
     public void addChild(GuiElement el)
     {
         if(el.getParent() != null)
@@ -951,6 +1325,13 @@ public abstract class GuiElement {
         childs.add(el);
         layoutChangedInternal();
     }
+
+    /**
+     * Removes a child element from this element, clearing its parent and root
+     * references and triggering a layout pass.
+     *
+     * @param el the child element to remove
+     */
     public void removeChild(GuiElement el)
     {
         el.setRoot(null);
@@ -958,6 +1339,11 @@ public abstract class GuiElement {
         childs.remove(el);
         layoutChangedInternal();
     }
+
+    /**
+     * Removes every child element, clearing their parent and root references
+     * and triggering a layout pass.
+     */
     public void removeChilds()
     {
         for(GuiElement child : childs)
@@ -968,6 +1354,10 @@ public abstract class GuiElement {
         childs.clear();
         layoutChangedInternal();
     }
+
+    /**
+     * @return the live list of children for this element
+     */
     public List<GuiElement> getChilds()
     {
         return childs;
@@ -975,73 +1365,161 @@ public abstract class GuiElement {
 
 
 
+    /**
+     * @return this element's local x position
+     */
     public int getX() {
         return bounds.x;
     }
+
+    /**
+     * @return this element's local y position
+     */
     public int getY() {
         return bounds.y;
     }
+
+    /**
+     * @return this element's local z position
+     */
     public float getZ() {
         return zPos;
     }
 
+    /**
+     * @return this element's local (x, y) position
+     */
     public Point getPosition()
     {
         return new Point(bounds.x, bounds.y);
     }
+
+    /**
+     * @return this element's width in GUI pixels
+     */
     public int getWidth() {
         return bounds.width;
     }
+
+    /**
+     * @return this element's height in GUI pixels
+     */
     public int getHeight() {
         return bounds.height;
     }
+
+    /**
+     * @return this element's size as a {@link Point} (width, height)
+     */
     public Point getSize()
     {
         return new Point(bounds.width, bounds.height);
     }
+
+    /**
+     * Sets the element's local x position and triggers a layout pass.
+     *
+     * @param x the new x position
+     */
     public void setX(int x) {
         bounds.x = x;
         layoutChangedInternal();
     }
+
+    /**
+     * Sets the element's local y position and triggers a layout pass.
+     *
+     * @param y the new y position
+     */
     public void setY(int y) {
         bounds.y = y;
         layoutChangedInternal();
     }
+
+    /**
+     * Sets the element's local z position. Does not trigger a layout pass.
+     *
+     * @param z the new z position
+     */
     public void setZ(float z) {
         zPos = z;
     }
+
+    /**
+     * Sets the element's local position and triggers a layout pass.
+     *
+     * @param x the new x position
+     * @param y the new y position
+     */
     public void setPosition(int x, int y)
     {
         bounds.x = x;
         bounds.y = y;
         layoutChangedInternal();
     }
+
+    /**
+     * Sets the element's local position and triggers a layout pass.
+     *
+     * @param pos the new position
+     */
     public void setPosition(Point pos)
     {
         bounds.x = pos.x;
         bounds.y = pos.y;
         layoutChangedInternal();
     }
+
+    /**
+     * Sets the element's width and triggers a layout pass.
+     *
+     * @param width the new width in GUI pixels
+     */
     public void setWidth(int width) {
         bounds.width = width;
         layoutChangedInternal();
     }
+
+    /**
+     * Sets the element's height and triggers a layout pass.
+     *
+     * @param height the new height in GUI pixels
+     */
     public void setHeight(int height) {
         bounds.height = height;
         layoutChangedInternal();
     }
+
+    /**
+     * Sets the element's size and triggers a layout pass.
+     *
+     * @param width  the new width in GUI pixels
+     * @param height the new height in GUI pixels
+     */
     public void setSize(int width, int height)
     {
         bounds.width = width;
         bounds.height = height;
         layoutChangedInternal();
     }
+
+    /**
+     * Sets the element's size and triggers a layout pass.
+     *
+     * @param size the new size as a {@link Point} (x = width, y = height)
+     */
     public void setSize(Point size)
     {
         bounds.width = size.x;
         bounds.height = size.y;
         layoutChangedInternal();
     }
+
+    /**
+     * Sets the element's local bounds and triggers a layout pass.
+     *
+     * @param rect the new bounds
+     */
     public void setBounds(Rectangle rect)
     {
         bounds.x = rect.x;
@@ -1050,6 +1528,15 @@ public abstract class GuiElement {
         bounds.height = rect.height;
         layoutChangedInternal();
     }
+
+    /**
+     * Sets the element's local bounds and triggers a layout pass.
+     *
+     * @param x      the new x position
+     * @param y      the new y position
+     * @param width  the new width in GUI pixels
+     * @param height the new height in GUI pixels
+     */
     public void setBounds(int x, int y, int width, int height)
     {
         bounds.x = x;
@@ -1058,27 +1545,53 @@ public abstract class GuiElement {
         bounds.height = height;
         layoutChangedInternal();
     }
+
+    /**
+     * @return the y coordinate of the top edge of this element (alias for
+     *         {@link #getY()})
+     */
     public int getTop()
     {
         return bounds.y;
     }
+
+    /**
+     * @return the y coordinate of the bottom edge of this element
+     */
     public int getBottom()
     {
         return bounds.y+bounds.height;
     }
+
+    /**
+     * @return the x coordinate of the left edge of this element (alias for
+     *         {@link #getX()})
+     */
     public int getLeft()
     {
         return bounds.x;
     }
+
+    /**
+     * @return the x coordinate of the right edge of this element
+     */
     public int getRight()
     {
         return bounds.x+bounds.width;
     }
 
+    /**
+     * @return the live local bounds rectangle of this element
+     */
     public Rectangle getBounds()
     {
         return bounds;
     }
+
+    /**
+     * @return the live global position of this element (top-left corner in
+     *         global GUI coordinates)
+     */
     public Point getGlobalPositon()
     {
         return globalPositon;
@@ -1101,15 +1614,37 @@ public abstract class GuiElement {
         return frame;
     }
 
+    /**
+     * Returns the rendered width of a single line of text using this element's
+     * current text font scale.
+     *
+     * @param text the text to measure
+     * @return the width in GUI pixels
+     */
     public int getTextWidth(String text)
     {
         return (int)((float)getFont().width(text) * textFontScale);
     }
+
+    /**
+     * @return the line height of the default font scaled by this element's
+     *         text font scale
+     */
     public int getTextHeight()
     {
         return (int)((float)getFont().lineHeight * textFontScale);
     }
 
+    /**
+     * Aligns this element's bounds within the given rectangle, preserving its
+     * current size.
+     *
+     * @param alignment the desired alignment within the rectangle
+     * @param x         the x position of the alignment rectangle
+     * @param y         the y position of the alignment rectangle
+     * @param width     the width of the alignment rectangle
+     * @param height    the height of the alignment rectangle
+     */
     public void applyAlignment(Alignment alignment, int x, int y, int width, int height) {
         var b = getBounds();
         Rectangle bounds = getAlignedBounds(b.x, b.y ,b.width ,b.height , alignment, x, y, width, height);
@@ -1122,6 +1657,15 @@ public abstract class GuiElement {
      * that is the same size as rectangle1 but moved inside rectangle2 according to the specified alignment.
      * It moves the rectangle1 inside rectangle2 so that it is aligned according to the specified alignment.
      *
+     * @param x1        the x position of the rectangle being aligned
+     * @param y1        the y position of the rectangle being aligned
+     * @param width1    the width of the rectangle being aligned
+     * @param height1   the height of the rectangle being aligned
+     * @param alignment the alignment to apply within the second rectangle
+     * @param x2        the x position of the alignment rectangle
+     * @param y2        the y position of the alignment rectangle
+     * @param width2    the width of the alignment rectangle
+     * @param height2   the height of the alignment rectangle
      * @return The new bounds of the rectangle, aligned according to the specified alignment.
      */
     public static Rectangle getAlignedBounds(int x1, int y1, int width1, int height1, Alignment alignment, int x2, int y2, int width2, int height2) {

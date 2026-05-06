@@ -4,13 +4,34 @@ import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.elements.base.ListView;
 import net.kroia.modutilities.gui.geometry.Rectangle;
 
+/**
+ * Horizontally scrolling concrete subclass of {@link ListView}.
+ * <p>
+ * Children are laid out left-to-right and the scrollbar is rendered along the
+ * bottom edge. Width is treated as the scrollable axis: {@link #getSizeHintWidth()}
+ * grows with content while {@link #getSizeHintHeight()} stays at the configured
+ * element height.
+ */
 public class HorizontalListView extends ListView {
 
     private final Rectangle scissorRect = new Rectangle(0, 0, 0, 0);
+
+    /**
+     * Creates an empty horizontal list view at the origin with default size.
+     */
     public HorizontalListView() {
         super();
         scrollContainer.setBounds(1, 1, 0, 0);
     }
+
+    /**
+     * Creates an empty horizontal list view at the given position and size.
+     *
+     * @param x      the x-coordinate relative to the parent
+     * @param y      the y-coordinate relative to the parent
+     * @param width  the width in pixels
+     * @param height the height in pixels (includes scrollbar area along the bottom)
+     */
     public HorizontalListView(int x, int y, int width, int height) {
         super(x, y, width, height);
         scrollContainer.setBounds(1,1, width, height- scrollbarThickness-1);

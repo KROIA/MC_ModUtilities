@@ -18,11 +18,18 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * The RequestManager class executes and keeps track of requests sent between the client and server.
- * A request will stay in a list until the response is received.
+ * The RequestManager executes and tracks requests sent between client and server (and, in
+ * a multi-server topology, between master and slave servers). Pending requests are stored
+ * in three thread-safe maps keyed by request UUID:
+ * <ul>
+ *     <li>{@code pendingServerRequests} — requests sent client to server</li>
+ *     <li>{@code pendingServerServerRequests} — requests sent between master and slave servers</li>
+ *     <li>{@code pendingClientRequests} — requests sent server to client (currently unused)</li>
+ * </ul>
+ * This class needs access to the {@link NetworkPacketManager} from this utility mod to send requests.
  *
- * This class needs access to the NetworkManager from this utility mod to send requests.
- *
+ * @apiNote Callers should periodically invoke {@link #cleanupExpiredRequests(long)} to free
+ *          pending requests whose responses never arrive (otherwise the maps would grow without bound).
  */
 public class RequestManager {
 
@@ -48,7 +55,7 @@ public class RequestManager {
     }
 
     /**
-     * Gets the NetworkManager used by this RequestManager.
+     * @return The {@link NetworkPacketManager} used by this RequestManager to send packets.
      */
     public NetworkPacketManager getNetworkManager() {
         return networkManager;
@@ -56,13 +63,15 @@ public class RequestManager {
 
 
     /**
-     * Sends a request to the server and registers a response handler.
-     * The request will be sent using the NetworkManager set in this RequestManager.
+     * Sends a request to the server and tracks the pending response.
+     * The request is encoded using the configured {@link NetworkPacketManager} (client-side buffer).
      *
      * @param request The request to send.
-     * @param input The input data for the request delivered to the receiver.
-     * @param <IN> The type of input data.
-     * @param <OUT> The type of output data provided by the provider
+     * @param input   The input data for the request delivered to the receiver.
+     * @param <IN>    The type of input data.
+     * @param <OUT>   The type of output data provided by the responder.
+     * @return A future that completes with the response data, or with a completed-null future if
+     *         the client cannot allocate a buffer (e.g. not in an active world).
      */
     public <IN, OUT> CompletableFuture<OUT> sendRequestToServer(@NotNull GenericRequest<IN, OUT> request,
                                                                 IN input) {
@@ -86,13 +95,15 @@ public class RequestManager {
     }
 
     /**
-     * Sends a request to the master server and registers a response handler.
-     * The request will be sent using the NetworkManager set in this RequestManager.
+     * Sends a request from a slave server to the master server and tracks the pending response.
      *
      * @param request The request to send.
-     * @param input The input data for the request delivered to the receiver.
-     * @param <IN> The type of input data.
-     * @param <OUT> The type of output data provided by the provider
+     * @param input   The input data for the request delivered to the receiver.
+     * @param <IN>    The type of input data.
+     * @param <OUT>   The type of output data provided by the responder.
+     * @return A future that completes with the response data, or with a completed-null future if
+     *         a server-side buffer cannot be allocated.
+     * @apiNote Intended to be called on the slave server only.
      */
     public <IN, OUT> CompletableFuture<OUT> sendRequestToMaster(@NotNull GenericRequest<IN, OUT> request,
                                                                 IN input) {
@@ -114,6 +125,18 @@ public class RequestManager {
         MultiServerManager.sendToMaster(requestPacket);
         return requestData.responseFuture;
     }
+    /**
+     * Sends a request from the master server to a specific slave server and tracks the pending response.
+     *
+     * @param request The request to send.
+     * @param slaveID The identifier of the target slave server.
+     * @param input   The input data for the request delivered to the receiver.
+     * @param <IN>    The type of input data.
+     * @param <OUT>   The type of output data provided by the responder.
+     * @return A future that completes with the response data, or with a completed-null future if
+     *         a server-side buffer cannot be allocated.
+     * @apiNote Intended to be called on the master server only.
+     */
     public <IN, OUT> CompletableFuture<OUT> sendRequestToSlave(@NotNull GenericRequest<IN, OUT> request,
                                                                String slaveID,
                                                                IN input) {
@@ -274,6 +297,15 @@ public class RequestManager {
     }
 
 
+    /**
+     * Processes a response packet received on the master server.
+     * If the response matches a pending master-originated request, its future is completed.
+     * Otherwise the response is forwarded to the originating client (resolved via
+     * {@code context.senderPlayerUUID}).
+     *
+     * @param responsePacket The response packet.
+     * @param context        The forwarding context with origin sender information.
+     */
     public void processResponseOnMaster(GenericResponsePacket responsePacket, ForwardPacketContext context)
     {
         UUID requestId = responsePacket.getRequestID();
@@ -303,6 +335,15 @@ public class RequestManager {
         else
             requestData.processResponse(responsePacket.getData());
     }
+    /**
+     * Processes a response packet received on a slave server.
+     * If the response matches a pending slave-originated request, its future is completed.
+     * Otherwise the response is forwarded to the originating client (resolved via
+     * {@code context.senderPlayerUUID}).
+     *
+     * @param responsePacket The response packet.
+     * @param context        The forwarding context with origin sender information.
+     */
     public void processResponseOnSlave(GenericResponsePacket responsePacket, ForwardPacketContext context)
     {
         UUID requestId = responsePacket.getRequestID();

@@ -8,15 +8,20 @@ import net.minecraft.server.level.ServerPlayer;
 import java.util.function.BiConsumer;
 
 /**
- * This is an SRRS internal class and is not used for public API.
- * @param <IN> the type of input data for the request
- * @param <OUT> the type of output data for the request
+ * Internal holder for a server-to-client request awaiting a response. Not part of the public API.
+ *
+ * @param <IN>  The type of input data for the request.
+ * @param <OUT> The type of output data for the request.
+ * @apiNote {@code creationTimeMs} is consulted by
+ *          {@link net.kroia.modutilities.networking.client_server.arrs.RequestManager#cleanupExpiredRequests(long)}
+ *          to expire abandoned entries.
  */
 public class ClientRequestHolder<IN, OUT>
 {
     public BiConsumer<OUT, ServerPlayer> responseHandler;
     public GenericRequestPacket requestPacket;
     public GenericRequest<IN, OUT> request;
+    /** Wall-clock time (ms) at which this holder was created; used for timeout tracking. */
     public final long creationTimeMs = System.currentTimeMillis();
     public void processResponse(RegistryFriendlyByteBuf buf, ServerPlayer player)
     {
