@@ -5,6 +5,7 @@ import com.mojang.brigadier.CommandDispatcher;
 import dev.architectury.event.events.common.CommandRegistrationEvent;
 import net.kroia.modutilities.JsonUtilities;
 import net.kroia.modutilities.ModUtilitiesMod;
+import net.kroia.modutilities.UtilitiesPlatform;
 import net.kroia.modutilities.networking.NetworkPacketManager;
 import net.kroia.modutilities.networking.client_server.streaming.StreamSystem;
 import net.kroia.modutilities.setting.parser.ItemStackJsonParser;
@@ -107,7 +108,7 @@ public class Sandbox {
                                             String jsonContent = Files.readString(file.toPath());
                                             JsonElement jsonElement = JsonUtilities.fromString(jsonContent);
                                             ItemStack itemStack = parser.fromJson(jsonElement);
-                                            player.setItemInHand(player.getUsedItemHand(), itemStack);
+                                            player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, itemStack);
                                             player.sendSystemMessage(Component.literal("Loaded item to hand: " + itemStack.toString()));
                                         } catch (Exception e) {
                                             ModUtilitiesMod.LOGGER.error("Failed to load item from JSON file", e);
@@ -210,7 +211,9 @@ public class Sandbox {
     {
         if (TestRegistry.ENABLE_TESTS) {
             TestRegistry.register(new EventTests());
-            TestRegistry.register(new GuiLogicTests());
+            if (UtilitiesPlatform.isClient()) {
+                TestRegistry.register(new GuiLogicTests());
+            }
             TestRegistry.register(new PersistenceTests());
             TestRegistry.register(new SettingsTests());
             TestRegistry.register(new NetworkingTests());

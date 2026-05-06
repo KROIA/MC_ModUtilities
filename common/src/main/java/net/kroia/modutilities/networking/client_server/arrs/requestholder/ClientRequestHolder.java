@@ -17,6 +17,7 @@ public class ClientRequestHolder<IN, OUT>
     public BiConsumer<OUT, ServerPlayer> responseHandler;
     public GenericRequestPacket requestPacket;
     public GenericRequest<IN, OUT> request;
+    public final long creationTimeMs = System.currentTimeMillis();
     public void processResponse(RegistryFriendlyByteBuf buf, ServerPlayer player)
     {
         // Decode the response using the request's decodeOutput method

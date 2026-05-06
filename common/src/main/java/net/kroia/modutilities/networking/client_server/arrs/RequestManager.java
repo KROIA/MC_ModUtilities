@@ -203,6 +203,58 @@ public class RequestManager {
         clearPendingClientRequests();
     }
 
+    /**
+     * Default timeout for pending requests in milliseconds (30 seconds).
+     */
+    public static final long DEFAULT_TIMEOUT_MS = 30_000L;
+
+    /**
+     * Removes pending requests older than the given age. Pending server requests have their
+     * response futures completed exceptionally with a {@link java.util.concurrent.TimeoutException}.
+     * Callers should invoke this periodically (e.g. on a server tick) to prevent unbounded
+     * memory growth when responses never arrive.
+     *
+     * @param maxAgeMs maximum age of a pending request in milliseconds
+     * @return total number of expired requests that were removed
+     */
+    public int cleanupExpiredRequests(long maxAgeMs) {
+        long cutoff = System.currentTimeMillis() - maxAgeMs;
+        int removed = 0;
+        var serverIt = pendingServerRequests.entrySet().iterator();
+        while (serverIt.hasNext()) {
+            var entry = serverIt.next();
+            if (entry.getValue().creationTimeMs < cutoff) {
+                if (entry.getValue().responseFuture != null && !entry.getValue().responseFuture.isDone()) {
+                    entry.getValue().responseFuture.completeExceptionally(
+                        new java.util.concurrent.TimeoutException("Request timed out: " + entry.getKey()));
+                }
+                serverIt.remove();
+                removed++;
+            }
+        }
+        var serverServerIt = pendingServerServerRequests.entrySet().iterator();
+        while (serverServerIt.hasNext()) {
+            var entry = serverServerIt.next();
+            if (entry.getValue().creationTimeMs < cutoff) {
+                if (entry.getValue().responseFuture != null && !entry.getValue().responseFuture.isDone()) {
+                    entry.getValue().responseFuture.completeExceptionally(
+                        new java.util.concurrent.TimeoutException("Request timed out: " + entry.getKey()));
+                }
+                serverServerIt.remove();
+                removed++;
+            }
+        }
+        var clientIt = pendingClientRequests.entrySet().iterator();
+        while (clientIt.hasNext()) {
+            var entry = clientIt.next();
+            if (entry.getValue().creationTimeMs < cutoff) {
+                clientIt.remove();
+                removed++;
+            }
+        }
+        return removed;
+    }
+
 
     /**
      * Processes a response packet received on the client side.

@@ -240,36 +240,55 @@ public abstract class GenericRequest<IN, OUT>
     public CompletableFuture<RegistryFriendlyByteBuf> decodeHandleEncodeOnServer(RegistryFriendlyByteBuf inputBuf, RegistryFriendlyByteBuf outputBuf, ServerPlayer sender)
     {
         IN input = decodeInput(inputBuf);
-        CompletableFuture<OUT> output = handleOnServer(input, sender);
         CompletableFuture<RegistryFriendlyByteBuf> byteBufFut = new CompletableFuture<>();
-        output.thenAccept(responseData -> {
-            encodeOutput(outputBuf, responseData);
-            byteBufFut.complete(outputBuf);
-        });
+        try {
+            CompletableFuture<OUT> output = handleOnServer(input, sender);
+            output.whenComplete((responseData, ex) -> completeOrFail(byteBufFut, outputBuf, responseData, ex));
+        } catch (Throwable t) {
+            byteBufFut.completeExceptionally(t);
+        }
         return byteBufFut;
     }
 
     public CompletableFuture<RegistryFriendlyByteBuf> decodeHandleEncodeOnMasterServer(RegistryFriendlyByteBuf inputBuf, RegistryFriendlyByteBuf outputBuf, String slaveID, @Nullable UUID playerSender)
     {
         IN input = decodeInput(inputBuf);
-        CompletableFuture<OUT> output = handleOnMasterServer(input, slaveID, playerSender);
         CompletableFuture<RegistryFriendlyByteBuf> byteBufFut = new CompletableFuture<>();
-        output.thenAccept(responseData -> {
-            encodeOutput(outputBuf, responseData);
-            byteBufFut.complete(outputBuf);
-        });
+        try {
+            CompletableFuture<OUT> output = handleOnMasterServer(input, slaveID, playerSender);
+            output.whenComplete((responseData, ex) -> completeOrFail(byteBufFut, outputBuf, responseData, ex));
+        } catch (Throwable t) {
+            byteBufFut.completeExceptionally(t);
+        }
         return byteBufFut;
     }
     public CompletableFuture<RegistryFriendlyByteBuf> decodeHandleEncodeOnSlaveServer(RegistryFriendlyByteBuf inputBuf, RegistryFriendlyByteBuf outputBuf, @Nullable UUID playerSender)
     {
         IN input = decodeInput(inputBuf);
-        CompletableFuture<OUT> output = handleOnSlaveServer(input, playerSender);
         CompletableFuture<RegistryFriendlyByteBuf> byteBufFut = new CompletableFuture<>();
-        output.thenAccept(responseData -> {
+        try {
+            CompletableFuture<OUT> output = handleOnSlaveServer(input, playerSender);
+            output.whenComplete((responseData, ex) -> completeOrFail(byteBufFut, outputBuf, responseData, ex));
+        } catch (Throwable t) {
+            byteBufFut.completeExceptionally(t);
+        }
+        return byteBufFut;
+    }
+
+    private void completeOrFail(CompletableFuture<RegistryFriendlyByteBuf> byteBufFut,
+                                RegistryFriendlyByteBuf outputBuf,
+                                OUT responseData,
+                                Throwable ex) {
+        if (ex != null) {
+            byteBufFut.completeExceptionally(ex);
+            return;
+        }
+        try {
             encodeOutput(outputBuf, responseData);
             byteBufFut.complete(outputBuf);
-        });
-        return byteBufFut;
+        } catch (Throwable t) {
+            byteBufFut.completeExceptionally(t);
+        }
     }
 
     /**

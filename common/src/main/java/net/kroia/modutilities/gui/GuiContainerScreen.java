@@ -90,6 +90,7 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
         super.init();
         gui.init();
         updateLayout(gui);
+        isInitialized = true;
     }
     @Override
     protected void rebuildWidgets() {

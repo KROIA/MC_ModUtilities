@@ -1,5 +1,6 @@
 package net.kroia.modutilities.testing.tests;
 
+import net.kroia.modutilities.gui.elements.TabElement;
 import net.kroia.modutilities.gui.elements.TextBox;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Point;
@@ -151,22 +152,13 @@ public class GuiLogicTests extends TestSuite {
     }
 
     private TestResult testLayoutGridExtraRowBug() {
-        // Issue #25: When childCount divides evenly, the formula adds an extra row/column.
-        // For columns=3, rows=0, childCount=6:
-        // rowsInternal = ceil(6/3) + (6%3==0 ? 0 : 1) = 2 + 0 = 2
-        // That is correct. But for childCount=5, columns=3:
-        // rowsInternal = ceil(5/3) + (5%3==0 ? 0 : 1) = 2 + 1 = 3
-        // But only ceil(5/3) = 2 rows are needed. The +1 creates an extra row.
+        // Issue #25 (fixed): formula now correctly uses Math.ceil() without redundant +1.
+        // For childCount=5, columns=3: ceil(5/3) = 2 rows (correct).
         int childCount = 5;
         int columnsInternal = 3;
-        int rowsInternal = (int) Math.ceil((double) childCount / columnsInternal)
-                + (childCount % columnsInternal == 0 ? 0 : 1);
-        int expectedCorrect = (int) Math.ceil((double) childCount / columnsInternal); // 2
-
-        // The current formula gives 3, but the correct value is 2
-        return assertTrue("Issue #25: 5 children in 3 columns computes " + rowsInternal
-                        + " rows but only " + expectedCorrect + " needed",
-                rowsInternal > expectedCorrect);
+        int rowsInternal = (int) Math.ceil((double) childCount / columnsInternal);
+        return assertEquals("Issue #25 fixed: 5 children in 3 columns should need 2 rows",
+                2, rowsInternal);
     }
 
     // ========================================================================
@@ -174,15 +166,10 @@ public class GuiLogicTests extends TestSuite {
     // ========================================================================
 
     private TestResult testTabSelectOutlineThicknessBug() {
-        // The code uses Math.min(0, thickness) which always returns <= 0
-        // It should be Math.max(0, thickness) to clamp to non-negative
-        int thickness = 5;
-        int bugResult = Math.min(0, thickness); // Bug: always <= 0
-        int correctResult = Math.max(0, thickness); // Correct: clamps to >= 0
-
-        return assertTrue("Issue #4: Math.min(0,5) returns " + bugResult
-                        + " but Math.max(0,5) should return " + correctResult,
-                bugResult != correctResult && bugResult <= 0);
+        TabElement tabElement = new TabElement();
+        tabElement.setSelectOutlineThickness(5);
+        int result = tabElement.getSelectOutlineThickness();
+        return assertEquals("Issue #4 fixed: setSelectOutlineThickness(5) should store 5", 5, result);
     }
 
     // ========================================================================

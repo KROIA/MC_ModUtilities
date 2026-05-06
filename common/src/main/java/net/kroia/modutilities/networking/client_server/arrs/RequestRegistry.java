@@ -20,7 +20,7 @@ public class RequestRegistry
         GenericRequest<IN, OUT> request;
     }
 
-    private final Map<String, RegistryData<?,?>> registry = new java.util.HashMap<>();
+    private final Map<String, RegistryData<?,?>> registry = new java.util.concurrent.ConcurrentHashMap<>();
 
     /**
      * Registers a Request in the registry.

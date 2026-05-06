@@ -57,9 +57,10 @@ public final class GenericRequestPacket extends NetworkPacket
             });
         }
         catch (Exception e) {
-            // Handle any exceptions that may occur during decoding/encoding
             ModUtilitiesMod.LOGGER.error("Error handling GenericRequestPacket: " + e.getMessage(), e);
-
+        }
+        finally {
+            if (data != null && data.refCnt() > 0) data.release();
         }
     }
     @Override
@@ -77,18 +78,18 @@ public final class GenericRequestPacket extends NetworkPacket
         if (request == null) {
             return; // No factory found for this request type
         }
-        //ModUtilitiesMod.LOGGER.info("GenericRequestPacket.handleOnMaster() creating response...");
         RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
         try {
             CompletableFuture<RegistryFriendlyByteBuf> fut = request.decodeHandleEncodeOnMasterServer(data, responseData, context.senderServerID, context.senderPlayerUUID);
             fut.thenAccept(responseBuf -> {
-                //ModUtilitiesMod.LOGGER.info("GenericRequestPacket.handleOnMaster() future complete, sending packet back");
                 sendResponseToSlave(context.senderServerID, context.senderPlayerUUID, new GenericResponsePacket(requestID, requestTypeID, responseBuf));
             });
         }
         catch (Exception e) {
-            // Handle any exceptions that may occur during decoding/encoding
             ModUtilitiesMod.LOGGER.error("Error handling GenericRequestPacket: " + e.getMessage(), e);
+        }
+        finally {
+            if (data != null && data.refCnt() > 0) data.release();
         }
     }
     @Override
@@ -98,18 +99,18 @@ public final class GenericRequestPacket extends NetworkPacket
         if (request == null) {
             return; // No factory found for this request type
         }
-        //ModUtilitiesMod.LOGGER.info("GenericRequestPacket.handleOnMaster() creating response...");
         RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
         try {
             CompletableFuture<RegistryFriendlyByteBuf> fut = request.decodeHandleEncodeOnSlaveServer(data, responseData, context.senderPlayerUUID);
             fut.thenAccept(responseBuf -> {
-                //ModUtilitiesMod.LOGGER.info("GenericRequestPacket.handleOnMaster() future complete, sending packet back");
                 sendResponseToMaster(context.senderPlayerUUID, new GenericResponsePacket(requestID, requestTypeID, responseBuf));
             });
         }
         catch (Exception e) {
-            // Handle any exceptions that may occur during decoding/encoding
             ModUtilitiesMod.LOGGER.error("Error handling GenericRequestPacket: " + e.getMessage(), e);
+        }
+        finally {
+            if (data != null && data.refCnt() > 0) data.release();
         }
     }
 

@@ -111,26 +111,18 @@ public class PersistenceTests extends TestSuite {
     }
 
     /**
-     * Issue #27: overlapsWith uses raw endTime field instead of getEndTime().
-     * When endTime is -1 (open-ended), the raw field value -1 is used in the
-     * comparison (this.endTime > other.getStartTime()), which evaluates to false
-     * even though the interval is still active and should overlap.
+     * Issue #27 (fixed): overlapsWith now uses getEndTime() instead of raw endTime field.
+     * An open-ended interval (endTime = -1) resolves to System.currentTimeMillis()
+     * and correctly reports overlap.
      */
     private TestResult testTimeIntervalOverlapOpenEndedBug() {
-        // Create an open-ended interval (endTime = -1) meaning "still active"
         DataArchiveChunk.TimeInterval openEnded = new DataArchiveChunk.TimeInterval(100L, -1L);
         DataArchiveChunk.TimeInterval other = new DataArchiveChunk.TimeInterval(200L, 300L);
 
-        // The bug: overlapsWith checks (this.endTime > other.getStartTime())
-        // With endTime=-1, this becomes (-1 > 200) which is false.
-        // The correct behavior would use getEndTime() which resolves -1 to System.currentTimeMillis().
         boolean result = openEnded.overlapsWith(other);
 
-        // Document the bug: with endTime=-1, the overlap check incorrectly returns false
-        // because it uses the raw field (-1) instead of the getter.
-        return assertFalse(
-                "Issue #27: overlapsWith uses raw endTime=-1 instead of getEndTime(), " +
-                "so open-ended interval incorrectly reports no overlap",
+        return assertTrue(
+                "Issue #27 fixed: open-ended interval [100, now] should overlap with [200, 300]",
                 result
         );
     }
@@ -250,9 +242,7 @@ public class PersistenceTests extends TestSuite {
     }
 
     /**
-     * Issue #8: loadInternal calls load(dataTag) twice.
-     * The first call is in the if-condition, and the second call is explicit on line 159.
-     * This means the load() method is invoked twice for a single loadInternal() call.
+     * Issue #8 (fixed): loadInternal now calls load(dataTag) exactly once.
      */
     private TestResult testArchiveChunkDoubleLoadBug() {
         TestChunk original = new TestChunk(1000L);
@@ -265,12 +255,9 @@ public class PersistenceTests extends TestSuite {
         TestChunk loaded = new TestChunk(0L);
         loaded.loadInternal(tag);
 
-        // Issue #8: load() is called twice inside loadInternal()
-        // Line 152: if(!load(dataTag)) -- first call
-        // Line 159: return this.load(dataTag); -- second call
         return assertEquals(
-                "Issue #8: loadInternal calls load() twice - loadCount should be 2",
-                2, loaded.getLoadCount());
+                "Issue #8 fixed: loadInternal should call load() exactly once",
+                1, loaded.getLoadCount());
     }
 
     /**

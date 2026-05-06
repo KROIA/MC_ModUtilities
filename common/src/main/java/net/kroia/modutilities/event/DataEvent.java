@@ -4,12 +4,13 @@ import com.mojang.datafixers.util.Pair;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
 public class DataEvent<T> {
 
 
-    private List<Pair<Consumer<T>, Integer>> listeners = new ArrayList<>();
+    private final List<Pair<Consumer<T>, Integer>> listeners = new CopyOnWriteArrayList<>();
 
     public void addListener(Consumer<T> listener) {
         listeners.add(new Pair<>(listener, -1)); // -1 means no limit on calls
@@ -18,20 +19,21 @@ public class DataEvent<T> {
         listeners.add(new Pair<>(listener, maxCalls));
     }
     public boolean removeListener(Consumer<T> listener) {
-        for(int i = 0; i < listeners.size(); i++) {
-            if (listeners.get(i).getFirst().equals(listener)) {
-                listeners.remove(i);
-                return true;
+        for (Pair<Consumer<T>, Integer> pair : listeners) {
+            if (pair.getFirst().equals(listener)) {
+                return listeners.remove(pair);
             }
         }
         return false;
     }
     public boolean setListenerRemainingCallCount(Consumer<T> listener, int maxCalls) {
-        for (int i = 0; i < listeners.size(); i++) {
-            Pair<Consumer<T>, Integer> pair = listeners.get(i);
+        for (Pair<Consumer<T>, Integer> pair : listeners) {
             if (pair.getFirst().equals(listener)) {
-                listeners.set(i, new Pair<>(listener, maxCalls));
-                return true;
+                int idx = listeners.indexOf(pair);
+                if (idx >= 0) {
+                    listeners.set(idx, new Pair<>(listener, maxCalls));
+                    return true;
+                }
             }
         }
         return false;
@@ -45,25 +47,20 @@ public class DataEvent<T> {
         return 0; // Not found, or no limit set
     }
     public void notifyListeners(T value) {
-        List<Integer> toRemove = new ArrayList<>();
-        int index = 0;
-        for (Pair<Consumer<T>, Integer> pair : listeners) {
-            pair.getFirst().accept(value);
+        List<Pair<Consumer<T>, Integer>> snapshot = new ArrayList<>(listeners);
+        List<Consumer<T>> toRemove = new ArrayList<>();
+        for (Pair<Consumer<T>, Integer> pair : snapshot) {
+            Consumer<T> listener = pair.getFirst();
+            listener.accept(value);
             Integer count = pair.getSecond();
-            if(count == 1)
-                toRemove.add(index);
-            else if(count > 0 && count != -1)
-            {
-                pair = new Pair<>(pair.getFirst(), count - 1);
-                listeners.set(index, pair);
+            if (count == 1) {
+                toRemove.add(listener);
+            } else if (count > 0) {
+                setListenerRemainingCallCount(listener, count - 1);
             }
-            index++;
         }
-        for (int i= toRemove.size() - 1; i >= 0; i--) {
-            int indexToRemove = toRemove.get(i);
-            if (indexToRemove >= 0 && indexToRemove < listeners.size()) {
-                listeners.remove(indexToRemove);
-            }
+        for (Consumer<T> listener : toRemove) {
+            removeListener(listener);
         }
     }
 

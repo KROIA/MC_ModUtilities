@@ -52,7 +52,7 @@ public abstract class DataArchiveChunk {
         }
         public boolean overlapsWith(TimeInterval other)
         {
-            return (this.startTime < other.getEndTime() && this.endTime > other.getStartTime());
+            return (this.startTime < other.getEndTime() && this.getEndTime() > other.getStartTime());
         }
         public String createFileName()
         {
@@ -149,14 +149,10 @@ public abstract class DataArchiveChunk {
     }
     public boolean loadInternal(CompoundTag tag)
     {
-        CompoundTag dataTag = tag.getCompound("data");
-        if(!load(dataTag))
-        {
-            return false;
-        }
         CompoundTag metadata = tag.getCompound("metadata");
         this.timeInterval = new TimeInterval(metadata.getLong("startTime"), metadata.getLong("endTime"));
-        return this.load(dataTag);
+        CompoundTag dataTag = tag.getCompound("data");
+        return load(dataTag);
     }
 
     protected abstract boolean save(CompoundTag dataTag);

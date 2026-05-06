@@ -115,7 +115,9 @@ public class SandboxDataArchiveManager extends DataArchiveManager<SandboxDataArc
         }
 
         Path outputPath2 = Path.of("data/sandbox_data_archive_3");
-        saveChunk(chunks.get(5), outputPath2);
+        if (chunks.size() > 5) {
+            saveChunk(chunks.get(5), outputPath2);
+        }
 
     }
 }

@@ -34,12 +34,13 @@ public final class GenericResponsePacket extends NetworkPacket
     @Override
     protected void handleOnClient(NetworkManager.PacketContext context) {
         try{
-            //ModUtilitiesMod.LOGGER.info("Handling GenericResponsePacket on client: "+requestTypeID);
             AsynchronousRequestResponseSystem.processResponseOnClient(this);
         }
         catch (Exception e) {
-            // Handle any exceptions that may occur during decoding/encoding
             ModUtilitiesMod.LOGGER.error("Error processing GenericResponsePacket on client: " + e.getMessage(), e);
+        }
+        finally {
+            if (data != null && data.refCnt() > 0) data.release();
         }
     }
 
@@ -49,8 +50,10 @@ public final class GenericResponsePacket extends NetworkPacket
             AsynchronousRequestResponseSystem.processResponseOnServer(this, (ServerPlayer) context.getPlayer());
         }
         catch (Exception e) {
-            // Handle any exceptions that may occur during decoding/encoding
             ModUtilitiesMod.LOGGER.error("Error processing GenericResponsePacket on server: " + e.getMessage(), e);
+        }
+        finally {
+            if (data != null && data.refCnt() > 0) data.release();
         }
     }
 
@@ -59,19 +62,22 @@ public final class GenericResponsePacket extends NetworkPacket
         try{
             AsynchronousRequestResponseSystem.processResponseOnMaster(this, context);
         }catch (Exception e) {
-            // Handle any exceptions that may occur during decoding/encoding
             ModUtilitiesMod.LOGGER.error("Error processing GenericResponsePacket on master: " + e.getMessage(), e);
+        }
+        finally {
+            if (data != null && data.refCnt() > 0) data.release();
         }
     }
 
     @Override
     protected void handleOnSlave(ForwardPacketContext context) {
-
         try{
             AsynchronousRequestResponseSystem.processResponseOnSlave(this, context);
         }catch (Exception e) {
-            // Handle any exceptions that may occur during decoding/encoding
             ModUtilitiesMod.LOGGER.error("Error processing GenericResponsePacket on slave: " + e.getMessage(), e);
+        }
+        finally {
+            if (data != null && data.refCnt() > 0) data.release();
         }
     }
 

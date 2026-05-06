@@ -198,8 +198,8 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
         renderSlotHighlight(pX, pY, pBlitOffset, -2130706433);
     }
 
-    public void renderSlotHighlight(int p_281453_, int p_281915_, int p_283504_, int color) {
-        drawGradient(RenderType.guiOverlay(), p_281453_, p_281915_, p_281453_ + 16, p_281915_ + 16, color, color, p_283504_);
+    public void renderSlotHighlight(int x, int y, int blitOffset, int color) {
+        drawGradient(RenderType.guiOverlay(), x, y, blitOffset, 16, 16, color, color);
     }
 
     protected void renderTooltip(int pX, int pY) {

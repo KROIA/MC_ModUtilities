@@ -4,10 +4,10 @@ import com.mojang.datafixers.util.Pair;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Signal {
-    private final List<Pair<Runnable, Integer>> listeners = new ArrayList<>();
+    private final List<Pair<Runnable, Integer>> listeners = new CopyOnWriteArrayList<>();
 
     public void addListener(Runnable listener) {
         listeners.add(new Pair<>(listener, -1)); // -1 means no limit on calls
@@ -17,21 +17,22 @@ public class Signal {
         listeners.add(new Pair<>(listener, maxCalls));
     }
     public boolean removeListener(Runnable listener) {
-        for(int i = 0; i < listeners.size(); i++) {
-            if (listeners.get(i).getFirst().equals(listener)) {
-                listeners.remove(i);
-                return true;
+        for (Pair<Runnable, Integer> pair : listeners) {
+            if (pair.getFirst().equals(listener)) {
+                return listeners.remove(pair);
             }
         }
         return false;
     }
 
     public boolean setListenerRemainingCallCount(Runnable listener, int maxCalls) {
-        for (int i = 0; i < listeners.size(); i++) {
-            Pair<Runnable, Integer> pair = listeners.get(i);
+        for (Pair<Runnable, Integer> pair : listeners) {
             if (pair.getFirst().equals(listener)) {
-                listeners.set(i, new Pair<>(listener, maxCalls));
-                return true;
+                int idx = listeners.indexOf(pair);
+                if (idx >= 0) {
+                    listeners.set(idx, new Pair<>(listener, maxCalls));
+                    return true;
+                }
             }
         }
         return false;
@@ -45,25 +46,20 @@ public class Signal {
         return 0; // Not found, or no limit set
     }
     public void notifyListeners() {
-        List<Integer> toRemove = new ArrayList<>();
-        int index = 0;
-        for (Pair<Runnable, Integer> pair : listeners) {
-            pair.getFirst().run();
+        List<Pair<Runnable, Integer>> snapshot = new ArrayList<>(listeners);
+        List<Runnable> toRemove = new ArrayList<>();
+        for (Pair<Runnable, Integer> pair : snapshot) {
+            Runnable listener = pair.getFirst();
+            listener.run();
             Integer count = pair.getSecond();
-            if(count == 1)
-                toRemove.add(index);
-            else if(count > 0 && count != -1)
-            {
-                pair = new Pair<>(pair.getFirst(), count - 1);
-                listeners.set(index, pair);
+            if (count == 1) {
+                toRemove.add(listener);
+            } else if (count > 0) {
+                setListenerRemainingCallCount(listener, count - 1);
             }
-            index++;
         }
-        for (int i= toRemove.size() - 1; i >= 0; i--) {
-            int indexToRemove = toRemove.get(i);
-            if (indexToRemove >= 0 && indexToRemove < listeners.size()) {
-                listeners.remove(indexToRemove);
-            }
+        for (Runnable listener : toRemove) {
+            removeListener(listener);
         }
     }
 

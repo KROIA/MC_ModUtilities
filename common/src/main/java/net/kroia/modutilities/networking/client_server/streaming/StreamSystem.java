@@ -235,6 +235,10 @@ public class StreamSystem {
         String StreamType = packet.getStreamTypeID();
         RegistryFriendlyByteBuf buf = packet.getData();
         var stream = REGISTRY.getRegisteredStream(StreamType);
+        if (stream == null) {
+            ModUtilitiesMod.LOGGER.warn("[StreamSystem] Received StreamStartPacket for unregistered stream type '" + StreamType + "' (mod version mismatch?), ignoring");
+            return;
+        }
         if(MultiServerManager.isRunning() && MultiServerManager.isSlave() && stream.needsRoutingToMaster())
         {
             STREAM_MANAGER.startRedirectedServerSenderStream(stream, streamID, buf, targetPlayerUUID);

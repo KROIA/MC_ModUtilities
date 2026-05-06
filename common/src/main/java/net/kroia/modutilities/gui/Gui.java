@@ -67,11 +67,11 @@ public class Gui {
         return invGuiScale;
     }
     public void setGuiScale(float guiScale) {
-        this.guiScale = guiScale;
         if(guiScale <= 0.0f) {
-            guiScale = 1.0f; // Ensure scale is always positive
+            guiScale = 1.0f;
         }
-        invGuiScale = 1.0f / guiScale; // Calculate inverse scale
+        this.guiScale = guiScale;
+        this.invGuiScale = 1.0f / this.guiScale;
     }
 
     public Graphics getGraphics()
@@ -656,15 +656,18 @@ public class Gui {
     public static void playLocalSound(SoundEvent sound, float volume, float pitch)
     {
         Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.level == null || minecraft.player == null) {
+            return;
+        }
         minecraft.level.playLocalSound(
-                minecraft.player.getX(),            // X coordinate
-                minecraft.player.getY(),            // Y coordinate
-                minecraft.player.getZ(),            // Z coordinate
-                sound,        // Sound to play
-                SoundSource.PLAYERS,                // Sound category
-                volume,                               // Volume
-                pitch,                               // Pitch
-                false                                // Delay
+                minecraft.player.getX(),
+                minecraft.player.getY(),
+                minecraft.player.getZ(),
+                sound,
+                SoundSource.PLAYERS,
+                volume,
+                pitch,
+                false
         );
     }
 

@@ -42,8 +42,7 @@ public class SandboxOpenGuiPacket extends NetworkPacket {
     protected void handleOnClient(NetworkManager.PacketContext context) {
         switch(guiType) {
             case TEST_SCREEN:
-                TestScreen.open(); // Assuming TestScreen has a static method to open it
-                //SandboxClientHooks.openTestScreen();
+                SandboxClientHooks.openTestScreen();
                 break;
             case ANOTHER_SCREEN:
                 // Open another GUI

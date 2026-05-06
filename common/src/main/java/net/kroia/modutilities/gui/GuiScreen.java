@@ -90,6 +90,7 @@ public abstract class GuiScreen extends Screen {
         super.init();
         gui.init();
         updateLayout(gui);
+        isInitialized = true;
     }
     @Override
     protected void rebuildWidgets() {

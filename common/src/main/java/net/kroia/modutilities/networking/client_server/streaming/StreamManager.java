@@ -562,10 +562,12 @@ public class StreamManager {
         }*/
         if(redirectedServerSenderStreams != null) {
             ServerSenderStreamHolder<?, ?> streamData = redirectedServerSenderStreams.remove(streamID);
+            if (streamData == null) {
+                return; // Stream not in redirected map; nothing to do
+            }
             ServerPlayer targetPlayer = ServerPlayerUtilities.getOnlinePlayer(streamData.playerUUID);
             if (targetPlayer == null) {
                 warn("handlePacketOnServer(): Cannot send stream packet for stream ID " + packet.getStreamID() + " to player " + streamData.playerUUID + ", player is not online!");
-                //streamData.streamEnd();
                 return; // Player not online, cannot send stream packet
             }
             networkManager.sendToClient(targetPlayer, packet);

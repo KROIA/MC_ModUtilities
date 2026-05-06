@@ -92,7 +92,11 @@ public class DataPersistence {
         return relativeSavePath;
     }
     public Path getAbsoluteSavePath() {
-        return getLevelSavePath().resolve(relativeSavePath);
+        Path level = getLevelSavePath();
+        if (level == null) {
+            throw new IllegalStateException("levelSavePath is not set; call setLevelSavePath() first");
+        }
+        return level.resolve(relativeSavePath);
     }
     public Path getAbsoluteSavePath(String relativeAdded) {
         return getAbsoluteSavePath().resolve(relativeAdded);
@@ -157,35 +161,35 @@ public class DataPersistence {
 
 
     public List<Path> getJsonFiles(Path absolutePath) {
-        try {
-            return Files.list(absolutePath) // List files
-                    .filter(Files::isRegularFile)       // Keep only regular files
-                    .filter(_path -> _path.toString().endsWith(".json")) // Keep only .json files
-                    .collect(Collectors.toList()); // Convert to List
+        try (var stream = Files.list(absolutePath)) {
+            return stream
+                    .filter(Files::isRegularFile)
+                    .filter(_path -> _path.toString().endsWith(".json"))
+                    .collect(Collectors.toList());
         } catch (IOException e) {
             error("Failed to list JSON files in directory: " + absolutePath, e);
-            return List.of(); // Return empty list on error
+            return List.of();
         }
     }
     public List<Path> getFiles(Path absolutePath, String extension) {
-        try {
-            return Files.list(absolutePath) // List files
-                    .filter(Files::isRegularFile)       // Keep only regular files
-                    .filter(_path -> _path.toString().endsWith(extension)) // Keep only files with specified extension
-                    .collect(Collectors.toList()); // Convert to List
+        try (var stream = Files.list(absolutePath)) {
+            return stream
+                    .filter(Files::isRegularFile)
+                    .filter(_path -> _path.toString().endsWith(extension))
+                    .collect(Collectors.toList());
         } catch (IOException e) {
             error("Failed to list files in directory: " + absolutePath, e);
-            return List.of(); // Return empty list on error
+            return List.of();
         }
     }
     public List<Path> getFoldes(Path absolutePath) {
-        try {
-            return Files.list(absolutePath) // List files
-                    .filter(Files::isDirectory)       // Keep only directories
-                    .collect(Collectors.toList()); // Convert to List
+        try (var stream = Files.list(absolutePath)) {
+            return stream
+                    .filter(Files::isDirectory)
+                    .collect(Collectors.toList());
         } catch (IOException e) {
             error("Failed to list folders in directory: " + absolutePath, e);
-            return List.of(); // Return empty list on error
+            return List.of();
         }
     }
 
@@ -282,8 +286,8 @@ public class DataPersistence {
         if(folderExists(chunkFolderPath))
         {
             // delete all files in the folder
-            try {
-                Files.list(chunkFolderPath).forEach(file -> {
+            try (var stream = Files.list(chunkFolderPath)) {
+                stream.forEach(file -> {
                     try {
                         Files.delete(file);
                     } catch (IOException e) {

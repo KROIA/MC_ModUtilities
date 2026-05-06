@@ -57,8 +57,8 @@ public class MultiServerPacketRegistry
         }
     }
 
-    private static final Map<ResourceLocation, RegistryObject> registry = new HashMap<>();
-    private static RegistryAccess registryAccess;
+    private static final Map<ResourceLocation, RegistryObject> registry = new java.util.concurrent.ConcurrentHashMap<>();
+    private static volatile RegistryAccess registryAccess;
 
     public static void onCreate(MinecraftServer server)
     {
@@ -160,8 +160,9 @@ public class MultiServerPacketRegistry
         if(registryObject==null)
             return null;
         RegistryFriendlyByteBuf encoded = registryObject.encode(packet);
-        //byte[] data = ByteBufCodecs.BYTE_ARRAY.decode(encoded);
-        byte[] data = encoded.array();
+        byte[] data = new byte[encoded.readableBytes()];
+        encoded.readBytes(data);
+        encoded.release();
         ForwardPacketPayload payload = new ForwardPacketPayload(senderPlayerUUID, senderServerID, packetType, data);
         return payload;
     }

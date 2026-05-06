@@ -417,6 +417,7 @@ public class TextBox extends GuiElement {
                         String textToCursor = text.substring(0, currentCursorPos);
                         String textAfterCursor = text.substring(currentCursorPos);
                         text = textToCursor + clipboard + textAfterCursor;
+                        currentCursorPos += clipboard.length();
                         hasChanged = true;
                     }
                     if(hasChanged) {

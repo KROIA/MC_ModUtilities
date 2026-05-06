@@ -77,16 +77,17 @@ public class MasterPacketHandler extends SimpleChannelInboundHandler<Payload> {
                     ctx.close();
                     return;
                 }
-                //info("Received ForwardPacketPayload from child server: "+bb.senderServerID());
 
                 ResourceLocation packetResouceLoc = bb.packetType();
                 ByteBuf buf = Unpooled.buffer();
                 buf.writeBytes(bb.data());
-                RegistryFriendlyByteBuf dataBuf =  new RegistryFriendlyByteBuf(buf, mcServer.registryAccess());
-                //RegistryFriendlyByteBuf dataBuf =  new RegistryFriendlyByteBuf(Unpooled.buffer(), mcServer.registryAccess());
-                //ByteBufCodecs.BYTE_ARRAY.encode(dataBuf, bb.data());
-                ForwardPacketContext context = new ForwardPacketContext(ctx, bb.senderServerID(), bb.senderPlayerUUID());
-                MultiServerPacketRegistry.handleByteBufOnMasterSide(packetResouceLoc, dataBuf, context);
+                RegistryFriendlyByteBuf dataBuf = new RegistryFriendlyByteBuf(buf, mcServer.registryAccess());
+                try {
+                    ForwardPacketContext context = new ForwardPacketContext(ctx, bb.senderServerID(), bb.senderPlayerUUID());
+                    MultiServerPacketRegistry.handleByteBufOnMasterSide(packetResouceLoc, dataBuf, context);
+                } finally {
+                    dataBuf.release();
+                }
             }
 
             default ->

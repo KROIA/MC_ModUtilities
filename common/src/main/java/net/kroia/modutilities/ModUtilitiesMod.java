@@ -23,13 +23,16 @@ public class ModUtilitiesMod {
     }*/
 
     public static boolean isClientInitialized() {
-        return UtilitiesPlatform.getPlatform() != null;
+        return UtilitiesPlatform.isPlatformSet();
     }
     public static boolean isServerInitialized() {
-        if(UtilitiesPlatform.getPlatform() != null) {
+        if(!UtilitiesPlatform.isPlatformSet())
+            return false;
+        try {
             return UtilitiesPlatform.getServer() != null;
+        } catch (IllegalStateException e) {
+            return false;
         }
-        return false;
     }
 
 }

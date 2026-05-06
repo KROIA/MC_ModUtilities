@@ -115,19 +115,16 @@ public class TabElement extends GuiElement {
         if(index < 0 || index >= tabs.size()) {
             return false;
         }
-        Tab selectedTab = getSelectedTabInstance();
+        Tab removedTab = tabs.get(index);
         if(selectedTabIndex == index)
         {
-            super.removeChild(selectedTab.tabElement);
+            super.removeChild(removedTab.tabElement);
             selectTab(-1);
         }else if(selectedTabIndex > index)
         {
-            selectedTabIndex--; // Adjust selected index if removing a tab before the currently selected one
+            selectedTabIndex--;
         }
-        if(selectedTab != null)
-        {
-            super.removeChild(selectedTab.titleElement);
-        }
+        super.removeChild(removedTab.titleElement);
         tabs.remove(index);
         return true;
     }
@@ -268,7 +265,7 @@ public class TabElement extends GuiElement {
      * @param thickness the thickness to set for the outline
      */
     public void setSelectOutlineThickness(int thickness) {
-        this.selectOutlineThickness = Math.min(0, thickness);
+        this.selectOutlineThickness = Math.max(0, thickness);
     }
 
     /**

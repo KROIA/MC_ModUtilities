@@ -16,6 +16,7 @@ public class ServerRequestHolder<IN, OUT>
     public CompletableFuture<OUT> responseFuture;
     public GenericRequestPacket requestPacket;
     public GenericRequest<IN, OUT> request;
+    public final long creationTimeMs = System.currentTimeMillis();
     public void processResponse(RegistryFriendlyByteBuf buf)
     {
         OUT response = request.decodeOutput(buf);

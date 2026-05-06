@@ -65,16 +65,16 @@ public class LayoutGrid extends Layout{
 
         if(columnsInternal == 0 && rowsInternal == 0) {
             columnsInternal = (int) Math.ceil(Math.sqrt(childCount));
-            rowsInternal = (int) Math.ceil((double) childCount / columnsInternal) + (childCount % columnsInternal == 0 ? 0 : 1);
+            rowsInternal = (int) Math.ceil((double) childCount / columnsInternal);
         }else if(columnsInternal == 0) {
-            columnsInternal = (int) Math.ceil((double) childCount / rowsInternal) + (childCount % rowsInternal == 0 ? 0 : 1);
+            columnsInternal = (int) Math.ceil((double) childCount / rowsInternal);
         }else if(rowsInternal == 0) {
-            rowsInternal = (int) Math.ceil((double) childCount / columnsInternal) + (childCount % columnsInternal == 0 ? 0 : 1);
+            rowsInternal = (int) Math.ceil((double) childCount / columnsInternal);
         }
 
         if(rowsInternal * columnsInternal < childCount)
         {
-            rowsInternal = (int) Math.ceil((double) childCount / columnsInternal) + (childCount % columnsInternal == 0 ? 0 : 1);
+            rowsInternal = (int) Math.ceil((double) childCount / columnsInternal);
         }
 
         int elementWidth = element.getWidth()-padding*2;

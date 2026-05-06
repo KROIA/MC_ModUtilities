@@ -108,12 +108,7 @@ public class SettingsStore {
         if(json == null || !json.isJsonObject()) {
             throw new IllegalArgumentException("Invalid JSON element for SettingsGroup");
         }
-        JsonObject root = json.getAsJsonObject();
-
-        JsonObject groupJson = root.getAsJsonObject();
-        if (groupJson == null)
-            throw new IllegalArgumentException("SettingsGroup not found in JSON: " + loader.getName());
-
+        JsonObject groupJson = json.getAsJsonObject();
 
         for (Setting<?> setting : loader.getAllSettings()) {
             JsonElement valueJson = groupJson.get(setting.getName());
@@ -142,9 +137,9 @@ public class SettingsStore {
             JsonElement groupJson = root.get(group.getName());
             if (groupJson != null && groupJson.isJsonObject()) {
                 fromJson(group, groupJson);
-            } else {
-                throw new IllegalArgumentException("SettingsGroup not found in JSON: " + group.getName());
             }
+            // Missing groups are silently skipped — defaults are preserved.
+            // This allows new groups added in mod updates to load gracefully.
         }
         return groups;
     }
@@ -157,6 +152,17 @@ public class SettingsStore {
 
     @SuppressWarnings("unchecked")
     private <T> void setValueWithCast(Setting<?> setting, Object value) {
+        // Convert numeric types when Gson hands back a Double for a non-Double target type.
+        // Gson defaults numbers to Double when type info is loose (e.g. Object), causing
+        // ClassCastException when later read as Integer/Long/Float.
+        if (value instanceof Number num && setting.getType() instanceof Class<?> cls) {
+            if (cls == Integer.class || cls == int.class) value = num.intValue();
+            else if (cls == Long.class || cls == long.class) value = num.longValue();
+            else if (cls == Float.class || cls == float.class) value = num.floatValue();
+            else if (cls == Short.class || cls == short.class) value = num.shortValue();
+            else if (cls == Byte.class || cls == byte.class) value = num.byteValue();
+            else if (cls == Double.class || cls == double.class) value = num.doubleValue();
+        }
         Setting<T> typedSetting = (Setting<T>) setting;
         typedSetting.set((T) value);
     }

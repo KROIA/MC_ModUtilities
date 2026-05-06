@@ -14,7 +14,7 @@ import java.util.function.Consumer;
 
 public class MultiServerManager
 {
-    private static MultiServerManager instance;
+    private static volatile MultiServerManager instance;
 
     private final @Nullable MasterTCPServer  tcpServer;
     private final @Nullable SlaveServerClient slaveClient;

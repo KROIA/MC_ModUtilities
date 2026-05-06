@@ -68,15 +68,16 @@ public class SlavePacketHandler extends SimpleChannelInboundHandler<Payload> {
                 connector.onMasterDisconnected(dp.reason());
             }
             case ForwardPacketPayload bb -> {
-               // debug("bytes received from: "+bb.senderServerID()+" "+bb.data().length+" bytes");
                 ResourceLocation packetResouceLoc = bb.packetType();
                 ByteBuf buf = Unpooled.buffer();
                 buf.writeBytes(bb.data());
-                RegistryFriendlyByteBuf dataBuf =  new RegistryFriendlyByteBuf(buf, mcServer.registryAccess());
-                //RegistryFriendlyByteBuf dataBuf =  new RegistryFriendlyByteBuf(Unpooled.buffer(), mcServer.registryAccess());
-                //ByteBufCodecs.BYTE_ARRAY.encode(dataBuf, bb.data());
-                ForwardPacketContext context = new ForwardPacketContext(ctx, bb.senderServerID(), bb.senderPlayerUUID());
-                MultiServerPacketRegistry.handleByteBufOnSlaveSide(packetResouceLoc, dataBuf, context);
+                RegistryFriendlyByteBuf dataBuf = new RegistryFriendlyByteBuf(buf, mcServer.registryAccess());
+                try {
+                    ForwardPacketContext context = new ForwardPacketContext(ctx, bb.senderServerID(), bb.senderPlayerUUID());
+                    MultiServerPacketRegistry.handleByteBufOnSlaveSide(packetResouceLoc, dataBuf, context);
+                } finally {
+                    dataBuf.release();
+                }
             }
 
             default ->
