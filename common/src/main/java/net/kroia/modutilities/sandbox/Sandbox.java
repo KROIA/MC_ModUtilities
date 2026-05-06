@@ -2,6 +2,7 @@ package net.kroia.modutilities.sandbox;
 
 import com.google.gson.JsonElement;
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.context.CommandContext;
 import dev.architectury.event.events.common.CommandRegistrationEvent;
 import net.kroia.modutilities.JsonUtilities;
 import net.kroia.modutilities.ModUtilitiesMod;
@@ -124,7 +125,28 @@ public class Sandbox {
                                         SandboxDataArchiveManager.loadAndSave();
                                         return 1;
                                     }))
+                            .then(Commands.literal("openExample")
+                                    .then(Commands.literal("form")
+                                            .executes(ctx -> sendOpenExample(ctx, SandboxOpenGuiPacket.GuiType.EXAMPLE_FORM)))
+                                    .then(Commands.literal("dialog")
+                                            .executes(ctx -> sendOpenExample(ctx, SandboxOpenGuiPacket.GuiType.EXAMPLE_DIALOG)))
+                                    .then(Commands.literal("settings")
+                                            .executes(ctx -> sendOpenExample(ctx, SandboxOpenGuiPacket.GuiType.EXAMPLE_SETTINGS)))
+                                    .then(Commands.literal("tabs")
+                                            .executes(ctx -> sendOpenExample(ctx, SandboxOpenGuiPacket.GuiType.EXAMPLE_TABS)))
+                                    .then(Commands.literal("dashboard")
+                                            .executes(ctx -> sendOpenExample(ctx, SandboxOpenGuiPacket.GuiType.EXAMPLE_DASHBOARD)))
+                                    .then(Commands.literal("itemSelection")
+                                            .executes(ctx -> sendOpenExample(ctx, SandboxOpenGuiPacket.GuiType.EXAMPLE_ITEM_SELECTION)))
+                                    .then(Commands.literal("playerBrowser")
+                                            .executes(ctx -> sendOpenExample(ctx, SandboxOpenGuiPacket.GuiType.EXAMPLE_PLAYER_BROWSER))))
             );
+        }
+
+        private static int sendOpenExample(CommandContext<CommandSourceStack> ctx, SandboxOpenGuiPacket.GuiType type) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+            ServerPlayer player = ctx.getSource().getPlayerOrException();
+            SandboxOpenGuiPacket.send(player, type);
+            return 1;
         }
     }
 
