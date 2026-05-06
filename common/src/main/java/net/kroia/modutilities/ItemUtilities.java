@@ -28,8 +28,22 @@ public class ItemUtilities {
             }
             return creativeItemCache;
         }
+
+        public void invalidate()
+        {
+            creativeItemCache = null;
+        }
     }
     private static final ItemCache itemCache = new ItemCache();
+
+    /**
+     * Invalidates the cached creative items list. Call this when the world changes (load/unload),
+     * resource packs reload, or registries change to ensure subsequent searches reflect current state.
+     */
+    public static void invalidateCreativeItemCache()
+    {
+        itemCache.invalidate();
+    }
 
     public static ItemStack createItemStackFromId(String itemId)
     {
@@ -59,7 +73,7 @@ public class ItemUtilities {
             return null;
         }
         ItemStack itemStack = createItemStackFromId(maybeNotCompleteItemID,1);
-        if(itemStack == itemStack.EMPTY) {
+        if(itemStack.isEmpty()) {
             return null;
         }
         if(itemStack.getItem() == Items.AIR) {

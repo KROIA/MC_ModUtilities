@@ -85,7 +85,7 @@ public class SandboxDataArchiveManager extends DataArchiveManager<SandboxDataArc
             long endTime = currentChunk.updateEndTime();
             saveChunk(currentChunk);
             currentChunk = new SandboxDataArchiveChunk(endTime+1);
-            System.out.println("SandboxDataArchiveManager: Chunk size utilisation exceeded 80%, creating new chunk.");
+            ModUtilitiesMod.LOGGER.info("[SandboxDataArchiveManager] Chunk size utilisation exceeded 80%, creating new chunk.");
         }
     }
 
@@ -101,17 +101,17 @@ public class SandboxDataArchiveManager extends DataArchiveManager<SandboxDataArc
         List<SandboxDataArchiveChunk> chunks = loadChunks();
         if(chunks.isEmpty())
         {
-            System.out.println("No chunks found, creating new chunk.");
+            ModUtilitiesMod.LOGGER.info("[SandboxDataArchiveManager] No chunks found, creating new chunk.");
             currentChunk = new SandboxDataArchiveChunk();
         }
         else
         {
             for(SandboxDataArchiveChunk chunk : chunks)
             {
-                System.out.println("Loaded chunk with start time: " + chunk.getStartTime() + ", end time: " + chunk.getEndTime());
+                ModUtilitiesMod.LOGGER.info("[SandboxDataArchiveManager] Loaded chunk with start time: " + chunk.getStartTime() + ", end time: " + chunk.getEndTime());
                 saveChunk(chunk, outputPath);
             }
-            System.out.println("done");
+            ModUtilitiesMod.LOGGER.info("[SandboxDataArchiveManager] done");
         }
 
         Path outputPath2 = Path.of("data/sandbox_data_archive_3");

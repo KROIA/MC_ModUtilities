@@ -105,13 +105,7 @@ public abstract class DataArchiveChunk {
     }
     public long getEndTime()
     {
-        long time = timeInterval.getEndTime();
-        if(time == -1)
-        {
-            time = System.currentTimeMillis();
-            timeInterval.setEndTime(time);
-        }
-        return time;
+        return timeInterval.getEndTime();
     }
     public long updateEndTime()
     {

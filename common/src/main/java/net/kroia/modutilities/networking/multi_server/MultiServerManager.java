@@ -321,9 +321,10 @@ public class MultiServerManager
         }
         if(!instance.slaveClient.isConnected())
         {
-            if(instance.slaveClient.isConnected())
+            Throwable failReason = instance.slaveClient.getConnectionFailReason();
+            if(failReason != null)
             {
-                error("sendToMaster(packet): Failed to establish a connection to the Master during initialization. Reason: "+instance.slaveClient.getConnectionFailReason());
+                error("sendToMaster(packet): Failed to establish a connection to the Master during initialization. Reason: " + failReason);
             }
             else
                 error("sendToMaster(packet): The connection to the Master has not yet been established. Have you forgotten to call MultiServerManager.start()?");

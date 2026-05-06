@@ -285,6 +285,9 @@ public class DropDownMenu extends GuiElement {
             if(child instanceof EmptyButtonChanged button)
             {
                 List<GuiElement> childs = button.getChilds();
+                if (childs.isEmpty()) {
+                    continue;
+                }
                 GuiElement el = childs.get(0);
                 if(el != null)
                 {
@@ -314,6 +317,9 @@ public class DropDownMenu extends GuiElement {
         {
             // Notify listeners about the selection
             List<GuiElement> childs_ = option.getChilds();
+            if (childs_.isEmpty()) {
+                return;
+            }
             GuiElement el = childs_.get(0);
             selectedIndex = index;
             optionSelected.accept(index, el);

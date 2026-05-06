@@ -34,6 +34,9 @@ public class UtilitiesPlatformNeoForge implements PlatformAbstraction {
         String namespace = itemID.split(":")[0];
         String path = itemID.split(":")[1];
         Item item = BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(namespace, path));
+        if (item == null) {
+            return ItemStack.EMPTY;
+        }
         return new ItemStack(item);
     }
 

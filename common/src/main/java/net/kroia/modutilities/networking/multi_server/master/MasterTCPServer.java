@@ -102,11 +102,12 @@ public class MasterTCPServer {
                 serverChannel = future.channel();
                 startupFailReason = null;
 
-                // Get real outbound IP instead of relying on localAddress()
-                try (Socket s = new Socket("8.8.8.8", 80)) {
-                    serverIP = s.getLocalAddress().getHostAddress();
-                } catch (IOException e) {
-                    serverIP = "127.0.0.1"; // fallback
+                // Get the local IP without making any external network connections.
+                // The previous approach of opening a socket to 8.8.8.8 hangs on firewalled networks.
+                try {
+                    serverIP = java.net.InetAddress.getLocalHost().getHostAddress();
+                } catch (java.net.UnknownHostException e) {
+                    serverIP = "127.0.0.1";
                 }
 
                 info("TCP listener started on port "+ tcpPort);
@@ -238,8 +239,17 @@ public class MasterTCPServer {
     public void disconnectSlave(String slaveID, String reason) {
         info("Disconnecting slave: '"+slaveID+"' for reason:\n"+reason);
         ManualDisconnectionPayload payload = new ManualDisconnectionPayload(reason);
-        sendToSlave(slaveID,  payload);
-        removeChildConnection(slaveID);
+        Channel ch = CHILD_SERVERS.get(slaveID);
+        if (ch != null && ch.isActive()) {
+            // Wait for the disconnect notification to be flushed before closing the channel,
+            // otherwise the slave may not receive the reason.
+            ch.writeAndFlush(payload).addListener(future -> {
+                ch.close();
+                removeChildConnection(slaveID);
+            });
+        } else {
+            removeChildConnection(slaveID);
+        }
     }
 
 

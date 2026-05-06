@@ -120,9 +120,9 @@ public class SlaveServerClient {
                 try {
                     slaveIP = ((InetSocketAddress) future.channel().localAddress())
                             .getAddress().getHostAddress();
-                }catch(Throwable e)
-                {
-
+                } catch (Exception e) {
+                    warn("Failed to determine slave IP from local address: " + e.getMessage());
+                    slaveIP = "";
                 }
 
                 info("Connected to master at "+masterHost+":" + masterPort);

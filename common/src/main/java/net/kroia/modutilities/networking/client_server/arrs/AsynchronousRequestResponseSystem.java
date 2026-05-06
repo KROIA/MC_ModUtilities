@@ -38,9 +38,8 @@ public class AsynchronousRequestResponseSystem {
      * @param networkManager The NetworkManager to use for packet handling.
      */
     public static void setup(@NotNull NetworkPacketManager networkManager) {
-        if (REQUEST_MANAGER != null) {
-            return;
-        }
+        // Replace any existing manager so the system survives an integrated-server
+        // restart (e.g. opening a new singleplayer world in the same JVM).
         REQUEST_MANAGER = new RequestManager(networkManager);
 
         Map<String, RequestRegistry.RegistryData<?,?>> requests = REGISTRY.getRegistry();

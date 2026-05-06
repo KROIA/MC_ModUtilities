@@ -159,7 +159,7 @@ public abstract class GuiElement {
     }
 
     public Minecraft getMinecraft() {
-        return root.getMinecraft();
+        return root != null ? root.getMinecraft() : Minecraft.getInstance();
     }
     public void setEnabled(boolean visible)
     {
@@ -197,16 +197,16 @@ public abstract class GuiElement {
     }
     public void setFocused()
     {
-        root.setFocusedElement(this);
+        if (root != null) root.setFocusedElement(this);
     }
     public void removeFocus()
     {
-        if(root.getFocusedElement() == this)
+        if(root != null && root.getFocusedElement() == this)
             root.setFocusedElement(null);
     }
     public boolean isFocused()
     {
-        return root.getFocusedElement() == this;
+        return root != null && root.getFocusedElement() == this;
     }
     public void setGizmoColor(int color)
     {
@@ -627,9 +627,11 @@ public abstract class GuiElement {
     }
 
     public boolean isMouseOver() {
+        if (root == null) return false;
         return isOver(root.getMousePosX(), root.getMousePosY());
     }
     public boolean isMouseOverIgnoreParents() {
+        if (root == null) return false;
         return isOverIgoreParents(root.getMousePosX(), root.getMousePosY());
     }
 
@@ -896,20 +898,20 @@ public abstract class GuiElement {
         return Gui.getFont();
     }
     public int getMouseX() {
-        return root.getMousePosX()-globalPositon.x;
+        return root != null ? root.getMousePosX()-globalPositon.x : 0;
     }
     public int getMouseY() {
-        return root.getMousePosY()-globalPositon.y;
+        return root != null ? root.getMousePosY()-globalPositon.y : 0;
     }
     public Point getMousePos()
     {
         return new Point(getMouseX(), getMouseY());
     }
     public int getMouseXGlobal() {
-        return root.getMousePosX();
+        return root != null ? root.getMousePosX() : 0;
     }
     public int getMouseYGlobal() {
-        return root.getMousePosY();
+        return root != null ? root.getMousePosY() : 0;
     }
     public Point getMousePosGlobal()
     {

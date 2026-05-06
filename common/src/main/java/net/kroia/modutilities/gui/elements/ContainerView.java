@@ -659,13 +659,14 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
     }
 
     public final void tick() {
-        //super.tick();
+        if (this.minecraft == null || this.minecraft.player == null) {
+            return;
+        }
         if (this.minecraft.player.isAlive() && !this.minecraft.player.isRemoved()) {
             this.containerTick();
         } else {
             this.minecraft.player.closeContainer();
         }
-
     }
 
     protected void containerTick() {

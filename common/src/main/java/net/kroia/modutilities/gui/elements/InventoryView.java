@@ -137,7 +137,7 @@ public class InventoryView extends GuiElement {
             if(isShiftDown)
             {
                 if(slotIndex < 9) {
-                    quickMoveInsert(slotIndex, 9, 44);
+                    quickMoveInsert(slotIndex, 9, 35);
                 }
                 else {
                     quickMoveInsert(slotIndex, 0, 8);

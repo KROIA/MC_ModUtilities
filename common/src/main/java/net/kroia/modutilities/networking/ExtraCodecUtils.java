@@ -42,10 +42,21 @@ public class ExtraCodecUtils {
                     }
                 },
                 (buf) -> {
-                    T[] data = instantiator.apply(buf.readVarInt());
+                    int len = buf.readVarInt();
+                    if (len < 0) {
+                        throw new io.netty.handler.codec.DecoderException("Negative array length: " + len);
+                    }
+                    T[] data = instantiator.apply(len);
                     int ct = buf.readVarInt();
+                    if (ct < 0 || ct > len) {
+                        throw new io.netty.handler.codec.DecoderException("Invalid element count " + ct + " for array of length " + len);
+                    }
                     for (int i = 0; i < ct; i++){
-                        data[buf.readVarInt()] = dataCodec.decode(buf);
+                        int idx = buf.readVarInt();
+                        if (idx < 0 || idx >= len) {
+                            throw new io.netty.handler.codec.DecoderException("Array index out of bounds: " + idx + " (length " + len + ")");
+                        }
+                        data[idx] = dataCodec.decode(buf);
                     }
                     return data;
                 }
@@ -104,7 +115,14 @@ public class ExtraCodecUtils {
 
     public static <E extends Enum<E>> StreamCodec<RegistryFriendlyByteBuf, E> enumStreamCodec(Class<E> enumClass){
         return StreamCodec.of((buf, enumValue) -> buf.writeVarInt(enumValue.ordinal()),
-                (buf) -> enumClass.getEnumConstants()[buf.readVarInt()]
+                (buf) -> {
+                    int ordinal = buf.readVarInt();
+                    E[] constants = enumClass.getEnumConstants();
+                    if (ordinal < 0 || ordinal >= constants.length) {
+                        throw new io.netty.handler.codec.DecoderException("Enum ordinal out of bounds: " + ordinal + " for " + enumClass.getSimpleName() + " (size " + constants.length + ")");
+                    }
+                    return constants[ordinal];
+                }
         );
     }
 

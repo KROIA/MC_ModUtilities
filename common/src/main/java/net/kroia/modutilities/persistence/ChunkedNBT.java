@@ -465,9 +465,8 @@ public class ChunkedNBT {
 */
 
     public static long getUncompressedSize(Tag tag)  {
-        try {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            DataOutputStream dos = new DataOutputStream(baos);
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+             DataOutputStream dos = new DataOutputStream(baos)) {
 
             // Write the NBT to a byte array to measure its raw uncompressed size
             if(tag instanceof CompoundTag compoundTag)

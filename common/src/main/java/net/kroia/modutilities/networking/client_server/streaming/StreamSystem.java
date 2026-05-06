@@ -38,9 +38,8 @@ public class StreamSystem {
      * @param networkManager The NetworkManager to use for packet handling.
      */
     public static void setup(@NotNull NetworkPacketManager networkManager) {
-        if (STREAM_MANAGER != null) {
-            return;
-        }
+        // Replace any existing manager so the system survives an integrated-server
+        // restart (e.g. opening a new singleplayer world in the same JVM).
         STREAM_MANAGER = new StreamManager(networkManager);
 
         Map<String, StreamRegistry.RegistryData<?,?>> requests = REGISTRY.getRegistry();

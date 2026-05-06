@@ -52,7 +52,6 @@ public class TextBox extends GuiElement {
 
         addChild(textLabel);
         textLabel.setText(text);
-        addChild(textLabel);
     }
     public TextBox() {
         this(0,0,100);

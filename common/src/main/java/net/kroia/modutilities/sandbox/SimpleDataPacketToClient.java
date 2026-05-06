@@ -38,7 +38,7 @@ public class SimpleDataPacketToClient extends NetworkPacket {
     @Override
     protected void handleOnClient(NetworkManager.PacketContext context)
     {
-        System.out.println("[CLIENT SIDE] Received value from server: " + value);
+        ModUtilitiesMod.LOGGER.info("[CLIENT SIDE] Received value from server: " + value);
     }
 
     @Override

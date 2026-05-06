@@ -191,14 +191,16 @@ public abstract class ListView extends GuiElement{
                 scrollOffset = 0;
             updateElementPositions();
             setScrollBarBounds();
+            return true;
         } else if (delta < 0 && scrollOffset < allObjectSize - getContentDimension2()) {
             scrollOffset+=scrolSpeed; // Scroll down
             if(scrollOffset > allObjectSize - getContentDimension2())
                 scrollOffset = allObjectSize - getContentDimension2();
             updateElementPositions();
             setScrollBarBounds();
+            return true;
         }
-        return true;
+        return false;
     }
 
 

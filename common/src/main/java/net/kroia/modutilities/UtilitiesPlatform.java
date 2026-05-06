@@ -54,7 +54,16 @@ public class UtilitiesPlatform {
         }*/
         return false; // Called from client side or unknown environment
     }
+    /**
+     * @deprecated Misspelled — use {@link #codeCalledFromClientSide()} instead.
+     */
+    @Deprecated
     public static boolean codeCalledFromCliendSide()
+    {
+        return codeCalledFromClientSide();
+    }
+
+    public static boolean codeCalledFromClientSide()
     {
         if(Platform.getEnvironment() == Env.SERVER)
             return false;
@@ -153,11 +162,7 @@ public class UtilitiesPlatform {
     }
 
     public static ArrayList<ItemStack> getAllItems() {
-
-        ArrayList<ItemStack> itemStacks = new ArrayList<>();
-        List<Item> items = BuiltInRegistries.ITEM.stream().toList();
-        itemStacks.addAll(items.stream().map(ItemStack::new).toList());
-        return itemStacks;
+        return getPlatform().getAllItems();
     }
     public static MinecraftServer getServer() {
         return getPlatform().getServer();

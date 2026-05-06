@@ -63,13 +63,15 @@ public class Plot extends GuiElement
         {
             this.minValue = minValue;
             this.maxValue = maxValue;
-            this.scale = (maxPos - minPos) / (maxValue - minValue);
+            float range = maxValue - minValue;
+            this.scale = range == 0f ? 1f : (maxPos - minPos) / range;
         }
         public void setGuiRange(int minPos, int maxPos)
         {
             this.minPos = minPos;
             this.maxPos = maxPos;
-            this.scale = (float)(maxPos - minPos) / (maxValue - minValue);
+            float range = maxValue - minValue;
+            this.scale = range == 0f ? 1f : (float)(maxPos - minPos) / range;
         }
         public float getMinValue() {
             return minValue;
@@ -221,7 +223,9 @@ public class Plot extends GuiElement
 
         // Draw X Labels
         for (int i = 0; i < xAxisLabelCount; i++) {
-            float xValue = xAxis.getMinValue() + (xAxis.getMaxValue() - xAxis.getMinValue()) * i / (xAxisLabelCount-1);
+            float xValue = xAxisLabelCount > 1
+                    ? xAxis.getMinValue() + (xAxis.getMaxValue() - xAxis.getMinValue()) * i / (xAxisLabelCount-1)
+                    : xAxis.getMinValue();
             int xPos = xAxis.getPos(xValue);
             String text = String.format(xAxisValueConversion, xValue);
             if(i==xAxisLabelCount-1)
@@ -243,7 +247,9 @@ public class Plot extends GuiElement
 
         // Draw Y Labels
         for (int i = 0; i < yAxisLabelCount; i++) {
-            float yValue = yAxis.getMinValue() + (yAxis.getMaxValue() - yAxis.getMinValue()) * i / (yAxisLabelCount-1);
+            float yValue = yAxisLabelCount > 1
+                    ? yAxis.getMinValue() + (yAxis.getMaxValue() - yAxis.getMinValue()) * i / (yAxisLabelCount-1)
+                    : yAxis.getMinValue();
             int yPos = yAxis.getPos(yValue);
             String text = String.format(yAxisValueConversion, yValue);
             maxYValueTextWidth = Math.max(maxYValueTextWidth, getTextWidth(text));

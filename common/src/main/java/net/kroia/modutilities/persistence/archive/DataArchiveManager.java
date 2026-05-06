@@ -240,15 +240,23 @@ public abstract class DataArchiveManager<T extends DataArchiveChunk> {
 
     public boolean clearArchive()
     {
-        List<Path> files = getFiles(archiveFolderPath);
-        for(Path file : files) {
-            try {
-                Files.delete(file); // Delete each file
-                debug("Deleted archive file: " + file);
-            } catch (IOException e) {
-                error("Failed to delete archive file: " + file, e);
-                return false; // Return false if any deletion fails
-            }
+        if (!Files.isDirectory(archiveFolderPath)) {
+            return true;
+        }
+        try (java.util.stream.Stream<Path> stream = Files.walk(archiveFolderPath)) {
+            stream.sorted(java.util.Comparator.reverseOrder())
+                    .filter(p -> !p.equals(archiveFolderPath))
+                    .forEach(p -> {
+                        try {
+                            Files.delete(p);
+                            debug("Deleted archive entry: " + p);
+                        } catch (IOException e) {
+                            error("Failed to delete archive entry: " + p, e);
+                        }
+                    });
+        } catch (IOException e) {
+            error("Failed to walk archive folder: " + archiveFolderPath, e);
+            return false;
         }
         return getFiles(archiveFolderPath).isEmpty();
     }
