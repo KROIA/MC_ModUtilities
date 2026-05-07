@@ -32,6 +32,11 @@ public class StreamSystem {
     private static StreamManager STREAM_MANAGER;
 
     /**
+     * Guard to ensure packets are only registered once, even if multiple mods call setup().
+     */
+    private static boolean packetsRegistered = false;
+
+    /**
      * Sets up the StreamSystem with the provided NetworkManager.
      * This method initializes the StreamManager and registers the necessary packets for stream handling.
      * Re-invoking this method replaces any existing StreamManager so the system survives an
@@ -56,11 +61,14 @@ public class StreamSystem {
                 request.setManager(STREAM_MANAGER);
         }
 
-        // Register packets for streaming
-        networkManager.registerS2C(GenericStreamPacket.TYPE, GenericStreamPacket.STREAM_CODEC, GenericStreamPacket.HANDLER, GenericStreamPacket.HANDLER);
-        networkManager.registerC2S(StreamStartPacket.TYPE, StreamStartPacket.STREAM_CODEC, StreamStartPacket.HANDLER, StreamStartPacket.HANDLER);
-        networkManager.registerC2S(StreamStopClientSenderPacket.TYPE, StreamStopClientSenderPacket.STREAM_CODEC, StreamStopClientSenderPacket.HANDLER, StreamStopClientSenderPacket.HANDLER);
-        networkManager.registerS2C(StreamStopServerSenderPacket.TYPE, StreamStopServerSenderPacket.STREAM_CODEC, StreamStopServerSenderPacket.HANDLER, StreamStopServerSenderPacket.HANDLER);
+        // Register packets for streaming (only once – multiple mods may call setup())
+        if (!packetsRegistered) {
+            networkManager.registerS2C(GenericStreamPacket.TYPE, GenericStreamPacket.STREAM_CODEC, GenericStreamPacket.HANDLER, GenericStreamPacket.HANDLER);
+            networkManager.registerC2S(StreamStartPacket.TYPE, StreamStartPacket.STREAM_CODEC, StreamStartPacket.HANDLER, StreamStartPacket.HANDLER);
+            networkManager.registerC2S(StreamStopClientSenderPacket.TYPE, StreamStopClientSenderPacket.STREAM_CODEC, StreamStopClientSenderPacket.HANDLER, StreamStopClientSenderPacket.HANDLER);
+            networkManager.registerS2C(StreamStopServerSenderPacket.TYPE, StreamStopServerSenderPacket.STREAM_CODEC, StreamStopServerSenderPacket.HANDLER, StreamStopServerSenderPacket.HANDLER);
+            packetsRegistered = true;
+        }
     }
 
     /**

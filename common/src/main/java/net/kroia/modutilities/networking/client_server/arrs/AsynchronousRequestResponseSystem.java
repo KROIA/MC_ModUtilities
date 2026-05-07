@@ -30,6 +30,11 @@ public class AsynchronousRequestResponseSystem {
      */
     private static RequestManager REQUEST_MANAGER;
 
+    /**
+     * Guard to ensure packets are only registered once, even if multiple mods call setup().
+     */
+    private static boolean packetsRegistered = false;
+
 
     /**
      * Sets up the ARRS with the provided NetworkManager.
@@ -55,9 +60,12 @@ public class AsynchronousRequestResponseSystem {
                 request.setManager(REQUEST_MANAGER);
         }
 
-        // Register packets for ARRS
-        networkManager.registerC2S(GenericRequestPacket.TYPE, GenericRequestPacket.STREAM_CODEC);
-        networkManager.registerS2C(GenericResponsePacket.TYPE,  GenericResponsePacket.STREAM_CODEC);
+        // Register packets for ARRS (only once – multiple mods may call setup())
+        if (!packetsRegistered) {
+            networkManager.registerC2S(GenericRequestPacket.TYPE, GenericRequestPacket.STREAM_CODEC);
+            networkManager.registerS2C(GenericResponsePacket.TYPE, GenericResponsePacket.STREAM_CODEC);
+            packetsRegistered = true;
+        }
     }
 
 
