@@ -49,9 +49,9 @@ public abstract class DataArchiveChunk {
             return startTime;
         }
         /**
-         * Returns the interval's end time. If the stored end time is the
-         * sentinel {@code -1} (open-ended), it is lazily resolved to the
-         * current wall-clock time and cached.
+         * Returns the interval's end time; if the stored value is the sentinel {@code -1}
+         * (open-ended), this method <b>mutates</b> {@code endTime} by caching the current
+         * wall-clock time, so subsequent calls return the same snapshot.
          *
          * @return the resolved end time in milliseconds since the epoch.
          */

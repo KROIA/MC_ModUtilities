@@ -826,7 +826,7 @@ public class TextBox extends GuiElement {
             }
         }
 
-        return true;
+        return false;
     }
 
     @Override

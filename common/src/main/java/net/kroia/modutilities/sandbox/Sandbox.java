@@ -17,6 +17,8 @@ import net.kroia.modutilities.testing.tests.GuiLogicTests;
 import net.kroia.modutilities.testing.tests.PersistenceTests;
 import net.kroia.modutilities.testing.tests.NetworkingTests;
 import net.kroia.modutilities.testing.tests.SettingsTests;
+import net.kroia.modutilities.testing.tests.StreamingTests;
+import net.kroia.modutilities.testing.tests.UtilityTests;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
@@ -239,6 +241,8 @@ public class Sandbox {
             TestRegistry.register(new PersistenceTests());
             TestRegistry.register(new SettingsTests());
             TestRegistry.register(new NetworkingTests());
+            TestRegistry.register(new StreamingTests());
+            TestRegistry.register(new UtilityTests());
         }
 
         CommandRegistrationEvent.EVENT.register((dispatcher, registryAccess, environment) -> {

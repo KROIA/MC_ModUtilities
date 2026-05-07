@@ -4,8 +4,6 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 
-import java.nio.file.Files;
-
 /**
  * Thin wrapper around two shared {@link Gson} instances configured with consistent
  * settings, providing convenience methods for serializing and parsing

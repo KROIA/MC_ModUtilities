@@ -74,9 +74,6 @@ public class SettingsStore {
         try (Reader reader = new FileReader(file)) {
             root = gson.fromJson(reader, JsonObject.class);
         }
-        catch(FileNotFoundException e) {
-            throw new IOException("Settings file not found: " + file.getAbsolutePath(), e);
-        }
         catch (Exception e) {
             throw new IOException("Failed to read settings from file: " + file.getAbsolutePath(), e);
         }

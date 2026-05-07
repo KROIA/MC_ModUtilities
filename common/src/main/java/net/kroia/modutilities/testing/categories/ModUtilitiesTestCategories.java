@@ -24,4 +24,7 @@ public class ModUtilitiesTestCategories {
     public static final TestCategory GUI = new TestCategory(
         "mu_gui", "GUI element logic tests",
         TestCategory.ServerType.BOTH, false);
+    public static final TestCategory UTILITIES = new TestCategory(
+        "mu_utilities", "ColorUtilities, JsonUtilities, TimerMillis, and ItemUtilities helper tests",
+        TestCategory.ServerType.BOTH, false);
 }

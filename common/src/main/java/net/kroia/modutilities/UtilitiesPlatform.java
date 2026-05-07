@@ -148,14 +148,6 @@ public class UtilitiesPlatform {
         return Platform.getEnvironment() == Env.SERVER;
     }
 
-    /*public static RegistryAccess getRegistryAccess() {
-        if(codeCalledFromCliendSide())
-            return getRegistryAccessClientSide();
-
-        if(codeCalledFromServerSide())
-            return getRegistryAccessServerSide();
-        return null;
-    }*/
     /**
      * Returns the {@link RegistryAccess} associated with the client's currently loaded level.
      *

@@ -7,7 +7,6 @@ import net.fabricmc.api.Environment;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics; // mc>=1.20.1
 //import com.mojang.blaze3d.vertex.PoseStack; // mc<=1.19.4
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
@@ -38,18 +37,14 @@ public class Graphics {
 
     GuiGraphics graphics;// mc>=1.20.1
     //PoseStack graphics; // mc<1.19.4
-    private final Screen screen;
 
     /**
-     * Creates a new graphics wrapper bound to the given {@link Screen}.
+     * Creates a new graphics wrapper.
      * The backing {@link GuiGraphics} must be supplied via
      * {@link #setGraphics(GuiGraphics)} before any drawing call.
-     *
-     * @param screen the screen that owns this graphics wrapper
      */
-    public Graphics(Screen screen)
+    public Graphics()
     {
-        this.screen = screen;
     }
 
 

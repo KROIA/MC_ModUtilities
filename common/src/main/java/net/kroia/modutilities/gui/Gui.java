@@ -70,7 +70,7 @@ public class Gui {
     public Gui(Screen parent)
     {
         this.parent = parent;
-        this.graphics = new Graphics(parent);
+        this.graphics = new Graphics();
 
     }
 

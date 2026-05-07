@@ -309,6 +309,7 @@ public class DropDownMenu extends GuiElement {
     public void addOption(String label)
     {
         Label optionLabel = new Label(label);
+        // Height must be set before addChild, which wraps the label in a button sized to this height
         optionLabel.setHeight(20);
         optionLabel.setAlignment(Alignment.CENTER);
         addChild(optionLabel);

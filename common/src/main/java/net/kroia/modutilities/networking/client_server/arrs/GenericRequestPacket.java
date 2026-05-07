@@ -49,20 +49,28 @@ public final class GenericRequestPacket extends NetworkPacket
     protected void handleOnServer(NetworkManager.PacketContext context) {
         var request = AsynchronousRequestResponseSystem.getRegisteredRequest(requestTypeID);
         if (request == null) {
+            releaseData();
             return; // No factory found for this request type
         }
         RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
         try {
+            // decodeHandleEncodeOnServer reads from `data` synchronously (in decodeInput),
+            // then returns a future that completes when the handler finishes.
+            // We release `data` in whenComplete to guarantee it outlives any synchronous read
+            // and is freed regardless of success or failure.
             CompletableFuture<RegistryFriendlyByteBuf> fut = request.decodeHandleEncodeOnServer(data, responseData, (ServerPlayer) context.getPlayer());
-            fut.thenAccept(responseBuf -> {
+            fut.whenComplete((responseBuf, ex) -> {
+                releaseData();
+                if (ex != null) {
+                    ModUtilitiesMod.LOGGER.error("Error in async GenericRequestPacket handler: " + ex.getMessage(), ex);
+                    return;
+                }
                 sendResponseToClient(request.getManager(), (ServerPlayer) context.getPlayer(), new GenericResponsePacket(requestID, requestTypeID, responseBuf));
             });
         }
         catch (Exception e) {
+            releaseData();
             ModUtilitiesMod.LOGGER.error("Error handling GenericRequestPacket: " + e.getMessage(), e);
-        }
-        finally {
-            if (data != null && data.refCnt() > 0) data.release();
         }
     }
     @Override
@@ -78,20 +86,24 @@ public final class GenericRequestPacket extends NetworkPacket
     protected void handleOnMaster(ForwardPacketContext context) {
         var request = AsynchronousRequestResponseSystem.getRegisteredRequest(requestTypeID);
         if (request == null) {
+            releaseData();
             return; // No factory found for this request type
         }
         RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
         try {
             CompletableFuture<RegistryFriendlyByteBuf> fut = request.decodeHandleEncodeOnMasterServer(data, responseData, context.senderServerID, context.senderPlayerUUID);
-            fut.thenAccept(responseBuf -> {
+            fut.whenComplete((responseBuf, ex) -> {
+                releaseData();
+                if (ex != null) {
+                    ModUtilitiesMod.LOGGER.error("Error in async GenericRequestPacket master handler: " + ex.getMessage(), ex);
+                    return;
+                }
                 sendResponseToSlave(context.senderServerID, context.senderPlayerUUID, new GenericResponsePacket(requestID, requestTypeID, responseBuf));
             });
         }
         catch (Exception e) {
+            releaseData();
             ModUtilitiesMod.LOGGER.error("Error handling GenericRequestPacket: " + e.getMessage(), e);
-        }
-        finally {
-            if (data != null && data.refCnt() > 0) data.release();
         }
     }
     @Override
@@ -99,20 +111,24 @@ public final class GenericRequestPacket extends NetworkPacket
     {
         var request = AsynchronousRequestResponseSystem.getRegisteredRequest(requestTypeID);
         if (request == null) {
+            releaseData();
             return; // No factory found for this request type
         }
         RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
         try {
             CompletableFuture<RegistryFriendlyByteBuf> fut = request.decodeHandleEncodeOnSlaveServer(data, responseData, context.senderPlayerUUID);
-            fut.thenAccept(responseBuf -> {
+            fut.whenComplete((responseBuf, ex) -> {
+                releaseData();
+                if (ex != null) {
+                    ModUtilitiesMod.LOGGER.error("Error in async GenericRequestPacket slave handler: " + ex.getMessage(), ex);
+                    return;
+                }
                 sendResponseToMaster(context.senderPlayerUUID, new GenericResponsePacket(requestID, requestTypeID, responseBuf));
             });
         }
         catch (Exception e) {
+            releaseData();
             ModUtilitiesMod.LOGGER.error("Error handling GenericRequestPacket: " + e.getMessage(), e);
-        }
-        finally {
-            if (data != null && data.refCnt() > 0) data.release();
         }
     }
 
@@ -190,6 +206,15 @@ public final class GenericRequestPacket extends NetworkPacket
         return TYPE;
     }
 
+    /**
+     * Safely releases the {@link #data} buffer if it is non-null and still has a positive reference count.
+     */
+    private void releaseData() {
+        if (data != null && data.refCnt() > 0) {
+            data.release();
+        }
+    }
+
 
 
 
@@ -222,12 +247,6 @@ public final class GenericRequestPacket extends NetworkPacket
         {
             MultiServerManager.sendToMaster(player,  packet);
         }
-        return true;
-    }
-
-    private static boolean sendResponseToServer(RequestManager manager, GenericResponsePacket packet)
-    {
-        manager.getNetworkManager().sendToServer(packet);
         return true;
     }
 

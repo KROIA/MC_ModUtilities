@@ -193,7 +193,7 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
                 }
             }
 
-            this.renderFloatingItem(itemstack, pMouseX - i - 8, pMouseY - j - j2, s);
+            this.renderFloatingItem(itemstack, pMouseX - i - 8, pMouseY - j - j2);
         }
 
         if (!this.snapbackItem.isEmpty()) {
@@ -207,7 +207,7 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
             k2 = this.snapbackEnd.y - this.snapbackStartY;
             int j1 = this.snapbackStartX + (int)((float)j2 * f);
             int k1 = this.snapbackStartY + (int)((float)k2 * f);
-            this.renderFloatingItem(this.snapbackItem, j1, k1, (String)null);
+            this.renderFloatingItem(this.snapbackItem, j1, k1);
         }
         RenderSystem.enableDepthTest();
         renderTooltip(pMouseX, pMouseY);
@@ -264,7 +264,7 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
         return getTooltipFromItem(minecraft, pStack);
     }
 
-    private void renderFloatingItem(ItemStack pStack, int pX, int pY, String pText) {
+    private void renderFloatingItem(ItemStack pStack, int pX, int pY) {
         graphicsPushPose();
         graphicsTranslate(0.0F, 0.0F, 232.0F);
         drawItemWithDecoration(pStack, pX, pY);

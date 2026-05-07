@@ -400,11 +400,9 @@ public abstract class GuiElement {
      * Sets the thickness of the element's outline in GUI pixels.
      *
      * @param outlineThickness the new thickness
-     * @return the value that was set (mirrors the standard setter pattern of
-     *         this class)
      */
-    public int setOutlineThickness(int outlineThickness) {
-        return this.outlineThickness = outlineThickness;
+    public void setOutlineThickness(int outlineThickness) {
+        this.outlineThickness = outlineThickness;
     }
 
     /**
@@ -891,10 +889,25 @@ public abstract class GuiElement {
      * @param globalPosX the x coordinate in global GUI space
      * @param globalPosY the y coordinate in global GUI space
      * @return {@code true} if the point is inside this element's local bounds
+     *
+     * @deprecated Use {@link #isOverIgnoreParents(int, int)} instead.
      */
+    @Deprecated
     public boolean isOverIgoreParents(int globalPosX, int globalPosY) {
         return (globalPosX - globalPositon.x) >= 0 && (globalPosX - globalPositon.x) < bounds.width &&
                 (globalPosY - globalPositon.y) >= 0 && (globalPosY - globalPositon.y) < bounds.height;
+    }
+
+    /**
+     * Checks whether the given global point lies inside this element's bounds,
+     * ignoring whether ancestors might clip the point.
+     *
+     * @param globalPosX the x coordinate in global GUI space
+     * @param globalPosY the y coordinate in global GUI space
+     * @return {@code true} if the point is inside this element's local bounds
+     */
+    public boolean isOverIgnoreParents(int globalPosX, int globalPosY) {
+        return isOverIgoreParents(globalPosX, globalPosY);
     }
 
     /**
@@ -1591,10 +1604,22 @@ public abstract class GuiElement {
     /**
      * @return the live global position of this element (top-left corner in
      *         global GUI coordinates)
+     *
+     * @deprecated Use {@link #getGlobalPosition()} instead.
      */
+    @Deprecated
     public Point getGlobalPositon()
     {
         return globalPositon;
+    }
+
+    /**
+     * @return the live global position of this element (top-left corner in
+     *         global GUI coordinates)
+     */
+    public Point getGlobalPosition()
+    {
+        return getGlobalPositon();
     }
     public Rectangle getChildFrame()
     {

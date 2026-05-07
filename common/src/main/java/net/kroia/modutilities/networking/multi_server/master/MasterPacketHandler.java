@@ -17,8 +17,6 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 
-import java.util.List;
-
 /**
  * Netty inbound handler installed at the end of the master pipeline.
  * <p>
@@ -92,18 +90,15 @@ public class MasterPacketHandler extends SimpleChannelInboundHandler<Payload> {
                     return;
                 }
 
-                List<String> currentSlaves = masterTCPServer.getConnectedSlaveIDs();
-                for(String slave :  currentSlaves) {
-                    if(slave.equals(hs.serverId())) {
-                        HandshakeResultPayload response = new HandshakeResultPayload(SlaveServerClient.ConnectionEstablishState.SLAVE_ID_ALREADY_USED);
-                        warn("Rejected connection from '"+hs.serverId()+"' - "+response.result());
-                        Channel channel = ctx.channel();
-                        if (channel != null && channel.isActive()) {
-                            channel.writeAndFlush(response);
-                        }
-                        ctx.close();
-                        return;
+                if(masterTCPServer.getConnectedSlaveIDs().contains(hs.serverId())) {
+                    HandshakeResultPayload response = new HandshakeResultPayload(SlaveServerClient.ConnectionEstablishState.SLAVE_ID_ALREADY_USED);
+                    warn("Rejected connection from '"+hs.serverId()+"' - "+response.result());
+                    Channel channel = ctx.channel();
+                    if (channel != null && channel.isActive()) {
+                        channel.writeAndFlush(response);
                     }
+                    ctx.close();
+                    return;
                 }
                 serverId = hs.serverId();
                 masterTCPServer.putChildConnection(serverId, ctx.channel());
@@ -117,7 +112,7 @@ public class MasterPacketHandler extends SimpleChannelInboundHandler<Payload> {
                 }
 
                 ResourceLocation packetResouceLoc = bb.packetType();
-                ByteBuf buf = Unpooled.buffer();
+                ByteBuf buf = ctx.alloc().buffer();
                 buf.writeBytes(bb.data());
                 RegistryFriendlyByteBuf dataBuf = new RegistryFriendlyByteBuf(buf, mcServer.registryAccess());
                 try {

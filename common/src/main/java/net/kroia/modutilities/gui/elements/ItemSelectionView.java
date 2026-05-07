@@ -144,15 +144,8 @@ public class ItemSelectionView extends GuiElement {
      */
     public static final class SearchFilter implements Filter
     {
-        /**
-         * Creates a new {@code SearchFilter} associated with the given view.
-         *
-         * @param view the owning view (currently unused but accepted for
-         *             extension parity with custom filters)
-         */
-        public SearchFilter(ItemSelectionView view)
+        public SearchFilter()
         {
-
         }
         @Override
         public boolean apply(ItemStack stack, String searchText) {
@@ -213,7 +206,7 @@ public class ItemSelectionView extends GuiElement {
     }
 
     private Sorter sorter = new TagSorter();
-    private Filter filter = new SearchFilter(this);
+    private Filter filter = new SearchFilter();
 
     private final List<ItemStack> allowedItems;
     private final Consumer<ItemStack> onItemSelected;

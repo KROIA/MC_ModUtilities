@@ -102,12 +102,14 @@ public class VerticalListView extends ListView {
     @Override
     public void addChild(GuiElement el)
     {
+        allObjectSize += el.getHeight();
         scrollOffset = Math.max(Math.min(scrollOffset, allObjectSize - getContentDimension2()), 0);
         super.addChild(el);
     }
     @Override
     public void removeChild(GuiElement el)
     {
+        allObjectSize -= el.getHeight();
         scrollOffset = Math.max(Math.min(scrollOffset, allObjectSize - getContentDimension2()), 0);
         super.removeChild(el);
     }

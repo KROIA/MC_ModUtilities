@@ -72,7 +72,7 @@ public class MultiServerPacketRegistry
         }
     }
 
-    private static final Map<ResourceLocation, RegistryObject> registry = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final Map<ResourceLocation, RegistryObject<?>> registry = new java.util.concurrent.ConcurrentHashMap<>();
     private static volatile RegistryAccess registryAccess;
 
     /**
@@ -152,10 +152,7 @@ public class MultiServerPacketRegistry
     public static <T extends CustomPacketPayload> void unregister(CustomPacketPayload.Type<T> packetType)
     {
         ResourceLocation loc = packetType.id();
-        if(registry.containsKey(loc))
-        {
-            registry.remove(loc);
-        }
+        registry.remove(loc);
     }
 
     /**

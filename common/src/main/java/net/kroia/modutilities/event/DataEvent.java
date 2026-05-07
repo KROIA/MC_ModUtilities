@@ -1,7 +1,5 @@
 package net.kroia.modutilities.event;
 
-import com.mojang.datafixers.util.Pair;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -20,8 +18,23 @@ import java.util.function.Consumer;
  */
 public class DataEvent<T> {
 
+    /**
+     * Mutable holder for a listener and its remaining call count.
+     * Using a mutable field avoids replacing entries in the CopyOnWriteArrayList
+     * (which would clone the entire backing array on every {@code set()} call).
+     * The {@code volatile} keyword ensures cross-thread visibility of count updates.
+     */
+    private static class ListenerEntry<T> {
+        final Consumer<T> listener;
+        volatile int remainingCalls;
 
-    private final List<Pair<Consumer<T>, Integer>> listeners = new CopyOnWriteArrayList<>();
+        ListenerEntry(Consumer<T> listener, int remainingCalls) {
+            this.listener = listener;
+            this.remainingCalls = remainingCalls;
+        }
+    }
+
+    private final List<ListenerEntry<T>> listeners = new CopyOnWriteArrayList<>();
 
     /**
      * Registers a listener with no call-count limit.
@@ -29,7 +42,7 @@ public class DataEvent<T> {
      * @param listener The consumer to invoke whenever this event fires.
      */
     public void addListener(Consumer<T> listener) {
-        listeners.add(new Pair<>(listener, -1)); // -1 means no limit on calls
+        listeners.add(new ListenerEntry<>(listener, -1)); // -1 means no limit on calls
     }
 
     /**
@@ -40,7 +53,7 @@ public class DataEvent<T> {
      * @param maxCalls Maximum number of times this listener will fire; {@code -1} for unlimited.
      */
     public void addListener(Consumer<T> listener, int maxCalls) {
-        listeners.add(new Pair<>(listener, maxCalls));
+        listeners.add(new ListenerEntry<>(listener, maxCalls));
     }
 
     /**
@@ -50,9 +63,9 @@ public class DataEvent<T> {
      * @return {@code true} if a listener was removed, {@code false} otherwise.
      */
     public boolean removeListener(Consumer<T> listener) {
-        for (Pair<Consumer<T>, Integer> pair : listeners) {
-            if (pair.getFirst().equals(listener)) {
-                return listeners.remove(pair);
+        for (ListenerEntry<T> entry : listeners) {
+            if (entry.listener.equals(listener)) {
+                return listeners.remove(entry);
             }
         }
         return false;
@@ -65,13 +78,10 @@ public class DataEvent<T> {
      * @return {@code true} if the listener was found and updated, {@code false} otherwise.
      */
     public boolean setListenerRemainingCallCount(Consumer<T> listener, int maxCalls) {
-        for (Pair<Consumer<T>, Integer> pair : listeners) {
-            if (pair.getFirst().equals(listener)) {
-                int idx = listeners.indexOf(pair);
-                if (idx >= 0) {
-                    listeners.set(idx, new Pair<>(listener, maxCalls));
-                    return true;
-                }
+        for (ListenerEntry<T> entry : listeners) {
+            if (entry.listener.equals(listener)) {
+                entry.remainingCalls = maxCalls;
+                return true;
             }
         }
         return false;
@@ -80,15 +90,15 @@ public class DataEvent<T> {
      * Returns the remaining call count for the given listener.
      *
      * @param listener The listener to query.
-     * @return The remaining call count ({@code -1} for unlimited), or {@code 0} if the listener is not registered.
+     * @return The remaining call count ({@code -1} for unlimited), or {@code -1} if the listener is not registered.
      */
     public int getListenerRemainingCallCount(Consumer<T> listener) {
-        for (Pair<Consumer<T>, Integer> pair : listeners) {
-            if (pair.getFirst().equals(listener)) {
-                return pair.getSecond();
+        for (ListenerEntry<T> entry : listeners) {
+            if (entry.listener.equals(listener)) {
+                return entry.remainingCalls;
             }
         }
-        return 0; // Not found, or no limit set
+        return -1; // Listener not found
     }
     /**
      * Fires this event, delivering the given value to every registered listener exactly
@@ -104,20 +114,19 @@ public class DataEvent<T> {
      * take effect for subsequent fires, not the current one.
      */
     public void notifyListeners(T value) {
-        List<Pair<Consumer<T>, Integer>> snapshot = new ArrayList<>(listeners);
-        List<Consumer<T>> toRemove = new ArrayList<>();
-        for (Pair<Consumer<T>, Integer> pair : snapshot) {
-            Consumer<T> listener = pair.getFirst();
-            listener.accept(value);
-            Integer count = pair.getSecond();
+        List<ListenerEntry<T>> snapshot = new ArrayList<>(listeners);
+        List<ListenerEntry<T>> toRemove = new ArrayList<>();
+        for (ListenerEntry<T> entry : snapshot) {
+            entry.listener.accept(value);
+            int count = entry.remainingCalls;
             if (count == 1) {
-                toRemove.add(listener);
+                toRemove.add(entry);
             } else if (count > 0) {
-                setListenerRemainingCallCount(listener, count - 1);
+                entry.remainingCalls = count - 1;
             }
         }
-        for (Consumer<T> listener : toRemove) {
-            removeListener(listener);
+        if (!toRemove.isEmpty()) {
+            listeners.removeAll(toRemove);
         }
     }
 

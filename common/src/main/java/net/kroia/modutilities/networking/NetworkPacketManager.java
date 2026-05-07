@@ -41,12 +41,20 @@ public abstract class NetworkPacketManager {
 
     /**
      * Creates a network packet manager bound to the given mod and channel name.
+     * <p>
+     * Note: Channel isolation is not currently implemented. Packet types are
+     * registered globally via Architectury's {@link NetworkManager}, so
+     * {@code modID} and {@code channelName} are accepted for future use but
+     * have no effect at this time.
      *
      * @param modID       the namespace of the owning mod.
      * @param channelName the network channel name to use for this manager.
      */
     public NetworkPacketManager(String modID, String channelName) {
-
+        // Channel isolation is not implemented — all packet types share a single
+        // global registry in Architectury's NetworkManager. The parameters are
+        // retained in the signature for forward-compatibility but are intentionally
+        // unused.
     }
 
     /**

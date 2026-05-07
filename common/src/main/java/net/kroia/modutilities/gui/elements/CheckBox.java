@@ -129,13 +129,27 @@ public class CheckBox extends GuiElement {
         return isChecked;
     }
     /**
-     * Sets the checked state programmatically.
+     * Sets the checked state programmatically and fires state-change callbacks
+     * if the value actually changed.
      * @param checked the new state
-     * @apiNote This does not trigger any of the state-change callbacks.
      */
     public void setChecked(boolean checked)
     {
+        if(isChecked == checked)
+            return;
         isChecked = checked;
+        if(onStateChanged != null)
+        {
+            onStateChanged.accept(isChecked);
+        }
+        if(isChecked && onChecked != null)
+        {
+            onChecked.run();
+        }
+        if(!isChecked && onUnchecked != null)
+        {
+            onUnchecked.run();
+        }
     }
     /**
      * Sets whether the user can toggle the checkbox by clicking it.

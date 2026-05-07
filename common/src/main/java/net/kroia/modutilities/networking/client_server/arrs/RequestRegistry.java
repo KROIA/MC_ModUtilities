@@ -106,13 +106,7 @@ public class RequestRegistry
         return data.request;
     }
 
-    private void error(String msg, Throwable e) {
-        ModUtilitiesMod.LOGGER.error("[RequestRegistry] " + msg, e);
-    }
     private void error(String msg) {
         ModUtilitiesMod.LOGGER.error("[RequestRegistry] " + msg);
-    }
-    private void warn(String msg) {
-        ModUtilitiesMod.LOGGER.warn("[RequestRegistry] " + msg);
     }
 }

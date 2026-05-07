@@ -292,7 +292,8 @@ public class SlaveServerClient {
      * Sends an arbitrary {@link Payload} to the master.
      *
      * @param payload The payload to transmit.
-     * @return {@code true} if the payload was queued for sending; {@code false} if no active connection was available.
+     * @return {@code true} if the payload was queued for sending (not a guarantee of successful
+     *         delivery); {@code false} if no active connection was available.
      *
      * @apiNote
      * Thread-safe — Netty queues the write internally. Delivery failures are

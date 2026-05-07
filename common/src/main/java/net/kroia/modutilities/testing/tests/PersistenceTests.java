@@ -1,6 +1,7 @@
 package net.kroia.modutilities.testing.tests;
 
 import net.kroia.modutilities.persistence.ChunkedNBT;
+import net.kroia.modutilities.persistence.DataPersistence;
 import net.kroia.modutilities.persistence.NBTFileParser;
 import net.kroia.modutilities.persistence.archive.DataArchiveChunk;
 import net.kroia.modutilities.testing.TestCategory;
@@ -8,6 +9,11 @@ import net.kroia.modutilities.testing.TestResult;
 import net.kroia.modutilities.testing.TestSuite;
 import net.kroia.modutilities.testing.categories.ModUtilitiesTestCategories;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 public class PersistenceTests extends TestSuite {
 
@@ -43,6 +49,10 @@ public class PersistenceTests extends TestSuite {
         // Uncompressed size tests
         addTest("uncompressed_size_nonempty", this::testUncompressedSizeNonEmpty);
         addTest("uncompressed_size_empty_vs_nonempty", this::testUncompressedSizeEmptyVsNonEmpty);
+
+        // Regression tests
+        addTest("DataPersistence_saveDataCompoundList_manyElements", this::testSaveDataCompoundListManyElements);
+        addTest("TimeInterval_getEndTime_openInterval_cachesOnFirstCall", this::testTimeIntervalGetEndTimeCachesOnFirstCall);
     }
 
     // ========================================================================
@@ -326,5 +336,109 @@ public class PersistenceTests extends TestSuite {
         long fullSize = ChunkedNBT.getUncompressedSize(fullTag);
 
         return assertTrue("Non-empty tag should be larger than empty tag", fullSize > emptySize);
+    }
+
+    // ========================================================================
+    // Regression tests
+    // ========================================================================
+
+    /**
+     * N10 regression: saveDataCompoundList handles large lists correctly.
+     * Creates 150 small CompoundTag elements, saves them via chunked persistence,
+     * reads them back, and verifies every element is preserved.
+     */
+    private TestResult testSaveDataCompoundListManyElements() {
+        final int elementCount = 150;
+        Path tempDir;
+        try {
+            tempDir = Files.createTempDirectory("modutil_test_chunked");
+        } catch (IOException e) {
+            return fail("Failed to create temp directory: " + e.getMessage());
+        }
+
+        try {
+            DataPersistence persistence = new DataPersistence(
+                    DataPersistence.JsonFormat.COMPACT,
+                    DataPersistence.NbtFormat.UNCOMPRESSED,
+                    Path.of("")
+            );
+            persistence.setLevelSavePath(tempDir);
+            // Suppress debug/warn output during test
+            persistence.debugLogger = null;
+            persistence.warnLogger = null;
+
+            // Build a ListTag with many small CompoundTag elements
+            ListTag dataList = new ListTag();
+            for (int i = 0; i < elementCount; i++) {
+                CompoundTag entry = new CompoundTag();
+                entry.putInt("index", i);
+                entry.putString("label", "item_" + i);
+                dataList.add(entry);
+            }
+
+            Path filePath = tempDir.resolve("test_list.nbt");
+            boolean saved = persistence.saveDataCompoundList(filePath, dataList);
+            if (!saved) {
+                return fail("saveDataCompoundList returned false");
+            }
+
+            // Read back
+            ListTag loaded = persistence.readDataCompoundList(filePath);
+            if (loaded == null) {
+                return fail("readDataCompoundList returned null");
+            }
+            if (loaded.size() != elementCount) {
+                return fail("Expected " + elementCount + " elements, got " + loaded.size());
+            }
+
+            // Verify each element
+            for (int i = 0; i < elementCount; i++) {
+                CompoundTag tag = loaded.getCompound(i);
+                int idx = tag.getInt("index");
+                if (idx != i) {
+                    return fail("Element " + i + " has wrong index: " + idx);
+                }
+                String label = tag.getString("label");
+                if (!label.equals("item_" + i)) {
+                    return fail("Element " + i + " has wrong label: " + label);
+                }
+            }
+
+            return pass("All " + elementCount + " elements survived save/load roundtrip");
+        } finally {
+            // Clean up temp files
+            try {
+                try (var walk = Files.walk(tempDir)) {
+                    walk.sorted(java.util.Comparator.reverseOrder())
+                            .forEach(p -> {
+                                try { Files.deleteIfExists(p); } catch (IOException ignored) {}
+                            });
+                }
+            } catch (IOException ignored) {}
+        }
+    }
+
+    /**
+     * N11 regression: TimeInterval.getEndTime() caches on first call for open intervals.
+     * When endTime is -1 (open-ended), getEndTime() mutates the field to the current
+     * wall-clock time so that subsequent calls return the same snapshot value.
+     */
+    private TestResult testTimeIntervalGetEndTimeCachesOnFirstCall() {
+        DataArchiveChunk.TimeInterval interval = new DataArchiveChunk.TimeInterval(100L, -1L);
+
+        long firstCall = interval.getEndTime();
+
+        // The first call should have resolved to approximately now
+        long now = System.currentTimeMillis();
+        if (Math.abs(firstCall - now) > 5000L) {
+            return fail("First getEndTime() should be close to current time, but got " +
+                    firstCall + " vs now=" + now);
+        }
+
+        long secondCall = interval.getEndTime();
+
+        return assertEquals(
+                "getEndTime() should return the same cached value on subsequent calls",
+                firstCall, secondCall);
     }
 }

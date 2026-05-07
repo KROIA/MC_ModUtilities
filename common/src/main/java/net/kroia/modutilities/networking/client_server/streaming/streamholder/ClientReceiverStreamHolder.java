@@ -48,7 +48,7 @@ public class ClientReceiverStreamHolder<CONTEXT_DATA, DATA>
      * Flag to check if the stream is stopped.
      * This is used to prevent multiple calls to the stream stopped handler.
      */
-    private boolean isStpped = false; // Flag to check if the stream is stopped
+    private boolean isStopped = false; // Flag to check if the stream is stopped
 
     /**
      * Creates a new ClientReceiverStreamHolder tracking the client-side state of a server-to-client stream.
@@ -98,20 +98,22 @@ public class ClientReceiverStreamHolder<CONTEXT_DATA, DATA>
      * @param sendEcho When true, a {@link StreamStopClientSenderPacket} is sent back to the server.
      */
     public void onStreamStopped(boolean sendEcho) {
-        if (streamStoppedHandler != null && !isStpped) {
-            isStpped = true; // Mark as stopped
+        if (isStopped) return;
+        isStopped = true; // Mark as stopped
+
+        if (streamStoppedHandler != null) {
             try {
                 streamStoppedHandler.run(); // Call the stream stopped handler
             }
             catch (Exception e) {
                 error("Error while calling stream stop handler for: " + stream, e);
             }
+        }
 
-            if(sendEcho)
-            {
-                StreamStopClientSenderPacket stopPacket = new StreamStopClientSenderPacket(streamID);
-                networkManager.sendToServer(stopPacket);
-            }
+        if(sendEcho)
+        {
+            StreamStopClientSenderPacket stopPacket = new StreamStopClientSenderPacket(streamID);
+            networkManager.sendToServer(stopPacket);
         }
     }
     private void error(String msg, Throwable e) {

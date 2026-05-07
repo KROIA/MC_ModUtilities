@@ -120,6 +120,7 @@ public class Plot extends GuiElement
 
     private int xAxisPadding = 0; // Padding for axes
     private int yAxisPadding = 0; // Padding for axes
+    private int maxXValueTextWidth = 0; // Cached from previous frame for layout
 
     private String xAxisValueConversion = "%.0f"; // Format for X axis labels
     private String yAxisValueConversion = "%.0f"; // Format for Y axis labels
@@ -350,9 +351,11 @@ public class Plot extends GuiElement
         int height = getHeight();
         int width = getWidth();
 
+        xAxis.setGuiRange(yAxisPadding, getWidth() - maxXValueTextWidth/2);
+        yAxis.setGuiRange(height-xAxisPadding, getTextHeight()/2); // Leave space for X axis labels
 
         int maxYValueTextWidth = 0;
-        int maxXValueTextWidth = 0;
+        int localMaxXValueTextWidth = 0;
 
 
         // Draw X Labels
@@ -364,7 +367,7 @@ public class Plot extends GuiElement
             String text = String.format(xAxisValueConversion, xValue);
             if(i==xAxisLabelCount-1)
             {
-                maxXValueTextWidth = getTextWidth(text);
+                localMaxXValueTextWidth = getTextWidth(text);
             }
 
             drawText(text, xPos, yAxis.getMinPos() + 3, Alignment.TOP);
@@ -429,8 +432,7 @@ public class Plot extends GuiElement
 
         xAxisPadding = getTextHeight()*2 + 5; // Adjust padding for X axis based on text height
         yAxisPadding = maxYValueTextWidth + getTextHeight()+5; // Adjust padding for Y axis based on text width
-        xAxis.setGuiRange(yAxisPadding, getWidth() - maxXValueTextWidth/2);
-        yAxis.setGuiRange(height-xAxisPadding, getTextHeight()/2); // Leave space for X axis labels
+        maxXValueTextWidth = localMaxXValueTextWidth; // Cache for next frame's layout
 
 
 

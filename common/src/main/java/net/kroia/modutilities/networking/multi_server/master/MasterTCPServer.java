@@ -44,6 +44,12 @@ import java.util.function.Consumer;
  */
 public class MasterTCPServer {
 
+    /**
+     * The server ID used by the master when it originates forwarded packets.
+     * Slaves receiving a {@link ForwardPacketPayload} from the master will see
+     * this value as the {@code senderServerID}.
+     */
+    public static final String MASTER_SERVER_ID = "master";
 
     /** All currently connected child servers, keyed by their serverId. */
     private final Map<String, Channel> CHILD_SERVERS = new ConcurrentHashMap<>();
@@ -186,7 +192,7 @@ public class MasterTCPServer {
      *         {@code false} if no active channel exists for the given slave ID.
      */
     public boolean sendToSlave(@Nullable UUID senderPlayerUUID, String targetServerID, CustomPacketPayload packet) {
-        ForwardPacketPayload payload = MultiServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID,"", packet);
+        ForwardPacketPayload payload = MultiServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID, MASTER_SERVER_ID, packet);
         return sendToSlave(targetServerID, payload);
     }
 
@@ -199,7 +205,7 @@ public class MasterTCPServer {
      * @param packet           The Minecraft custom packet payload to forward.
      */
     public void broadcastToSlaves(@Nullable UUID senderPlayerUUID, CustomPacketPayload packet) {
-        ForwardPacketPayload payload = MultiServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID, "", packet);
+        ForwardPacketPayload payload = MultiServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID, MASTER_SERVER_ID, packet);
         broadcastToSlaves(payload);
     }
 
@@ -213,7 +219,7 @@ public class MasterTCPServer {
      * @param excludeServerId  The slave ID that should NOT receive this broadcast.
      */
     public void broadcastToSlaves(@Nullable UUID senderPlayerUUID, CustomPacketPayload packet, String excludeServerId) {
-        ForwardPacketPayload payload = MultiServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID, "", packet);
+        ForwardPacketPayload payload = MultiServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID, MASTER_SERVER_ID, packet);
         broadcastToSlaves(payload, excludeServerId);
     }
 
@@ -227,7 +233,7 @@ public class MasterTCPServer {
      * @param excludeServerIds The slave IDs that should NOT receive this broadcast.
      */
     public void broadcastToSlaves(@Nullable UUID senderPlayerUUID, CustomPacketPayload packet, List<String> excludeServerIds) {
-        ForwardPacketPayload payload = MultiServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID, "", packet);
+        ForwardPacketPayload payload = MultiServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID, MASTER_SERVER_ID, packet);
         broadcastToSlaves(payload, excludeServerIds);
     }
 
@@ -259,7 +265,9 @@ public class MasterTCPServer {
      */
     public void broadcastToSlaves(Payload payload) {
         CHILD_SERVERS.forEach((id, ch) -> {
-            ch.writeAndFlush(payload);
+            if (ch.isActive()) {
+                ch.writeAndFlush(payload);
+            }
         });
     }
 
@@ -287,7 +295,7 @@ public class MasterTCPServer {
      */
     public void broadcastToSlaves(Payload payload, List<String> excludeServerIds) {
         CHILD_SERVERS.forEach((id, ch) -> {
-            if(!excludeServerIds.contains(id)) {
+            if(!excludeServerIds.contains(id) && ch.isActive()) {
                 ch.writeAndFlush(payload);
             }
         });

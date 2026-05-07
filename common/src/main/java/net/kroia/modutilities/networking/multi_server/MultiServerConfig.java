@@ -38,7 +38,7 @@ public class MultiServerConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path CONFIG_PATH = Paths.get("config", "MultiServerConfig.json");
 
-    private static MultiServerConfig instance = null;
+    private static volatile MultiServerConfig instance = null;
 
     // ── Fields (mapped from JSON) ────────────────────────────────────────────
 
@@ -74,8 +74,13 @@ public class MultiServerConfig {
      * persisted back to disk.
      */
     public static MultiServerConfig get() {
-        if (instance == null)
-            instance = load();
+        if (instance == null) {
+            synchronized (MultiServerConfig.class) {
+                if (instance == null) {
+                    instance = load();
+                }
+            }
+        }
         return instance;
     }
 

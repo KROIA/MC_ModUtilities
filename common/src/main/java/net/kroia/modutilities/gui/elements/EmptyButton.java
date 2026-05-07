@@ -35,11 +35,7 @@ public class EmptyButton extends GuiElement {
      */
     public EmptyButton() {
         super();
-        int defaultColor = ColorUtilities.setBrightness(DEFAULT_BACKGROUND_COLOR, 0.8f);
-        setBackgroundColor(defaultColor);
-        setHoverColor(ColorUtilities.setBrightness(defaultColor, 0.8f));
-        setPressedColor(ColorUtilities.setBrightness(defaultColor, 0.6f));
-        setOutlineColor(ColorUtilities.setBrightness(defaultColor, 0.4f));
+        initColors();
     }
     /**
      * Creates an empty button at the given position and size.
@@ -50,7 +46,16 @@ public class EmptyButton extends GuiElement {
      */
     public EmptyButton(int x, int y, int width, int height) {
         super(x, y, width, height);
+        initColors();
     }
+    private void initColors() {
+        int defaultColor = ColorUtilities.setBrightness(DEFAULT_BACKGROUND_COLOR, 0.8f);
+        setBackgroundColor(defaultColor);
+        setHoverColor(ColorUtilities.setBrightness(defaultColor, 0.8f));
+        setPressedColor(ColorUtilities.setBrightness(defaultColor, 0.6f));
+        setOutlineColor(ColorUtilities.setBrightness(defaultColor, 0.4f));
+    }
+
     /**
      * Creates an empty button with default size and a press callback.
      * @param onFallingEdge runnable executed when the button is pressed (mouse down)

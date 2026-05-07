@@ -324,6 +324,8 @@ public abstract class GenericStream<CONTEXT_DATA, DATA> {
     {
         this.manager = other.manager;
         this.StreamID = other.StreamID;
+        this.requestorPlayerUUID = other.requestorPlayerUUID;
+        this.contextData = other.contextData;
     }
     public final void setStreamID(UUID streamID)
     {

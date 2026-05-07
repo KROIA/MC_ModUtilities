@@ -329,7 +329,10 @@ public class DataPersistence {
      * logged and an empty list is returned.
      *
      * @return the list of sub-directory paths, or an empty list on failure.
+     *
+     * @deprecated Use {@link #getFolders(Path)} instead.
      */
+    @Deprecated
     public List<Path> getFoldes(Path absolutePath) {
         try (var stream = Files.list(absolutePath)) {
             return stream
@@ -339,6 +342,21 @@ public class DataPersistence {
             error("Failed to list folders in directory: " + absolutePath, e);
             return List.of();
         }
+    }
+
+    /**
+     * Lists all sub-directories of the given directory.
+     *
+     * @param absolutePath the directory to scan.
+     *
+     * @apiNote
+     * Uses try-with-resources to avoid leaking file handles; errors are
+     * logged and an empty list is returned.
+     *
+     * @return the list of sub-directory paths, or an empty list on failure.
+     */
+    public List<Path> getFolders(Path absolutePath) {
+        return getFoldes(absolutePath);
     }
 
 
@@ -498,7 +516,13 @@ public class DataPersistence {
         }
 
 
-        // Split the data into chunks
+        // Pre-compute individual element sizes to avoid O(N²) re-serialization
+        long[] elementSizes = new long[dataList.size()];
+        for (int i = 0; i < dataList.size(); i++) {
+            elementSizes[i] = ChunkedNBT.getUncompressedSize(dataList.get(i));
+        }
+
+        // Split the data into chunks using a running size total
         List<CompoundTag> chunks = new ArrayList<>();
         int processedTagCount = 0;
         boolean firstChunk = true;
@@ -513,21 +537,46 @@ public class DataPersistence {
                 firstChunk = false;
             }
             chunk.put("data", chunkList);
+
+            // Measure the empty chunk overhead (compound wrapper + "data" key + list header)
+            long chunkBaseSize = ChunkedNBT.getUncompressedSize(chunk);
+            long runningSize = chunkBaseSize;
+
             for(; processedTagCount<dataList.size(); ++processedTagCount)
             {
+                long elementSize = elementSizes[processedTagCount];
+
+                // Check if adding this element would likely exceed the limit
+                if(runningSize + elementSize > MAX_NBT_SIZE && !chunkList.isEmpty())
+                {
+                    // Verify with a full serialization before splitting, in case
+                    // the running total over-estimated due to per-element wrapper overhead
+                    chunkList.add(dataList.get(processedTagCount));
+                    long actualSize = ChunkedNBT.getUncompressedSize(chunk);
+                    if(actualSize > MAX_NBT_SIZE) {
+                        chunkList.remove(chunkList.size() - 1);
+                        break;
+                    }
+                    // Actual size fits; update running total with the real value
+                    runningSize = actualSize;
+                    continue;
+                }
+
                 chunkList.add(dataList.get(processedTagCount));
-                long chunkUncompressedSize = 0;
-                chunkUncompressedSize = ChunkedNBT.getUncompressedSize(chunk);
-                if(chunkUncompressedSize > MAX_NBT_SIZE) {
-                    // If the chunk is too large, stop adding more tags
-                    // remove the last tag
-                    chunkList.remove(chunkList.size() - 1);
-                    if(chunkList.isEmpty())
+                runningSize += elementSize;
+
+                // If running total exceeds the limit and the list only has this one element,
+                // then the single element is too large
+                if(runningSize > MAX_NBT_SIZE)
+                {
+                    if(chunkList.size() == 1)
                     {
                         error("The Tag at index: "+processedTagCount+" in the dataList is larger than the maximum NBT size of " + MAX_NBT_SIZE + " bytes.\n" +
                                 "Consider splitting the data into smaller ListTag elements or using a different data format.", new Throwable("Data too large"));
                         return false;
                     }
+                    // Remove the last tag that pushed us over
+                    chunkList.remove(chunkList.size() - 1);
                     break;
                 }
             }

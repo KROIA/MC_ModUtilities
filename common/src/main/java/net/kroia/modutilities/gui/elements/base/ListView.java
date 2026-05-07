@@ -130,18 +130,42 @@ public abstract class ListView extends GuiElement{
      * Sets the number of GUI pixels the content scrolls per scroll-wheel notch.
      *
      * @param scrolSpeed the scroll speed in pixels per notch
+     *
+     * @deprecated Use {@link #setScrollSpeed(int)} instead.
      */
+    @Deprecated
     public void setScrolSpeed(int scrolSpeed)
     {
         this.scrolSpeed = scrolSpeed;
     }
 
     /**
-     * @return the scroll speed in GUI pixels per scroll-wheel notch
+     * Sets the number of GUI pixels the content scrolls per scroll-wheel notch.
+     *
+     * @param scrollSpeed the scroll speed in pixels per notch
      */
+    public void setScrollSpeed(int scrollSpeed)
+    {
+        setScrolSpeed(scrollSpeed);
+    }
+
+    /**
+     * @return the scroll speed in GUI pixels per scroll-wheel notch
+     *
+     * @deprecated Use {@link #getScrollSpeed()} instead.
+     */
+    @Deprecated
     public int getScolSpeed()
     {
         return this.scrolSpeed;
+    }
+
+    /**
+     * @return the scroll speed in GUI pixels per scroll-wheel notch
+     */
+    public int getScrollSpeed()
+    {
+        return getScolSpeed();
     }
 
     /**
@@ -282,7 +306,7 @@ public abstract class ListView extends GuiElement{
      *         case the event is allowed to bubble to other handlers)
      */
     @Override
-    public boolean mouseScrolledOverElement(double delta)
+    protected boolean mouseScrolledOverElement(double delta)
     {
         if (delta > 0 && scrollOffset > 0) {
             scrollOffset-=scrolSpeed; // Scroll up
@@ -362,7 +386,22 @@ public abstract class ListView extends GuiElement{
 
 
     protected abstract void updateElementPositions();
+
+    /**
+     * @deprecated Use {@link #onScrollBarFallingEdge()} instead.
+     */
+    @Deprecated
     protected abstract void onScrllBarFallingEdge();
+
+    /**
+     * Called when the scrollbar button is released (falling edge).
+     * Delegates to the existing {@link #onScrllBarFallingEdge()} implementation.
+     */
+    protected void onScrollBarFallingEdge()
+    {
+        onScrllBarFallingEdge();
+    }
+
     protected abstract void onScrollBarDragging();
 
 
