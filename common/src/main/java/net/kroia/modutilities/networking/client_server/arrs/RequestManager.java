@@ -300,7 +300,7 @@ public class RequestManager {
     /**
      * Processes a response packet received on the master server.
      * If the response matches a pending master-originated request, its future is completed.
-     * Otherwise the response is forwarded to the originating client (resolved via
+     * Otherwise, the response is forwarded to the originating client (resolved via
      * {@code context.senderPlayerUUID}).
      *
      * @param responsePacket The response packet.
@@ -338,7 +338,7 @@ public class RequestManager {
     /**
      * Processes a response packet received on a slave server.
      * If the response matches a pending slave-originated request, its future is completed.
-     * Otherwise the response is forwarded to the originating client (resolved via
+     * Otherwise, the response is forwarded to the originating client (resolved via
      * {@code context.senderPlayerUUID}).
      *
      * @param responsePacket The response packet.

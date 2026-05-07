@@ -281,7 +281,7 @@ public class SlaveServerClient {
      * @return {@code true} if the packet was queued for sending; {@code false} if no active connection was available.
      *
      * @apiNote
-     * Thread-safe — Netty queues the write internally.
+     * Thread-safe — Netty queues to write internally.
      */
     public boolean sendToMaster(@Nullable UUID senderPlayerUUID, CustomPacketPayload packet) {
         //info("Sending packet: '"+packet.type().id()+"' to master for player '" + senderPlayerUUID+"'");
@@ -296,7 +296,7 @@ public class SlaveServerClient {
      *         delivery); {@code false} if no active connection was available.
      *
      * @apiNote
-     * Thread-safe — Netty queues the write internally. Delivery failures are
+     * Thread-safe — Netty queues to write internally. Delivery failures are
      * logged via the channel write listener but do not affect the return value.
      */
     public boolean sendToMaster(Payload payload) {
