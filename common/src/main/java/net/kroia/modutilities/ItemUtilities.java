@@ -1,18 +1,18 @@
 package net.kroia.modutilities;
 
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
 
 /**
  * High-level helper for working with Minecraft {@link Item}s and {@link ItemStack}s.
@@ -35,6 +35,8 @@ public class ItemUtilities {
     private static class ItemCache
     {
         private List<ItemStack> creativeItemCache;
+        private List<ItemStack> creativeTabAllItems;
+        private LinkedHashMap<String, List<ItemStack>> creativeTabCategories;
 
         public List<ItemStack> getCreativeItemCache()
         {
@@ -45,9 +47,66 @@ public class ItemUtilities {
             return creativeItemCache;
         }
 
+        public List<ItemStack> getCreativeTabAllItems()
+        {
+            if(creativeTabAllItems == null)
+            {
+                rebuildCreativeTabCache();
+            }
+            return creativeTabAllItems;
+        }
+
+        public LinkedHashMap<String, List<ItemStack>> getCreativeTabCategories()
+        {
+            if(creativeTabCategories == null)
+            {
+                rebuildCreativeTabCache();
+            }
+            return creativeTabCategories;
+        }
+
+        private void rebuildCreativeTabCache()
+        {
+            RegistryAccess registryAccess = UtilitiesPlatform.getRegistryAccess();
+            if(registryAccess == null)
+            {
+                creativeTabAllItems = new ArrayList<>();
+                creativeTabCategories = new LinkedHashMap<>();
+                return;
+            }
+            CreativeModeTabs.tryRebuildTabContents(FeatureFlags.DEFAULT_FLAGS, true, registryAccess);
+
+            creativeTabCategories = new LinkedHashMap<>();
+            List<ItemStack> searchTabItems = null;
+
+            for (CreativeModeTab tab : BuiltInRegistries.CREATIVE_MODE_TAB) {
+                Collection<ItemStack> displayItems = tab.getDisplayItems();
+                if (displayItems.isEmpty()) continue;
+
+                String tabName = tab.getDisplayName().getString();
+                creativeTabCategories.put(tabName, new ArrayList<>(displayItems));
+
+                if (tab.getType() == CreativeModeTab.Type.SEARCH) {
+                    searchTabItems = new ArrayList<>(displayItems);
+                }
+            }
+
+            if (searchTabItems != null) {
+                creativeTabAllItems = searchTabItems;
+            } else {
+                Set<ItemStack> seen = new LinkedHashSet<>();
+                for (List<ItemStack> items : creativeTabCategories.values()) {
+                    seen.addAll(items);
+                }
+                creativeTabAllItems = new ArrayList<>(seen);
+            }
+        }
+
         public void invalidate()
         {
             creativeItemCache = null;
+            creativeTabAllItems = null;
+            creativeTabCategories = null;
         }
     }
     private static final ItemCache itemCache = new ItemCache();
@@ -159,12 +218,49 @@ public class ItemUtilities {
     }
 
 
+    // =========================================================================
+    // Client-side methods — use CreativeModeTab API, include item variants
+    // =========================================================================
+
+    /**
+     * Returns all creative inventory items including variants (potions, enchanted books,
+     * tipped arrows, etc.) as seen in the creative mode inventory.
+     * <p>
+     * Client-side only — uses {@link CreativeModeTabs#tryRebuildTabContents} to populate
+     * tab contents. Results are cached and invalidated by {@link #invalidateCreativeItemCache()}.
+     *
+     * @return a list of all creative inventory item stacks, or an empty list if no registry access is available
+     */
+    public static List<ItemStack> getAllItems()
+    {
+        return itemCache.getCreativeTabAllItems();
+    }
+
+    /**
+     * Returns all creative inventory items grouped by their creative tab category.
+     * <p>
+     * Keys are tab display names (e.g. "Building Blocks", "Combat", "Food &amp; Drinks").
+     * Empty special tabs (Saved Hotbars, Survival Inventory) are excluded.
+     * Client-side only.
+     *
+     * @return an ordered map of tab name to item stacks, or an empty map if no registry access is available
+     */
+    public static LinkedHashMap<String, List<ItemStack>> getItemsByCategory()
+    {
+        return itemCache.getCreativeTabCategories();
+    }
+
+    // =========================================================================
+    // Server-side methods — use item registry, one stack per registered item
+    // =========================================================================
+
     /**
      * Returns the registry IDs of all items known to the platform.
+     * Works on both client and server. Returns one entry per registered item type (no variants).
      *
      * @return a list of unique item ID strings
      */
-    public static ArrayList<String> getAllItemIDStrs()
+    public static ArrayList<String> getAllItemIDStrsServerSide()
     {
         ArrayList<ItemStack> items = UtilitiesPlatform.getAllItems();
         HashMap<String, ItemStack> itemTable = new HashMap<>();
@@ -174,23 +270,26 @@ public class ItemUtilities {
         }
         return new ArrayList<>(itemTable.keySet());
     }
+
     /**
      * Returns all items known to the platform as {@link ItemStack}s.
+     * Works on both client and server. Returns one stack per registered item type (no variants).
      *
      * @return a list of item stacks, one per registered item
      */
-    public static ArrayList<ItemStack> getAllItems()
+    public static ArrayList<ItemStack> getAllItemsServerSide()
     {
         return UtilitiesPlatform.getAllItems();
     }
 
     /**
      * Returns the IDs of all items belonging to the given item tag.
+     * Works on both client and server.
      *
-     * @param tag the tag path (without namespace) to filter items by
+     * @param tag the tag identifier including namespace (e.g. {@code "minecraft:logs"}, {@code "c:ingots"})
      * @return a list of matching item ID strings
      */
-    public static ArrayList<String> getAllItemIDStrs(String tag)
+    public static ArrayList<String> getAllItemIDStrsServerSide(String tag)
     {
         ArrayList<String> itemIDs = new ArrayList<>();
         ArrayList<ItemStack> items = UtilitiesPlatform.getAllItems();
@@ -203,13 +302,15 @@ public class ItemUtilities {
         }
         return itemIDs;
     }
+
     /**
      * Returns all item stacks belonging to the given item tag.
+     * Works on both client and server.
      *
-     * @param tag the tag path (without namespace) to filter items by
+     * @param tag the tag identifier including namespace (e.g. {@code "minecraft:logs"}, {@code "c:ingots"})
      * @return a list of matching item stacks
      */
-    public static ArrayList<ItemStack> getAllItems(String tag)
+    public static ArrayList<ItemStack> getAllItemsServerSide(String tag)
     {
         ArrayList<ItemStack> items = new ArrayList<>();
         ArrayList<ItemStack> itemTable = UtilitiesPlatform.getAllItems();
@@ -222,9 +323,11 @@ public class ItemUtilities {
         }
         return items;
     }
+
     /**
      * Returns the IDs of all items matching any of the provided tags or whose ID is contained
      * in {@code containsInID}.
+     * Works on both client and server.
      * <p>
      * Tags are looked up under both the platform-specific common namespace
      * ({@code c:} on Fabric/Quilt, {@code forge:} on Forge) and the {@code minecraft:} namespace.
@@ -233,7 +336,7 @@ public class ItemUtilities {
      * @param containsInID exact item ID strings to include unconditionally
      * @return a list of matching item ID strings
      */
-    public static ArrayList<String> getAllItemIDStrs(ArrayList<String> tags, ArrayList<String> containsInID)
+    public static ArrayList<String> getAllItemIDStrsServerSide(ArrayList<String> tags, ArrayList<String> containsInID)
     {
         ArrayList<String> itemIDs = new ArrayList<>();
         HashMap<String, TagKey<Item>> tagMap = new HashMap<>();
@@ -253,8 +356,8 @@ public class ItemUtilities {
         }
         for(String tag : tags)
         {
-            tagMap.put(modTag+tag, TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, modTag+tag)));
-            tagMap.put("minecraft:"+tag, TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID,"minecraft:"+tag)));
+            tagMap.put(modTag+tag, TagKey.create(Registries.ITEM, ResourceLocation.parse(modTag+tag)));
+            tagMap.put("minecraft:"+tag, TagKey.create(Registries.ITEM, ResourceLocation.parse("minecraft:"+tag)));
         }
         for(ItemStack stack : itemTable)
         {
@@ -268,9 +371,11 @@ public class ItemUtilities {
         }
         return itemIDs;
     }
+
     /**
      * Returns the item stacks of all items matching any of the provided tags or whose ID is
      * contained in {@code containsInID}.
+     * Works on both client and server.
      * <p>
      * Tags are looked up under both the platform-specific common namespace
      * ({@code c:} on Fabric/Quilt, {@code forge:} on Forge) and the {@code minecraft:} namespace.
@@ -279,7 +384,7 @@ public class ItemUtilities {
      * @param containsInID exact item ID strings to include unconditionally
      * @return a list of matching item stacks
      */
-    public static ArrayList<ItemStack> getAllItems(ArrayList<String> tags, ArrayList<String> containsInID)
+    public static ArrayList<ItemStack> getAllItemsServerSide(ArrayList<String> tags, ArrayList<String> containsInID)
     {
         ArrayList<ItemStack> items = new ArrayList<>();
         HashMap<String, TagKey<Item>> tagMap = new HashMap<>();
@@ -314,11 +419,9 @@ public class ItemUtilities {
         }
         return items;
     }
-    private static boolean isInTag(Item item, String tagId) {
-        // Create a TagKey for the specified tag
-        TagKey<Item> tag = TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID,tagId));
 
-        // Check if the item is in the tag
+    private static boolean isInTag(Item item, String tagId) {
+        TagKey<Item> tag = TagKey.create(Registries.ITEM, ResourceLocation.parse(tagId));
         return item.builtInRegistryHolder().is(tag);
     }
 

@@ -12,8 +12,10 @@ import net.kroia.modutilities.networking.client_server.streaming.StreamSystem;
 import net.kroia.modutilities.setting.parser.ItemStackJsonParser;
 import net.kroia.modutilities.testing.TestCommandRegistration;
 import net.kroia.modutilities.testing.TestRegistry;
+import net.kroia.modutilities.testing.tests.CreativeTabTests;
 import net.kroia.modutilities.testing.tests.EventTests;
 import net.kroia.modutilities.testing.tests.GuiLogicTests;
+import net.kroia.modutilities.testing.tests.ParserTests;
 import net.kroia.modutilities.testing.tests.PersistenceTests;
 import net.kroia.modutilities.testing.tests.NetworkingTests;
 import net.kroia.modutilities.testing.tests.SettingsTests;
@@ -167,7 +169,6 @@ public class Sandbox {
 
 
 
-
     public static final Registrar<Item> ITEMS = MANAGER.get().get(Registries.ITEM);
     public static <T extends Item> RegistrySupplier<T> registerItem(String name, Supplier<T> item)
     {
@@ -236,8 +237,10 @@ public class Sandbox {
         if (TestRegistry.ENABLE_TESTS) {
             TestRegistry.register(new EventTests());
             if (UtilitiesPlatform.isClient()) {
+                TestRegistry.register(new CreativeTabTests());
                 TestRegistry.register(new GuiLogicTests());
             }
+            TestRegistry.register(new ParserTests());
             TestRegistry.register(new PersistenceTests());
             TestRegistry.register(new SettingsTests());
             TestRegistry.register(new NetworkingTests());
