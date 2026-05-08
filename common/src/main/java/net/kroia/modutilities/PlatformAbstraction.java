@@ -5,7 +5,6 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 
 /**
  * Service-provider interface implemented per modloader (Fabric, NeoForge, Forge, Quilt) to

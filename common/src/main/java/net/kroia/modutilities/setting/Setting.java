@@ -77,7 +77,7 @@ public class Setting<T> {
      * Change detection relies on {@code hashCode} and {@link Objects#equals(Object, Object)};
      * it will NOT detect in-place mutation of mutable objects (e.g. modifying fields of a
      * shared object reference). To trigger listener notification after mutating a mutable
-     * value, pass a new instance or a copy to {@code set()}.
+     * value, pass a new instance or a copy to {@code set()}, or call {@link #markDirty()}.
      */
     public void set(T newValue) {
         // Check if the new value is different from the current value
@@ -90,6 +90,18 @@ public class Setting<T> {
             this.valueHashCode = newValueHashCode;
             notifyListeners();
         }
+    }
+
+    /**
+     * Forces listener notification regardless of equality checks.
+     * Use after mutating a mutable value in-place (e.g. adding elements to a List or Map
+     * that is already the setting's value). Re-snapshots the hash code and fires all listeners.
+     *
+     * @see #set(Object)
+     */
+    public void markDirty() {
+        this.valueHashCode = value != null ? value.hashCode() : 0;
+        notifyListeners();
     }
 
     /**

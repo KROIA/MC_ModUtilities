@@ -270,7 +270,26 @@ public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
     // Helpers: Convert between CompoundTag and JsonObject
     // -------------------------------------------------------------------------
 
-    private JsonObject nbtToJson(CompoundTag tag) {
+    /**
+     * Key used inside typed-number JSON wrappers to distinguish them from
+     * real NBT compound tags.  The wrapper format is:
+     * <pre>{"nbt_type": "byte", "value": 5}</pre>
+     * During deserialization, a JSON object containing exactly these two keys
+     * is treated as a typed number; any other JSON object is treated as a
+     * compound tag.  Plain JSON numbers (old format) fall back to the legacy
+     * int-or-double heuristic for backwards compatibility.
+     */
+    private static final String NBT_TYPE_KEY = "nbt_type";
+    private static final String NBT_VALUE_KEY = "value";
+
+    /**
+     * Converts a {@link CompoundTag} to a {@link JsonObject}, preserving
+     * the exact numeric type of every NBT tag via typed-number wrappers.
+     *
+     * @param tag The compound tag to convert.
+     * @return A JSON object representing the tag.
+     */
+    public JsonObject nbtToJson(CompoundTag tag) {
         JsonObject json = new JsonObject();
         for (String key : tag.getAllKeys()) {
             Tag value = tag.get(key);
@@ -279,18 +298,51 @@ public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
         return json;
     }
 
-    private JsonElement nbtTagToJson(Tag tag) {
+    /**
+     * Converts a single NBT {@link Tag} to a {@link JsonElement}.
+     * Numeric tags are encoded as wrapper objects {@code {"nbt_type": "...", "value": ...}}
+     * to preserve their exact type through serialization.
+     *
+     * @param tag The NBT tag to convert.
+     * @return The corresponding JSON element.
+     */
+    public JsonElement nbtTagToJson(Tag tag) {
         switch (tag.getId()) {
-            case Tag.TAG_BYTE:
-            case Tag.TAG_SHORT:
-            case Tag.TAG_INT:
-            case Tag.TAG_LONG:
-            case Tag.TAG_FLOAT:
+            case Tag.TAG_BYTE: {
+                JsonObject wrapper = new JsonObject();
+                wrapper.addProperty(NBT_TYPE_KEY, "byte");
+                wrapper.addProperty(NBT_VALUE_KEY, ((net.minecraft.nbt.NumericTag) tag).getAsByte());
+                return wrapper;
+            }
+            case Tag.TAG_SHORT: {
+                JsonObject wrapper = new JsonObject();
+                wrapper.addProperty(NBT_TYPE_KEY, "short");
+                wrapper.addProperty(NBT_VALUE_KEY, ((net.minecraft.nbt.NumericTag) tag).getAsShort());
+                return wrapper;
+            }
+            case Tag.TAG_INT: {
+                JsonObject wrapper = new JsonObject();
+                wrapper.addProperty(NBT_TYPE_KEY, "int");
+                wrapper.addProperty(NBT_VALUE_KEY, ((net.minecraft.nbt.NumericTag) tag).getAsInt());
+                return wrapper;
+            }
+            case Tag.TAG_LONG: {
+                JsonObject wrapper = new JsonObject();
+                wrapper.addProperty(NBT_TYPE_KEY, "long");
+                wrapper.addProperty(NBT_VALUE_KEY, ((net.minecraft.nbt.NumericTag) tag).getAsLong());
+                return wrapper;
+            }
+            case Tag.TAG_FLOAT: {
+                JsonObject wrapper = new JsonObject();
+                wrapper.addProperty(NBT_TYPE_KEY, "float");
+                wrapper.addProperty(NBT_VALUE_KEY, ((net.minecraft.nbt.NumericTag) tag).getAsFloat());
+                return wrapper;
+            }
             case Tag.TAG_DOUBLE: {
-                // All numeric types
-                String str = tag.getAsString();
-                try { return new JsonPrimitive(Double.parseDouble(str)); }
-                catch (NumberFormatException e) { return new JsonPrimitive(str); }
+                JsonObject wrapper = new JsonObject();
+                wrapper.addProperty(NBT_TYPE_KEY, "double");
+                wrapper.addProperty(NBT_VALUE_KEY, ((net.minecraft.nbt.NumericTag) tag).getAsDouble());
+                return wrapper;
             }
             case Tag.TAG_STRING:
                 return new JsonPrimitive(tag.getAsString());
@@ -327,7 +379,15 @@ public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
         }
     }
 
-    private CompoundTag jsonToNbt(JsonObject json) {
+    /**
+     * Converts a {@link JsonObject} back to a {@link CompoundTag}.
+     * Recognizes both the new typed-number wrapper format and legacy plain
+     * JSON numbers for backwards compatibility.
+     *
+     * @param json The JSON object to convert.
+     * @return The corresponding compound tag.
+     */
+    public CompoundTag jsonToNbt(JsonObject json) {
         CompoundTag tag = new CompoundTag();
         for (var entry : json.entrySet()) {
             tag.put(entry.getKey(), jsonElementToNbt(entry.getValue()));
@@ -335,7 +395,55 @@ public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
         return tag;
     }
 
-    private Tag jsonElementToNbt(JsonElement element) {
+    /**
+     * Checks whether a JSON object is a typed-number wrapper produced by the
+     * new serialization format: exactly two keys, {@code "nbt_type"} and
+     * {@code "value"}.
+     */
+    private static boolean isTypedNumberWrapper(JsonObject obj) {
+        return obj.size() == 2
+                && obj.has(NBT_TYPE_KEY)
+                && obj.has(NBT_VALUE_KEY)
+                && obj.get(NBT_TYPE_KEY).isJsonPrimitive()
+                && obj.getAsJsonPrimitive(NBT_TYPE_KEY).isString()
+                && obj.get(NBT_VALUE_KEY).isJsonPrimitive()
+                && obj.getAsJsonPrimitive(NBT_VALUE_KEY).isNumber();
+    }
+
+    /**
+     * Reconstructs an NBT numeric tag from a typed-number wrapper object.
+     *
+     * @param obj A JSON object of the form {@code {"nbt_type": "<type>", "value": <number>}}
+     * @return The corresponding NBT tag with the correct numeric type
+     */
+    private Tag typedNumberToNbt(JsonObject obj) {
+        String type = obj.get(NBT_TYPE_KEY).getAsString();
+        Number value = obj.get(NBT_VALUE_KEY).getAsNumber();
+        return switch (type) {
+            case "byte" -> net.minecraft.nbt.ByteTag.valueOf(value.byteValue());
+            case "short" -> net.minecraft.nbt.ShortTag.valueOf(value.shortValue());
+            case "int" -> net.minecraft.nbt.IntTag.valueOf(value.intValue());
+            case "long" -> net.minecraft.nbt.LongTag.valueOf(value.longValue());
+            case "float" -> net.minecraft.nbt.FloatTag.valueOf(value.floatValue());
+            case "double" -> net.minecraft.nbt.DoubleTag.valueOf(value.doubleValue());
+            default -> net.minecraft.nbt.DoubleTag.valueOf(value.doubleValue());
+        };
+    }
+
+    /**
+     * Converts a {@link JsonElement} back to an NBT {@link Tag}.
+     * <ul>
+     *   <li>Typed-number wrappers ({@code {"nbt_type": "...", "value": ...}}) reconstruct
+     *       the exact NBT numeric type (new format).</li>
+     *   <li>Plain JSON numbers use a legacy heuristic: whole numbers within int range become
+     *       {@code IntTag}, everything else becomes {@code DoubleTag} (backwards compatibility).</li>
+     *   <li>JSON objects without the wrapper keys become {@code CompoundTag}.</li>
+     * </ul>
+     *
+     * @param element The JSON element to convert.
+     * @return The corresponding NBT tag.
+     */
+    public Tag jsonElementToNbt(JsonElement element) {
         if (element.isJsonNull()) {
             return net.minecraft.nbt.StringTag.valueOf("");
         } else if (element.isJsonPrimitive()) {
@@ -343,8 +451,9 @@ public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
             if (prim.isBoolean()) {
                 return net.minecraft.nbt.ByteTag.valueOf(prim.getAsBoolean() ? (byte) 1 : (byte) 0);
             } else if (prim.isNumber()) {
+                // Legacy format: plain JSON number without type info.
+                // Use the old heuristic for backwards compatibility.
                 Number n = prim.getAsNumber();
-                // Prefer int, fall back to double
                 double d = n.doubleValue();
                 if (d == Math.floor(d) && !Double.isInfinite(d) && Math.abs(d) < Integer.MAX_VALUE) {
                     return net.minecraft.nbt.IntTag.valueOf(n.intValue());
@@ -361,7 +470,13 @@ public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
             }
             return list;
         } else if (element.isJsonObject()) {
-            return jsonToNbt(element.getAsJsonObject());
+            JsonObject obj = element.getAsJsonObject();
+            // New format: typed-number wrapper {"nbt_type": "...", "value": ...}
+            if (isTypedNumberWrapper(obj)) {
+                return typedNumberToNbt(obj);
+            }
+            // Regular compound tag
+            return jsonToNbt(obj);
         }
         return net.minecraft.nbt.StringTag.valueOf(element.getAsString());
     }
