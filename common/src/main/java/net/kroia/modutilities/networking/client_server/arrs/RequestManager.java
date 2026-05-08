@@ -247,7 +247,7 @@ public class RequestManager {
         while (serverIt.hasNext()) {
             var entry = serverIt.next();
             if (entry.getValue().creationTimeMs < cutoff) {
-                if (entry.getValue().responseFuture != null && !entry.getValue().responseFuture.isDone()) {
+                if (entry.getValue().responseFuture != null) {
                     entry.getValue().responseFuture.completeExceptionally(
                         new java.util.concurrent.TimeoutException("Request timed out: " + entry.getKey()));
                 }
@@ -259,7 +259,7 @@ public class RequestManager {
         while (serverServerIt.hasNext()) {
             var entry = serverServerIt.next();
             if (entry.getValue().creationTimeMs < cutoff) {
-                if (entry.getValue().responseFuture != null && !entry.getValue().responseFuture.isDone()) {
+                if (entry.getValue().responseFuture != null) {
                     entry.getValue().responseFuture.completeExceptionally(
                         new java.util.concurrent.TimeoutException("Request timed out: " + entry.getKey()));
                 }

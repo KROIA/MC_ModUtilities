@@ -100,6 +100,7 @@ public class SettingsGroup {
      * @return The Setting instance if found, otherwise null.
      */
     public Setting<?> getSetting(String settingName) {
+        if (settingName == null) return null;
         for (Setting<?> setting : settings) {
             if (setting.getName().equals(settingName)) {
                 return setting;

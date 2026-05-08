@@ -70,7 +70,12 @@ public class HorizontalSlider extends Slider {
     @Override
     protected void sliderMovedToPos(int x, int y) {
         int width = getWidth();
-        double value = (double)x / (double)(width - sliderBounds.width);
+        int denominator = width - sliderBounds.width;
+        if (denominator <= 0) {
+            setSliderValue(0);
+            return;
+        }
+        double value = (double)x / (double)denominator;
         setSliderValue(value);
     }
 

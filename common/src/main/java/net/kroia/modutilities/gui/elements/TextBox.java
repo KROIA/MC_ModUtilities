@@ -852,6 +852,7 @@ public class TextBox extends GuiElement {
             // Insert character at cursor position
             text = text.substring(0, currentCursorPos) + codePoint + text.substring(currentCursorPos);
             currentCursorPos++;
+            currentCursorPos = Math.min(currentCursorPos, text.length());
             updateTextLabel();
             emitTextChanged();
             return true;

@@ -134,12 +134,24 @@ public class StreamStartPacket extends NetworkPacket {
 
     @Override
     protected void handleOnServer(NetworkManager.PacketContext context) {
-        StreamSystem.handlePacket(this, null, context.getPlayer().getUUID());
+        try {
+            StreamSystem.handlePacket(this, null, context.getPlayer().getUUID());
+        } finally {
+            if (data != null && data.refCnt() > 0) {
+                data.release();
+            }
+        }
     }
 
     @Override
     protected void handleOnMaster(ForwardPacketContext context) {
-        StreamSystem.handlePacket(this, context.senderServerID, context.senderPlayerUUID);
+        try {
+            StreamSystem.handlePacket(this, context.senderServerID, context.senderPlayerUUID);
+        } finally {
+            if (data != null && data.refCnt() > 0) {
+                data.release();
+            }
+        }
     }
 
     @Override

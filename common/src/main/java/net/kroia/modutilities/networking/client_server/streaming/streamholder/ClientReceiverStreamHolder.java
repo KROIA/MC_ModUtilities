@@ -79,13 +79,18 @@ public class ClientReceiverStreamHolder<CONTEXT_DATA, DATA>
      * @param buf The FriendlyByteBuf containing the packet data.
      */
     public void handleStreamPacket(RegistryFriendlyByteBuf buf) {
-        if (streamHandler != null) {
-            DATA data = stream.decodeData(buf);
-            try {
-                streamHandler.accept(data);
+        try {
+            if (streamHandler != null) {
+                DATA data = stream.decodeData(buf);
+                try {
+                    streamHandler.accept(data);
+                } catch (Exception e) {
+                    error("Error while calling stream packet handler for: " + stream, e);
+                }
             }
-            catch (Exception e) {
-                error("Error while calling stream packet handler for: " + stream, e);
+        } finally {
+            if (buf != null && buf.refCnt() > 0) {
+                buf.release();
             }
         }
     }

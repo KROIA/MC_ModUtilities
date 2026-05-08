@@ -74,7 +74,8 @@ public class VerticalListView extends ListView {
     {
         int minPos = 0;
         int maxPos = 0;
-        int spacing = getLayout()!=null?getLayout().spacing:0;
+        var layout = getLayout();
+        int spacing = layout != null ? layout.spacing : 0;
         for(GuiElement child : getChilds())
         {
             minPos = Math.min(minPos, child.getTop());

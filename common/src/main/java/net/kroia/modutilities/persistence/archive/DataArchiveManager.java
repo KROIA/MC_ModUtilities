@@ -280,6 +280,7 @@ public abstract class DataArchiveManager<T extends DataArchiveChunk> {
         if (!Files.isDirectory(archiveFolderPath)) {
             return true;
         }
+        java.util.concurrent.atomic.AtomicInteger deletionFailures = new java.util.concurrent.atomic.AtomicInteger(0);
         try (java.util.stream.Stream<Path> stream = Files.walk(archiveFolderPath)) {
             stream.sorted(java.util.Comparator.reverseOrder())
                     .filter(p -> !p.equals(archiveFolderPath))
@@ -288,11 +289,15 @@ public abstract class DataArchiveManager<T extends DataArchiveChunk> {
                             Files.delete(p);
                             debug("Deleted archive entry: " + p);
                         } catch (IOException e) {
+                            deletionFailures.incrementAndGet();
                             error("Failed to delete archive entry: " + p, e);
                         }
                     });
         } catch (IOException e) {
             error("Failed to walk archive folder: " + archiveFolderPath, e);
+            return false;
+        }
+        if (deletionFailures.get() > 0) {
             return false;
         }
         return getFiles(archiveFolderPath).isEmpty();
@@ -404,9 +409,10 @@ public abstract class DataArchiveManager<T extends DataArchiveChunk> {
                 return new ArrayList<>(); // Return empty list if folder does not exist
             }
 
-            return Files.list(absolutePath) // List files
-                    .filter(Files::isRegularFile)
-                    .collect(Collectors.toList()); // Convert to List
+            try (java.util.stream.Stream<Path> stream = Files.list(absolutePath)) {
+                return stream.filter(Files::isRegularFile)
+                        .collect(Collectors.toList()); // Convert to List
+            }
         } catch (IOException e) {
             error("Failed to list files in directory: " + absolutePath, e);
             return List.of(); // Return empty list on error

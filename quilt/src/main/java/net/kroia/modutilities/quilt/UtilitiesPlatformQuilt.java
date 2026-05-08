@@ -31,8 +31,9 @@ public class UtilitiesPlatformQuilt implements PlatformAbstraction {
         if(itemID.indexOf(":") == -1) {
             itemID = "minecraft:"+itemID;
         }
-        String namespace = itemID.split(":")[0];
-        String path = itemID.split(":")[1];
+        String[] parts = itemID.split(":", 2);
+        String namespace = parts[0];
+        String path = parts[1];
         Item item = BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(namespace, path));
         return item != null ? new ItemStack(item) : ItemStack.EMPTY;
     }

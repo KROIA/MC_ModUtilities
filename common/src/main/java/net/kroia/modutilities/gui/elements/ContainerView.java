@@ -674,7 +674,8 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
         if (super.keyPressed(pKeyCode, pScanCode, pModifiers)) {
             return true;
         } else if (isActiveAndMatches(this.minecraft.options.keyInventory, pKeyCode, pScanCode)) {
-            if(getGui().getFocusedElement() == null)
+            Gui gui = getGui();
+            if(gui != null && gui.getFocusedElement() == null)
                 this.onClose();
             return true;
         } else {

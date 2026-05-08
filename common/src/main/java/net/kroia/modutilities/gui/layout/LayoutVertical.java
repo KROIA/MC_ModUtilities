@@ -37,7 +37,7 @@ public class LayoutVertical extends Layout {
         if(childs.isEmpty())
             return;
         int y = padding;
-        int height = (element.getHeight()-padding*2+spacing)/childs.size()-spacing;
+        int height = Math.max(1, (element.getHeight()-padding*2+spacing)/childs.size()-spacing);
         for (GuiElement child : childs) {
             child.setX(padding);
             child.setY(y);

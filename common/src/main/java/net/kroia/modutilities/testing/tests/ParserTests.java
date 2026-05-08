@@ -46,6 +46,11 @@ public class ParserTests extends TestSuite {
         addTest("itemstack_parser_byte_zero_roundtrip", this::testByteZeroRoundtrip);
         addTest("itemstack_parser_negative_values_roundtrip", this::testNegativeValuesRoundtrip);
         addTest("itemstack_parser_boundary_values_roundtrip", this::testBoundaryValuesRoundtrip);
+
+        // Legacy large-number regression tests (Issue #60)
+        addTest("itemstack_parser_legacy_large_int_to_long", this::testLegacyLargeIntToLong);
+        addTest("itemstack_parser_legacy_small_int_stays_int", this::testLegacySmallIntStaysInt);
+        addTest("itemstack_parser_legacy_negative_large_to_long", this::testLegacyNegativeLargeToLong);
     }
 
     // ========================================================================
@@ -223,20 +228,19 @@ public class ParserTests extends TestSuite {
     }
 
     private TestResult testLegacyPlainDoubleCompat() {
-        // Simulate old format: a large double value that doesn't fit the int heuristic
+        // Large whole number now correctly becomes LongTag (Issue #60 fix)
         ItemStackJsonParser parser = new ItemStackJsonParser();
         JsonObject legacyJson = new JsonObject();
-        legacyJson.addProperty("bigval", 5000000000.0);  // plain JSON number, too large for int
+        legacyJson.addProperty("bigval", 5000000000.0);
 
         CompoundTag restored = parser.jsonToNbt(legacyJson);
         Tag tag = restored.get("bigval");
 
-        if (!(tag instanceof DoubleTag)) {
-            return fail("Legacy large number should deserialize as DoubleTag, got "
+        if (!(tag instanceof LongTag)) {
+            return fail("Legacy large whole number should deserialize as LongTag, got "
                     + (tag != null ? tag.getClass().getSimpleName() : "null"));
         }
-        return assertTrue("Legacy double value should be approximately 5000000000",
-                Math.abs(((DoubleTag) tag).getAsDouble() - 5000000000.0) < 1.0);
+        return assertEquals("Long value should be 5000000000", 5000000000L, ((LongTag) tag).getAsLong());
     }
 
     private TestResult testLegacyPlainFractionalCompat() {
@@ -428,5 +432,69 @@ public class ParserTests extends TestSuite {
             return fail("Long MIN_VALUE round-trip failed");
 
         return pass("All boundary values survive round-trip");
+    }
+
+    // ========================================================================
+    // Legacy large-number regression tests (Issue #60)
+    // ========================================================================
+
+    /**
+     * Issue #60 regression: a plain JSON number exceeding Integer.MAX_VALUE must
+     * deserialize as LongTag, not IntTag (which would truncate/wrap).
+     */
+    private TestResult testLegacyLargeIntToLong() {
+        ItemStackJsonParser parser = new ItemStackJsonParser();
+        JsonObject legacyJson = new JsonObject();
+        legacyJson.addProperty("bignum", 3000000000L); // > Integer.MAX_VALUE
+
+        CompoundTag restored = parser.jsonToNbt(legacyJson);
+        Tag tag = restored.get("bignum");
+
+        if (!(tag instanceof LongTag)) {
+            return fail("Issue #60: plain JSON number 3000000000 should deserialize as LongTag, got "
+                    + (tag != null ? tag.getClass().getSimpleName() : "null"));
+        }
+        return assertEquals("Issue #60: LongTag value should be 3000000000",
+                3000000000L, ((LongTag) tag).getAsLong());
+    }
+
+    /**
+     * Issue #60 companion: a plain JSON number that fits in int must stay IntTag
+     * (ensuring the fix didn't break the normal case).
+     */
+    private TestResult testLegacySmallIntStaysInt() {
+        ItemStackJsonParser parser = new ItemStackJsonParser();
+        JsonObject legacyJson = new JsonObject();
+        legacyJson.addProperty("smallnum", 42);
+
+        CompoundTag restored = parser.jsonToNbt(legacyJson);
+        Tag tag = restored.get("smallnum");
+
+        if (!(tag instanceof IntTag)) {
+            return fail("Issue #60: plain JSON number 42 should deserialize as IntTag, got "
+                    + (tag != null ? tag.getClass().getSimpleName() : "null"));
+        }
+        return assertEquals("Issue #60: IntTag value should be 42",
+                42, ((IntTag) tag).getAsInt());
+    }
+
+    /**
+     * Issue #60 regression: a negative plain JSON number below Integer.MIN_VALUE
+     * must deserialize as LongTag.
+     */
+    private TestResult testLegacyNegativeLargeToLong() {
+        ItemStackJsonParser parser = new ItemStackJsonParser();
+        JsonObject legacyJson = new JsonObject();
+        legacyJson.addProperty("negbig", -3000000000L); // < Integer.MIN_VALUE
+
+        CompoundTag restored = parser.jsonToNbt(legacyJson);
+        Tag tag = restored.get("negbig");
+
+        if (!(tag instanceof LongTag)) {
+            return fail("Issue #60: plain JSON number -3000000000 should deserialize as LongTag, got "
+                    + (tag != null ? tag.getClass().getSimpleName() : "null"));
+        }
+        return assertEquals("Issue #60: LongTag value should be -3000000000",
+                -3000000000L, ((LongTag) tag).getAsLong());
     }
 }

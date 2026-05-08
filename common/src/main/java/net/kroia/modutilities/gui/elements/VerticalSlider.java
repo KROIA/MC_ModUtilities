@@ -70,7 +70,12 @@ public class VerticalSlider extends Slider {
     @Override
     protected void sliderMovedToPos(int x, int y) {
         int height = getHeight();
-        double value = (double)y / (double)(height - sliderBounds.height);
+        int denominator = height - sliderBounds.height;
+        if (denominator <= 0) {
+            setSliderValue(0);
+            return;
+        }
+        double value = (double)y / (double)denominator;
         setSliderValue(value);
     }
 

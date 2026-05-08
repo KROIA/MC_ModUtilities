@@ -62,6 +62,7 @@ public final class GenericRequestPacket extends NetworkPacket
             fut.whenComplete((responseBuf, ex) -> {
                 releaseData();
                 if (ex != null) {
+                    if (responseData.refCnt() > 0) responseData.release();
                     ModUtilitiesMod.LOGGER.error("Error in async GenericRequestPacket handler: " + ex.getMessage(), ex);
                     return;
                 }
@@ -70,6 +71,7 @@ public final class GenericRequestPacket extends NetworkPacket
         }
         catch (Exception e) {
             releaseData();
+            if (responseData.refCnt() > 0) responseData.release();
             ModUtilitiesMod.LOGGER.error("Error handling GenericRequestPacket: " + e.getMessage(), e);
         }
     }
@@ -95,6 +97,7 @@ public final class GenericRequestPacket extends NetworkPacket
             fut.whenComplete((responseBuf, ex) -> {
                 releaseData();
                 if (ex != null) {
+                    if (responseData.refCnt() > 0) responseData.release();
                     ModUtilitiesMod.LOGGER.error("Error in async GenericRequestPacket master handler: " + ex.getMessage(), ex);
                     return;
                 }
@@ -103,6 +106,7 @@ public final class GenericRequestPacket extends NetworkPacket
         }
         catch (Exception e) {
             releaseData();
+            if (responseData.refCnt() > 0) responseData.release();
             ModUtilitiesMod.LOGGER.error("Error handling GenericRequestPacket: " + e.getMessage(), e);
         }
     }
@@ -120,6 +124,7 @@ public final class GenericRequestPacket extends NetworkPacket
             fut.whenComplete((responseBuf, ex) -> {
                 releaseData();
                 if (ex != null) {
+                    if (responseData.refCnt() > 0) responseData.release();
                     ModUtilitiesMod.LOGGER.error("Error in async GenericRequestPacket slave handler: " + ex.getMessage(), ex);
                     return;
                 }
@@ -128,6 +133,7 @@ public final class GenericRequestPacket extends NetworkPacket
         }
         catch (Exception e) {
             releaseData();
+            if (responseData.refCnt() > 0) responseData.release();
             ModUtilitiesMod.LOGGER.error("Error handling GenericRequestPacket: " + e.getMessage(), e);
         }
     }

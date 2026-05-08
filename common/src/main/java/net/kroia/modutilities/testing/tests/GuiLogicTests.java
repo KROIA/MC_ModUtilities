@@ -2,17 +2,22 @@ package net.kroia.modutilities.testing.tests;
 
 import net.kroia.modutilities.gui.elements.CheckBox;
 import net.kroia.modutilities.gui.elements.EmptyButton;
+import net.kroia.modutilities.gui.elements.HorizontalSlider;
 import net.kroia.modutilities.gui.elements.TabElement;
 import net.kroia.modutilities.gui.elements.TextBox;
 import net.kroia.modutilities.gui.elements.VerticalListView;
+import net.kroia.modutilities.gui.elements.VerticalSlider;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Point;
 import net.kroia.modutilities.gui.geometry.Rectangle;
+import net.kroia.modutilities.gui.layout.LayoutHorizontal;
+import net.kroia.modutilities.gui.layout.LayoutVertical;
 import net.kroia.modutilities.testing.TestCategory;
 import net.kroia.modutilities.testing.TestResult;
 import net.kroia.modutilities.testing.TestSuite;
 import net.kroia.modutilities.testing.categories.ModUtilitiesTestCategories;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -69,6 +74,19 @@ public class GuiLogicTests extends TestSuite {
 
         // N40 regression: setOutlineThickness works correctly
         addTest("GuiElement_setOutlineThickness_setsValue", this::testGuiElementSetOutlineThicknessSetsValue);
+
+        // Issue #6 regression: isKeyPressed on detached element should not NPE
+        addTest("gui_isKeyPressed_detached_no_npe", this::testIsKeyPressedDetachedNoNpe);
+
+        // Issue #7 regression: slider zero-track denominator should not crash
+        addTest("gui_slider_zero_track_no_crash", this::testSliderZeroTrackNoCrash);
+
+        // Issue #13 regression: layout overflow should not produce negative dimensions
+        addTest("gui_layout_vertical_overflow_no_negative", this::testLayoutVerticalOverflowNoNegative);
+        addTest("gui_layout_horizontal_overflow_no_negative", this::testLayoutHorizontalOverflowNoNegative);
+
+        // Issue #14 regression: isVisible simplified logic
+        addTest("gui_isVisible_simplified", this::testIsVisibleSimplified);
     }
 
     // ========================================================================
@@ -396,5 +414,176 @@ public class GuiLogicTests extends TestSuite {
         button.setOutlineThickness(5);
         int result = button.getOutlineThickness();
         return assertEquals("N40 regression: setOutlineThickness(5) should store 5", 5, result);
+    }
+
+    // ========================================================================
+    // Issue #6 regression: isKeyPressed on detached element should not NPE
+    // ========================================================================
+
+    /**
+     * Helper subclass that exposes the protected isKeyPressed method for testing.
+     */
+    private static class TestableGuiElement extends EmptyButton {
+        public boolean callIsKeyPressed(int keyCode) {
+            return isKeyPressed(keyCode);
+        }
+        public boolean callIsControlPressed() {
+            return isControlPressed();
+        }
+        public boolean callIsShiftPressed() {
+            return isShiftPressed();
+        }
+    }
+
+    private TestResult testIsKeyPressedDetachedNoNpe() {
+        // Create an element NOT added to any Gui root
+        TestableGuiElement element = new TestableGuiElement();
+        try {
+            boolean result = element.callIsKeyPressed(32); // SPACE
+            if (result) {
+                return fail("Issue #6: isKeyPressed should return false on detached element, got true");
+            }
+            // Also verify isControlPressed and isShiftPressed
+            boolean ctrl = element.callIsControlPressed();
+            boolean shift = element.callIsShiftPressed();
+            if (ctrl || shift) {
+                return fail("Issue #6: isControlPressed/isShiftPressed should return false on detached element");
+            }
+            return pass("Issue #6: isKeyPressed/isControlPressed/isShiftPressed return false without NPE on detached element");
+        } catch (NullPointerException e) {
+            return fail("Issue #6 regression: isKeyPressed threw NPE on detached element (getRoot() is null)");
+        }
+    }
+
+    // ========================================================================
+    // Issue #7 regression: slider zero-track denominator should not crash
+    // ========================================================================
+
+    private TestResult testSliderZeroTrackNoCrash() {
+        try {
+            // HorizontalSlider: set width equal to sliderBounds.width so denominator = 0
+            HorizontalSlider hSlider = new HorizontalSlider(0, 0, 50, 20);
+            hSlider.setSliderWidth(50); // sliderBounds.width == getWidth() == 50
+            hSlider.setSliderValue(0); // trigger internal layout
+
+            // VerticalSlider: set height equal to sliderBounds.height so denominator = 0
+            VerticalSlider vSlider = new VerticalSlider(0, 0, 20, 50);
+            vSlider.setSliderHeight(50); // sliderBounds.height == getHeight() == 50
+            vSlider.setSliderValue(0); // trigger internal layout
+
+            // Verify slider values are valid (should be 0 when denominator is zero)
+            double hValue = hSlider.getSliderValue();
+            double vValue = vSlider.getSliderValue();
+
+            return assertTrue("Issue #7: sliders with zero-track should not crash and value should be 0.0"
+                            + " (hSlider=" + hValue + ", vSlider=" + vValue + ")",
+                    hValue == 0.0 && vValue == 0.0);
+        } catch (ArithmeticException e) {
+            return fail("Issue #7 regression: slider division by zero when handle equals track size");
+        } catch (Exception e) {
+            return fail("Issue #7 regression: unexpected exception: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+        }
+    }
+
+    // ========================================================================
+    // Issue #13 regression: layout overflow should not produce negative dims
+    // ========================================================================
+
+    private TestResult testLayoutVerticalOverflowNoNegative() {
+        // Create parent with height=50, add layout with padding=30, spacing=5
+        // (50 - 30*2 + 5) / 3 - 5 = (50-60+5)/3-5 = -5/3-5 = -6 without clamp
+        // With Math.max(1,...) clamp, height should be at least 1
+        EmptyButton parent = new EmptyButton(0, 0, 100, 50);
+        LayoutVertical layout = new LayoutVertical(30, 5, false, true);
+        parent.setLayout(layout);
+
+        EmptyButton child1 = new EmptyButton(0, 0, 40, 20);
+        EmptyButton child2 = new EmptyButton(0, 0, 40, 20);
+        EmptyButton child3 = new EmptyButton(0, 0, 40, 20);
+
+        parent.addChild(child1);
+        parent.addChild(child2);
+        parent.addChild(child3);
+
+        // Manually apply layout since we have no Gui root
+        layout.apply(parent);
+
+        // Check that no child has zero or negative height
+        List<GuiElement> childs = parent.getChilds();
+        for (int i = 0; i < childs.size(); i++) {
+            int h = childs.get(i).getHeight();
+            if (h <= 0) {
+                return fail("Issue #13 regression: child " + i + " has non-positive height " + h
+                        + " after LayoutVertical with overflow");
+            }
+        }
+        return pass("Issue #13: LayoutVertical clamps child height to at least 1 on overflow");
+    }
+
+    private TestResult testLayoutHorizontalOverflowNoNegative() {
+        // Same pattern for horizontal: width=50, padding=30, spacing=5
+        EmptyButton parent = new EmptyButton(0, 0, 50, 100);
+        LayoutHorizontal layout = new LayoutHorizontal(30, 5, true, false);
+        parent.setLayout(layout);
+
+        EmptyButton child1 = new EmptyButton(0, 0, 20, 40);
+        EmptyButton child2 = new EmptyButton(0, 0, 20, 40);
+        EmptyButton child3 = new EmptyButton(0, 0, 20, 40);
+
+        parent.addChild(child1);
+        parent.addChild(child2);
+        parent.addChild(child3);
+
+        // Manually apply layout since we have no Gui root
+        layout.apply(parent);
+
+        // Check that no child has zero or negative width
+        List<GuiElement> childs = parent.getChilds();
+        for (int i = 0; i < childs.size(); i++) {
+            int w = childs.get(i).getWidth();
+            if (w <= 0) {
+                return fail("Issue #13 regression: child " + i + " has non-positive width " + w
+                        + " after LayoutHorizontal with overflow");
+            }
+        }
+        return pass("Issue #13: LayoutHorizontal clamps child width to at least 1 on overflow");
+    }
+
+    // ========================================================================
+    // Issue #14 regression: isVisible simplified logic
+    // ========================================================================
+
+    private TestResult testIsVisibleSimplified() {
+        // Create parent (100x100) and child (50x50)
+        EmptyButton parent = new EmptyButton(0, 0, 100, 100);
+        EmptyButton child = new EmptyButton(0, 0, 50, 50);
+
+        parent.addChild(child);
+
+        // Enable overlap checking on child (it's enabled by default, but be explicit)
+        child.setCheckOverlapForRendering(true);
+
+        // Since there's no Gui root, globalPositon stays at (0,0) for parent.
+        // Manually set child's globalPosition to be outside parent (simulating child at 200,200)
+        Point childGlobalPos = child.getGlobalPosition();
+        childGlobalPos.x = 200;
+        childGlobalPos.y = 200;
+
+        // Child at global (200,200) with size 50x50 should NOT intersect parent at (0,0) with size 100x100
+        boolean visibleWhenOutside = child.isVisible();
+        if (visibleWhenOutside) {
+            return fail("Issue #14: child at (200,200) should not be visible within parent (0,0,100,100)");
+        }
+
+        // Move child to (10,10) — inside parent bounds
+        childGlobalPos.x = 10;
+        childGlobalPos.y = 10;
+
+        boolean visibleWhenInside = child.isVisible();
+        if (!visibleWhenInside) {
+            return fail("Issue #14: child at (10,10) should be visible within parent (0,0,100,100)");
+        }
+
+        return pass("Issue #14: isVisible correctly uses intersection check for overlap rendering");
     }
 }

@@ -104,6 +104,10 @@ public class SandboxOpenGuiPacket extends NetworkPacket {
 
 
     public static void send(ServerPlayer receiver, SandboxOpenGuiPacket.GuiType guiType) {
+        if (network == null) {
+            ModUtilitiesMod.LOGGER.warn("SandboxOpenGuiPacket.send() called but network is null — sandbox network not registered");
+            return;
+        }
         SandboxOpenGuiPacket packet = new SandboxOpenGuiPacket(guiType);
         network.sendToClient(receiver, packet);
     }

@@ -38,7 +38,7 @@ public class LayoutHorizontal extends Layout {
         if(childs.isEmpty())
             return;
         int x = padding;
-        int width = (element.getWidth()-padding*2+spacing)/childs.size() - spacing;
+        int width = Math.max(1, (element.getWidth()-padding*2+spacing)/childs.size() - spacing);
         for (GuiElement child : childs) {
             child.setX(x);
             child.setY(padding);

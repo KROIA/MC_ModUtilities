@@ -17,7 +17,7 @@ public class TimerMillis implements ServerSaveable {
      * Global offset added to {@link System#currentTimeMillis()} when reading the current time.
      * Adjust to advance or rewind every {@link TimerMillis} instance simultaneously.
      */
-    public static long TIMER_OFFSET_MS = 0;
+    public static volatile long TIMER_OFFSET_MS = 0;
 
     private long startTime;
     private long duration;
@@ -182,6 +182,7 @@ public class TimerMillis implements ServerSaveable {
         tag.putLong("startTime", startTime);
         tag.putLong("duration", duration);
         tag.putBoolean("autoRestart", autoRestart);
+        tag.putBoolean("isRunning", isRunning);
         return true;
     }
 
@@ -193,6 +194,12 @@ public class TimerMillis implements ServerSaveable {
         this.startTime = tag.getLong("startTime");
         this.duration = tag.getLong("duration");
         this.autoRestart = tag.getBoolean("autoRestart");
+        // Backward compat: derive from startTime if key is missing (older saves)
+        if (tag.contains("isRunning")) {
+            this.isRunning = tag.getBoolean("isRunning");
+        } else {
+            this.isRunning = this.startTime > 0;
+        }
         return true;
     }
 }

@@ -191,10 +191,16 @@ public class ServerPlayerUtilities {
 
     /**
      * Adds the given item stack to the player's inventory.
-     * It trys to add the item stack to the player's inventory until it is full or the stack is empty.
+     * It tries to add the item stack to the player's inventory until it is full or the stack is empty.
+     *
      * @param player the player whose inventory will be modified
      * @param stack of items to be placed in the inventory
      * @return remaining amount that did not fit in the inventory
+     *
+     * @apiNote This method <b>mutates</b> the input {@code stack}'s count, setting it to the
+     *          remaining amount that did not fit in the inventory. This is intentional —
+     *          dependent mods (e.g. BankSystem) rely on passing the mutated stack to
+     *          {@code dropItemAtPlayer} afterwards to handle overflow items.
      */
     public static int addToPlayerInventory(ServerPlayer player, ItemStack stack)
     {

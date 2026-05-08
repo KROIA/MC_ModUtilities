@@ -455,8 +455,13 @@ public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
                 // Use the old heuristic for backwards compatibility.
                 Number n = prim.getAsNumber();
                 double d = n.doubleValue();
-                if (d == Math.floor(d) && !Double.isInfinite(d) && Math.abs(d) < Integer.MAX_VALUE) {
-                    return net.minecraft.nbt.IntTag.valueOf(n.intValue());
+                if (d == Math.floor(d) && !Double.isInfinite(d)) {
+                    if (d >= Integer.MIN_VALUE && d <= Integer.MAX_VALUE) {
+                        return net.minecraft.nbt.IntTag.valueOf(n.intValue());
+                    }
+                    if (d >= Long.MIN_VALUE && d <= Long.MAX_VALUE) {
+                        return net.minecraft.nbt.LongTag.valueOf(n.longValue());
+                    }
                 }
                 return net.minecraft.nbt.DoubleTag.valueOf(d);
             } else {

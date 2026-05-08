@@ -479,6 +479,10 @@ public class StreamManager {
                     GenericStream<?, ?> stream = streamData.stream;
                     if (stream != null) {
                         RegistryFriendlyByteBuf buf = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
+                        if (buf == null) {
+                            warn("sendStreamPacket(): Cannot create buffer for stream ID " + streamID + ". Is the server running?");
+                            return;
+                        }
                         stream.createStreamPacketOnServer(buf);
                         GenericStreamPacket streamPacket = new GenericStreamPacket(streamID, buf);
                         if(streamData.needsRoutingToSlaveServer())

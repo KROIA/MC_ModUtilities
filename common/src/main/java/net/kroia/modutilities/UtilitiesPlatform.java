@@ -2,6 +2,8 @@ package net.kroia.modutilities;
 
 import dev.architectury.platform.Platform;
 import dev.architectury.utils.Env;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -154,6 +156,7 @@ public class UtilitiesPlatform {
      * @return the client-side registry access, or {@code null} if no level is loaded
      * @apiNote Must only be called from a physical client.
      */
+    @Environment(EnvType.CLIENT)
     public static RegistryAccess getRegistryAccessClientSide() {
         Minecraft mc = Minecraft.getInstance();
         if(mc.level != null) {

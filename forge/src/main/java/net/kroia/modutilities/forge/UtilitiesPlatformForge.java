@@ -1,5 +1,6 @@
 package net.kroia.modutilities.forge;
 
+import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.PlatformAbstraction;
 import net.kroia.modutilities.UtilitiesPlatform;
 import net.minecraft.resources.ResourceLocation;
@@ -9,17 +10,36 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.ArrayList;
-import java.util.Objects;
 
 public class UtilitiesPlatformForge implements PlatformAbstraction {
+
+    private static MinecraftServer minecraftServer;
+
+    public static void setServer(MinecraftServer server) {
+        minecraftServer = server;
+        if (minecraftServer != null) {
+            ModUtilitiesMod.LOGGER.info("[ForgeSetup] SERVER INSTANCE SET");
+        } else {
+            ModUtilitiesMod.LOGGER.info("[ForgeSetup] SERVER INSTANCE CLEARED");
+        }
+    }
+
     @Override
     public ItemStack getItemStack(String itemID) {
-        return new ItemStack(Objects.requireNonNull(ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemID))));
+        Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemID));
+        if (item == null) {
+            return ItemStack.EMPTY;
+        }
+        return new ItemStack(item);
     }
 
     @Override
     public String getItemIDStr(Item item) {
-        return Objects.requireNonNull(ForgeRegistries.ITEMS.getKey(item)).toString();
+        ResourceLocation key = ForgeRegistries.ITEMS.getKey(item);
+        if (key == null) {
+            return "";
+        }
+        return key.toString();
     }
 
     @Override
@@ -37,7 +57,10 @@ public class UtilitiesPlatformForge implements PlatformAbstraction {
 
     @Override
     public MinecraftServer getServer() {
-        return net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
+        if (minecraftServer == null) {
+            throw new IllegalStateException(ModUtilitiesMod.MOD_ID + " MinecraftServer is not yet initialized.");
+        }
+        return minecraftServer;
     }
 
     @Override

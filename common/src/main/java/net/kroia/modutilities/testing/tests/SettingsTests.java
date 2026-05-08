@@ -36,6 +36,7 @@ public class SettingsTests extends TestSuite {
         addTest("group_register_and_retrieve", this::testGroupRegisterAndRetrieve);
         addTest("group_get_all_settings", this::testGroupGetAllSettings);
         addTest("group_get_nonexistent", this::testGroupGetNonexistent);
+        addTest("group_get_null_name_returns_null", this::testGroupGetNullNameReturnsNull);
         addTest("group_reset_to_defaults", this::testGroupResetToDefaults);
 
         // SettingsStore tests
@@ -146,6 +147,17 @@ public class SettingsTests extends TestSuite {
         group.addSetting("exists", true, Boolean.class);
         Setting<?> result = group.getSetting("does_not_exist");
         return assertNull("Non-existent setting should return null", result);
+    }
+
+    private TestResult testGroupGetNullNameReturnsNull() {
+        TestGroup group = new TestGroup("TestGroup");
+        group.addSetting("volume", 50, Integer.class);
+        try {
+            Setting<?> result = group.getSetting(null);
+            return assertNull("Issue #37: getSetting(null) should return null without NPE", result);
+        } catch (NullPointerException e) {
+            return fail("Issue #37 regression: getSetting(null) threw NPE instead of returning null");
+        }
     }
 
     private TestResult testGroupResetToDefaults() {

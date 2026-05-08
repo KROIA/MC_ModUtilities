@@ -1,5 +1,6 @@
 package net.kroia.modutilities.testing.tests;
 
+import net.kroia.modutilities.TimerMillis;
 import net.kroia.modutilities.persistence.ChunkedNBT;
 import net.kroia.modutilities.persistence.DataPersistence;
 import net.kroia.modutilities.persistence.NBTFileParser;
@@ -53,6 +54,11 @@ public class PersistenceTests extends TestSuite {
         // Regression tests
         addTest("DataPersistence_saveDataCompoundList_manyElements", this::testSaveDataCompoundListManyElements);
         addTest("TimeInterval_getEndTime_openInterval_cachesOnFirstCall", this::testTimeIntervalGetEndTimeCachesOnFirstCall);
+
+        // Timer save/load regression tests (Issue #15)
+        addTest("timer_save_load_preserves_isRunning", this::testTimerSaveLoadPreservesIsRunning);
+        addTest("timer_save_load_stopped_stays_stopped", this::testTimerSaveLoadStoppedStaysStopped);
+        addTest("timer_save_load_backward_compat", this::testTimerSaveLoadBackwardCompat);
     }
 
     // ========================================================================
@@ -440,5 +446,84 @@ public class PersistenceTests extends TestSuite {
         return assertEquals(
                 "getEndTime() should return the same cached value on subsequent calls",
                 firstCall, secondCall);
+    }
+
+    // ========================================================================
+    // Timer save/load regression tests (Issue #15)
+    // ========================================================================
+
+    /**
+     * Issue #15 regression: a running timer must still be running after save/load.
+     */
+    private TestResult testTimerSaveLoadPreservesIsRunning() {
+        TimerMillis timer = new TimerMillis(false);
+        timer.start(10000);
+        if (!timer.isRunning()) {
+            return fail("Timer should be running after start()");
+        }
+
+        CompoundTag tag = new CompoundTag();
+        timer.save(tag);
+
+        TimerMillis loaded = new TimerMillis(false);
+        loaded.load(tag);
+
+        return assertTrue(
+                "Issue #15: isRunning must be true after loading a running timer",
+                loaded.isRunning());
+    }
+
+    /**
+     * Issue #15 regression: a stopped timer must stay stopped after save/load.
+     */
+    private TestResult testTimerSaveLoadStoppedStaysStopped() {
+        TimerMillis timer = new TimerMillis(false);
+        // Do NOT start it — should remain stopped.
+
+        CompoundTag tag = new CompoundTag();
+        timer.save(tag);
+
+        TimerMillis loaded = new TimerMillis(false);
+        loaded.load(tag);
+
+        return assertFalse(
+                "Issue #15: isRunning must be false after loading a stopped timer",
+                loaded.isRunning());
+    }
+
+    /**
+     * Issue #15 regression: loading a tag from an older save format (no isRunning key)
+     * should not crash, and should derive isRunning from startTime > 0.
+     */
+    private TestResult testTimerSaveLoadBackwardCompat() {
+        // Simulate old save format: only startTime, duration, autoRestart (no isRunning key)
+        CompoundTag oldFormatRunning = new CompoundTag();
+        oldFormatRunning.putLong("startTime", System.currentTimeMillis());
+        oldFormatRunning.putLong("duration", 5000L);
+        oldFormatRunning.putBoolean("autoRestart", false);
+
+        TimerMillis loadedRunning = new TimerMillis(false);
+        boolean loadOk1 = loadedRunning.load(oldFormatRunning);
+        if (!loadOk1) {
+            return fail("load() should succeed for old format tag with valid keys");
+        }
+        if (!loadedRunning.isRunning()) {
+            return fail("Issue #15 backward compat: isRunning should be true when startTime > 0 and no isRunning key");
+        }
+
+        CompoundTag oldFormatStopped = new CompoundTag();
+        oldFormatStopped.putLong("startTime", 0L);
+        oldFormatStopped.putLong("duration", 0L);
+        oldFormatStopped.putBoolean("autoRestart", false);
+
+        TimerMillis loadedStopped = new TimerMillis(false);
+        boolean loadOk2 = loadedStopped.load(oldFormatStopped);
+        if (!loadOk2) {
+            return fail("load() should succeed for old format tag with startTime=0");
+        }
+
+        return assertFalse(
+                "Issue #15 backward compat: isRunning should be false when startTime == 0 and no isRunning key",
+                loadedStopped.isRunning());
     }
 }

@@ -307,11 +307,9 @@ public abstract class GuiElement {
             return false;
         if(parent != null && checkOverlapForRendering)
         {
-            Rectangle rect1 = new Rectangle(parent.globalPositon.x,parent.globalPositon.y, parent.getWidth(), parent.getHeight());
-            Rectangle rect2 = new Rectangle(globalPositon.x,globalPositon.y, bounds.width, bounds.height);
-            if(rect1.intersects(rect2))
-                return true;
-            return false;
+            Rectangle rect1 = new Rectangle(parent.globalPositon.x, parent.globalPositon.y, parent.getWidth(), parent.getHeight());
+            Rectangle rect2 = new Rectangle(globalPositon.x, globalPositon.y, bounds.width, bounds.height);
+            return rect1.intersects(rect2);
         }
         return true;
     }
@@ -1024,18 +1022,22 @@ public abstract class GuiElement {
      */
     protected boolean isKeyPressed(int keyCode)
     {
+        if (getRoot() == null) return false;
         return GLFW.glfwGetKey(getRoot().getWindowHandle(), keyCode) == GLFW.GLFW_PRESS;
     }
     protected boolean isControlPressed()
     {
+        if (getRoot() == null) return false;
         return GLFW.glfwGetKey(getRoot().getWindowHandle(), GLFW.GLFW_KEY_LEFT_CONTROL) == GLFW.GLFW_PRESS;
     }
     protected boolean isShiftPressed()
     {
+        if (getRoot() == null) return false;
         return GLFW.glfwGetKey(getRoot().getWindowHandle(), GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS;
     }
     protected boolean isAltPressed()
     {
+        if (getRoot() == null) return false;
         return GLFW.glfwGetKey(getRoot().getWindowHandle(), GLFW.GLFW_KEY_LEFT_ALT) == GLFW.GLFW_PRESS;
     }
     /**
