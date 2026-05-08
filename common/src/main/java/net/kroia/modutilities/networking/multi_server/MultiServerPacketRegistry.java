@@ -3,6 +3,7 @@ package net.kroia.modutilities.networking.multi_server;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import net.kroia.modutilities.ModUtilitiesMod;
+import net.kroia.modutilities.UtilitiesPlatform;
 import net.kroia.modutilities.networking.client_server.NetworkPacket;
 import net.kroia.modutilities.networking.multi_server.payload.ForwardPacketPayload;
 import net.minecraft.core.RegistryAccess;
@@ -223,16 +224,26 @@ public class MultiServerPacketRegistry
      * @throws RuntimeException If no packet is registered under the given ID.
      *
      * @apiNote
-     * Invoked on the Netty event loop.
+     * Called from the Netty IO thread; dispatches to the server main thread
+     * via {@code server.execute()} so all downstream handlers run thread-safely.
+     * Takes ownership of {@code buf} — the caller must NOT release it.
      */
     public static void handleByteBufOnMasterSide(ResourceLocation loc, RegistryFriendlyByteBuf buf, ForwardPacketContext context)
     {
         RegistryObject  registryObject = registry.get(loc);
         if(registryObject==null)
         {
+            buf.release();
             throw new RuntimeException("MultiServerPacketRegistry.register(...): Packet with packetID = "+loc+" is not registered!");
         }
-        registryObject.handleByteBufOnMasterSide(buf, context);
+        MinecraftServer server = UtilitiesPlatform.getServer();
+        server.execute(() -> {
+            try {
+                registryObject.handleByteBufOnMasterSide(buf, context);
+            } finally {
+                if (buf.refCnt() > 0) buf.release();
+            }
+        });
     }
 
     /**
@@ -247,16 +258,26 @@ public class MultiServerPacketRegistry
      * @throws RuntimeException If no packet is registered under the given ID.
      *
      * @apiNote
-     * Invoked on the Netty event loop.
+     * Called from the Netty IO thread; dispatches to the server main thread
+     * via {@code server.execute()} so all downstream handlers run thread-safely.
+     * Takes ownership of {@code buf} — the caller must NOT release it.
      */
     public static void handleByteBufOnSlaveSide(ResourceLocation loc, RegistryFriendlyByteBuf buf, ForwardPacketContext context)
     {
         RegistryObject  registryObject = registry.get(loc);
         if(registryObject==null)
         {
+            buf.release();
             throw new RuntimeException("MultiServerPacketRegistry.register(...): Packet with packetID = "+loc+" is not registered!");
         }
-        registryObject.handleByteBufOnSlaveSide(buf, context);
+        MinecraftServer server = UtilitiesPlatform.getServer();
+        server.execute(() -> {
+            try {
+                registryObject.handleByteBufOnSlaveSide(buf, context);
+            } finally {
+                if (buf.refCnt() > 0) buf.release();
+            }
+        });
     }
 
 

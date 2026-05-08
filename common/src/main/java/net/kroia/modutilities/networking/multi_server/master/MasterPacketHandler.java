@@ -115,12 +115,9 @@ public class MasterPacketHandler extends SimpleChannelInboundHandler<Payload> {
                 ByteBuf buf = ctx.alloc().buffer();
                 buf.writeBytes(bb.data());
                 RegistryFriendlyByteBuf dataBuf = new RegistryFriendlyByteBuf(buf, mcServer.registryAccess());
-                try {
-                    ForwardPacketContext context = new ForwardPacketContext(ctx, bb.senderServerID(), bb.senderPlayerUUID());
-                    MultiServerPacketRegistry.handleByteBufOnMasterSide(packetResouceLoc, dataBuf, context);
-                } finally {
-                    dataBuf.release();
-                }
+                ForwardPacketContext context = new ForwardPacketContext(ctx, bb.senderServerID(), bb.senderPlayerUUID());
+                // buffer ownership transferred to handleByteBufOnMasterSide — do NOT release here
+                MultiServerPacketRegistry.handleByteBufOnMasterSide(packetResouceLoc, dataBuf, context);
             }
 
             default ->
