@@ -14,10 +14,9 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
  * @param <T> The concrete {@link CustomPacketPayload} type this handler accepts.
  *
  * @apiNote
- * The handler methods are invoked on the Netty event loop thread, NOT the Minecraft
- * main thread. They are intended for relay-only logic and must not directly access
- * or mutate Minecraft game state. If interaction with the world is required, the
- * implementation must schedule that work onto the server thread.
+ * Although the Netty I/O thread initially receives the packet, {@link MultiServerPacketRegistry}
+ * dispatches the handler call to the server main thread via {@code server.execute()}.
+ * Implementations may safely access and mutate Minecraft game state.
  */
 public interface ForwardPacketHandler<T extends CustomPacketPayload> {
     /**
@@ -29,7 +28,7 @@ public interface ForwardPacketHandler<T extends CustomPacketPayload> {
      *                player UUID, and the underlying Netty channel context.
      *
      * @apiNote
-     * Runs on the Netty event loop. Do not access Minecraft game state directly.
+     * Dispatched to the server main thread. Safe to access game state.
      */
     void handleMaster(T packet, ForwardPacketContext context);
 
@@ -42,7 +41,7 @@ public interface ForwardPacketHandler<T extends CustomPacketPayload> {
      *                optional player UUID, and the underlying Netty channel context.
      *
      * @apiNote
-     * Runs on the Netty event loop. Do not access Minecraft game state directly.
+     * Dispatched to the server main thread. Safe to access game state.
      */
     void handleSlave(T packet,  ForwardPacketContext context);
 }

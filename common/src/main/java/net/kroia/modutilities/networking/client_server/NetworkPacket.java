@@ -13,11 +13,14 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
  * and {@link #handleOnSlave(ForwardPacketContext)} to participate in the multi-server master/slave relay flow.
  *
  * @apiNote
- * Architectury auto-dispatches {@link #handleOnClient(NetworkManager.PacketContext)} on the client render thread
- * and {@link #handleOnServer(NetworkManager.PacketContext)} on the server main thread, so it is safe to touch game
- * state from those methods. In contrast {@link #handleOnMaster(ForwardPacketContext)} and
- * {@link #handleOnSlave(ForwardPacketContext)} are invoked on Netty I/O threads while relaying between servers,
- * and must not access world/level state.
+ * All four handler methods run on their respective main threads and may safely access game state:
+ * <ul>
+ *   <li>{@link #handleOnClient} — client render thread (dispatched by Architectury)</li>
+ *   <li>{@link #handleOnServer} — server main thread (dispatched by Architectury)</li>
+ *   <li>{@link #handleOnMaster} — server main thread (dispatched via {@code server.execute()} in
+ *       {@link net.kroia.modutilities.networking.multi_server.MultiServerPacketRegistry})</li>
+ *   <li>{@link #handleOnSlave} — server main thread (same dispatch mechanism)</li>
+ * </ul>
  */
 public abstract class NetworkPacket implements CustomPacketPayload {
 
@@ -120,8 +123,9 @@ public abstract class NetworkPacket implements CustomPacketPayload {
      * @param context the forward-packet context describing the originating slave and player.
      *
      * @apiNote
-     * Invoked on a Netty I/O thread on the master server during cross-server relay. This handler must not
-     * access world/level state directly; schedule work onto the server main thread if game state must be touched.
+     * Dispatched to the server main thread via {@code server.execute()} in
+     * {@link net.kroia.modutilities.networking.multi_server.MultiServerPacketRegistry},
+     * so it is safe to access game state.
      */
     protected void handleOnMaster(ForwardPacketContext context) {};
 
@@ -131,8 +135,9 @@ public abstract class NetworkPacket implements CustomPacketPayload {
      * @param context the forward-packet context describing the master/slave relay metadata.
      *
      * @apiNote
-     * Invoked on a Netty I/O thread on the slave server during cross-server relay. This handler must not
-     * access world/level state directly; schedule work onto the server main thread if game state must be touched.
+     * Dispatched to the server main thread via {@code server.execute()} in
+     * {@link net.kroia.modutilities.networking.multi_server.MultiServerPacketRegistry},
+     * so it is safe to access game state.
      */
     protected void handleOnSlave(ForwardPacketContext context) {};
 
