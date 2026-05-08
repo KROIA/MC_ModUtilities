@@ -12,6 +12,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -210,7 +211,7 @@ public class UtilitiesPlatform {
      *
      * @return a new buffer, or {@code null} if no client-side registry access is available
      */
-    public static RegistryFriendlyByteBuf createRegistryFriendlyByteBufClientSide()
+    public static @Nullable RegistryFriendlyByteBuf createRegistryFriendlyByteBufClientSide()
     {
         RegistryAccess access = getRegistryAccessClientSide();
         if(access == null)
@@ -222,7 +223,7 @@ public class UtilitiesPlatform {
      *
      * @return a new buffer, or {@code null} if no server is running
      */
-    public static RegistryFriendlyByteBuf createRegistryFriendlyByteBufServerSide()
+    public static @Nullable RegistryFriendlyByteBuf createRegistryFriendlyByteBufServerSide()
     {
         RegistryAccess access = getRegistryAccessServerSide();
         if(access == null)

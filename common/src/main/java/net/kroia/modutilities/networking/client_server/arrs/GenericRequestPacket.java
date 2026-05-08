@@ -16,6 +16,7 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -91,7 +92,12 @@ public final class GenericRequestPacket extends NetworkPacket
             releaseData();
             return; // No factory found for this request type
         }
-        RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
+        @Nullable RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
+        if(responseData == null) {
+            releaseData();
+            ModUtilitiesMod.LOGGER.error("[GenericRequestPacket]: Can't instantiate RegistryFriendlyByteBuf for a packet response: ");
+            return;
+        }
         try {
             CompletableFuture<RegistryFriendlyByteBuf> fut = request.decodeHandleEncodeOnMasterServer(data, responseData, context.senderServerID, context.senderPlayerUUID);
             fut.whenComplete((responseBuf, ex) -> {
@@ -118,7 +124,12 @@ public final class GenericRequestPacket extends NetworkPacket
             releaseData();
             return; // No factory found for this request type
         }
-        RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
+        @Nullable RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
+        if(responseData == null) {
+            releaseData();
+            ModUtilitiesMod.LOGGER.error("[GenericRequestPacket]: Can't instantiate RegistryFriendlyByteBuf for a packet response: ");
+            return;
+        }
         try {
             CompletableFuture<RegistryFriendlyByteBuf> fut = request.decodeHandleEncodeOnSlaveServer(data, responseData, context.senderPlayerUUID);
             fut.whenComplete((responseBuf, ex) -> {
