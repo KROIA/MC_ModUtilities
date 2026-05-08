@@ -19,8 +19,20 @@ ItemSelectionView(List<ItemStack> allowedItems, Consumer<ItemStack> onItemSelect
 ```
 
 **Parameters:**
-- `allowedItems` - List of items to display (defaults to all game items)
+- `allowedItems` - List of items to display (defaults to all creative tab items including variants such as potions, enchanted books, and tipped arrows)
 - `onItemSelected` - Callback invoked when an item is clicked
+
+> **Note:** The default constructor (without `allowedItems`) now populates the view with creative tab items via `ItemUtilities.getAllItems()`, which includes all item variants. Previously it used one stack per registered item type. You can also use `ItemUtilities.getItemsByCategory()` to build category-filtered views:
+>
+> ```java
+> // Default: all creative items including potions, enchanted books, etc.
+> ItemSelectionView view = new ItemSelectionView(callback);
+>
+> // Or: items from a specific category
+> var categories = ItemUtilities.getItemsByCategory();
+> List<ItemStack> combatItems = categories.get("Combat");
+> ItemSelectionView combatView = new ItemSelectionView(combatItems, callback);
+> ```
 
 ## Key Methods
 

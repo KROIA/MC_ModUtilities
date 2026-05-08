@@ -55,10 +55,29 @@ String nameById = ItemUtilities.getItemName("minecraft:diamond_sword");
 
 ```java
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 
-// Get all items
-ArrayList<String> allItemIds = ItemUtilities.getAllItemIDStrs();
-ArrayList<ItemStack> allItems = ItemUtilities.getAllItems();
+// --- Client-side: creative tab items (includes all variants) ---
+
+// Get all creative inventory items (potions, enchanted books, tipped arrows, etc.)
+// Client-side only. Results are cached; call invalidateCreativeItemCache() on
+// world load/unload or resource pack reload to refresh.
+ArrayList<ItemStack> allCreativeItems = ItemUtilities.getAllItems();
+
+// Get items grouped by creative tab name
+// Returns keys like "Building Blocks", "Combat", "Food & Drinks", etc.
+// Empty special tabs (Saved Hotbars, Survival Inventory) are excluded.
+LinkedHashMap<String, List<ItemStack>> byCategory = ItemUtilities.getItemsByCategory();
+List<ItemStack> combatItems = byCategory.get("Combat");
+
+// Invalidate the cached creative item lists (call on world load/unload
+// and resource pack reload)
+ItemUtilities.invalidateCreativeItemCache();
+
+// --- Server-safe: one stack per registered item type (no variants) ---
+
+ArrayList<String> allItemIds = ItemUtilities.getAllItemIDStrsServerSide();
+ArrayList<ItemStack> allRegisteredItems = ItemUtilities.getAllItemsServerSide();
 
 // Filter by tag
 ArrayList<String> oreIds = ItemUtilities.getAllItemIDStrs("minecraft:ores");
@@ -75,6 +94,8 @@ containsInID.add("minecraft:gold_ingot");
 
 ArrayList<ItemStack> filtered = ItemUtilities.getAllItems(tags, containsInID);
 ```
+
+> **Breaking API change:** The no-arg `getAllItems()` and `getAllItemIDStrs()` methods now return client-side creative tab items (including all variants). The previous behavior (one stack per registered item, usable on both client and server) has been renamed to `getAllItemsServerSide()` and `getAllItemIDStrsServerSide()`.
 
 ### Creative Inventory Search
 
@@ -117,8 +138,12 @@ boolean isArmorSlot = ItemUtilities.isMainInventorySlot(39); // false
 | `getNormalizedItemID(String)` | Get full namespaced ID or null if invalid |
 | `getItemName(Item)` | Get item display name |
 | `getItemIDStr(Item)` | Get item's resource location string |
-| `getAllItemIDStrs()` | Get all registered item IDs |
-| `getAllItems()` | Get all registered items |
+| `getAllItems()` | Get all creative tab items including variants (client-side, cached) |
+| `getItemsByCategory()` | Get creative items grouped by tab name (client-side, cached) |
+| `invalidateCreativeItemCache()` | Clear cached creative item lists (call on world/resource pack changes) |
+| `getAllItemsServerSide()` | Get one stack per registered item (works on client and server) |
+| `getAllItemIDStrs()` | Get all creative tab item IDs (client-side, cached) |
+| `getAllItemIDStrsServerSide()` | Get all registered item IDs (works on client and server) |
 | `getAllItemIDStrs(String tag)` | Get items matching a tag |
 | `getAllItems(ArrayList<String>, ArrayList<String>)` | Get items by tags and ID patterns |
 | `getSearchCreativeItems(String)` | Search creative inventory |
@@ -744,7 +769,9 @@ ItemStack stack = UtilitiesPlatform.getItemStack("minecraft:diamond");
 | Task | Method |
 |------|--------|
 | Create item | `createItemStackFromId(id, amount)` |
-| Get all items | `getAllItems()` |
+| Get all creative items (client) | `getAllItems()` |
+| Get items by category (client) | `getItemsByCategory()` |
+| Get all registered items (server-safe) | `getAllItemsServerSide()` |
 | Search items | `getSearchCreativeItems(text)` |
 | Add to inventory | `addToPlayerInventory(player, stack)` |
 
@@ -869,7 +896,7 @@ public JsonObject loadSettings(String jsonString) {
 
 ## Performance Tips
 
-1. **ItemUtilities**: Cache `getAllItems()` results if calling frequently
+1. **ItemUtilities**: `getAllItems()` and `getItemsByCategory()` are already cached internally; call `invalidateCreativeItemCache()` on world load/unload and resource pack reload to refresh
 2. **ColorUtilities**: Pre-calculate colors instead of computing per-frame
 3. **ServerPlayerUtilities**: Batch messages when notifying multiple players
 4. **TimerMillis**: Use auto-restart for periodic tasks instead of manual restarts

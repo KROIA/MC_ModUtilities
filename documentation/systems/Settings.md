@@ -299,6 +299,19 @@ settings.setLogger(
 );
 ```
 
+### Marking Mutable Values Dirty
+
+When a setting holds a mutable value (e.g. a `List` or `Map`), modifying the object in place does not trigger change listeners because `set()` compares references and the reference has not changed. Use `markDirty()` to force listener notification after in-place mutations:
+
+```java
+Setting<List<String>> listSetting = ...;
+List<String> items = listSetting.get();
+items.add("newItem");
+listSetting.markDirty(); // notify listeners — set() can't detect in-place mutation
+```
+
+Use `markDirty()` whenever you mutate the underlying object without calling `set()` with a new value. This ensures all registered listeners are notified of the change.
+
 ---
 
 ## API Reference
@@ -313,6 +326,7 @@ settings.setLogger(
 | `Type getType()` | Get setting type |
 | `T getDefaultValue()` | Get default value |
 | `void setToDefaultValue()` | Reset to default value |
+| `void markDirty()` | Force listener notification after in-place mutation |
 | `void addListener(Consumer<T> listener)` | Add change listener |
 | `void removeListener(Consumer<T> listener)` | Remove change listener |
 | `CustomJsonParser<T> getCustomJsonParser()` | Get custom parser (if any) |
