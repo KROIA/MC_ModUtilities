@@ -123,12 +123,6 @@ public class Sandbox {
 
                                         return 1;
                                     }))
-                            .then(Commands.literal("loadAndSaveDataArchive")
-                                    .executes(context -> {
-                                        ServerPlayer player = context.getSource().getPlayerOrException();
-                                        SandboxDataArchiveManager.loadAndSave();
-                                        return 1;
-                                    }))
                             .then(Commands.literal("openExample")
                                     .then(Commands.literal("form")
                                             .executes(ctx -> sendOpenExample(ctx, SandboxOpenGuiPacket.GuiType.EXAMPLE_FORM)))
@@ -155,9 +149,6 @@ public class Sandbox {
     }
 
     public static SandboxNetwork network = null;
-
-    private static SandboxDataArchiveManager dataArchiveManager;
-
 
     /*public static final Supplier<RegistrarManager> MANAGER = Suppliers.memoize(() -> RegistrarManager.get(ModUtilitiesMod.MOD_ID));
     public static final Registrar<MenuType<?>> MENUS = MANAGER.get().get(Registries.MENU);
@@ -257,7 +248,6 @@ public class Sandbox {
         //TABS.register();
 
 
-        //dataArchiveManager = new SandboxDataArchiveManager(Path.of("data/sandbox_data_archive"));
     }
 
 }

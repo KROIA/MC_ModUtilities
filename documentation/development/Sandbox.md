@@ -98,21 +98,7 @@ A comprehensive GUI demonstration screen showing:
 /modutilities openTestScreen
 ```
 
-### 4. Data Persistence (`SandboxDataArchiveManager`)
-
-Demonstrates the chunked data archive system:
-- Extends `DataArchiveManager`
-- Custom chunk implementation with NBT save/load
-- Automatic chunk rotation based on size
-- Server tick data capture
-
-**Features:**
-- Uncompressed NBT format
-- Automatic chunk creation at 80% capacity
-- Time-based chunk organization
-- Load and re-save functionality
-
-### 5. Commands (`SandboxCommand`)
+### 4. Commands (`SandboxCommand`)
 
 A set of development commands registered under `/modutilities`:
 
@@ -121,11 +107,10 @@ A set of development commands registered under `/modutilities`:
 | `/modutilities openTestScreen` | Opens the test GUI screen |
 | `/modutilities saveItemInHand` | Saves held item to JSON file |
 | `/modutilities loadItemToHand` | Loads item from JSON file to hand |
-| `/modutilities loadAndSaveDataArchive` | Tests data archive load/save |
 
 All commands require OP permission level 2.
 
-### 6. Block and Block Entity (Commented)
+### 5. Block and Block Entity (Commented)
 
 Example implementations for testing block-related features:
 - `MyBlock`: Custom block implementation
