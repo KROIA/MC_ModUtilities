@@ -41,7 +41,11 @@ public class UtilitiesPlatformNeoForge implements PlatformAbstraction {
 
     @Override
     public String getItemIDStr(Item item) {
-        return BuiltInRegistries.ITEM.getKey(item).toString();
+        ResourceLocation key = BuiltInRegistries.ITEM.getKey(item);
+        if (key == null) {
+            return "";
+        }
+        return key.toString();
     }
 
     @Override
@@ -57,9 +61,6 @@ public class UtilitiesPlatformNeoForge implements PlatformAbstraction {
 
     @Override
     public MinecraftServer getServer() {
-        if (minecraftServer == null) {
-            throw new IllegalStateException(ModUtilitiesMod.MOD_ID+" MinecraftServer is not yet initialized.");
-        }
         return minecraftServer;
     }
 

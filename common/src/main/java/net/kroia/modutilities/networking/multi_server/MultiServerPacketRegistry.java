@@ -237,6 +237,10 @@ public class MultiServerPacketRegistry
             throw new RuntimeException("MultiServerPacketRegistry.register(...): Packet with packetID = "+loc+" is not registered!");
         }
         MinecraftServer server = UtilitiesPlatform.getServer();
+        if(server == null) {
+            buf.release();
+            return;
+        }
         server.execute(() -> {
             try {
                 registryObject.handleByteBufOnMasterSide(buf, context);
@@ -271,6 +275,10 @@ public class MultiServerPacketRegistry
             throw new RuntimeException("MultiServerPacketRegistry.register(...): Packet with packetID = "+loc+" is not registered!");
         }
         MinecraftServer server = UtilitiesPlatform.getServer();
+        if(server == null) {
+            buf.release();
+            return;
+        }
         server.execute(() -> {
             try {
                 registryObject.handleByteBufOnSlaveSide(buf, context);

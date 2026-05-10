@@ -13,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -495,16 +496,22 @@ public class DataPersistence {
         if(folderExists(chunkFolderPath))
         {
             // delete all files in the folder
+            AtomicBoolean deletionFailed = new AtomicBoolean(false);
             try (var stream = Files.list(chunkFolderPath)) {
                 stream.forEach(file -> {
                     try {
                         Files.delete(file);
                     } catch (IOException e) {
                         error("Failed to delete file: " + file, e);
+                        deletionFailed.set(true);
                     }
                 });
             } catch (IOException e) {
                 error("Failed to list files in folder: " + chunkFolderPath, e);
+                return false;
+            }
+            if(deletionFailed.get()) {
+                error("Aborting save: not all old chunk files could be deleted in " + chunkFolderPath);
                 return false;
             }
         }

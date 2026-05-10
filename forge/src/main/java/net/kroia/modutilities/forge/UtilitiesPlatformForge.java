@@ -57,9 +57,6 @@ public class UtilitiesPlatformForge implements PlatformAbstraction {
 
     @Override
     public MinecraftServer getServer() {
-        if (minecraftServer == null) {
-            throw new IllegalStateException(ModUtilitiesMod.MOD_ID + " MinecraftServer is not yet initialized.");
-        }
         return minecraftServer;
     }
 

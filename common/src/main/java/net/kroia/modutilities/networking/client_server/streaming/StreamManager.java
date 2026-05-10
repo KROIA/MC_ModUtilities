@@ -677,6 +677,11 @@ public class StreamManager {
         ClientReceiverStreamHolder<?, ?> streamData = activeClientReceiverStreams.get(streamID);
         if(streamData != null) {
             streamData.handleStreamPacket(packet.getData());
+        } else {
+            RegistryFriendlyByteBuf buf = packet.getData();
+            if(buf != null && buf.refCnt() > 0) {
+                buf.release();
+            }
         }
     }
 

@@ -522,8 +522,8 @@ public abstract class GuiElement {
     public boolean isTooltipBackgroundEnabled() {
         return tooltipCreateBackground;
     }
-    public void setTooltipBackgroundPadding(int toolripBackgroundPadding) {
-        this.tooltipBackgroundPadding = toolripBackgroundPadding;
+    public void setTooltipBackgroundPadding(int tooltipBackgroundPadding) {
+        this.tooltipBackgroundPadding = tooltipBackgroundPadding;
     }
     public int getTooltipBackgroundPadding() {
         return tooltipBackgroundPadding;

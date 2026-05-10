@@ -37,6 +37,9 @@ public class CreativeItemsGenerator {
      * @return a list containing every stack that should appear in the creative inventory
      */
     public static List<ItemStack> generateAllCreativeItems(RegistryAccess registryAccess) {
+        if (registryAccess == null) {
+            return new ArrayList<>();
+        }
         List<ItemStack> results = new ArrayList<>();
 
         // 1. Add all base items

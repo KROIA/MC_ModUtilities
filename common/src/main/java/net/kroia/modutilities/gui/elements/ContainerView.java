@@ -789,6 +789,7 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
     public void onClose() {
         if(onCloseEvent != null)
             onCloseEvent.run();
-        this.minecraft.player.closeContainer();
+        if(this.minecraft.player != null)
+            this.minecraft.player.closeContainer();
     }
 }

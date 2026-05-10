@@ -345,13 +345,12 @@ public class ItemUtilities {
         switch(UtilitiesPlatform.getPlatformType())
         {
             case FABRIC:
+            case NEOFORGE:
+            case QUILT:
                 modTag = "c:";
                 break;
             case FORGE:
                 modTag = "forge:";
-                break;
-            case QUILT:
-                modTag = "c:";
                 break;
         }
         for(String tag : tags)
@@ -393,13 +392,12 @@ public class ItemUtilities {
         switch(UtilitiesPlatform.getPlatformType())
         {
             case FABRIC:
+            case NEOFORGE:
+            case QUILT:
                 modTag = "c:";
                 break;
             case FORGE:
                 modTag = "forge:";
-                break;
-            case QUILT:
-                modTag = "c:";
                 break;
         }
         for(String tag : tags)

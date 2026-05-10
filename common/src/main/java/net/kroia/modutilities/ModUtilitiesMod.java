@@ -56,11 +56,7 @@ public class ModUtilitiesMod {
     public static boolean isServerInitialized() {
         if(!UtilitiesPlatform.isPlatformSet())
             return false;
-        try {
-            return UtilitiesPlatform.getServer() != null;
-        } catch (IllegalStateException e) {
-            return false;
-        }
+        return UtilitiesPlatform.getServer() != null;
     }
 
 }

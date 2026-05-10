@@ -225,9 +225,15 @@ public class ServerPlayerUtilities {
                 if(spaceInSlot > 0)
                 {
                     int amountToAdd = Math.min(remainingAmount, spaceInSlot);
-                    int currentAmount = currentStack.getCount();
-                    currentStack = stack.copy();
-                    currentStack.setCount(currentAmount + amountToAdd);
+                    if(currentStack.isEmpty())
+                    {
+                        currentStack = stack.copy();
+                        currentStack.setCount(amountToAdd);
+                    }
+                    else
+                    {
+                        currentStack.setCount(currentStack.getCount() + amountToAdd);
+                    }
                     remainingAmount -= amountToAdd;
                     inventory.setItem(i, currentStack);
                 }

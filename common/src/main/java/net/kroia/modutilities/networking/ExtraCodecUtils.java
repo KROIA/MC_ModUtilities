@@ -109,6 +109,9 @@ public class ExtraCodecUtils {
                 },
                 (buf) -> {
                     int size = buf.readVarInt();
+                    if(size < 0) {
+                        throw new io.netty.handler.codec.DecoderException("Negative map size: " + size);
+                    }
                     M map = mapSupplier.get();
                     for (int i = 0; i < size; i++) {
                         T key = keyCodec.decode(buf);
@@ -137,6 +140,9 @@ public class ExtraCodecUtils {
                 },
                 (buf) -> {
                     int size = buf.readVarInt();
+                    if(size < 0) {
+                        throw new io.netty.handler.codec.DecoderException("Negative set size: " + size);
+                    }
                     S set = setSupplier.get();
                     for (int i = 0; i < size; i++) {
                         T key = keyCodec.decode(buf);
