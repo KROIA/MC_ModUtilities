@@ -2,12 +2,25 @@ package net.kroia.modutilities.sandbox;
 
 import com.google.gson.JsonElement;
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.context.CommandContext;
 import dev.architectury.event.events.common.CommandRegistrationEvent;
 import net.kroia.modutilities.JsonUtilities;
 import net.kroia.modutilities.ModUtilitiesMod;
+import net.kroia.modutilities.UtilitiesPlatform;
 import net.kroia.modutilities.networking.NetworkPacketManager;
 import net.kroia.modutilities.networking.client_server.streaming.StreamSystem;
 import net.kroia.modutilities.setting.parser.ItemStackJsonParser;
+import net.kroia.modutilities.testing.TestCommandRegistration;
+import net.kroia.modutilities.testing.TestRegistry;
+import net.kroia.modutilities.testing.tests.CreativeTabTests;
+import net.kroia.modutilities.testing.tests.EventTests;
+import net.kroia.modutilities.testing.tests.GuiLogicTests;
+import net.kroia.modutilities.testing.tests.ParserTests;
+import net.kroia.modutilities.testing.tests.PersistenceTests;
+import net.kroia.modutilities.testing.tests.NetworkingTests;
+import net.kroia.modutilities.testing.tests.SettingsTests;
+import net.kroia.modutilities.testing.tests.StreamingTests;
+import net.kroia.modutilities.testing.tests.UtilityTests;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
@@ -100,7 +113,7 @@ public class Sandbox {
                                             String jsonContent = Files.readString(file.toPath());
                                             JsonElement jsonElement = JsonUtilities.fromString(jsonContent);
                                             ItemStack itemStack = parser.fromJson(jsonElement);
-                                            player.setItemInHand(player.getUsedItemHand(), itemStack);
+                                            player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, itemStack);
                                             player.sendSystemMessage(Component.literal("Loaded item to hand: " + itemStack.toString()));
                                         } catch (Exception e) {
                                             ModUtilitiesMod.LOGGER.error("Failed to load item from JSON file", e);
@@ -110,24 +123,35 @@ public class Sandbox {
 
                                         return 1;
                                     }))
-                            .then(Commands.literal("loadAndSaveDataArchive")
-                                    .executes(context -> {
-                                        ServerPlayer player = context.getSource().getPlayerOrException();
-                                        SandboxDataArchiveManager.loadAndSave();
-                                        return 1;
-                                    }))
+                            .then(Commands.literal("openExample")
+                                    .then(Commands.literal("form")
+                                            .executes(ctx -> sendOpenExample(ctx, SandboxOpenGuiPacket.GuiType.EXAMPLE_FORM)))
+                                    .then(Commands.literal("dialog")
+                                            .executes(ctx -> sendOpenExample(ctx, SandboxOpenGuiPacket.GuiType.EXAMPLE_DIALOG)))
+                                    .then(Commands.literal("settings")
+                                            .executes(ctx -> sendOpenExample(ctx, SandboxOpenGuiPacket.GuiType.EXAMPLE_SETTINGS)))
+                                    .then(Commands.literal("tabs")
+                                            .executes(ctx -> sendOpenExample(ctx, SandboxOpenGuiPacket.GuiType.EXAMPLE_TABS)))
+                                    .then(Commands.literal("dashboard")
+                                            .executes(ctx -> sendOpenExample(ctx, SandboxOpenGuiPacket.GuiType.EXAMPLE_DASHBOARD)))
+                                    .then(Commands.literal("itemSelection")
+                                            .executes(ctx -> sendOpenExample(ctx, SandboxOpenGuiPacket.GuiType.EXAMPLE_ITEM_SELECTION)))
+                                    .then(Commands.literal("playerBrowser")
+                                            .executes(ctx -> sendOpenExample(ctx, SandboxOpenGuiPacket.GuiType.EXAMPLE_PLAYER_BROWSER))))
             );
+        }
+
+        private static int sendOpenExample(CommandContext<CommandSourceStack> ctx, SandboxOpenGuiPacket.GuiType type) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+            ServerPlayer player = ctx.getSource().getPlayerOrException();
+            SandboxOpenGuiPacket.send(player, type);
+            return 1;
         }
     }
 
     public static SandboxNetwork network = null;
 
-    private static SandboxDataArchiveManager dataArchiveManager;
-
-
     /*public static final Supplier<RegistrarManager> MANAGER = Suppliers.memoize(() -> RegistrarManager.get(ModUtilitiesMod.MOD_ID));
     public static final Registrar<MenuType<?>> MENUS = MANAGER.get().get(Registries.MENU);
-
 
 
 
@@ -201,14 +225,29 @@ public class Sandbox {
 
     public static void init()
     {
+        if (TestRegistry.ENABLE_TESTS) {
+            TestRegistry.register(new EventTests());
+            if (UtilitiesPlatform.isClient()) {
+                TestRegistry.register(new CreativeTabTests());
+                TestRegistry.register(new GuiLogicTests());
+            }
+            TestRegistry.register(new ParserTests());
+            TestRegistry.register(new PersistenceTests());
+            TestRegistry.register(new SettingsTests());
+            TestRegistry.register(new NetworkingTests());
+            TestRegistry.register(new StreamingTests());
+            TestRegistry.register(new UtilityTests());
+        }
+
         CommandRegistrationEvent.EVENT.register((dispatcher, registryAccess, environment) -> {
             SandboxCommand.register(dispatcher);
+            boolean isSlave = false; // TODO: detect from MultiServerManager if available
+            TestCommandRegistration.register(dispatcher, "modutilities", "ModUtilities", isSlave);
         });
         network = new SandboxNetwork();
         //TABS.register();
 
 
-        //dataArchiveManager = new SandboxDataArchiveManager(Path.of("data/sandbox_data_archive"));
     }
 
 }

@@ -12,6 +12,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
 
+/**
+ * A clickable drop-down menu showing a label, an expand button, and a vertically scrolling
+ * list of options. When expanded, the menu renders above sibling elements at an elevated
+ * Z-position; clicking outside the menu collapses it.
+ * <p>
+ * Options are added with {@link #addOption(String)} or by passing arbitrary {@link GuiElement}s to
+ * {@link #addChild(GuiElement)}. The currently selected option index is tracked and reported
+ * to the {@link BiConsumer} registered via {@link #setOnOptionSelected(BiConsumer)}.
+ */
 public class DropDownMenu extends GuiElement {
 
     private class EmptyButtonChanged extends EmptyButton {
@@ -62,6 +71,11 @@ public class DropDownMenu extends GuiElement {
     private float defaultZPos = 0.f;
 
     private BiConsumer<Integer, GuiElement> optionSelected;
+    /**
+     * Creates a drop-down menu with the given label text and a selection callback.
+     * @param label the label text shown in the collapsed menu
+     * @param optionSelected callback invoked with the selected index and the option element
+     */
     public DropDownMenu(String label, BiConsumer<Integer, GuiElement> optionSelected) {
         super();
         this.optionSelected = optionSelected;
@@ -93,6 +107,10 @@ public class DropDownMenu extends GuiElement {
         this.setSize(100, 20);
 
     }
+    /**
+     * Creates a drop-down menu with the given label text and no selection callback.
+     * @param label the label text shown in the collapsed menu
+     */
     public DropDownMenu(String label)
     {
         this(label, null);
@@ -104,23 +122,43 @@ public class DropDownMenu extends GuiElement {
         super.setZ(z);
         defaultZPos = z;
     }
+    /**
+     * Sets the Z-position used while the menu is expanded so it can render above sibling elements.
+     * @param z the Z value to use when expanded
+     */
     public void setExpandedZPos(float z) {
         this.expandedZPos = z;
     }
+    /**
+     * @return the Z-position used while the menu is expanded
+     */
     public float getExpandedZPos() {
         return expandedZPos;
     }
+    /**
+     * Sets the text shown on the default label element.
+     * Has no effect if a custom label element has fully replaced the default label.
+     * @param text the new label text
+     */
     public void setLabelText(String text)
     {
         if(this.label != null)
             this.label.setText(text);
     }
+    /**
+     * @return the current text of the default label, or empty string if there is no default label
+     */
     public String getLabelText()
     {
         if(this.label == null)
             return "";
         return this.label.getText();
     }
+    /**
+     * Replaces the label area of the drop-down with a custom element.
+     * The previous label element is removed.
+     * @param element the new label element; ignored if {@code null}
+     */
     public void setCustomLabelElement(GuiElement element)
     {
         if(element == null)
@@ -131,27 +169,53 @@ public class DropDownMenu extends GuiElement {
         super.addChild(customLabelElement);
     }
 
+    /**
+     * Sets the callback invoked when the user picks an option from the list.
+     * @param optionSelected callback receiving (index, option element), or {@code null} to clear
+     */
     public void setOnOptionSelected(BiConsumer<Integer, GuiElement> optionSelected)
     {
         this.optionSelected = optionSelected;
     }
 
+    /**
+     * Sets the maximum height (in pixels) of the option list area when expanded.
+     * Excess content scrolls within this bound.
+     * @param maxExpandedHeight the maximum height of the expanded list area
+     */
     public void setMaxExpandedHeight(int maxExpandedHeight) {
         this.maxExpandedHeight = maxExpandedHeight;
     }
+    /**
+     * @return the maximum height of the expanded option list
+     */
     public int getMaxExpandedHeight() {
         return maxExpandedHeight;
     }
+    /**
+     * @return the current expanded option-list height, capped at {@link #getMaxExpandedHeight()}
+     */
     public int getExpandedHeight() {
         expandedHeight = Math.min(listView.getSizeHintHeight(), maxExpandedHeight);
         return expandedHeight;
     }
+    /**
+     * @return the height the menu had before being expanded (i.e. the collapsed height)
+     */
     public int getUnexpandedHeight() {
         return unexpandedHeight;
     }
+    /**
+     * @return {@code true} if the option list is currently visible
+     */
     public boolean isExpanded() {
         return isExpanded;
     }
+    /**
+     * Expands or collapses the option list.
+     * Calling with the current state is a no-op.
+     * @param expanded {@code true} to expand, {@code false} to collapse
+     */
     public void setExpanded(boolean expanded) {
         if(expanded == isExpanded)
             return;
@@ -179,10 +243,16 @@ public class DropDownMenu extends GuiElement {
         }
         layoutChangedInternal();
     }
+    /**
+     * Convenience method equivalent to {@code setExpanded(true)}.
+     */
     public void expand()
     {
         setExpanded(true);
     }
+    /**
+     * Convenience method equivalent to {@code setExpanded(false)}.
+     */
     public void collapse()
     {
         setExpanded(false);
@@ -223,14 +293,23 @@ public class DropDownMenu extends GuiElement {
         setExpanded(!isExpanded);
     }
 
+    /**
+     * Removes all options from the menu.
+     */
     public void clearOptions()
     {
         removeChilds();
     }
 
+    /**
+     * Adds a new option using a centered text label.
+     * For custom option elements use {@link #addChild(GuiElement)}.
+     * @param label the option's display text
+     */
     public void addOption(String label)
     {
         Label optionLabel = new Label(label);
+        // Height must be set before addChild, which wraps the label in a button sized to this height
         optionLabel.setHeight(20);
         optionLabel.setAlignment(Alignment.CENTER);
         addChild(optionLabel);
@@ -285,6 +364,9 @@ public class DropDownMenu extends GuiElement {
             if(child instanceof EmptyButtonChanged button)
             {
                 List<GuiElement> childs = button.getChilds();
+                if (childs.isEmpty()) {
+                    continue;
+                }
                 GuiElement el = childs.get(0);
                 if(el != null)
                 {
@@ -314,12 +396,23 @@ public class DropDownMenu extends GuiElement {
         {
             // Notify listeners about the selection
             List<GuiElement> childs_ = option.getChilds();
+            if (childs_.isEmpty()) {
+                return;
+            }
             GuiElement el = childs_.get(0);
             selectedIndex = index;
             optionSelected.accept(index, el);
         }
     }
+    /**
+     * @return the index of the currently selected option, or {@code -1} if no option is selected
+     */
     public int getSelectedIndex() { return selectedIndex;}
+    /**
+     * Programmatically selects the option at the given index, firing the selection callback.
+     * Out-of-range indices are silently ignored.
+     * @param index the option index to select
+     */
     public void setSelectedIndex(int index) {
         if (index < 0 || index >= listView.getChilds().size())
             return;

@@ -56,8 +56,18 @@ public class ServerReceiverStreamHolder<CONTEXT_DATA, DATA>
      * Flag to check if the stream is stopped.
      * This is used to prevent multiple calls to the stream stopped handler.
      */
-    private boolean isStpped = false; // Flag to check if the stream is stopped
+    private boolean isStopped = false; // Flag to check if the stream is stopped
 
+    /**
+     * Creates a new ServerReceiverStreamHolder tracking the server-side state of a client-to-server stream.
+     *
+     * @param networkManager       The NetworkPacketManager used to send the stop notification back to the client.
+     * @param stream               The registered stream definition (used for decoding incoming data).
+     * @param streamHandler        The bi-consumer invoked for each decoded data chunk together with the sending player.
+     * @param streamStoppedHandler Optional runnable invoked once the stream has stopped.
+     * @param streamID             The unique stream UUID identifying this stream instance.
+     * @param playerSenderUUID     The UUID of the client sending the stream data.
+     */
     public ServerReceiverStreamHolder(NetworkPacketManager networkManager,
                                       GenericStream<CONTEXT_DATA, DATA> stream,
                                       BiConsumer<DATA, ServerPlayer> streamHandler,
@@ -95,19 +105,22 @@ public class ServerReceiverStreamHolder<CONTEXT_DATA, DATA>
      * It calls the stream stopped handler and sends a StreamStopClientSenderPacket to the target player.
      */
     public void onStreamStopped() {
-        if (streamStoppedHandler != null && !isStpped) {
-            isStpped = true; // Mark as stopped
+        if (isStopped) return;
+        isStopped = true; // Mark as stopped
+
+        if (streamStoppedHandler != null) {
             try {
                 streamStoppedHandler.run(); // Call the stream stopped handler
             }
             catch (Exception e) {
                 error("Error while calling stream stop handler for: "+stream, e);
             }
-            ServerPlayer targetPlayer = ServerPlayerUtilities.getOnlinePlayer(playerSenderUUID);
-            if (targetPlayer != null) {
-                StreamStopClientSenderPacket stopPacket = new StreamStopClientSenderPacket(streamID);
-                networkManager.sendToClient(targetPlayer, stopPacket);
-            }
+        }
+
+        ServerPlayer targetPlayer = ServerPlayerUtilities.getOnlinePlayer(playerSenderUUID);
+        if (targetPlayer != null) {
+            StreamStopClientSenderPacket stopPacket = new StreamStopClientSenderPacket(streamID);
+            networkManager.sendToClient(targetPlayer, stopPacket);
         }
     }
     private void error(String msg, Throwable e) {

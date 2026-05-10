@@ -48,7 +48,17 @@ public class ClientReceiverStreamHolder<CONTEXT_DATA, DATA>
      * Flag to check if the stream is stopped.
      * This is used to prevent multiple calls to the stream stopped handler.
      */
-    private boolean isStpped = false; // Flag to check if the stream is stopped
+    private boolean isStopped = false; // Flag to check if the stream is stopped
+
+    /**
+     * Creates a new ClientReceiverStreamHolder tracking the client-side state of a server-to-client stream.
+     *
+     * @param networkManager       The NetworkPacketManager used to send the stop echo back to the server.
+     * @param stream               The registered stream definition (used for decoding incoming data).
+     * @param streamHandler        The consumer invoked for each decoded data chunk received.
+     * @param streamStoppedHandler Optional runnable invoked once the stream has stopped.
+     * @param streamID             The unique stream UUID identifying this stream instance.
+     */
     public ClientReceiverStreamHolder(NetworkPacketManager networkManager,
                                       GenericStream<CONTEXT_DATA, DATA> stream,
                                       Consumer<DATA> streamHandler,
@@ -69,36 +79,46 @@ public class ClientReceiverStreamHolder<CONTEXT_DATA, DATA>
      * @param buf The FriendlyByteBuf containing the packet data.
      */
     public void handleStreamPacket(RegistryFriendlyByteBuf buf) {
-        if (streamHandler != null) {
-            DATA data = stream.decodeData(buf);
-            try {
-                streamHandler.accept(data);
+        try {
+            if (streamHandler != null) {
+                DATA data = stream.decodeData(buf);
+                try {
+                    streamHandler.accept(data);
+                } catch (Exception e) {
+                    error("Error while calling stream packet handler for: " + stream, e);
+                }
             }
-            catch (Exception e) {
-                error("Error while calling stream packet handler for: " + stream, e);
+        } finally {
+            if (buf != null && buf.refCnt() > 0) {
+                buf.release();
             }
         }
     }
 
     /**
-     * Stops the stream and sends a stop packet to the server for notification.
-     * It also calls the stream stopped handler if it is set.
+     * Marks this stream as stopped, invokes the stream stopped handler (once),
+     * and optionally sends a stop notification back to the server so it can clean up
+     * its sender side.
+     *
+     * @param sendEcho When true, a {@link StreamStopClientSenderPacket} is sent back to the server.
      */
     public void onStreamStopped(boolean sendEcho) {
-        if (streamStoppedHandler != null && !isStpped) {
-            isStpped = true; // Mark as stopped
+        if (isStopped) return;
+        isStopped = true; // Mark as stopped
+
+        if (streamStoppedHandler != null) {
             try {
                 streamStoppedHandler.run(); // Call the stream stopped handler
             }
             catch (Exception e) {
                 error("Error while calling stream stop handler for: " + stream, e);
             }
+        }
 
-            if(sendEcho)
-            {
-                StreamStopClientSenderPacket stopPacket = new StreamStopClientSenderPacket(streamID);
-                networkManager.sendToServer(stopPacket);
-            }
+        if(sendEcho)
+        {
+            StreamStopClientSenderPacket stopPacket = new StreamStopClientSenderPacket(streamID);
+            networkManager.sendToServer(stopPacket);
         }
     }
     private void error(String msg, Throwable e) {

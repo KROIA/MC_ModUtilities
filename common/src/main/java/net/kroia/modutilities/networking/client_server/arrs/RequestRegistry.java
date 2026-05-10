@@ -7,20 +7,24 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Map;
 
 /**
- * RequestRegistry is a class that manages the registration and unregistration of Request objects.
- * It allows for storing requests by their type ID and provides methods to retrieve, register, and unregister requests.
- *
- * @param <IN>  The input type of the request.
- * @param <OUT> The output type of the request.
+ * Manages registration and lookup of {@link GenericRequest} instances keyed by their
+ * {@link GenericRequest#getRequestTypeID() request type ID}. Backed by a thread-safe
+ * {@link java.util.concurrent.ConcurrentHashMap}.
  */
 public class RequestRegistry
 {
+    /**
+     * Holder for a registered request entry.
+     *
+     * @param <IN>  The input type of the request.
+     * @param <OUT> The output type of the request.
+     */
     public static class RegistryData<IN, OUT>
     {
         GenericRequest<IN, OUT> request;
     }
 
-    private final Map<String, RegistryData<?,?>> registry = new java.util.HashMap<>();
+    private final Map<String, RegistryData<?,?>> registry = new java.util.concurrent.ConcurrentHashMap<>();
 
     /**
      * Registers a Request in the registry.
@@ -48,7 +52,8 @@ public class RequestRegistry
 
     /**
      * Unregisters a GenericRequest from the registry by its RequestTypeID.
-     * @param requestTypeID
+     *
+     * @param requestTypeID The ID of the request type to unregister.
      */
     public void unregister(@NotNull String requestTypeID)
     {
@@ -101,13 +106,7 @@ public class RequestRegistry
         return data.request;
     }
 
-    private void error(String msg, Throwable e) {
-        ModUtilitiesMod.LOGGER.error("[RequestRegistry] " + msg, e);
-    }
     private void error(String msg) {
         ModUtilitiesMod.LOGGER.error("[RequestRegistry] " + msg);
-    }
-    private void warn(String msg) {
-        ModUtilitiesMod.LOGGER.warn("[RequestRegistry] " + msg);
     }
 }

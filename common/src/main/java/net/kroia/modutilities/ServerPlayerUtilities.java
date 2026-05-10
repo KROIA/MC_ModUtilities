@@ -10,19 +10,45 @@ import net.minecraft.world.item.ItemStack;
 
 import java.util.*;
 
+/**
+ * Server-side helpers for messaging players, looking up online players, and modifying their inventories.
+ * <p>
+ * Most methods route through {@link UtilitiesPlatform#getServer()} to access the running
+ * {@link MinecraftServer} and require the calling thread to be on the server side.
+ *
+ * @apiNote Use {@link ClientPlayerUtilities} for the client-side counterpart.
+ */
 public class ServerPlayerUtilities {
 
+    /**
+     * Sends a literal system message to the given player's chat.
+     *
+     * @param player the recipient; nothing happens if {@code null}
+     * @param msg    the message to send
+     */
     public static void printToClientConsole(ServerPlayer player, String msg)
     {
         if(player == null)
             return;
         player.sendSystemMessage(net.minecraft.network.chat.Component.literal(msg));
     }
+    /**
+     * Sends a literal system message to the player with the given UUID, if online.
+     *
+     * @param playerUUID the recipient's UUID
+     * @param msg        the message to send
+     */
     public static void printToClientConsole(UUID playerUUID, String msg)
     {
         ServerPlayer player = getOnlinePlayer(playerUUID);
         printToClientConsole(player, msg);
     }
+    /**
+     * Broadcasts a literal system message to every online player on the server.
+     *
+     * @param msg the message to broadcast
+     * @throws IllegalStateException if the server instance is not available
+     */
     public static void printToClientConsole(String msg)
     {
         MinecraftServer server = UtilitiesPlatform.getServer();
@@ -38,6 +64,12 @@ public class ServerPlayerUtilities {
             player.sendSystemMessage(net.minecraft.network.chat.Component.literal(msg));
         }
     }
+    /**
+     * Sends a literal system message to the player with the given name, if online.
+     *
+     * @param userName the recipient's display name
+     * @param msg      the message to send
+     */
     public static void printToClientConsole(String userName, String msg)
     {
         ServerPlayer player = getOnlinePlayer(userName);
@@ -46,6 +78,13 @@ public class ServerPlayerUtilities {
         player.sendSystemMessage(net.minecraft.network.chat.Component.literal(msg));
     }
 
+    /**
+     * Looks up a currently online player by UUID.
+     *
+     * @param uuid the player's UUID; {@code null} returns {@code null}
+     * @return the online {@link ServerPlayer}, or {@code null} if not online
+     * @throws IllegalStateException if the server instance is not available
+     */
     public static ServerPlayer getOnlinePlayer(UUID uuid)
     {
         if(uuid == null)
@@ -62,6 +101,13 @@ public class ServerPlayerUtilities {
         PlayerList playerList = server.getPlayerList();
         return playerList.getPlayer(uuid); // Returns null if the player is not online
     }
+    /**
+     * Looks up a currently online player by display name.
+     *
+     * @param name the player's name; {@code null} returns {@code null}
+     * @return the online {@link ServerPlayer}, or {@code null} if no player with that name is online
+     * @throws IllegalStateException if the server instance is not available
+     */
     public static ServerPlayer getOnlinePlayer(String name)
     {
         if(name == null)
@@ -78,6 +124,12 @@ public class ServerPlayerUtilities {
         return playerList.getPlayerByName(name); // Returns null if the player is not online
     }
 
+    /**
+     * Returns a snapshot of every currently online player.
+     *
+     * @return a new list containing all online {@link ServerPlayer}s
+     * @throws IllegalStateException if the server instance is not available
+     */
     public static ArrayList<ServerPlayer> getOnlinePlayers()
     {
         MinecraftServer server = UtilitiesPlatform.getServer();
@@ -90,6 +142,12 @@ public class ServerPlayerUtilities {
         return new ArrayList<>(playerList.getPlayers());
     }
 
+    /**
+     * Returns the display names of every currently online player.
+     *
+     * @return a new list containing all online player names
+     * @throws IllegalStateException if the server instance is not available
+     */
     public static ArrayList<String> getOnlinePlayerNames()
     {
         ArrayList<String> playerNames = new ArrayList<>();
@@ -108,6 +166,12 @@ public class ServerPlayerUtilities {
     }
 
 
+    /**
+     * Builds a map from UUID to display name for every currently online player.
+     *
+     * @return a new map keyed by player UUID with their display names as values
+     * @throws IllegalStateException if the server instance is not available
+     */
     public static Map<UUID, String> getUUIDToNameMap()
     {
         Map<UUID, String> uuidToNameMap = new HashMap<>();
@@ -127,10 +191,16 @@ public class ServerPlayerUtilities {
 
     /**
      * Adds the given item stack to the player's inventory.
-     * It trys to add the item stack to the player's inventory until it is full or the stack is empty.
+     * It tries to add the item stack to the player's inventory until it is full or the stack is empty.
+     *
      * @param player the player whose inventory will be modified
      * @param stack of items to be placed in the inventory
      * @return remaining amount that did not fit in the inventory
+     *
+     * @apiNote This method <b>mutates</b> the input {@code stack}'s count, setting it to the
+     *          remaining amount that did not fit in the inventory. This is intentional —
+     *          dependent mods (e.g. BankSystem) rely on passing the mutated stack to
+     *          {@code dropItemAtPlayer} afterwards to handle overflow items.
      */
     public static int addToPlayerInventory(ServerPlayer player, ItemStack stack)
     {
@@ -155,9 +225,15 @@ public class ServerPlayerUtilities {
                 if(spaceInSlot > 0)
                 {
                     int amountToAdd = Math.min(remainingAmount, spaceInSlot);
-                    int currentAmount = currentStack.getCount();
-                    currentStack = stack.copy();
-                    currentStack.setCount(currentAmount + amountToAdd);
+                    if(currentStack.isEmpty())
+                    {
+                        currentStack = stack.copy();
+                        currentStack.setCount(amountToAdd);
+                    }
+                    else
+                    {
+                        currentStack.setCount(currentStack.getCount() + amountToAdd);
+                    }
                     remainingAmount -= amountToAdd;
                     inventory.setItem(i, currentStack);
                 }

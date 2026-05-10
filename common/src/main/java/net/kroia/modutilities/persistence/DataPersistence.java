@@ -13,15 +13,37 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 
+/**
+ * High-level NBT/JSON file-based persistence service.
+ * Handles save/load of {@link CompoundTag} data (with optional gzip compression),
+ * splits oversized {@link ListTag} data into multiple chunk files to circumvent
+ * Mojang's 2 MB NBT limit, and offers convenience helpers for JSON serialization
+ * via Gson.
+ *
+ * @apiNote
+ * The save path is composed of {@code levelSavePath} (set per world) and
+ * {@code relativeSavePath} (mod-specific subfolder). Calling
+ * {@link #getAbsoluteSavePath()} before {@link #setLevelSavePath(Path)} throws
+ * {@link IllegalStateException}. Internal directory listings use
+ * try-with-resources to avoid leaking file handles, which is important on
+ * Windows where leaked handles block subsequent directory operations.
+ */
 public class DataPersistence {
+    /**
+     * Output style used when serializing JSON.
+     */
     public enum JsonFormat {
         PRETTY, COMPACT
     }
+    /**
+     * Specifies whether NBT data is stored using gzip compression or in raw form.
+     */
     public enum NbtFormat {
         COMPRESSED, UNCOMPRESSED
     }
@@ -47,6 +69,14 @@ public class DataPersistence {
     private final JsonFormat jsonFormat;
     private final NbtFormat nbtFormat;
 
+    /**
+     * Creates a new persistence service.
+     *
+     * @param format           the JSON output format (pretty or compact).
+     * @param nbtFormat        the NBT storage format (compressed or uncompressed).
+     * @param relativeSavePath the path, relative to {@code levelSavePath}, where
+     *                         this service stores its data.
+     */
     public DataPersistence(JsonFormat format, NbtFormat nbtFormat, Path relativeSavePath) {
         this.jsonFormat = format;
         if (format == JsonFormat.PRETTY) {
@@ -58,11 +88,27 @@ public class DataPersistence {
         this.nbtFormat = nbtFormat;
     }
 
+    /**
+     * Configures the logger callbacks used by this service.
+     *
+     * @param errorLogger receives error messages.
+     * @param debugLogger receives debug messages.
+     * @param warnLogger  receives warning messages.
+     */
     public void setLogger(Consumer<String> errorLogger, Consumer<String> debugLogger, Consumer<String> warnLogger) {
         this.errorLogger = errorLogger;
         this.debugLogger = debugLogger;
         this.warnLogger = warnLogger;
     }
+    /**
+     * Configures the logger callbacks used by this service, including a
+     * dedicated handler for errors with an associated {@link Throwable}.
+     *
+     * @param errorLogger          receives plain error messages.
+     * @param errorLoggerThrowable receives error messages paired with their causing throwable.
+     * @param debugLogger          receives debug messages.
+     * @param warnLogger           receives warning messages.
+     */
     public void setLogger(Consumer<String> errorLogger, BiConsumer<String, Throwable>errorLoggerThrowable, Consumer<String> debugLogger, Consumer<String> warnLogger) {
         this.errorLogger = errorLogger;
         this.errorLoggerThrowable = errorLoggerThrowable;
@@ -72,28 +118,77 @@ public class DataPersistence {
 
 
 
+    /**
+     * @return the configured JSON output format.
+     */
     public JsonFormat getJsonFormat() {
         return jsonFormat;
     }
+    /**
+     * @return the configured NBT storage format.
+     */
     public NbtFormat getNbtFormat() {
         return nbtFormat;
     }
 
+    /**
+     * Sets the per-world root save path. Must be called before any save/load
+     * operation that resolves an absolute path.
+     *
+     * @param levelSavePath the absolute path of the current world's save directory.
+     */
     public void setLevelSavePath(Path levelSavePath) {
         this.levelSavePath = levelSavePath;
     }
+    /**
+     * @return the per-world root save path, or {@code null} if not yet set.
+     */
     public Path getLevelSavePath() {
         return levelSavePath;
     }
+    /**
+     * Sets the path, relative to {@link #getLevelSavePath()}, where this
+     * service stores its data.
+     *
+     * @param relativeSavePath the new relative save path.
+     */
     public void setRelativeSavePath(Path relativeSavePath) {
         this.relativeSavePath = relativeSavePath;
     }
+    /**
+     * @return the relative save path used by this service.
+     */
     public Path getRelativeSavePath() {
         return relativeSavePath;
     }
+    /**
+     * Returns the absolute save path: {@code levelSavePath} resolved against
+     * {@code relativeSavePath}.
+     *
+     * @apiNote
+     * Throws {@link IllegalStateException} if {@link #setLevelSavePath(Path)}
+     * has not been called yet (this used to surface as an NPE).
+     *
+     * @return the absolute save directory for this service.
+     *
+     * @throws IllegalStateException if {@code levelSavePath} has not been set.
+     */
     public Path getAbsoluteSavePath() {
-        return getLevelSavePath().resolve(relativeSavePath);
+        Path level = getLevelSavePath();
+        if (level == null) {
+            throw new IllegalStateException("levelSavePath is not set; call setLevelSavePath() first");
+        }
+        return level.resolve(relativeSavePath);
     }
+    /**
+     * Returns the absolute save path with an additional sub-path appended.
+     *
+     * @param relativeAdded the additional relative path component to append.
+     *
+     * @return the resolved absolute path.
+     *
+     * @throws IllegalStateException if {@code levelSavePath} has not been set.
+     */
     public Path getAbsoluteSavePath(String relativeAdded) {
         return getAbsoluteSavePath().resolve(relativeAdded);
     }
@@ -104,6 +199,14 @@ public class DataPersistence {
         }
         return createFolder(getAbsoluteSavePath());
     }
+    /**
+     * Creates the given folder (and any missing parents) if it does not exist.
+     *
+     * @param path the absolute path of the folder to create.
+     *
+     * @return {@code true} if the folder existed or was created successfully;
+     *         {@code false} if creation failed.
+     */
     public boolean createFolder(Path path) {
         File folder = new File(path.toUri());
         if (!folder.exists()) {
@@ -117,10 +220,24 @@ public class DataPersistence {
         }
         return true;
     }
+    /**
+     * Checks whether a regular file exists at the given path.
+     *
+     * @param path the path to test.
+     *
+     * @return {@code true} if a regular file exists at the path.
+     */
     public boolean fileExists(Path path) {
         File file = new File(path.toUri());
         return file.exists() && file.isFile();
     }
+    /**
+     * Checks whether a directory exists at the given path.
+     *
+     * @param path the path to test.
+     *
+     * @return {@code true} if a directory exists at the path.
+     */
     public boolean folderExists(Path path) {
         File folder = new File(path.toUri());
         return folder.exists() && folder.isDirectory();
@@ -156,41 +273,109 @@ public class DataPersistence {
 
 
 
+    /**
+     * Lists all regular files ending in {@code .json} within the given directory.
+     *
+     * @param absolutePath the directory to scan.
+     *
+     * @apiNote
+     * Uses try-with-resources on the underlying directory stream to avoid
+     * leaking file handles. Returns an empty list (not {@code null}) on I/O
+     * failure; the error is logged.
+     *
+     * @return the list of matching paths, or an empty list on failure.
+     */
     public List<Path> getJsonFiles(Path absolutePath) {
-        try {
-            return Files.list(absolutePath) // List files
-                    .filter(Files::isRegularFile)       // Keep only regular files
-                    .filter(_path -> _path.toString().endsWith(".json")) // Keep only .json files
-                    .collect(Collectors.toList()); // Convert to List
+        try (var stream = Files.list(absolutePath)) {
+            return stream
+                    .filter(Files::isRegularFile)
+                    .filter(_path -> _path.toString().endsWith(".json"))
+                    .collect(Collectors.toList());
         } catch (IOException e) {
             error("Failed to list JSON files in directory: " + absolutePath, e);
-            return List.of(); // Return empty list on error
+            return List.of();
         }
     }
+    /**
+     * Lists all regular files in the given directory whose name ends with the
+     * specified extension.
+     *
+     * @param absolutePath the directory to scan.
+     * @param extension    the suffix to filter by (e.g. {@code ".nbt"}).
+     *
+     * @apiNote
+     * Uses try-with-resources to avoid leaking file handles; errors are
+     * logged and an empty list is returned.
+     *
+     * @return the list of matching paths, or an empty list on failure.
+     */
     public List<Path> getFiles(Path absolutePath, String extension) {
-        try {
-            return Files.list(absolutePath) // List files
-                    .filter(Files::isRegularFile)       // Keep only regular files
-                    .filter(_path -> _path.toString().endsWith(extension)) // Keep only files with specified extension
-                    .collect(Collectors.toList()); // Convert to List
+        try (var stream = Files.list(absolutePath)) {
+            return stream
+                    .filter(Files::isRegularFile)
+                    .filter(_path -> _path.toString().endsWith(extension))
+                    .collect(Collectors.toList());
         } catch (IOException e) {
             error("Failed to list files in directory: " + absolutePath, e);
-            return List.of(); // Return empty list on error
+            return List.of();
         }
     }
+    /**
+     * Lists all sub-directories of the given directory.
+     *
+     * @param absolutePath the directory to scan.
+     *
+     * @apiNote
+     * Uses try-with-resources to avoid leaking file handles; errors are
+     * logged and an empty list is returned.
+     *
+     * @return the list of sub-directory paths, or an empty list on failure.
+     *
+     * @deprecated Use {@link #getFolders(Path)} instead.
+     */
+    @Deprecated
     public List<Path> getFoldes(Path absolutePath) {
-        try {
-            return Files.list(absolutePath) // List files
-                    .filter(Files::isDirectory)       // Keep only directories
-                    .collect(Collectors.toList()); // Convert to List
+        try (var stream = Files.list(absolutePath)) {
+            return stream
+                    .filter(Files::isDirectory)
+                    .collect(Collectors.toList());
         } catch (IOException e) {
             error("Failed to list folders in directory: " + absolutePath, e);
-            return List.of(); // Return empty list on error
+            return List.of();
         }
+    }
+
+    /**
+     * Lists all sub-directories of the given directory.
+     *
+     * @param absolutePath the directory to scan.
+     *
+     * @apiNote
+     * Uses try-with-resources to avoid leaking file handles; errors are
+     * logged and an empty list is returned.
+     *
+     * @return the list of sub-directory paths, or an empty list on failure.
+     */
+    public List<Path> getFolders(Path absolutePath) {
+        return getFoldes(absolutePath);
     }
 
 
 
+    /**
+     * Reads a {@link CompoundTag} from the given absolute file path.
+     * The file's actual compression state is detected via gzip magic bytes;
+     * if it disagrees with the configured {@link NbtFormat}, the actual format
+     * is used and a warning is logged.
+     *
+     * @param absolutePath the absolute path of the NBT file to read.
+     *
+     * @apiNote
+     * Returns {@code null} if the file does not exist or if reading fails;
+     * errors are logged but no exception is thrown.
+     *
+     * @return the loaded compound tag, or {@code null} on failure.
+     */
     public CompoundTag readDataCompound(Path absolutePath)
     {
         CompoundTag dataOut;
@@ -224,6 +409,17 @@ public class DataPersistence {
         }
         return null;
     }
+    /**
+     * Saves the given {@link CompoundTag} to the specified absolute file path
+     * using the configured {@link NbtFormat}.
+     * Logs a warning if the uncompressed payload exceeds the maximum NBT size
+     * (2 MB); the file is still written.
+     *
+     * @param absolutePath the absolute path of the NBT file to write.
+     * @param data         the compound tag to serialize.
+     *
+     * @return {@code true} on success; {@code false} on I/O failure.
+     */
     public boolean saveDataCompound(Path absolutePath, CompoundTag data) {
         long startMillis = System.currentTimeMillis();
         boolean success = true;
@@ -252,6 +448,24 @@ public class DataPersistence {
         debug("Saving data to file: " + absolutePath + " took " + (endMillis - startMillis) + "ms");
         return success;
     }
+    /**
+     * Saves a potentially oversized {@link ListTag} by splitting it into
+     * multiple chunk files. The chunks are written into a sub-folder whose
+     * name is derived from {@code absolutePath} (extension stripped), and the
+     * folder is purged of any stale chunk files first.
+     *
+     * @param absolutePath the path used to derive the chunk folder name; its
+     *                     parent directory is the location where the chunk
+     *                     folder is created.
+     * @param dataList     the list tag to split and persist.
+     *
+     * @apiNote
+     * The element type of the list is stored in the first chunk under
+     * {@code "elementType"} so it can be restored when reading.
+     * Returns {@code false} if a single tag exceeds the 2 MB chunk limit.
+     *
+     * @return {@code true} if all chunks were written successfully; {@code false} otherwise.
+     */
     public boolean saveDataCompoundList(Path absolutePath, ListTag dataList)
     {
         long startMillis = System.currentTimeMillis();
@@ -282,16 +496,22 @@ public class DataPersistence {
         if(folderExists(chunkFolderPath))
         {
             // delete all files in the folder
-            try {
-                Files.list(chunkFolderPath).forEach(file -> {
+            AtomicBoolean deletionFailed = new AtomicBoolean(false);
+            try (var stream = Files.list(chunkFolderPath)) {
+                stream.forEach(file -> {
                     try {
                         Files.delete(file);
                     } catch (IOException e) {
                         error("Failed to delete file: " + file, e);
+                        deletionFailed.set(true);
                     }
                 });
             } catch (IOException e) {
                 error("Failed to list files in folder: " + chunkFolderPath, e);
+                return false;
+            }
+            if(deletionFailed.get()) {
+                error("Aborting save: not all old chunk files could be deleted in " + chunkFolderPath);
                 return false;
             }
         }
@@ -303,29 +523,67 @@ public class DataPersistence {
         }
 
 
-        // Split the data into chunks
+        // Pre-compute individual element sizes to avoid O(N²) re-serialization
+        long[] elementSizes = new long[dataList.size()];
+        for (int i = 0; i < dataList.size(); i++) {
+            elementSizes[i] = ChunkedNBT.getUncompressedSize(dataList.get(i));
+        }
+
+        // Split the data into chunks using a running size total
         List<CompoundTag> chunks = new ArrayList<>();
         int processedTagCount = 0;
+        boolean firstChunk = true;
         while(processedTagCount < dataList.size())
         {
             CompoundTag chunk = new CompoundTag();
             ListTag chunkList = new ListTag();
+            if(firstChunk)
+            {
+                byte dataType = dataList.getElementType();
+                chunk.putByte("elementType", dataType);
+                firstChunk = false;
+            }
             chunk.put("data", chunkList);
+
+            // Measure the empty chunk overhead (compound wrapper + "data" key + list header)
+            long chunkBaseSize = ChunkedNBT.getUncompressedSize(chunk);
+            long runningSize = chunkBaseSize;
+
             for(; processedTagCount<dataList.size(); ++processedTagCount)
             {
+                long elementSize = elementSizes[processedTagCount];
+
+                // Check if adding this element would likely exceed the limit
+                if(runningSize + elementSize > MAX_NBT_SIZE && !chunkList.isEmpty())
+                {
+                    // Verify with a full serialization before splitting, in case
+                    // the running total over-estimated due to per-element wrapper overhead
+                    chunkList.add(dataList.get(processedTagCount));
+                    long actualSize = ChunkedNBT.getUncompressedSize(chunk);
+                    if(actualSize > MAX_NBT_SIZE) {
+                        chunkList.remove(chunkList.size() - 1);
+                        break;
+                    }
+                    // Actual size fits; update running total with the real value
+                    runningSize = actualSize;
+                    continue;
+                }
+
                 chunkList.add(dataList.get(processedTagCount));
-                long chunkUncompressedSize = 0;
-                chunkUncompressedSize = ChunkedNBT.getUncompressedSize(chunk);
-                if(chunkUncompressedSize > MAX_NBT_SIZE) {
-                    // If the chunk is too large, stop adding more tags
-                    // remove the last tag
-                    chunkList.remove(chunkList.size() - 1);
-                    if(chunkList.isEmpty())
+                runningSize += elementSize;
+
+                // If running total exceeds the limit and the list only has this one element,
+                // then the single element is too large
+                if(runningSize > MAX_NBT_SIZE)
+                {
+                    if(chunkList.size() == 1)
                     {
                         error("The Tag at index: "+processedTagCount+" in the dataList is larger than the maximum NBT size of " + MAX_NBT_SIZE + " bytes.\n" +
                                 "Consider splitting the data into smaller ListTag elements or using a different data format.", new Throwable("Data too large"));
                         return false;
                     }
+                    // Remove the last tag that pushed us over
+                    chunkList.remove(chunkList.size() - 1);
                     break;
                 }
             }
@@ -344,6 +602,20 @@ public class DataPersistence {
         return success;
     }
 
+    /**
+     * Reads a chunked {@link ListTag} previously saved via
+     * {@link #saveDataCompoundList(Path, ListTag)}. Locates the chunk folder
+     * derived from {@code absolutePath} (extension stripped), reads each
+     * {@code .nbt} chunk in name order, and concatenates their contents.
+     *
+     * @param absolutePath the path used to derive the chunk folder name.
+     *
+     * @apiNote
+     * The list's element type is recovered from the first chunk's
+     * {@code "elementType"} byte tag (defaults to {@code TAG_COMPOUND}).
+     *
+     * @return the reassembled list tag (possibly empty); never {@code null}.
+     */
     public ListTag readDataCompoundList(Path absolutePath) {
         ListTag dataOut;
 
@@ -359,10 +631,21 @@ public class DataPersistence {
         // If it's a folder, read all chunk files
         try {
             List<Path> chunkFiles = getFiles(folderPath, ".nbt");
+            // Sort files
+            chunkFiles.sort(Comparator.naturalOrder());
+            boolean firstChunk = true;
+            byte elementType = Tag.TAG_COMPOUND;
             for (Path chunkFile : chunkFiles) {
                 CompoundTag chunkData = readDataCompound(chunkFile);
+                if(firstChunk) {
+                    if(chunkData != null && chunkData.contains("elementType", Tag.TAG_BYTE))
+                    {
+                        elementType = chunkData.getByte("elementType");
+                        firstChunk = false;
+                    }
+                }
                 if (chunkData != null && chunkData.contains("data", Tag.TAG_LIST)) {
-                    dataOut.addAll(chunkData.getList("data", Tag.TAG_COMPOUND));
+                    dataOut.addAll(chunkData.getList("data", elementType));
                 } else {
                     error("No valid 'data' list found in chunk file: " + chunkFile);
                 }
@@ -375,6 +658,17 @@ public class DataPersistence {
     }
 
 
+    /**
+     * Saves a map of named {@link ListTag} instances. Each entry is written
+     * via {@link #saveDataCompoundList(Path, ListTag)} into a sub-folder
+     * named after the entry key.
+     *
+     * @param absolutePath the parent folder under which each entry's chunk
+     *                     folder is created.
+     * @param dataListMap  the map of list tags to persist; keys become folder names.
+     *
+     * @return {@code true} if all entries were saved successfully; {@code false} otherwise.
+     */
     public boolean saveDataCompoundListMap(Path absolutePath, Map<String, ListTag> dataListMap)
     {
         if(!createSaveFolder()) {
@@ -397,7 +691,7 @@ public class DataPersistence {
             }
         }
 
-        CompoundTag allDataCompound = new CompoundTag();
+        /*CompoundTag allDataCompound = new CompoundTag();
         // Create a ListTag to hold all ListTags
         for(Map.Entry<String, ListTag> entry : dataListMap.entrySet()) {
             String fileName = entry.getKey();
@@ -407,7 +701,7 @@ public class DataPersistence {
             } else {
                 error("No valid ListTag found for key: " + fileName);
             }
-        }
+        }*/
 
         //saveDataCompoundChunked(absolutePath.resolve("all_data"), allDataCompound);
 
@@ -424,6 +718,16 @@ public class DataPersistence {
         return success;
     }
 
+    /**
+     * Reads a map of named {@link ListTag} instances previously saved via
+     * {@link #saveDataCompoundListMap(Path, Map)}. Each direct sub-folder of
+     * {@code absolutePath} is read as a chunked list and added to the result
+     * map keyed by the folder name.
+     *
+     * @param absolutePath the parent folder containing per-entry sub-folders.
+     *
+     * @return the reassembled map (possibly empty); never {@code null}.
+     */
     public Map<String, ListTag> readDataCompoundListMap(Path absolutePath) {
         Map<String, ListTag> dataMap = new HashMap<>();
         if(!folderExists(absolutePath)) {
@@ -532,6 +836,15 @@ public class DataPersistence {
 
 
 
+    /**
+     * Serializes the given object to JSON using Gson and writes it to the
+     * specified path. Parent directories are created as needed.
+     *
+     * @param o            the object to serialize.
+     * @param absolutePath the absolute path of the JSON file to write.
+     *
+     * @return {@code true} on success; {@code false} on I/O failure.
+     */
     public boolean saveAsJson(Object o, Path absolutePath)
     {
         String json = GSON.toJson(o);
@@ -544,6 +857,15 @@ public class DataPersistence {
         }
         return true;
     }
+    /**
+     * Writes a {@link JsonElement} tree to the specified path. Parent
+     * directories are created as needed.
+     *
+     * @param json         the JSON tree to write.
+     * @param absolutePath the absolute path of the JSON file to write.
+     *
+     * @return {@code true} on success; {@code false} on I/O failure.
+     */
     public boolean saveJson(JsonElement json, Path absolutePath) {
         try {
             Files.createDirectories(absolutePath.getParent());
@@ -554,6 +876,22 @@ public class DataPersistence {
         }
         return true;
     }
+    /**
+     * Loads and deserializes a JSON file into an instance of the given type
+     * using Gson.
+     *
+     * @param absolutePath the absolute path of the JSON file to read.
+     * @param typeOfT      the {@link Type} describing the expected return type.
+     * @param <T>          the deserialized object type.
+     *
+     * @apiNote
+     * Returns {@code null} on I/O failure (the error is logged); a malformed
+     * JSON file will throw {@link JsonSyntaxException}.
+     *
+     * @return the deserialized instance, or {@code null} on I/O failure.
+     *
+     * @throws JsonSyntaxException if the file's content is not valid JSON.
+     */
     public <T> T loadFromJson(Path absolutePath, Type typeOfT) throws JsonSyntaxException {
         try {
             // Read JSON content
@@ -565,6 +903,13 @@ public class DataPersistence {
         }
     }
 
+    /**
+     * Loads a JSON file and returns it as a parsed {@link JsonElement} tree.
+     *
+     * @param absolutePath the absolute path of the JSON file to read.
+     *
+     * @return the parsed JSON element, or {@code null} on failure.
+     */
     public JsonElement loadJson(Path absolutePath) {
         try {
             // Read JSON content
@@ -575,6 +920,16 @@ public class DataPersistence {
             return null;
         }
     }
+    /**
+     * Detects whether the given file uses gzip compression by inspecting the
+     * first two bytes for the gzip magic number {@code 0x1F 0x8B}.
+     *
+     * @param file the file to inspect.
+     *
+     * @return {@code true} if the file is gzip-compressed; {@code false} otherwise.
+     *
+     * @throws IOException if the file cannot be read.
+     */
     public static boolean isCompressed(File file) throws IOException {
         try (DataInputStream in = new DataInputStream(new FileInputStream(file))) {
             int b1 = in.readUnsignedByte();

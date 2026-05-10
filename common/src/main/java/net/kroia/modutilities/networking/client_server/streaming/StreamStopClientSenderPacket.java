@@ -56,12 +56,20 @@ public class StreamStopClientSenderPacket extends NetworkPacket {
 
     UUID streamID;
 
+    /**
+     * Creates a new StreamStopClientSenderPacket signaling that the client wants to stop the stream.
+     *
+     * @param streamID The unique stream UUID identifying the stream to stop.
+     */
     public StreamStopClientSenderPacket(UUID streamID) {
         super();
         this.streamID = streamID;
     }
 
 
+    /**
+     * @return The unique stream UUID identifying which stream is being stopped.
+     */
     public UUID getStreamID() {
         return streamID;
     }

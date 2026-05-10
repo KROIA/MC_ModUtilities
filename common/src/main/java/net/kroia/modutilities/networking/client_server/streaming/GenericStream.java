@@ -240,6 +240,19 @@ public abstract class GenericStream<CONTEXT_DATA, DATA> {
     }
 
 
+    /**
+     * Convenience method to start a server-to-client stream using this stream definition.
+     * Equivalent to calling {@link StreamSystem#startServerToClientStream}.
+     *
+     * @param startData            The context data sent to the server with the start request.
+     * @param streamDataHandler    The handler invoked on the client for each data chunk received.
+     * @param streamStoppedHandler Optional handler invoked once the stream has stopped.
+     *
+     * @apiNote
+     * This method must be called on the client side only.
+     *
+     * @return The unique stream UUID, used later with {@link StreamSystem#stopStream(UUID)}.
+     */
     public UUID startServerToClient(@NotNull CONTEXT_DATA startData, @NotNull Consumer<DATA> streamDataHandler, @Nullable Runnable streamStoppedHandler)
     {
         return StreamSystem.startServerToClientStream(this, startData, streamDataHandler, streamStoppedHandler);
@@ -254,10 +267,14 @@ public abstract class GenericStream<CONTEXT_DATA, DATA> {
      */
 
 
-                                    /**
-                                     * Fills the buf with a new stream packet on the server side.
-                                     * @param buf The buffer to write the stream packet data to.
-                                     */
+    /**
+     * INTERNAL METHODE, DO NOT CALL THIS METHOD MANUALLY!
+     *
+     * Fills the buf with a new stream packet on the server side, by retrieving the next
+     * data chunk via {@link #provideStreamPacketOnServer()} and encoding it.
+     *
+     * @param buf The buffer to write the stream packet data to.
+     */
     public void createStreamPacketOnServer(RegistryFriendlyByteBuf buf)
     {
         try{
@@ -268,7 +285,11 @@ public abstract class GenericStream<CONTEXT_DATA, DATA> {
     }
 
     /**
-     * Fills the buf with a new stream packet on the client side.
+     * INTERNAL METHODE, DO NOT CALL THIS METHOD MANUALLY!
+     *
+     * Fills the buf with a new stream packet on the client side, by retrieving the next
+     * data chunk via {@link #provideStreamPacketOnClient()} and encoding it.
+     *
      * @param buf The buffer to write the stream packet data to.
      */
     public void createStreamPacketOnClient(RegistryFriendlyByteBuf buf)
@@ -303,6 +324,8 @@ public abstract class GenericStream<CONTEXT_DATA, DATA> {
     {
         this.manager = other.manager;
         this.StreamID = other.StreamID;
+        this.requestorPlayerUUID = other.requestorPlayerUUID;
+        this.contextData = other.contextData;
     }
     public final void setStreamID(UUID streamID)
     {

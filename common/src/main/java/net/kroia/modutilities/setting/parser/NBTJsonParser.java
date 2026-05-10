@@ -6,10 +6,19 @@ import net.minecraft.world.item.ItemStack;
 
 import java.util.Set;
 
+/**
+ * {@link CustomJsonParser} implementation for Minecraft NBT {@link Tag}s.
+ * Recursively converts between Minecraft's NBT tree and Gson's {@link JsonElement} tree,
+ * preserving compound, list, numeric, string, and array tag structures.
+ */
 public class NBTJsonParser implements CustomJsonParser<Tag>{
 
     /**
-     * Convert a CompoundTag (NBT) to a JsonElement (Gson).
+     * Converts an NBT {@link Tag} into a {@link JsonElement}.
+     *
+     * @param tag The NBT tag to convert. May be {@code null} or {@link EndTag} (returns {@link JsonNull}).
+     * @return The JSON representation of the tag.
+     * @throws IllegalArgumentException if the tag type is not supported.
      */
     @Override
     public JsonElement toJson(Tag tag) {
@@ -57,8 +66,13 @@ public class NBTJsonParser implements CustomJsonParser<Tag>{
     }
 
     /**
-     * Convert a JsonElement (Gson) to a CompoundTag (NBT).
-     * Expects the root to be a JsonObject.
+     * Converts a {@link JsonElement} into an NBT {@link Tag}.
+     * Numeric primitives are demoted to the smallest exact integer type ({@code byte/short/int/long})
+     * or the smallest exact floating type ({@code float/double}) that fits the value.
+     *
+     * @param json The JSON element to convert. May be {@link JsonNull} (returns {@link EndTag#INSTANCE}).
+     * @return The NBT tag corresponding to the JSON input.
+     * @throws IllegalArgumentException if the JSON element type is unsupported.
      */
     @Override
     public Tag fromJson(JsonElement json) {

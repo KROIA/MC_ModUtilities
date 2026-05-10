@@ -16,6 +16,7 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -29,8 +30,10 @@ import java.util.concurrent.CompletableFuture;
 public final class GenericRequestPacket extends NetworkPacket
 {
 
+    /** The {@link CustomPacketPayload.Type} identifier for this packet. */
     public static final Type<GenericRequestPacket> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "generic_request"));
 
+    /** Stream codec used to (de)serialize the packet over the network. */
     public static final StreamCodec<RegistryFriendlyByteBuf, GenericRequestPacket> STREAM_CODEC = StreamCodec.composite(
             UUIDUtil.STREAM_CODEC, p -> p.requestID,
             ByteBufCodecs.STRING_UTF8, p -> p.requestTypeID,
@@ -47,19 +50,30 @@ public final class GenericRequestPacket extends NetworkPacket
     protected void handleOnServer(NetworkManager.PacketContext context) {
         var request = AsynchronousRequestResponseSystem.getRegisteredRequest(requestTypeID);
         if (request == null) {
+            releaseData();
             return; // No factory found for this request type
         }
         RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
         try {
+            // decodeHandleEncodeOnServer reads from `data` synchronously (in decodeInput),
+            // then returns a future that completes when the handler finishes.
+            // We release `data` in whenComplete to guarantee it outlives any synchronous read
+            // and is freed regardless of success or failure.
             CompletableFuture<RegistryFriendlyByteBuf> fut = request.decodeHandleEncodeOnServer(data, responseData, (ServerPlayer) context.getPlayer());
-            fut.thenAccept(responseBuf -> {
+            fut.whenComplete((responseBuf, ex) -> {
+                releaseData();
+                if (ex != null) {
+                    if (responseData.refCnt() > 0) responseData.release();
+                    ModUtilitiesMod.LOGGER.error("Error in async GenericRequestPacket handler: " + ex.getMessage(), ex);
+                    return;
+                }
                 sendResponseToClient(request.getManager(), (ServerPlayer) context.getPlayer(), new GenericResponsePacket(requestID, requestTypeID, responseBuf));
             });
         }
         catch (Exception e) {
-            // Handle any exceptions that may occur during decoding/encoding
+            releaseData();
+            if (responseData.refCnt() > 0) responseData.release();
             ModUtilitiesMod.LOGGER.error("Error handling GenericRequestPacket: " + e.getMessage(), e);
-
         }
     }
     @Override
@@ -75,19 +89,30 @@ public final class GenericRequestPacket extends NetworkPacket
     protected void handleOnMaster(ForwardPacketContext context) {
         var request = AsynchronousRequestResponseSystem.getRegisteredRequest(requestTypeID);
         if (request == null) {
+            releaseData();
             return; // No factory found for this request type
         }
-        //ModUtilitiesMod.LOGGER.info("GenericRequestPacket.handleOnMaster() creating response...");
-        RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
+        @Nullable RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
+        if(responseData == null) {
+            releaseData();
+            ModUtilitiesMod.LOGGER.error("[GenericRequestPacket]: Can't instantiate RegistryFriendlyByteBuf for a packet response: ");
+            return;
+        }
         try {
             CompletableFuture<RegistryFriendlyByteBuf> fut = request.decodeHandleEncodeOnMasterServer(data, responseData, context.senderServerID, context.senderPlayerUUID);
-            fut.thenAccept(responseBuf -> {
-                //ModUtilitiesMod.LOGGER.info("GenericRequestPacket.handleOnMaster() future complete, sending packet back");
+            fut.whenComplete((responseBuf, ex) -> {
+                releaseData();
+                if (ex != null) {
+                    if (responseData.refCnt() > 0) responseData.release();
+                    ModUtilitiesMod.LOGGER.error("Error in async GenericRequestPacket master handler: " + ex.getMessage(), ex);
+                    return;
+                }
                 sendResponseToSlave(context.senderServerID, context.senderPlayerUUID, new GenericResponsePacket(requestID, requestTypeID, responseBuf));
             });
         }
         catch (Exception e) {
-            // Handle any exceptions that may occur during decoding/encoding
+            releaseData();
+            if (responseData.refCnt() > 0) responseData.release();
             ModUtilitiesMod.LOGGER.error("Error handling GenericRequestPacket: " + e.getMessage(), e);
         }
     }
@@ -96,19 +121,30 @@ public final class GenericRequestPacket extends NetworkPacket
     {
         var request = AsynchronousRequestResponseSystem.getRegisteredRequest(requestTypeID);
         if (request == null) {
+            releaseData();
             return; // No factory found for this request type
         }
-        //ModUtilitiesMod.LOGGER.info("GenericRequestPacket.handleOnMaster() creating response...");
-        RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
+        @Nullable RegistryFriendlyByteBuf responseData = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
+        if(responseData == null) {
+            releaseData();
+            ModUtilitiesMod.LOGGER.error("[GenericRequestPacket]: Can't instantiate RegistryFriendlyByteBuf for a packet response: ");
+            return;
+        }
         try {
             CompletableFuture<RegistryFriendlyByteBuf> fut = request.decodeHandleEncodeOnSlaveServer(data, responseData, context.senderPlayerUUID);
-            fut.thenAccept(responseBuf -> {
-                //ModUtilitiesMod.LOGGER.info("GenericRequestPacket.handleOnMaster() future complete, sending packet back");
+            fut.whenComplete((responseBuf, ex) -> {
+                releaseData();
+                if (ex != null) {
+                    if (responseData.refCnt() > 0) responseData.release();
+                    ModUtilitiesMod.LOGGER.error("Error in async GenericRequestPacket slave handler: " + ex.getMessage(), ex);
+                    return;
+                }
                 sendResponseToMaster(context.senderPlayerUUID, new GenericResponsePacket(requestID, requestTypeID, responseBuf));
             });
         }
         catch (Exception e) {
-            // Handle any exceptions that may occur during decoding/encoding
+            releaseData();
+            if (responseData.refCnt() > 0) responseData.release();
             ModUtilitiesMod.LOGGER.error("Error handling GenericRequestPacket: " + e.getMessage(), e);
         }
     }
@@ -132,6 +168,12 @@ public final class GenericRequestPacket extends NetworkPacket
      */
     RegistryFriendlyByteBuf data;
 
+    /**
+     * Constructs a new request packet with a freshly generated request ID.
+     *
+     * @param requestTypeID The identifier of the request type (see {@link GenericRequest#getRequestTypeID()}).
+     * @param data          The encoded input payload.
+     */
     public GenericRequestPacket(String requestTypeID, RegistryFriendlyByteBuf data) {
         super();
         this.requestID = UUID.randomUUID();
@@ -139,6 +181,14 @@ public final class GenericRequestPacket extends NetworkPacket
         this.data = data;
     }
 
+    /**
+     * Constructs a new request packet with an explicit request ID.
+     * Used by the stream codec when reconstructing a packet from the network.
+     *
+     * @param requestID     The unique identifier of this request.
+     * @param requestTypeID The identifier of the request type.
+     * @param data          The encoded input payload.
+     */
     public GenericRequestPacket(UUID requestID, String requestTypeID, RegistryFriendlyByteBuf data) {
         this.requestID = requestID;
         this.requestTypeID = requestTypeID;
@@ -146,12 +196,23 @@ public final class GenericRequestPacket extends NetworkPacket
     }
 
 
+    /**
+     * @return The unique identifier of this request, used to correlate it with its response.
+     */
     public UUID getRequestID() {
         return requestID;
     }
+
+    /**
+     * @return The request type identifier used to look up the registered {@link GenericRequest}.
+     */
     public String getRequestTypeID() {
         return requestTypeID;
     }
+
+    /**
+     * @return The encoded input payload buffer.
+     */
     public FriendlyByteBuf getData() {
         return data;
     }
@@ -160,6 +221,15 @@ public final class GenericRequestPacket extends NetworkPacket
     @Override
     public Type<? extends CustomPacketPayload> type() {
         return TYPE;
+    }
+
+    /**
+     * Safely releases the {@link #data} buffer if it is non-null and still has a positive reference count.
+     */
+    private void releaseData() {
+        if (data != null && data.refCnt() > 0) {
+            data.release();
+        }
     }
 
 
@@ -194,12 +264,6 @@ public final class GenericRequestPacket extends NetworkPacket
         {
             MultiServerManager.sendToMaster(player,  packet);
         }
-        return true;
-    }
-
-    private static boolean sendResponseToServer(RequestManager manager, GenericResponsePacket packet)
-    {
-        manager.getNetworkManager().sendToServer(packet);
         return true;
     }
 

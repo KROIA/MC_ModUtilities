@@ -6,6 +6,24 @@ import net.kroia.modutilities.gui.layout.Layout;
 
 import java.util.List;
 
+/**
+ * Abstract base for a scrollable list-style container.
+ * <p>
+ * A {@code ListView} hosts an inner scroll container that clips and offsets its
+ * children, and a built-in scrollbar handle. Child elements added via
+ * {@link #addChild(GuiElement)} are placed inside the inner
+ * {@link ScrollContainer} rather than directly on the {@code ListView} itself.
+ * <p>
+ * Concrete subclasses (such as {@code VerticalListView} or
+ * {@code HorizontalListView}) decide the scroll direction by implementing
+ * {@link #getSizeHintWidth()}, {@link #getSizeHintHeight()},
+ * {@link #updateElementPositions()}, {@link #setScrollBarBounds()}, and the
+ * scissor/scrollbar interaction hooks.
+ *
+ * @apiNote The {@code gui/} package is client-only
+ *          ({@code @Environment(EnvType.CLIENT)}); list views must only be used
+ *          on the client.
+ */
 public abstract class ListView extends GuiElement{
     protected static class ScrollContainer extends GuiElement
     {
@@ -72,6 +90,10 @@ public abstract class ListView extends GuiElement{
     protected int scrollbarDragStartMouse = 0;
     protected int scrollbarBackgroundColor = 0xff444444;
 
+    /**
+     * Creates a new list view with zero size at the origin and an empty scroll
+     * container.
+     */
     public ListView() {
         super();
         scrollbarButton = new EmptyButton();
@@ -82,6 +104,15 @@ public abstract class ListView extends GuiElement{
         super.addChild(scrollbarButton);
         super.addChild(scrollContainer);
     }
+
+    /**
+     * Creates a new list view at the given position and size.
+     *
+     * @param x      the x position
+     * @param y      the y position
+     * @param width  the width
+     * @param height the height
+     */
     public ListView(int x, int y, int width, int height) {
         super(x, y, width, height);
         scrollbarButton = new EmptyButton();
@@ -95,37 +126,97 @@ public abstract class ListView extends GuiElement{
 
     protected abstract Rectangle getScissorRect();
 
+    /**
+     * Sets the number of GUI pixels the content scrolls per scroll-wheel notch.
+     *
+     * @param scrolSpeed the scroll speed in pixels per notch
+     *
+     * @deprecated Use {@link #setScrollSpeed(int)} instead.
+     */
+    @Deprecated
     public void setScrolSpeed(int scrolSpeed)
     {
         this.scrolSpeed = scrolSpeed;
     }
+
+    /**
+     * Sets the number of GUI pixels the content scrolls per scroll-wheel notch.
+     *
+     * @param scrollSpeed the scroll speed in pixels per notch
+     */
+    public void setScrollSpeed(int scrollSpeed)
+    {
+        setScrolSpeed(scrollSpeed);
+    }
+
+    /**
+     * @return the scroll speed in GUI pixels per scroll-wheel notch
+     *
+     * @deprecated Use {@link #getScrollSpeed()} instead.
+     */
+    @Deprecated
     public int getScolSpeed()
     {
         return this.scrolSpeed;
     }
+
+    /**
+     * @return the scroll speed in GUI pixels per scroll-wheel notch
+     */
+    public int getScrollSpeed()
+    {
+        return getScolSpeed();
+    }
+
+    /**
+     * Sets the background color drawn behind the scrollbar.
+     *
+     * @param color the packed ARGB color
+     */
     public void setScrollbarBackgroundColor(int color)
     {
         this.scrollbarBackgroundColor = color;
     }
+
+    /**
+     * @return the packed ARGB color drawn behind the scrollbar
+     */
     public int getScrollbarBackgroundColor()
     {
         return this.scrollbarBackgroundColor;
     }
 
+    /**
+     * Sets the thickness of the scrollbar (width for vertical lists, height for
+     * horizontal lists). Triggers a re-layout.
+     *
+     * @param scrollbarThickness the scrollbar thickness in GUI pixels
+     */
     public void setScrollbarThickness(int scrollbarThickness)
     {
         this.scrollbarThickness = scrollbarThickness;
         layoutChangedInternal();
     }
+
+    /**
+     * @return the current scrollbar thickness in GUI pixels
+     */
     public int getScrollbarThickness()
     {
         return scrollbarThickness;
     }
 
+    /**
+     * @return the width of the inner scroll container that hosts the children
+     */
     public int getContainerWidth()
     {
         return scrollContainer.getWidth();
     }
+
+    /**
+     * @return the height of the inner scroll container that hosts the children
+     */
     public int getContainerHeight()
     {
         return scrollContainer.getHeight();
@@ -151,6 +242,12 @@ public abstract class ListView extends GuiElement{
 
     }
 
+    /**
+     * Adds a child element to the inner scroll container so it participates in
+     * scrolling and clipping.
+     *
+     * @param el the child to add
+     */
     @Override
     public void addChild(GuiElement el)
     {
@@ -158,6 +255,12 @@ public abstract class ListView extends GuiElement{
         updateElementPositions();
         setScrollBarBounds();
     }
+
+    /**
+     * Removes a child element from the inner scroll container.
+     *
+     * @param el the child to remove
+     */
     @Override
     public void removeChild(GuiElement el)
     {
@@ -166,6 +269,10 @@ public abstract class ListView extends GuiElement{
         setScrollBarBounds();
     }
 
+    /**
+     * Removes all child elements from the inner scroll container and resets
+     * the cached total content size.
+     */
     @Override
     public void removeChilds()
     {
@@ -174,6 +281,12 @@ public abstract class ListView extends GuiElement{
         updateElementPositions();
         setScrollBarBounds();
     }
+
+    /**
+     * Returns the live list of children in the inner scroll container.
+     *
+     * @return the live child list
+     */
     @Override
     public List<GuiElement> getChilds()
     {
@@ -182,8 +295,18 @@ public abstract class ListView extends GuiElement{
 
     protected abstract void childsChanged();
 
+    /**
+     * Handles scroll events while the mouse is inside the list view, advancing
+     * or rewinding {@link #scrollOffset} by the configured scroll speed.
+     *
+     * @param delta the scroll delta; positive values scroll towards the start,
+     *              negative values scroll towards the end
+     * @return {@code true} if the scroll moved the content; {@code false} if the
+     *         list cannot scroll any further in the requested direction (in which
+     *         case the event is allowed to bubble to other handlers)
+     */
     @Override
-    public boolean mouseScrolledOverElement(double delta)
+    protected boolean mouseScrolledOverElement(double delta)
     {
         if (delta > 0 && scrollOffset > 0) {
             scrollOffset-=scrolSpeed; // Scroll up
@@ -191,22 +314,34 @@ public abstract class ListView extends GuiElement{
                 scrollOffset = 0;
             updateElementPositions();
             setScrollBarBounds();
+            return true;
         } else if (delta < 0 && scrollOffset < allObjectSize - getContentDimension2()) {
             scrollOffset+=scrolSpeed; // Scroll down
             if(scrollOffset > allObjectSize - getContentDimension2())
                 scrollOffset = allObjectSize - getContentDimension2();
             updateElementPositions();
             setScrollBarBounds();
+            return true;
         }
-        return true;
+        return false;
     }
 
 
+    /**
+     * Forwards the layout to the inner scroll container so it governs the
+     * arrangement of child elements.
+     *
+     * @param layout the layout to apply, or {@code null} to disable layouting
+     */
     @Override
     public void setLayout(Layout layout)
     {
         scrollContainer.setLayout(layout);
     }
+
+    /**
+     * @return the layout currently applied to the inner scroll container
+     */
     @Override
     public Layout getLayout()
     {
@@ -251,7 +386,22 @@ public abstract class ListView extends GuiElement{
 
 
     protected abstract void updateElementPositions();
+
+    /**
+     * @deprecated Use {@link #onScrollBarFallingEdge()} instead.
+     */
+    @Deprecated
     protected abstract void onScrllBarFallingEdge();
+
+    /**
+     * Called when the scrollbar button is released (falling edge).
+     * Delegates to the existing {@link #onScrllBarFallingEdge()} implementation.
+     */
+    protected void onScrollBarFallingEdge()
+    {
+        onScrllBarFallingEdge();
+    }
+
     protected abstract void onScrollBarDragging();
 
 

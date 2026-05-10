@@ -7,8 +7,11 @@ import net.kroia.modutilities.gui.elements.*;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.elements.base.ListView;
 import net.kroia.modutilities.gui.layout.LayoutGrid;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.minecraft.network.chat.Component;
 
+@Environment(EnvType.CLIENT)
 public class TestScreen extends GuiScreen {
 
 
@@ -75,11 +78,25 @@ class MyElement extends GuiElement
     //private final ItemSelectionView itemSelectionView;
     //private final ContainerView<MyContainerMenu> inventoryView;
 
+    private final TextBox textBox = new TextBox();
+    private final TextBox textBox2 = new TextBox();
+
     public TestScreen()
     //public TestScreen(MyContainerMenu pMenu, Inventory pPlayerInventory, Component pTitle)
     {
         //super(pMenu, pPlayerInventory, pTitle);
         super(Component.translatable("TEST"));
+        textBox.setAlignment(GuiElement.Alignment.RIGHT);
+        textBox2.setAlignment(GuiElement.Alignment.LEFT);
+
+        textBox.setMatchRegex(TextBox.createRegex_onlyNumerical(true,true,5,2));
+        //textBox2.setMatchRegex(TextBox.createRegex_onlyNumerical(true,false,4,3));
+        textBox2.setMatchRegex(TextBox.createRegex_onlyNumerical(true, false, 100, 0));
+
+
+        addElement(textBox);
+        addElement(textBox2);
+
 
         //myButton = new Button("Click me!");
         //inventoryView = new ContainerView<>(pMenu, pPlayerInventory, Component.literal("Inventory"), new GuiTexture(ModUtilitiesMod.MOD_ID,
@@ -207,6 +224,8 @@ class MyElement extends GuiElement
 
     @Override
     protected void updateLayout(Gui gui) {
+        textBox.setBounds(getWidth()/2,10,100,20);
+        textBox2.setBounds(textBox.getLeft(),textBox.getBottom()+5,100,20);
         //tabElement.setBounds(0,0,getWidth(),getHeight());
 
         //myButton.setBounds(10, 10, 100, 20);

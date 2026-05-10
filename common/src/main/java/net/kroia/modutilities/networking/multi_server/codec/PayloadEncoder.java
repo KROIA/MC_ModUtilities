@@ -16,6 +16,23 @@ import java.nio.charset.StandardCharsets;
  */
 public class PayloadEncoder extends MessageToByteEncoder<Payload> {
 
+    /**
+     * Encodes a {@link Payload} into the given byte buffer.
+     * <p>
+     * The packet ID returned by {@link Payload#packetId()} is always written
+     * first, followed by the type-specific fields. The matching
+     * {@link PayloadDecoder} reads back the packet ID to select the correct
+     * decoding path.
+     *
+     * @param ctx     The Netty channel handler context for this connection.
+     * @param payload The payload to encode.
+     * @param out     The byte buffer to write the encoded representation into.
+     *
+     * @apiNote
+     * Runs on the Netty I/O thread. The {@link io.netty.handler.codec.LengthFieldPrepender}
+     * earlier in the pipeline prepends the frame length, so this method only
+     * needs to write the payload contents itself.
+     */
     @Override
     protected void encode(ChannelHandlerContext ctx, Payload payload, ByteBuf out) {
         // Always write the packet ID first

@@ -8,8 +8,7 @@
     "Alex Krieg"
   ],
   "contact": {
-    "homepage": "https://fabricmc.net/",
-    "sources": "https://github.com/FabricMC/fabric-example-mod"
+    "homepage": "https://www.curseforge.com/minecraft/mc-mods/kroiautilities"
   },
   "license": "MIT",
   "icon": "assets/modutilities/icon.png",

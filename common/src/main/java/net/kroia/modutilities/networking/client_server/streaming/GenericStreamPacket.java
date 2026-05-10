@@ -67,6 +67,12 @@ public class GenericStreamPacket extends NetworkPacket {
 
 
 
+    /**
+     * Creates a new GenericStreamPacket carrying a chunk of stream data.
+     *
+     * @param streamID The unique stream UUID identifying the stream this packet belongs to.
+     * @param data     The encoded payload of the stream data chunk.
+     */
     public GenericStreamPacket(UUID streamID, RegistryFriendlyByteBuf data) {
         super();
         this.streamID = streamID;
@@ -74,9 +80,16 @@ public class GenericStreamPacket extends NetworkPacket {
     }
 
 
+    /**
+     * @return The unique stream UUID identifying which stream instance this packet belongs to.
+     */
     public UUID getStreamID() {
         return streamID;
     }
+
+    /**
+     * @return The encoded payload buffer of this stream data chunk.
+     */
     public RegistryFriendlyByteBuf getData() {
         return data;
     }

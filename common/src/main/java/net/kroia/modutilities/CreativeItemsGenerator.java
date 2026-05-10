@@ -16,8 +16,30 @@ import net.minecraft.world.item.enchantment.EnchantmentInstance;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Enumerates every {@link ItemStack} that should be visible in the creative inventory.
+ * <p>
+ * Walks the item, potion and enchantment registries to produce stacks for:
+ * <ul>
+ *   <li>every regular item (excluding admin-only items such as command blocks or the debug stick),</li>
+ *   <li>every potion variant (regular, splash, lingering and tipped arrows),</li>
+ *   <li>every enchantment level for every enchantment, as enchanted books.</li>
+ * </ul>
+ *
+ * @apiNote The generated list is typically cached by {@link ItemUtilities}; call
+ *          {@link ItemUtilities#invalidateCreativeItemCache()} when the world or registries change.
+ */
 public class CreativeItemsGenerator {
+    /**
+     * Builds the full list of creative-mode item stacks for the current registries.
+     *
+     * @param registryAccess registry access used to enumerate enchantments
+     * @return a list containing every stack that should appear in the creative inventory
+     */
     public static List<ItemStack> generateAllCreativeItems(RegistryAccess registryAccess) {
+        if (registryAccess == null) {
+            return new ArrayList<>();
+        }
         List<ItemStack> results = new ArrayList<>();
 
         // 1. Add all base items

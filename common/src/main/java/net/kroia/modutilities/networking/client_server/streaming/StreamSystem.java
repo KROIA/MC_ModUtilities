@@ -32,15 +32,25 @@ public class StreamSystem {
     private static StreamManager STREAM_MANAGER;
 
     /**
+     * Guard to ensure packets are only registered once, even if multiple mods call setup().
+     */
+    private static boolean packetsRegistered = false;
+
+    /**
      * Sets up the StreamSystem with the provided NetworkManager.
      * This method initializes the StreamManager and registers the necessary packets for stream handling.
+     * Re-invoking this method replaces any existing StreamManager so the system survives an
+     * integrated-server restart (e.g. opening a new singleplayer world in the same JVM).
+     * Previously registered streams are re-bound to the new manager.
      *
      * @param networkManager The NetworkManager to use for packet handling.
+     *
+     * @apiNote
+     * Must be called once on the client and once on the server side during mod initialization.
      */
     public static void setup(@NotNull NetworkPacketManager networkManager) {
-        if (STREAM_MANAGER != null) {
-            return;
-        }
+        // Replace any existing manager so the system survives an integrated-server
+        // restart (e.g. opening a new singleplayer world in the same JVM).
         STREAM_MANAGER = new StreamManager(networkManager);
 
         Map<String, StreamRegistry.RegistryData<?,?>> requests = REGISTRY.getRegistry();
@@ -51,11 +61,14 @@ public class StreamSystem {
                 request.setManager(STREAM_MANAGER);
         }
 
-        // Register packets for streaming
-        networkManager.registerS2C(GenericStreamPacket.TYPE, GenericStreamPacket.STREAM_CODEC, GenericStreamPacket.HANDLER, GenericStreamPacket.HANDLER);
-        networkManager.registerC2S(StreamStartPacket.TYPE, StreamStartPacket.STREAM_CODEC, StreamStartPacket.HANDLER, StreamStartPacket.HANDLER);
-        networkManager.registerC2S(StreamStopClientSenderPacket.TYPE, StreamStopClientSenderPacket.STREAM_CODEC, StreamStopClientSenderPacket.HANDLER, StreamStopClientSenderPacket.HANDLER);
-        networkManager.registerS2C(StreamStopServerSenderPacket.TYPE, StreamStopServerSenderPacket.STREAM_CODEC, StreamStopServerSenderPacket.HANDLER, StreamStopServerSenderPacket.HANDLER);
+        // Register packets for streaming (only once – multiple mods may call setup())
+        if (!packetsRegistered) {
+            networkManager.registerS2C(GenericStreamPacket.TYPE, GenericStreamPacket.STREAM_CODEC, GenericStreamPacket.HANDLER, GenericStreamPacket.HANDLER);
+            networkManager.registerC2S(StreamStartPacket.TYPE, StreamStartPacket.STREAM_CODEC, StreamStartPacket.HANDLER, StreamStartPacket.HANDLER);
+            networkManager.registerC2S(StreamStopClientSenderPacket.TYPE, StreamStopClientSenderPacket.STREAM_CODEC, StreamStopClientSenderPacket.HANDLER, StreamStopClientSenderPacket.HANDLER);
+            networkManager.registerS2C(StreamStopServerSenderPacket.TYPE, StreamStopServerSenderPacket.STREAM_CODEC, StreamStopServerSenderPacket.HANDLER, StreamStopServerSenderPacket.HANDLER);
+            packetsRegistered = true;
+        }
     }
 
     /**
@@ -167,6 +180,8 @@ public class StreamSystem {
      * Stops a stream with the given stream ID.
      * This method can be called on both the client and server side.
      * This method is safe to call from within the tick update of the stopping stream.
+     *
+     * @param streamID The unique stream ID returned by one of the start* methods.
      */
     public static void stopStream(@NotNull UUID streamID)
     {
@@ -228,13 +243,30 @@ public class StreamSystem {
 
 
 
-    // Server side handling
+    /**
+     * INTERNAL METHODE, DO NOT CALL THIS METHOD MANUALLY!
+     *
+     * Handles a StreamStartPacket on the server side. If the stream type is not registered
+     * (mod version mismatch), a warning is logged and the packet is ignored. If the stream
+     * needs routing to the master server and this node is a slave, the start request is
+     * forwarded to the master via the MultiServerManager; otherwise a new server-sender
+     * stream is started locally.
+     *
+     * @param packet           The StreamStartPacket to handle.
+     * @param slaveServerID    The ID of the slave server that originated the request,
+     *                         or null when handled directly by the destination server.
+     * @param targetPlayerUUID The UUID of the player that requested the stream.
+     */
     public static void handlePacket(StreamStartPacket packet, String slaveServerID, UUID targetPlayerUUID)
     {
         UUID streamID = packet.getStreamID();
         String StreamType = packet.getStreamTypeID();
         RegistryFriendlyByteBuf buf = packet.getData();
         var stream = REGISTRY.getRegisteredStream(StreamType);
+        if (stream == null) {
+            ModUtilitiesMod.LOGGER.warn("[StreamSystem] Received StreamStartPacket for unregistered stream type '" + StreamType + "' (mod version mismatch?), ignoring");
+            return;
+        }
         if(MultiServerManager.isRunning() && MultiServerManager.isSlave() && stream.needsRoutingToMaster())
         {
             STREAM_MANAGER.startRedirectedServerSenderStream(stream, streamID, buf, targetPlayerUUID);
@@ -247,7 +279,14 @@ public class StreamSystem {
     }
 
 
-    // Client side handling
+    /**
+     * INTERNAL METHODE, DO NOT CALL THIS METHOD MANUALLY!
+     *
+     * Handles a StreamStartPacket on the client side.
+     * Currently a no-op since only server-to-client streams are supported.
+     *
+     * @param packet The StreamStartPacket to handle.
+     */
     public static void handlePacket(StreamStartPacket packet)
     {
        /* UUID streamID = packet.getStreamID();
@@ -276,6 +315,15 @@ public class StreamSystem {
     {
         STREAM_MANAGER.handlePacketOnClient(packet);
     }
+
+    /**
+     * INTERNAL METHODE, DO NOT CALL THIS METHOD MANUALLY!
+     *
+     * Handles a StreamStopServerSenderPacket that was redirected from the master server
+     * back to a slave server, so the slave can forward it to the originating client.
+     *
+     * @param packet The StreamStopServerSenderPacket to handle.
+     */
     public static void handleRedirectedPacket(StreamStopServerSenderPacket packet)
     {
         STREAM_MANAGER.handlePacketOnServer(packet);
@@ -304,6 +352,14 @@ public class StreamSystem {
         STREAM_MANAGER.handlePacketOnClient(packet);
     }
 
+    /**
+     * INTERNAL METHODE, DO NOT CALL THIS METHOD MANUALLY!
+     *
+     * Handles a GenericStreamPacket that was redirected from the master server to a slave server,
+     * forwarding the data chunk on to the originating client.
+     *
+     * @param packet The GenericStreamPacket to redirect.
+     */
     public static void handleRedirectedPacket(GenericStreamPacket packet)
     {
         STREAM_MANAGER.redirectToClient(packet);

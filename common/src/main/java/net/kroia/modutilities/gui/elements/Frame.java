@@ -2,14 +2,39 @@ package net.kroia.modutilities.gui.elements;
 
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 
+/**
+ * Invisible grouping container for {@link GuiElement} children.
+ * <p>
+ * A {@code Frame} performs no rendering of its own and has no layout logic; it is
+ * primarily used as a logical parent that lets you treat a collection of child
+ * elements as a single unit (for positioning, visibility toggling, etc.).
+ *
+ * @apiNote Background and outline are inherited from {@link GuiElement} and are
+ *          disabled by default styling expectations of a transparent grouping container,
+ *          but can be re-enabled via the inherited {@code setEnableBackground} and
+ *          {@code setEnableOutline} setters when a visible panel is desired.
+ */
 public class Frame extends GuiElement {
 
 
 
 
+    /**
+     * Creates a new {@code Frame} with the default size and position
+     * inherited from {@link GuiElement}.
+     */
     public Frame() {
         super();
     }
+
+    /**
+     * Creates a new {@code Frame} at the given position with the given size.
+     *
+     * @param x      the x-coordinate of the frame, relative to its parent
+     * @param y      the y-coordinate of the frame, relative to its parent
+     * @param width  the width of the frame in pixels
+     * @param height the height of the frame in pixels
+     */
     public Frame(int x, int y, int width, int height) {
         super(x, y, width, height);
     }

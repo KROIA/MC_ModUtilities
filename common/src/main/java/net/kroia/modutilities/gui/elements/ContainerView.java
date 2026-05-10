@@ -31,6 +31,25 @@ import java.util.Set;
 import static net.minecraft.client.gui.screens.Screen.getTooltipFromItem;
 
 
+/**
+ * GUI element wrapper around a Minecraft {@link AbstractContainerMenu} that
+ * reproduces vanilla container-screen behavior (slot rendering, click handling,
+ * quick-craft drag distribution, snap-back animation, etc.) inside a
+ * {@link GuiElement}.
+ * <p>
+ * This class is intended as the base for custom inventory/container screens.
+ * Subclasses typically only need to provide a background texture and the
+ * server-synced menu instance; this class handles input, item-stack rendering,
+ * and tooltips. It also exposes hooks such as {@link #containerTick()},
+ * {@link #renderLabels(int, int)}, and {@link #renderTooltip(int, int)} for
+ * customization.
+ *
+ * @param <T> the concrete {@link AbstractContainerMenu} type backing this view
+ *
+ * @apiNote {@link #tick()} is null-safe with respect to {@code minecraft.player}
+ *          so it can be invoked while the player is unavailable (e.g., during
+ *          screen transitions) without throwing.
+ */
 public class ContainerView<T extends AbstractContainerMenu> extends GuiElement implements MenuAccess<T> {
 
     private static final float SNAPBACK_SPEED = 100.0F;
@@ -79,6 +98,15 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
 
     private Runnable onCloseEvent;
 
+    /**
+     * Creates a new {@code ContainerView} for the given menu, sized to match
+     * the supplied background texture.
+     *
+     * @param pMenu              the synced container menu to render and interact with
+     * @param pPlayerInventory   the local player's inventory, used for the player-section title
+     * @param pTitle             the title text rendered at the top of the screen
+     * @param pBackgroundTexture the background texture; its dimensions also define the element size
+     */
     public ContainerView(T pMenu, Inventory pPlayerInventory, Component pTitle, GuiTexture pBackgroundTexture) {
         super(0, 0, pBackgroundTexture.getWidth(), pBackgroundTexture.getHeight());
         this.background_texture = pBackgroundTexture;
@@ -165,7 +193,7 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
                 }
             }
 
-            this.renderFloatingItem(itemstack, pMouseX - i - 8, pMouseY - j - j2, s);
+            this.renderFloatingItem(itemstack, pMouseX - i - 8, pMouseY - j - j2);
         }
 
         if (!this.snapbackItem.isEmpty()) {
@@ -179,7 +207,7 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
             k2 = this.snapbackEnd.y - this.snapbackStartY;
             int j1 = this.snapbackStartX + (int)((float)j2 * f);
             int k1 = this.snapbackStartY + (int)((float)k2 * f);
-            this.renderFloatingItem(this.snapbackItem, j1, k1, (String)null);
+            this.renderFloatingItem(this.snapbackItem, j1, k1);
         }
         RenderSystem.enableDepthTest();
         renderTooltip(pMouseX, pMouseY);
@@ -190,16 +218,38 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
         this.inventoryLabelY = (int)((float)getHeight()*0.433f);
     }
 
+    /**
+     * Registers a runnable invoked when this view is closed via {@link #onClose()}.
+     *
+     * @param pOnCloseEvent a callback to run on close, or {@code null} to clear
+     */
     public void setOnCloseEvent(Runnable pOnCloseEvent) {
         onCloseEvent = pOnCloseEvent;
     }
 
+    /**
+     * Renders a default white-ish highlight overlay on top of a slot at the
+     * given pixel coordinates.
+     *
+     * @param pX          slot x-coordinate in element-local space
+     * @param pY          slot y-coordinate in element-local space
+     * @param pBlitOffset the Z offset to render the highlight at
+     */
     public void renderSlotHighlight(int pX, int pY, int pBlitOffset) {
         renderSlotHighlight(pX, pY, pBlitOffset, -2130706433);
     }
 
-    public void renderSlotHighlight(int p_281453_, int p_281915_, int p_283504_, int color) {
-        drawGradient(RenderType.guiOverlay(), p_281453_, p_281915_, p_281453_ + 16, p_281915_ + 16, color, color, p_283504_);
+    /**
+     * Renders a tinted highlight overlay on top of a slot at the given pixel
+     * coordinates.
+     *
+     * @param x          slot x-coordinate in element-local space
+     * @param y          slot y-coordinate in element-local space
+     * @param blitOffset the Z offset to render the highlight at
+     * @param color      the highlight color in {@code 0xAARRGGBB} format
+     */
+    public void renderSlotHighlight(int x, int y, int blitOffset, int color) {
+        drawGradient(RenderType.guiOverlay(), x, y, blitOffset, 16, 16, color, color);
     }
 
     protected void renderTooltip(int pX, int pY) {
@@ -214,7 +264,7 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
         return getTooltipFromItem(minecraft, pStack);
     }
 
-    private void renderFloatingItem(ItemStack pStack, int pX, int pY, String pText) {
+    private void renderFloatingItem(ItemStack pStack, int pX, int pY) {
         graphicsPushPose();
         graphicsTranslate(0.0F, 0.0F, 232.0F);
         drawItemWithDecoration(pStack, pX, pY);
@@ -578,6 +628,10 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
         //return true;
     }
 
+    /**
+     * Clears any in-progress touch-screen drag state, resetting the dragging
+     * item stack and the originally clicked slot.
+     */
     public void clearDraggingState() {
         this.draggingItem = ItemStack.EMPTY;
         this.clickedSlot = null;
@@ -604,11 +658,24 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
                 minecraft.player);
     }
 
+    /**
+     * Handles keyboard input for the view.
+     * <p>
+     * Closes the screen when the inventory key is pressed and no element has
+     * focus, picks/clones items via the configured pick key, throws items via
+     * the drop key, and forwards hotbar swap keys to the menu.
+     *
+     * @param pKeyCode   the GLFW key code
+     * @param pScanCode  the GLFW scan code
+     * @param pModifiers active key modifiers bitmask
+     * @return {@code true} if the key was consumed
+     */
     public boolean keyPressed(int pKeyCode, int pScanCode, int pModifiers) {
         if (super.keyPressed(pKeyCode, pScanCode, pModifiers)) {
             return true;
         } else if (isActiveAndMatches(this.minecraft.options.keyInventory, pKeyCode, pScanCode)) {
-            if(getGui().getFocusedElement() == null)
+            Gui gui = getGui();
+            if(gui != null && gui.getFocusedElement() == null)
                 this.onClose();
             return true;
         } else {
@@ -647,6 +714,10 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
         return false;
     }
 
+    /**
+     * Notifies the underlying menu that this view has been removed/closed.
+     * Safe to call when the player is unavailable.
+     */
     public void removed() {
         if (this.minecraft.player != null) {
             this.menu.removed(this.minecraft.player);
@@ -654,38 +725,71 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
 
     }
 
+    /**
+     * @return {@code false}; container views never pause the game
+     */
     public boolean isPauseScreen() {
         return false;
     }
 
+    /**
+     * Per-frame tick callback. Delegates to {@link #containerTick()} when the
+     * player is alive and not removed, and closes the container otherwise.
+     * <p>
+     * Safe to call when {@code minecraft.player} is {@code null}; the call
+     * becomes a no-op in that case.
+     */
     public final void tick() {
-        //super.tick();
+        if (this.minecraft == null || this.minecraft.player == null) {
+            return;
+        }
         if (this.minecraft.player.isAlive() && !this.minecraft.player.isRemoved()) {
             this.containerTick();
         } else {
             this.minecraft.player.closeContainer();
         }
-
     }
 
+    /**
+     * Override hook invoked by {@link #tick()} every frame while the player is
+     * present and alive. The default implementation does nothing.
+     */
     protected void containerTick() {
     }
 
+    /**
+     * @return the {@link AbstractContainerMenu} backing this view
+     */
     public T getMenu() {
         return this.menu;
     }
 
+    /**
+     * @return the currently hovered {@link Slot}, or {@code null} if none
+     */
     public @org.jetbrains.annotations.Nullable Slot getSlotUnderMouse() {
         return this.hoveredSlot;
     }
 
+    /**
+     * Returns the highlight color used for the slot at the given index.
+     * Subclasses may override to color individual slots differently.
+     *
+     * @param index the slot index in the menu's slot list
+     * @return the highlight color in {@code 0xAARRGGBB} format
+     */
     public int getSlotColor(int index) {
         return this.slotColor;
     }
 
+    /**
+     * Closes this container view, invoking the registered close callback (if
+     * any) and instructing the local player to close the underlying container.
+     */
     public void onClose() {
         if(onCloseEvent != null)
             onCloseEvent.run();
-        this.minecraft.player.closeContainer();
+        if(this.minecraft.player != null)
+            this.minecraft.player.closeContainer();
     }
 }

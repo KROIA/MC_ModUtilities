@@ -22,7 +22,7 @@ public class StreamRegistry {
     }
 
 
-    private final Map<String, RegistryData<?,?>> registry = new java.util.HashMap<>();
+    private final Map<String, RegistryData<?,?>> registry = new java.util.concurrent.ConcurrentHashMap<>();
 
 
     /**

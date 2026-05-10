@@ -22,6 +22,23 @@ import java.util.List;
  */
 public class PayloadDecoder extends ByteToMessageDecoder {
 
+    /**
+     * Decodes a single framed message into a {@link Payload} and adds it to {@code out}.
+     * <p>
+     * The first byte of the frame is interpreted as the packet ID and used to
+     * select the correct {@link Payload} subtype to construct.
+     *
+     * @param ctx The Netty channel handler context for this connection.
+     * @param in  The byte buffer holding exactly one complete frame to decode.
+     * @param out The list to which the decoded {@link Payload} is appended for
+     *            the next handler in the pipeline.
+     *
+     * @throws DecoderException If the leading packet ID byte does not correspond
+     *                          to any known {@link Payload} subtype.
+     *
+     * @apiNote
+     * Runs on the Netty I/O thread. Returns immediately if the buffer is empty.
+     */
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) {
         if (!in.isReadable()) return;

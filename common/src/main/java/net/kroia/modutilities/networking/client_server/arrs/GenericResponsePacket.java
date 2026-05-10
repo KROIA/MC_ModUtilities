@@ -22,8 +22,10 @@ import java.util.UUID;
 public final class GenericResponsePacket extends NetworkPacket
 {
 
+    /** The {@link CustomPacketPayload.Type} identifier for this packet. */
     public static final Type<GenericResponsePacket> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "generic_response_packet"));
 
+    /** Stream codec used to (de)serialize the packet over the network. */
     public static final StreamCodec<RegistryFriendlyByteBuf, GenericResponsePacket> STREAM_CODEC = StreamCodec.composite(
             UUIDUtil.STREAM_CODEC, p -> p.requestID,
             ByteBufCodecs.STRING_UTF8, p -> p.requestTypeID,
@@ -34,12 +36,13 @@ public final class GenericResponsePacket extends NetworkPacket
     @Override
     protected void handleOnClient(NetworkManager.PacketContext context) {
         try{
-            //ModUtilitiesMod.LOGGER.info("Handling GenericResponsePacket on client: "+requestTypeID);
             AsynchronousRequestResponseSystem.processResponseOnClient(this);
         }
         catch (Exception e) {
-            // Handle any exceptions that may occur during decoding/encoding
             ModUtilitiesMod.LOGGER.error("Error processing GenericResponsePacket on client: " + e.getMessage(), e);
+        }
+        finally {
+            if (data != null && data.refCnt() > 0) data.release();
         }
     }
 
@@ -49,8 +52,10 @@ public final class GenericResponsePacket extends NetworkPacket
             AsynchronousRequestResponseSystem.processResponseOnServer(this, (ServerPlayer) context.getPlayer());
         }
         catch (Exception e) {
-            // Handle any exceptions that may occur during decoding/encoding
             ModUtilitiesMod.LOGGER.error("Error processing GenericResponsePacket on server: " + e.getMessage(), e);
+        }
+        finally {
+            if (data != null && data.refCnt() > 0) data.release();
         }
     }
 
@@ -59,19 +64,22 @@ public final class GenericResponsePacket extends NetworkPacket
         try{
             AsynchronousRequestResponseSystem.processResponseOnMaster(this, context);
         }catch (Exception e) {
-            // Handle any exceptions that may occur during decoding/encoding
             ModUtilitiesMod.LOGGER.error("Error processing GenericResponsePacket on master: " + e.getMessage(), e);
+        }
+        finally {
+            if (data != null && data.refCnt() > 0) data.release();
         }
     }
 
     @Override
     protected void handleOnSlave(ForwardPacketContext context) {
-
         try{
             AsynchronousRequestResponseSystem.processResponseOnSlave(this, context);
         }catch (Exception e) {
-            // Handle any exceptions that may occur during decoding/encoding
             ModUtilitiesMod.LOGGER.error("Error processing GenericResponsePacket on slave: " + e.getMessage(), e);
+        }
+        finally {
+            if (data != null && data.refCnt() > 0) data.release();
         }
     }
 
@@ -93,6 +101,13 @@ public final class GenericResponsePacket extends NetworkPacket
      */
     RegistryFriendlyByteBuf data;
 
+    /**
+     * Constructs a response packet correlated to a previously sent request.
+     *
+     * @param requestID     The unique identifier of the request being answered.
+     * @param requestTypeID The identifier of the request type.
+     * @param data          The encoded output payload.
+     */
     public GenericResponsePacket(UUID requestID, String requestTypeID, RegistryFriendlyByteBuf data) {
         super();
         this.requestID = requestID;
@@ -100,12 +115,23 @@ public final class GenericResponsePacket extends NetworkPacket
         this.data = data;
     }
 
+    /**
+     * @return The unique identifier of the request being answered.
+     */
     public UUID getRequestID() {
         return requestID;
     }
+
+    /**
+     * @return The request type identifier used to look up the registered {@link GenericRequest}.
+     */
     public String getRequestTypeID() {
         return requestTypeID;
     }
+
+    /**
+     * @return The encoded output payload buffer.
+     */
     public RegistryFriendlyByteBuf getData() {
         return data;
     }

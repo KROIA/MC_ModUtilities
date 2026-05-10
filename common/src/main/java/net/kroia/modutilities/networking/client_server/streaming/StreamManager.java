@@ -60,6 +60,13 @@ public class StreamManager {
 
 
 
+    /**
+     * Creates a new StreamManager backed by the given NetworkPacketManager.
+     * The manager registers itself for server tick events to drive periodic stream updates.
+     *
+     * @param networkManager The NetworkPacketManager used to send and receive stream packets.
+     * @throws IllegalArgumentException If {@code networkManager} is null.
+     */
     public StreamManager(@NotNull NetworkPacketManager networkManager) {
         if(networkManager == null)
         {
@@ -145,6 +152,8 @@ public class StreamManager {
      * Stops a stream with the given stream ID.
      * This method can be called on both the client and server side.
      * This method is safe to call from within the tick update of the stopping stream.
+     *
+     * @param streamID The unique stream ID returned by one of the start* methods.
      */
     public void stopStream(@NotNull UUID streamID)
     {
@@ -470,6 +479,10 @@ public class StreamManager {
                     GenericStream<?, ?> stream = streamData.stream;
                     if (stream != null) {
                         RegistryFriendlyByteBuf buf = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
+                        if (buf == null) {
+                            warn("sendStreamPacket(): Cannot create buffer for stream ID " + streamID + ". Is the server running?");
+                            return;
+                        }
                         stream.createStreamPacketOnServer(buf);
                         GenericStreamPacket streamPacket = new GenericStreamPacket(streamID, buf);
                         if(streamData.needsRoutingToSlaveServer())
@@ -497,6 +510,15 @@ public class StreamManager {
     }
 
 
+    /**
+     * INTERNAL METHODE, DO NOT CALL THIS METHOD MANUALLY!
+     *
+     * Forwards a GenericStreamPacket received on a slave server (originating from the master)
+     * to the actual target client. If the target player is offline, a stop packet is sent back
+     * to the master to terminate the stream.
+     *
+     * @param packet The GenericStreamPacket to redirect.
+     */
     public void redirectToClient(GenericStreamPacket packet)
     {
         //if(isOnServer()) {
@@ -549,6 +571,15 @@ public class StreamManager {
         }
     }
 
+    /**
+     * INTERNAL METHODE, DO NOT CALL THIS METHOD MANUALLY!
+     *
+     * Handles a StreamStopServerSenderPacket on the server side. Removes the stream from the
+     * redirected map and forwards the stop notification to the originating client. If no entry
+     * exists in the redirected map (e.g. for a non-redirected stream), the call is a no-op.
+     *
+     * @param packet The StreamStopServerSenderPacket that was received.
+     */
     public void handlePacketOnServer(StreamStopServerSenderPacket packet)
     {
         UUID streamID = packet.getStreamID();
@@ -562,10 +593,12 @@ public class StreamManager {
         }*/
         if(redirectedServerSenderStreams != null) {
             ServerSenderStreamHolder<?, ?> streamData = redirectedServerSenderStreams.remove(streamID);
+            if (streamData == null) {
+                return; // Stream not in redirected map; nothing to do
+            }
             ServerPlayer targetPlayer = ServerPlayerUtilities.getOnlinePlayer(streamData.playerUUID);
             if (targetPlayer == null) {
                 warn("handlePacketOnServer(): Cannot send stream packet for stream ID " + packet.getStreamID() + " to player " + streamData.playerUUID + ", player is not online!");
-                //streamData.streamEnd();
                 return; // Player not online, cannot send stream packet
             }
             networkManager.sendToClient(targetPlayer, packet);
@@ -601,6 +634,15 @@ public class StreamManager {
             }
         }*/
     }
+    /**
+     * INTERNAL METHODE, DO NOT CALL THIS METHOD MANUALLY!
+     *
+     * Stops the active server-sender stream with the given ID. If invoked from within a server
+     * tick update the removal is deferred via the stream holder's removal flag to avoid
+     * concurrent modification of the active stream map.
+     *
+     * @param streamID The UUID of the stream to stop.
+     */
     public void handleStreamStop(UUID streamID)
     {
         if(isInServerTickUpdate)
@@ -635,6 +677,11 @@ public class StreamManager {
         ClientReceiverStreamHolder<?, ?> streamData = activeClientReceiverStreams.get(streamID);
         if(streamData != null) {
             streamData.handleStreamPacket(packet.getData());
+        } else {
+            RegistryFriendlyByteBuf buf = packet.getData();
+            if(buf != null && buf.refCnt() > 0) {
+                buf.release();
+            }
         }
     }
 

@@ -30,17 +30,26 @@ public class AsynchronousRequestResponseSystem {
      */
     private static RequestManager REQUEST_MANAGER;
 
+    /**
+     * Guard to ensure packets are only registered once, even if multiple mods call setup().
+     */
+    private static boolean packetsRegistered = false;
+
 
     /**
      * Sets up the ARRS with the provided NetworkManager.
-     * This method initializes the RequestManager and registers the necessary packets for request and response handling.
+     * This method initializes the RequestManager and registers the C2S/S2C packets used
+     * for request/response handling. All previously registered requests are re-bound to
+     * the new manager.
      *
      * @param networkManager The NetworkManager to use for packet handling.
+     * @apiNote Safe to invoke more than once in the same JVM (e.g. when an integrated server
+     *          restarts after the player opens a different singleplayer world); any existing
+     *          {@link RequestManager} will be replaced.
      */
     public static void setup(@NotNull NetworkPacketManager networkManager) {
-        if (REQUEST_MANAGER != null) {
-            return;
-        }
+        // Replace any existing manager so the system survives an integrated-server
+        // restart (e.g. opening a new singleplayer world in the same JVM).
         REQUEST_MANAGER = new RequestManager(networkManager);
 
         Map<String, RequestRegistry.RegistryData<?,?>> requests = REGISTRY.getRegistry();
@@ -51,9 +60,12 @@ public class AsynchronousRequestResponseSystem {
                 request.setManager(REQUEST_MANAGER);
         }
 
-        // Register packets for ARRS
-        networkManager.registerC2S(GenericRequestPacket.TYPE, GenericRequestPacket.STREAM_CODEC);
-        networkManager.registerS2C(GenericResponsePacket.TYPE,  GenericResponsePacket.STREAM_CODEC);
+        // Register packets for ARRS (only once – multiple mods may call setup())
+        if (!packetsRegistered) {
+            networkManager.registerC2S(GenericRequestPacket.TYPE, GenericRequestPacket.STREAM_CODEC);
+            networkManager.registerS2C(GenericResponsePacket.TYPE, GenericResponsePacket.STREAM_CODEC);
+            packetsRegistered = true;
+        }
     }
 
 
@@ -127,13 +139,15 @@ public class AsynchronousRequestResponseSystem {
 
 
     /**
-     * Sends a request to the server and registers a response handler.
-     * The request will be sent using the NetworkManager set in this RequestManager.
+     * Sends a request to the server using the configured {@link NetworkPacketManager}.
      *
      * @param request The request to send.
-     * @param input The input data for the request delivered to the receiver.
-     * @param <IN> The type of input data.
-     * @param <OUT> The type of output data provided by the provider
+     * @param input   The input data for the request delivered to the receiver.
+     * @param <IN>    The type of input data.
+     * @param <OUT>   The type of output data provided by the responder.
+     * @return A future that completes with the response data once the server replies, or
+     *         completes exceptionally if the response handler fails or the request times out.
+     * @throws IllegalStateException If the ARRS has not been initialized via {@link #setup}.
      */
     public static <IN, OUT> CompletableFuture<OUT> sendRequestToServer(@NotNull GenericRequest<IN, OUT> request, IN input) {
         checkManagerExists();
@@ -212,10 +226,32 @@ public class AsynchronousRequestResponseSystem {
     {
         REQUEST_MANAGER.processResponseOnClient(responsePacket);
     }
+
+    /**
+     * Processes a response packet received on the master server.
+     * If the response corresponds to a pending master-originated request, its future is completed;
+     * otherwise the response is forwarded to the originating client.
+     *
+     * @param responsePacket The response packet received.
+     * @param context        The forwarding context containing the origin sender information.
+     * @apiNote This function is called automatically by the ARRS when a {@link GenericResponsePacket}
+     *          is received on the master server.
+     */
     public static void processResponseOnMaster(@NotNull GenericResponsePacket responsePacket, ForwardPacketContext context)
     {
         REQUEST_MANAGER.processResponseOnMaster(responsePacket, context);
     }
+
+    /**
+     * Processes a response packet received on a slave server.
+     * If the response corresponds to a pending slave-originated request, its future is completed;
+     * otherwise the response is forwarded to the originating client.
+     *
+     * @param responsePacket The response packet received.
+     * @param context        The forwarding context containing the origin sender information.
+     * @apiNote This function is called automatically by the ARRS when a {@link GenericResponsePacket}
+     *          is received on a slave server.
+     */
     public static void processResponseOnSlave(@NotNull GenericResponsePacket responsePacket, ForwardPacketContext context)
     {
         REQUEST_MANAGER.processResponseOnSlave(responsePacket, context);

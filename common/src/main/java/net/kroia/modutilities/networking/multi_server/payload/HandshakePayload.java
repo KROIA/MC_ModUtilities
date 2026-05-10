@@ -8,6 +8,11 @@ package net.kroia.modutilities.networking.multi_server.payload;
  * @param token     Shared secret that must match hub's configured secret
  */
 public record HandshakePayload(String serverId, String token) implements Payload {
+    /**
+     * {@inheritDoc}
+     *
+     * @return {@link PacketIds#HANDSHAKE}.
+     */
     @Override
     public int packetId() { return PacketIds.HANDSHAKE; }
 }

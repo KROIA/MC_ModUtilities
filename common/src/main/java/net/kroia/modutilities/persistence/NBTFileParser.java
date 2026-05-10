@@ -11,7 +11,21 @@ import java.util.Arrays;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+/**
+ * Reads and writes NBT data to/from individual files.
+ * Supports both compressed (gzip) and uncompressed NBT formats and exposes a
+ * configurable maximum NBT size (defaults to Mojang's 2 MB limit) used as a
+ * sanity warning threshold when saving.
+ *
+ * @apiNote
+ * On read, the file's actual format is detected via the gzip magic bytes; if
+ * it differs from the configured {@link NbtFormat}, a warning is logged and
+ * the actual format is used.
+ */
 public class NBTFileParser {
+    /**
+     * Specifies whether NBT data is stored using gzip compression or in raw form.
+     */
     public enum NbtFormat {
         COMPRESSED, UNCOMPRESSED
     }
@@ -28,6 +42,12 @@ public class NBTFileParser {
     private static long MAX_NBT_SIZE = 2_097_152L; // 2 MB
 
 
+    /**
+     * Creates a new NBT file parser configured with the given NBT format.
+     *
+     * @param nbtFormat the format used when writing files; on read, the actual
+     *                  file format is detected automatically.
+     */
     public NBTFileParser(NbtFormat nbtFormat) {
         this.nbtFormat = nbtFormat;
     }
@@ -35,11 +55,27 @@ public class NBTFileParser {
 
 
 
+    /**
+     * Configures the logger callbacks used by this parser.
+     *
+     * @param errorLogger receives error messages.
+     * @param debugLogger receives debug messages (e.g. timing information).
+     * @param warnLogger  receives warning messages.
+     */
     public void setLogger(Consumer<String> errorLogger, Consumer<String> debugLogger, Consumer<String> warnLogger) {
         this.errorLogger = errorLogger;
         this.debugLogger = debugLogger;
         this.warnLogger = warnLogger;
     }
+    /**
+     * Configures the logger callbacks used by this parser, including a
+     * dedicated handler for errors with an associated {@link Throwable}.
+     *
+     * @param errorLogger          receives plain error messages.
+     * @param errorLoggerThrowable receives error messages paired with their causing throwable.
+     * @param debugLogger          receives debug messages.
+     * @param warnLogger           receives warning messages.
+     */
     public void setLogger(Consumer<String> errorLogger, BiConsumer<String, Throwable>errorLoggerThrowable, Consumer<String> debugLogger, Consumer<String> warnLogger) {
         this.errorLogger = errorLogger;
         this.errorLoggerThrowable = errorLoggerThrowable;
@@ -47,17 +83,44 @@ public class NBTFileParser {
         this.warnLogger = warnLogger;
     }
 
+    /**
+     * Sets the global maximum NBT size threshold (in bytes) used as a warning
+     * trigger when saving and as a guard when chunked archives are written.
+     *
+     * @param maxNbtSize the new maximum NBT size in bytes; must be positive.
+     *
+     * @throws IllegalArgumentException if {@code maxNbtSize} is less than or equal to zero.
+     */
     public static void setMaxNbtSize(long maxNbtSize) {
         if(maxNbtSize <= 0)
             throw new IllegalArgumentException("Maximum NBT size must be greater than 0");
         MAX_NBT_SIZE = maxNbtSize;
     }
 
+    /**
+     * Returns the current global maximum NBT size threshold in bytes.
+     *
+     * @return the maximum NBT size used as warning/guard threshold.
+     */
     public static long getMaxNbtSize() {
         return MAX_NBT_SIZE;
     }
 
 
+    /**
+     * Reads a {@link CompoundTag} from the given absolute file path.
+     * The file's actual compression state is detected from its gzip magic bytes;
+     * if it disagrees with the configured {@link NbtFormat}, the actual format
+     * is used and a warning is logged.
+     *
+     * @param absolutePath the absolute path of the NBT file to read.
+     *
+     * @apiNote
+     * Returns {@code null} if the file does not exist or if reading fails;
+     * errors are logged but no exception is thrown to the caller.
+     *
+     * @return the loaded compound tag, or {@code null} if reading failed.
+     */
     public CompoundTag readDataCompound(Path absolutePath)
     {
         CompoundTag dataOut;
@@ -91,6 +154,17 @@ public class NBTFileParser {
         }
         return null;
     }
+    /**
+     * Saves the given {@link CompoundTag} to the specified absolute file path
+     * using the configured {@link NbtFormat}.
+     * Logs a warning if the uncompressed payload exceeds the configured maximum
+     * NBT size (the file is still written).
+     *
+     * @param absolutePath the absolute path of the NBT file to write.
+     * @param data         the compound tag to serialize.
+     *
+     * @return {@code true} if the file was written successfully; {@code false} on I/O failure.
+     */
     public boolean saveDataCompound(Path absolutePath, CompoundTag data) {
         long startMillis = System.currentTimeMillis();
         boolean success = true;
@@ -120,6 +194,16 @@ public class NBTFileParser {
         return success;
     }
 
+    /**
+     * Detects whether the given file uses gzip compression by inspecting the
+     * first two bytes for the gzip magic number {@code 0x1F 0x8B}.
+     *
+     * @param file the file to inspect.
+     *
+     * @return {@code true} if the file is gzip-compressed; {@code false} otherwise.
+     *
+     * @throws IOException if the file cannot be read.
+     */
     public static boolean isCompressed(File file) throws IOException {
         try (DataInputStream in = new DataInputStream(new FileInputStream(file))) {
             int b1 = in.readUnsignedByte();
@@ -128,6 +212,18 @@ public class NBTFileParser {
         }
     }
 
+    /**
+     * Computes the uncompressed serialized size in bytes of the given tag.
+     * Non-{@link CompoundTag} tags are wrapped into a temporary compound under
+     * key {@code "d"} prior to measurement.
+     *
+     * @param tag the tag whose serialized size should be measured.
+     *
+     * @apiNote
+     * Returns {@code 0} on I/O failure (the exception is logged to standard error).
+     *
+     * @return the uncompressed size in bytes, or {@code 0} on failure.
+     */
     public static long getUncompressedSize(Tag tag)  {
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();

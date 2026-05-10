@@ -10,7 +10,6 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 
 public class UtilitiesPlatformQuilt implements PlatformAbstraction {
 
@@ -32,15 +31,20 @@ public class UtilitiesPlatformQuilt implements PlatformAbstraction {
         if(itemID.indexOf(":") == -1) {
             itemID = "minecraft:"+itemID;
         }
-        String namespace = itemID.split(":")[0];
-        String path = itemID.split(":")[1];
+        String[] parts = itemID.split(":", 2);
+        String namespace = parts[0];
+        String path = parts[1];
         Item item = BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(namespace, path));
         return item != null ? new ItemStack(item) : ItemStack.EMPTY;
     }
 
     @Override
     public String getItemIDStr(Item item) {
-        return BuiltInRegistries.ITEM.getKey(item).toString();
+        ResourceLocation key = BuiltInRegistries.ITEM.getKey(item);
+        if (key == null) {
+            return "";
+        }
+        return key.toString();
     }
 
     @Override
@@ -56,9 +60,6 @@ public class UtilitiesPlatformQuilt implements PlatformAbstraction {
 
     @Override
     public MinecraftServer getServer() {
-        if (minecraftServer == null) {
-            throw new IllegalStateException(ModUtilitiesMod.MOD_ID+" MinecraftServer is not yet initialized.");
-        }
         return minecraftServer;
     }
 
