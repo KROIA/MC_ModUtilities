@@ -472,10 +472,10 @@ public abstract class GuiScreen extends Screen {
             ret = super.keyPressed(keyCode, scanCode, modifiers);
             if(ret)
                 return true;
-        }
-        if(keyCode == GLFW.GLFW_KEY_E) {
-            onClose();
-            return true;
+            if(keyCode == GLFW.GLFW_KEY_E) {
+                onClose();
+                return true;
+            }
         }
         return true;
     }
