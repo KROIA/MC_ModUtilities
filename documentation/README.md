@@ -25,6 +25,9 @@ The GUI library provides a modern, component-based system for creating user inte
 - [Button](gui/GuiElements/Button.md) - Interactive button elements
 - [ListView](gui/GuiElements/ListView.md) - Scrollable list views
 
+**Display Blocks:**
+- [Display Block System](gui/DisplayBlock.md) - In-world blocks that render GUI elements on their face
+
 **See Also:**
 - GUI Layout System (documentation pending)
 - Additional GUI elements documentation (in progress)
