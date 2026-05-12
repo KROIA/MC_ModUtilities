@@ -63,6 +63,9 @@ public class DisplayDemoBlockEntity extends BlockEntity {
     private final Set<UUID> interactingPlayers = new HashSet<>();
     private final Map<UUID, double[]> lastMousePos = new HashMap<>();
 
+    // Editor lock — only one player can have the interaction screen open at a time
+    private UUID editorPlayer = null;
+
     public DisplayDemoBlockEntity(BlockPos pos, BlockState blockState) {
         super(SandboxRegistration.DISPLAY_DEMO_BLOCK_ENTITY.get(), pos, blockState);
     }
@@ -122,10 +125,6 @@ public class DisplayDemoBlockEntity extends BlockEntity {
 
         if (gui != null) {
             if (!mouseDown.contains(playerId)) {
-                // Check if a TextBox was clicked — open input screen instead
-                if (checkTextBoxClick(guiX, guiY)) {
-                    return;
-                }
                 mouseDown.add(playerId);
                 gui.mouseClicked(guiX, guiY, 0);
                 lastMousePos.put(playerId, new double[]{guiX, guiY});
@@ -442,6 +441,19 @@ public class DisplayDemoBlockEntity extends BlockEntity {
     public Gui getGui() { return gui; }
 
     /**
+     * Reads interactive state from the Gui elements back into the block entity fields.
+     * Called after GuiStateSync copies client input into the server Gui.
+     */
+    public void readStateFromGui() {
+        if (gui == null) return;
+        for (var el : gui.getElements()) {
+            if (el instanceof HorizontalSlider slider) {
+                speed = slider.getSliderValue();
+            }
+        }
+    }
+
+    /**
      * Toggles the paused state of the plot animation. Updates the status label
      * and button text to reflect the current state.
      */
@@ -461,54 +473,57 @@ public class DisplayDemoBlockEntity extends BlockEntity {
         if (gui == null) return;
         for (var el : gui.getElements()) {
             if (el instanceof TextBox tb) {
-                String oldText = tb.getText();
                 tb.setText(text);
-                // TextBox.setText doesn't fire onTextChanged, so update title manually
-                if (!text.equals(oldText)) {
-                    // Find title label and update it
-                    for (var el2 : gui.getElements()) {
-                        if (el2 instanceof Label label
-                                && label.getAlignment() == net.kroia.modutilities.gui.elements.base.GuiElement.Alignment.CENTER
-                                && label.getY() < 30) {
-                            label.setText(text);
-                            break;
-                        }
-                    }
-                }
                 break;
             }
         }
         syncToClient();
     }
 
-    private volatile String pendingTextInputText;
-    private volatile boolean hasPendingTextInput = false;
+    // -------------------------------------------------------------------------
+    // Editor lock — only one player can interact via the screen at a time
+    // -------------------------------------------------------------------------
 
-    public boolean hasPendingTextInput() { return hasPendingTextInput; }
-    public String consumePendingTextInput() {
-        hasPendingTextInput = false;
-        return pendingTextInputText;
-    }
-
-    private boolean checkTextBoxClick(double guiX, double guiY) {
-        if (gui == null) return false;
-        for (var el : gui.getElements()) {
-            if (el instanceof TextBox tb) {
-                var gp = tb.getGlobalPosition();
-                net.kroia.modutilities.ModUtilitiesMod.LOGGER.info(
-                        "[DisplayBlock] TextBox check: click=({},{}) box=({},{} {}x{}) hit={}",
-                        (int) guiX, (int) guiY, gp.x, gp.y, tb.getWidth(), tb.getHeight(),
-                        guiX >= gp.x && guiX < gp.x + tb.getWidth()
-                                && guiY >= gp.y && guiY < gp.y + tb.getHeight());
-                if (guiX >= gp.x && guiX < gp.x + tb.getWidth()
-                        && guiY >= gp.y && guiY < gp.y + tb.getHeight()) {
-                    pendingTextInputText = tb.getText();
-                    hasPendingTextInput = true;
-                    return true;
-                }
-            }
+    /**
+     * Attempts to acquire the editor lock for the given player.
+     * Only one player can hold the lock at a time.
+     *
+     * @param playerId the UUID of the player requesting the lock
+     * @return {@code true} if the lock was acquired (or was already held by this player)
+     */
+    public boolean tryAcquireEditor(UUID playerId) {
+        if (editorPlayer == null || editorPlayer.equals(playerId)) {
+            editorPlayer = playerId;
+            return true;
         }
         return false;
+    }
+
+    /**
+     * Releases the editor lock if held by the given player.
+     *
+     * @param playerId the UUID of the player releasing the lock
+     */
+    public void releaseEditor(UUID playerId) {
+        if (editorPlayer != null && editorPlayer.equals(playerId)) {
+            editorPlayer = null;
+        }
+    }
+
+    /**
+     * @return the UUID of the player currently holding the editor lock,
+     *         or {@code null} if no player is editing
+     */
+    public UUID getEditorPlayer() {
+        return editorPlayer;
+    }
+
+    /**
+     * Public wrapper for {@link #syncToClient()} so external classes
+     * (e.g. DisplayInteractionScreen) can trigger a client sync.
+     */
+    public void syncToClientPublic() {
+        syncToClient();
     }
 
     void togglePaused() {
@@ -712,13 +727,18 @@ public class DisplayDemoBlockEntity extends BlockEntity {
     // -------------------------------------------------------------------------
 
     /**
-     * Builds the dashboard layout (same as ExampleDashboardScreen) at the given
-     * resolution. The Pause button is wired to toggle the {@code paused} flag
-     * on the owning block entity (if provided).
+     * Builds the dashboard layout at the given resolution. When {@code owner}
+     * is non-null, callbacks (pause, speed slider) are wired to mutate the
+     * block entity state directly. When {@code owner} is null, callbacks only
+     * update local GUI elements (labels) — suitable for the interaction screen
+     * where state is synced via {@link net.kroia.modutilities.gui.GuiStateSync}.
      *
-     * @param owner the owning block entity (may be {@code null} for standalone use)
+     * @param gui   the Gui to populate with elements
+     * @param w     the total width in GUI pixels
+     * @param h     the total height in GUI pixels
+     * @param owner the owning block entity, or {@code null} for standalone use
      */
-    private static void buildDashboard(Gui gui, int w, int h, DisplayDemoBlockEntity owner) {
+    public static void buildDashboard(Gui gui, int w, int h, DisplayDemoBlockEntity owner) {
         int margin = 10;
 
         Label title = new Label("Live Signal Dashboard");

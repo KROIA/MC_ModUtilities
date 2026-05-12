@@ -73,14 +73,12 @@ public class DisplayDemoBlock extends HorizontalDirectionalBlock implements Enti
     }
 
     // -------------------------------------------------------------------------
-    // Player interaction — right-click to interact with the display GUI
+    // Player interaction — right-click opens an interaction screen
     // -------------------------------------------------------------------------
 
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
                                                Player player, BlockHitResult hit) {
-        if (level.isClientSide()) return InteractionResult.SUCCESS;
-
         BlockEntity be = level.getBlockEntity(pos);
         if (!(be instanceof DisplayDemoBlockEntity displayBE) || !displayBE.isActive())
             return InteractionResult.PASS;
@@ -90,13 +88,20 @@ public class DisplayDemoBlock extends HorizontalDirectionalBlock implements Enti
         if (controller == null || controller.getGui() == null)
             return InteractionResult.PASS;
 
-        // Compute GUI coordinates from the 3D hit position
-        Direction facing = state.getValue(FACING);
-        double[] guiCoords = computeGuiCoords(hit, pos, facing, displayBE);
-        if (guiCoords == null) return InteractionResult.PASS;
-
-        // Delegate to the controller for interaction handling
-        controller.handleInteraction(player, guiCoords[0], guiCoords[1]);
+        if (!level.isClientSide()) {
+            // Server: try to acquire the editor lock
+            if (!controller.tryAcquireEditor(player.getUUID())) {
+                // Another player is already editing
+                player.displayClientMessage(
+                        net.minecraft.network.chat.Component.literal("Display is being edited by another player."),
+                        true);
+                return InteractionResult.FAIL;
+            }
+        } else {
+            // Client: open the interaction screen — pass the clicked block pos,
+            // the screen will find the server controller from there
+            SandboxClientHooks.openDisplayInteractionScreen(pos);
+        }
 
         return InteractionResult.SUCCESS;
     }

@@ -41,6 +41,23 @@ public class Gui {
         void play(SoundEvent sound, float volume, float pitch);
     }
 
+    private static IGraphics fallbackGraphics = new IGraphics() {};
+
+    /**
+     * Sets a static fallback graphics backend used by elements that are not
+     * yet attached to a Gui (e.g. during construction). On the client, this
+     * should be set once at startup with a font-aware backend so that
+     * {@link net.kroia.modutilities.gui.elements.base.GuiElement#getTextWidth}
+     * works before the element is added to a Gui.
+     */
+    public static void setFallbackGraphics(IGraphics graphics) {
+        if (graphics != null) fallbackGraphics = graphics;
+    }
+
+    public static IGraphics getFallbackGraphics() {
+        return fallbackGraphics;
+    }
+
     protected IGraphics graphics;
     protected IInputProvider inputProvider;
     protected Object font;

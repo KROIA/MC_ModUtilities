@@ -1624,8 +1624,8 @@ public abstract class GuiElement {
      */
     public int getTextWidth(String text)
     {
-        if(root == null) return 0;
-        return (int)((float)root.getGraphics().getTextWidth(text) * textFontScale);
+        IGraphics g = (root != null) ? root.getGraphics() : Gui.getFallbackGraphics();
+        return (int)((float)g.getTextWidth(text) * textFontScale);
     }
 
     /**
@@ -1634,8 +1634,8 @@ public abstract class GuiElement {
      */
     public int getTextHeight()
     {
-        if(root == null) return (int)(9 * textFontScale);
-        return (int)((float)root.getGraphics().getFontLineHeight() * textFontScale);
+        IGraphics g = (root != null) ? root.getGraphics() : Gui.getFallbackGraphics();
+        return (int)((float)g.getFontLineHeight() * textFontScale);
     }
 
     /**

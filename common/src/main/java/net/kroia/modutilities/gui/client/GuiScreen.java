@@ -83,6 +83,9 @@ public abstract class GuiScreen extends Screen {
         gui.setDisplayScaleFactor(Minecraft.getInstance().getWindow().getGuiScale());
         gui.setSoundPlayer((sound, volume, pitch) -> playLocalSound(sound, volume, pitch));
         clientGraphics.setFont(Minecraft.getInstance().font);
+
+        // Set the static fallback so elements can measure text before being attached to a Gui
+        ensureFallbackGraphics();
     }
 
     /**
@@ -90,6 +93,17 @@ public abstract class GuiScreen extends Screen {
      *
      * @return the {@link ClientGraphics} instance
      */
+    private static boolean fallbackInitialized = false;
+
+    private static void ensureFallbackGraphics() {
+        if (!fallbackInitialized) {
+            ClientGraphics fallback = new ClientGraphics();
+            fallback.setFont(Minecraft.getInstance().font);
+            Gui.setFallbackGraphics(fallback);
+            fallbackInitialized = true;
+        }
+    }
+
     public ClientGraphics getClientGraphics() {
         return clientGraphics;
     }

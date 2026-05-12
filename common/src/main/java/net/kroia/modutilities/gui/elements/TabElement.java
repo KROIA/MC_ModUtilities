@@ -368,10 +368,10 @@ public class TabElement extends GuiElement {
             }
             super.addChild(tab.tabElement);
             // Force full layout: set content bounds, then init entire subtree
-            int w = getWidth();
+            /*int w = getWidth();
             int h = getHeight() - titleHeight;
             tab.tabElement.setBounds(0, titleHeight, w, h);
-            tab.tabElement.init();
+            tab.tabElement.init();*/
         }
         else
         {
