@@ -12,6 +12,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.texture.DynamicTexture;
@@ -61,7 +62,9 @@ public class DisplayDemoBlockEntityRenderer implements BlockEntityRenderer<Displ
         int groupHeight;
         int texWidth;
         int texHeight;
+        long lastRenderedFrame = -1;
     }
+
 
     private final Map<BlockPos, GroupRenderData> groupData = new HashMap<>();
 
@@ -145,11 +148,23 @@ public class DisplayDemoBlockEntityRenderer implements BlockEntityRenderer<Displ
 
         GroupRenderData data = getOrCreateGroupData(controllerPos, gw, gh);
 
-        // Only the controller renders the GUI to the texture
-        if (blockEntity.isController()) {
-            Gui gui = blockEntity.getGui();
-            if (gui == null) return;
-            renderGuiToTexture(gui, partialTick, data);
+        // Any visible block in the group can trigger the texture update (once per frame)
+        long currentFrame = Minecraft.getInstance().level != null
+                ? Minecraft.getInstance().level.getGameTime() : 0;
+        if (data.lastRenderedFrame < currentFrame) {
+            Gui gui = null;
+            if (blockEntity.isController()) {
+                gui = blockEntity.getGui();
+            } else if (blockEntity.getLevel() != null) {
+                BlockEntity controllerBE = blockEntity.getLevel().getBlockEntity(controllerPos);
+                if (controllerBE instanceof DisplayDemoBlockEntity controller) {
+                    gui = controller.getGui();
+                }
+            }
+            if (gui != null) {
+                renderGuiToTexture(gui, partialTick, data);
+                data.lastRenderedFrame = currentFrame;
+            }
         }
 
         // Every block in the group renders its UV subset
@@ -157,15 +172,8 @@ public class DisplayDemoBlockEntityRenderer implements BlockEntityRenderer<Displ
         int gx = blockEntity.getGridX();
         int gy = blockEntity.getGridY();
 
-        float u0, u1;
-        if (facing == Direction.NORTH) {
-            // Grid gx=0 is westmost = viewer's RIGHT. Flip U so gx=0 gets right portion.
-            u0 = 1.0f - (float) (gx + 1) / gw;
-            u1 = 1.0f - (float) gx / gw;
-        } else {
-            u0 = (float) gx / gw;
-            u1 = (float) (gx + 1) / gw;
-        }
+        float u0 = (float) gx / gw;
+        float u1 = (float) (gx + 1) / gw;
         // Flip V: framebuffer is bottom-up, gridY=0 is top row
         float v0 = 1.0f - (float) (gy + 1) / gh;
         float v1 = 1.0f - (float) gy / gh;

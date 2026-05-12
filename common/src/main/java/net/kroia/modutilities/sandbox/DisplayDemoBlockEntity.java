@@ -350,7 +350,8 @@ public class DisplayDemoBlockEntity extends BlockEntity {
      */
     static Direction getRightDirection(Direction facing) {
         return switch (facing) {
-            case NORTH, SOUTH -> Direction.EAST;
+            case SOUTH -> Direction.EAST;
+            case NORTH -> Direction.WEST;
             case EAST -> Direction.NORTH;
             case WEST -> Direction.SOUTH;
             default -> Direction.EAST;
