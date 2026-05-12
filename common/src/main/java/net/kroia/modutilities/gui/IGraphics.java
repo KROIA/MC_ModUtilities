@@ -234,9 +234,10 @@ public interface IGraphics {
     default int getFontLineHeight() { return 9; }
 
     /**
-     * Returns the rendered width of a single line of text.
+     * Returns the rendered width of the given text. If the text contains
+     * newline characters, returns the maximum width across all lines.
      *
-     * @param text the text to measure
+     * @param text the text to measure (may contain {@code \n})
      * @return the width in GUI pixels, or {@code 0} when no font is available
      */
     default int getTextWidth(String text) { return 0; }

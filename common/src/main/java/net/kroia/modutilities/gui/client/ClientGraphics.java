@@ -516,7 +516,13 @@ public class ClientGraphics implements IGraphics {
 
     @Override
     public int getTextWidth(String text) {
-        return font != null ? font.width(text) : 0;
+        if (font == null || text == null) return 0;
+        if (!text.contains("\n")) return font.width(text);
+        int max = 0;
+        for (String line : text.split("\n", -1)) {
+            max = Math.max(max, font.width(line));
+        }
+        return max;
     }
 
     // ── Line / vertex drawing ──────────────────────────────────────────────

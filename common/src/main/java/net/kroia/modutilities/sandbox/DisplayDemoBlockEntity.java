@@ -5,6 +5,7 @@ import net.kroia.modutilities.gui.elements.Button;
 import net.kroia.modutilities.gui.elements.HorizontalSlider;
 import net.kroia.modutilities.gui.elements.Label;
 import net.kroia.modutilities.gui.elements.Plot;
+import net.kroia.modutilities.gui.elements.TextBox;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -121,21 +122,12 @@ public class DisplayDemoBlockEntity extends BlockEntity {
 
         if (gui != null) {
             if (!mouseDown.contains(playerId)) {
-                // First press — fire mouseClicked
-                mouseDown.add(playerId);
-                // Debug: print element positions
-                for (var el : gui.getElements()) {
-                    if (el instanceof HorizontalSlider s) {
-                        net.kroia.modutilities.ModUtilitiesMod.LOGGER.info(
-                                "[DisplayBlock] Slider bounds: x={} y={} w={} h={} globalPos=({},{}) | click=({},{})",
-                                s.getX(), s.getY(), s.getWidth(), s.getHeight(),
-                                s.getGlobalPosition().x, s.getGlobalPosition().y,
-                                (int) guiX, (int) guiY);
-                    }
+                // Check if a TextBox was clicked — open input screen instead
+                if (checkTextBoxClick(guiX, guiY)) {
+                    return;
                 }
-                boolean consumed = gui.mouseClicked(guiX, guiY, 0);
-                net.kroia.modutilities.ModUtilitiesMod.LOGGER.info(
-                        "[DisplayBlock] mouseClicked consumed={}", consumed);
+                mouseDown.add(playerId);
+                gui.mouseClicked(guiX, guiY, 0);
                 lastMousePos.put(playerId, new double[]{guiX, guiY});
                 syncToClient();
             } else {
@@ -399,17 +391,10 @@ public class DisplayDemoBlockEntity extends BlockEntity {
                         double dx = guiCoords[0] - prev[0];
                         double dy = guiCoords[1] - prev[1];
                         if (dx != 0 || dy != 0) {
-                            net.kroia.modutilities.ModUtilitiesMod.LOGGER.info(
-                                    "[DisplayBlock] Drag at ({},{}) delta=({},{})",
-                                    String.format("%.0f", guiCoords[0]), String.format("%.0f", guiCoords[1]),
-                                    String.format("%.1f", dx), String.format("%.1f", dy));
                             gui.mouseDragged(guiCoords[0], guiCoords[1], 0, dx, dy);
                             syncToClient();
                         }
                     }
-                } else {
-                    net.kroia.modutilities.ModUtilitiesMod.LOGGER.info(
-                            "[DisplayBlock] Raycast but mouseDown=false for player");
                 }
                 lastMousePos.put(playerId, guiCoords);
             }
@@ -470,6 +455,60 @@ public class DisplayDemoBlockEntity extends BlockEntity {
                 label.setText("Speed: " + (int) (speed * 100) + "%");
             }
         }
+    }
+
+    public void handleTextInput(String text) {
+        if (gui == null) return;
+        for (var el : gui.getElements()) {
+            if (el instanceof TextBox tb) {
+                String oldText = tb.getText();
+                tb.setText(text);
+                // TextBox.setText doesn't fire onTextChanged, so update title manually
+                if (!text.equals(oldText)) {
+                    // Find title label and update it
+                    for (var el2 : gui.getElements()) {
+                        if (el2 instanceof Label label
+                                && label.getAlignment() == net.kroia.modutilities.gui.elements.base.GuiElement.Alignment.CENTER
+                                && label.getY() < 30) {
+                            label.setText(text);
+                            break;
+                        }
+                    }
+                }
+                break;
+            }
+        }
+        syncToClient();
+    }
+
+    private volatile String pendingTextInputText;
+    private volatile boolean hasPendingTextInput = false;
+
+    public boolean hasPendingTextInput() { return hasPendingTextInput; }
+    public String consumePendingTextInput() {
+        hasPendingTextInput = false;
+        return pendingTextInputText;
+    }
+
+    private boolean checkTextBoxClick(double guiX, double guiY) {
+        if (gui == null) return false;
+        for (var el : gui.getElements()) {
+            if (el instanceof TextBox tb) {
+                var gp = tb.getGlobalPosition();
+                net.kroia.modutilities.ModUtilitiesMod.LOGGER.info(
+                        "[DisplayBlock] TextBox check: click=({},{}) box=({},{} {}x{}) hit={}",
+                        (int) guiX, (int) guiY, gp.x, gp.y, tb.getWidth(), tb.getHeight(),
+                        guiX >= gp.x && guiX < gp.x + tb.getWidth()
+                                && guiY >= gp.y && guiY < gp.y + tb.getHeight());
+                if (guiX >= gp.x && guiX < gp.x + tb.getWidth()
+                        && guiY >= gp.y && guiY < gp.y + tb.getHeight()) {
+                    pendingTextInputText = tb.getText();
+                    hasPendingTextInput = true;
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     void togglePaused() {
@@ -688,7 +727,7 @@ public class DisplayDemoBlockEntity extends BlockEntity {
         gui.addElement(title);
 
         int plotTop = margin + 16 + 8;
-        int controlsHeight = 50;
+        int controlsHeight = 68;
         int plotHeight = h - plotTop - controlsHeight;
 
         Plot plot = new Plot();
@@ -755,6 +794,31 @@ public class DisplayDemoBlockEntity extends BlockEntity {
         });
         pauseButton.setBounds(w - margin - 65, controlY, 65, 14);
         gui.addElement(pauseButton);
+
+        // Second control row: text input
+        int textRowY = controlY + 18;
+
+        Label inputLabel = new Label("Title:");
+        inputLabel.setBounds(margin, textRowY, 35, 14);
+        inputLabel.setAlignment(GuiElement.Alignment.LEFT);
+        gui.addElement(inputLabel);
+
+        Label echoLabel = new Label("");
+        echoLabel.setBounds(w / 2 + 5, textRowY, w / 2 - margin - 5, 14);
+        echoLabel.setAlignment(GuiElement.Alignment.LEFT);
+        gui.addElement(echoLabel);
+
+        TextBox titleInput = new TextBox(margin + 37, textRowY, w / 2 - margin - 37);
+        titleInput.setText("Live Signal Dashboard");
+        titleInput.setMaxChars(40);
+        titleInput.setOnTextChanged(text -> {
+            title.setText(text);
+            echoLabel.setText(text);
+            if (owner != null) {
+                owner.syncToClient();
+            }
+        });
+        gui.addElement(titleInput);
 
         if (owner != null) {
             owner.statusLabel = statusLabel;

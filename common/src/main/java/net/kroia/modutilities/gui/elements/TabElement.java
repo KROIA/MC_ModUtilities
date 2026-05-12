@@ -356,6 +356,7 @@ public class TabElement extends GuiElement {
                 {
                     label.setAlignment(unselectedTitleLabelAlignment);
                 }
+                selectedTabIndex = -1;
                 super.removeChild(oldTab.tabElement);
             }
 
@@ -366,6 +367,11 @@ public class TabElement extends GuiElement {
                 label.setAlignment(selectedTitleLabelAlignment);
             }
             super.addChild(tab.tabElement);
+            // Force full layout: set content bounds, then init entire subtree
+            int w = getWidth();
+            int h = getHeight() - titleHeight;
+            tab.tabElement.setBounds(0, titleHeight, w, h);
+            tab.tabElement.init();
         }
         else
         {
@@ -375,6 +381,7 @@ public class TabElement extends GuiElement {
                 super.removeChild(oldTab.tabElement);
             }
             selectedTabIndex = -1;
+            layoutChangedInternal();
         }
     }
 
@@ -444,6 +451,14 @@ public class TabElement extends GuiElement {
 
 
     @Override
+    public void init() {
+        // Compute our own layout first so tab content gets correct bounds
+        layoutChangedInternal();
+        // Then initialize children (which includes the selected tab content)
+        super.init();
+    }
+
+    @Override
     protected void render() {
         mouseOverTitleIndex = -1; // Reset mouse over title index
         int lightOutlineColor = ColorUtilities.setAlpha(getOutlineColor(), 100);
@@ -480,6 +495,16 @@ public class TabElement extends GuiElement {
 
         int width = getWidth();
         int height = getHeight() - titleHeight; // Adjust height for the title bar
+
+        // Recompute title widths for Label-based titles when font is available
+        for(Tab t : tabs) {
+            if(t.titleElement instanceof Label label) {
+                int textW = label.getTextWidth(label.getText());
+                if (textW > 0) {
+                    label.setWidth(textW + 6);
+                }
+            }
+        }
 
         int titleX = 0;
         int yOffset = titleHeight - unselectedTitleHeight; // Offset for unselected titles to center them vertically

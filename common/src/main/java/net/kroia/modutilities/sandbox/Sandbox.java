@@ -240,9 +240,12 @@ public class Sandbox {
         // Register sandbox blocks, items, and block entities
         SandboxRegistration.register();
 
-        // Register client-side renderers (only on physical client)
+        // Register client-side renderers and input handlers (only on physical client)
         if (UtilitiesPlatform.isClient()) {
             SandboxRegistration.registerClient();
+            dev.architectury.event.events.client.ClientTickEvent.CLIENT_POST.register(mc -> {
+                DisplayInputHandler.clientTick();
+            });
         }
 
         if (TestRegistry.ENABLE_TESTS) {
