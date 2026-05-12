@@ -1,9 +1,9 @@
 package net.kroia.modutilities.gui.elements;
 
 import net.kroia.modutilities.ColorUtilities;
+import net.kroia.modutilities.gui.InputConstants;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.minecraft.sounds.SoundEvents;
-import org.lwjgl.glfw.GLFW;
 
 /**
  * An invisible (or color-only) clickable region without label or icon.
@@ -28,7 +28,7 @@ public class EmptyButton extends GuiElement {
     protected Runnable onRisingEdge = null;
     protected Runnable onDown = null;
     protected boolean isClickable = true;
-    protected int triggerButton = GLFW.GLFW_MOUSE_BUTTON_LEFT;
+    protected int triggerButton = InputConstants.MOUSE_BUTTON_LEFT;
 
     /**
      * Creates an empty button with default size and no callbacks.
@@ -163,14 +163,14 @@ public class EmptyButton extends GuiElement {
     }
     /**
      * Sets which mouse button triggers the click callbacks.
-     * @param button the GLFW mouse button code (e.g. {@code GLFW_MOUSE_BUTTON_LEFT})
+     * @param button the mouse button code (e.g. {@link InputConstants#MOUSE_BUTTON_LEFT})
      */
     public void setTriggerButton(int button)
     {
         triggerButton = button;
     }
     /**
-     * @return the GLFW mouse button code that triggers the click callbacks
+     * @return the mouse button code that triggers the click callbacks
      */
     public int getTriggerButton()
     {

@@ -1,9 +1,8 @@
 package net.kroia.modutilities.gui.elements;
 
 import net.kroia.modutilities.ColorUtilities;
+import net.kroia.modutilities.gui.InputConstants;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
-import net.minecraft.client.Minecraft;
-import org.lwjgl.glfw.GLFW;
 
 import java.awt.event.InputEvent;
 import java.util.function.Consumer;
@@ -460,14 +459,14 @@ public class TextBox extends GuiElement {
         if(!isFocused())
             return false;
 
-        boolean isShiftDown = isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT);
-        boolean isControlDown = isKeyPressed(GLFW.GLFW_KEY_LEFT_CONTROL);
+        boolean isShiftDown = isKeyPressed(InputConstants.KEY_LEFT_SHIFT);
+        boolean isControlDown = isKeyPressed(InputConstants.KEY_LEFT_CONTROL);
 
 
 
         switch(keyCode)
         {
-            case GLFW.GLFW_KEY_A:
+            case InputConstants.KEY_A:
             {
                 if(isControlDown) {
                     // select all
@@ -477,25 +476,25 @@ public class TextBox extends GuiElement {
                 }
                 return false;
             }
-            case GLFW.GLFW_KEY_C:
+            case InputConstants.KEY_C:
             {
                 if(isControlDown && selectionCursonIdxStart != -1 && selectionCursonIdxEnd != -1)
                 {
                     String subString = text.substring(selectionCursonIdxStart, selectionCursonIdxEnd);
                     // put substring into clipboard
-                    Minecraft.getInstance().keyboardHandler.setClipboard(subString);
+                    if (getRoot() != null) getRoot().getInputProvider().setClipboard(subString);
                     return true;
                 }
                 return false;
             }
-            case GLFW.GLFW_KEY_X:
+            case InputConstants.KEY_X:
             {
                 if(isControlDown && selectionCursonIdxStart != -1 && selectionCursonIdxEnd != -1)
                 {
                     String subString = text.substring(selectionCursonIdxStart, selectionCursonIdxEnd);
                     text = text.substring(0, selectionCursonIdxStart) +  text.substring(selectionCursonIdxEnd);
                     // put substring into clipboard
-                    Minecraft.getInstance().keyboardHandler.setClipboard(subString);
+                    if (getRoot() != null) getRoot().getInputProvider().setClipboard(subString);
                     selectionCursonIdxStart = -1;
                     selectionCursonIdxEnd = -1;
                     updateTextLabel();
@@ -504,11 +503,11 @@ public class TextBox extends GuiElement {
                 }
                 return false;
             }
-            case GLFW.GLFW_KEY_V:
+            case InputConstants.KEY_V:
             {
                 if(isControlDown)
                 {
-                    String clipboard = Minecraft.getInstance().keyboardHandler.getClipboard();
+                    String clipboard = getRoot() != null ? getRoot().getInputProvider().getClipboard() : "";
                     String newText = text;
                     int currentCursorPosTmp = currentCursorPos;
                     if(selectionCursonIdxStart != -1 && selectionCursonIdxEnd != -1)
@@ -553,7 +552,7 @@ public class TextBox extends GuiElement {
                 }
                 return false;
             }
-            case GLFW.GLFW_KEY_BACKSPACE:
+            case InputConstants.KEY_BACKSPACE:
             {
                 // Check if CTRL is pressed, if so, remove last word
                 if(isControlDown)
@@ -614,7 +613,7 @@ public class TextBox extends GuiElement {
                 }
                 return false;
             }
-            case GLFW.GLFW_KEY_DELETE:
+            case InputConstants.KEY_DELETE:
             {
                 // Check if CTRL is pressed, if so, remove next word
                 if(isControlDown)
@@ -674,7 +673,7 @@ public class TextBox extends GuiElement {
                 }
                 return false;
             }
-            case GLFW.GLFW_KEY_LEFT:
+            case InputConstants.KEY_LEFT:
             {
                 if(currentCursorPos > 0)
                 {
@@ -746,7 +745,7 @@ public class TextBox extends GuiElement {
                 }
                 return true;
             }
-            case GLFW.GLFW_KEY_RIGHT:
+            case InputConstants.KEY_RIGHT:
             {
                 if(currentCursorPos < text.length())
                 {
@@ -815,9 +814,9 @@ public class TextBox extends GuiElement {
                 }
                 return true;
             }
-            case GLFW.GLFW_KEY_ENTER:
-            case GLFW.GLFW_KEY_KP_ENTER:
-            case GLFW.GLFW_KEY_ESCAPE:
+            case InputConstants.KEY_ENTER:
+            case InputConstants.KEY_KP_ENTER:
+            case InputConstants.KEY_ESCAPE:
             {
                 selectionCursonIdxEnd = -1;
                 selectionCursonIdxStart = -1;

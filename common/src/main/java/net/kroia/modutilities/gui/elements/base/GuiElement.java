@@ -1,28 +1,19 @@
 package net.kroia.modutilities.gui.elements.base;
 
-import com.mojang.blaze3d.vertex.PoseStack;
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 import net.kroia.modutilities.ClientPlayerUtilities;
 import net.kroia.modutilities.TimerMillis;
-import net.kroia.modutilities.gui.Graphics;
+import net.kroia.modutilities.gui.IGraphics;
+import net.kroia.modutilities.gui.InputConstants;
 import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.GuiTexture;
 import net.kroia.modutilities.gui.geometry.Point;
 import net.kroia.modutilities.gui.geometry.Rectangle;
 import net.kroia.modutilities.gui.layout.Layout;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.item.ItemStack;
 import org.joml.Quaternionf;
-import org.lwjgl.glfw.GLFW;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
@@ -50,11 +41,11 @@ import java.util.function.Supplier;
  * and should override the appropriate {@code mouse*} / {@code key*} hooks to
  * react to user input.
  *
- * @apiNote The whole {@code gui/} package is client-only
- *          ({@code @Environment(EnvType.CLIENT)}); GUI elements must only be
- *          used on the client.
+ * @apiNote This class has no client-only dependencies and can be used on
+ *          both client and server. Client-only rendering is handled through
+ *          the {@link IGraphics} and {@link net.kroia.modutilities.gui.IInputProvider}
+ *          abstractions.
  */
-@Environment(EnvType.CLIENT)
 public abstract class GuiElement {
 
     /**
@@ -244,11 +235,12 @@ public abstract class GuiElement {
     }
 
     /**
-     * @return the active {@link Minecraft} client instance; falls back to
-     *         {@link Minecraft#getInstance()} when this element has no root
+     * @return the font object from the owning Gui, or {@code null} if detached
+     *         or running on the server
      */
-    public Minecraft getMinecraft() {
-        return root != null ? root.getMinecraft() : Minecraft.getInstance();
+    public Object getFont()
+    {
+        return root != null ? root.getFont() : null;
     }
 
     /**
@@ -616,7 +608,7 @@ public abstract class GuiElement {
     {
         if(!isVisible())
             return;
-        Graphics graphics = root.getGraphics();
+        IGraphics graphics = root.getGraphics();
         graphics.pushPose();
         graphics.translate((float)getX(), (float)getY(), zPos);
         renderBackground();
@@ -634,7 +626,7 @@ public abstract class GuiElement {
     {
         if(!isVisible())
             return;
-        Graphics graphics = root.getGraphics();
+        IGraphics graphics = root.getGraphics();
         graphics.pushPose();
         graphics.translate((float)getX(), (float)getY(), zPos);
         render();
@@ -684,7 +676,7 @@ public abstract class GuiElement {
             tooltipTimerStarted = false;
         }
 
-        Graphics graphics = root.getGraphics();
+        IGraphics graphics = root.getGraphics();
         graphics.pushPose();
         graphics.translate((float)getX(), (float)getY(), 200.0F + zPos);
         for(TooltipData data : drawTooltipLater)
@@ -759,7 +751,7 @@ public abstract class GuiElement {
     {
         if(!isVisible())
             return;
-        Graphics graphics = root.getGraphics();
+        IGraphics graphics = root.getGraphics();
         graphics.pushPose();
         graphics.translate((float)getX(), (float)getY(), zPos);
         renderGizmos();
@@ -938,7 +930,7 @@ public abstract class GuiElement {
     /**
      * Called when the mouse is clicked over the element
      * @param button The mouse button that was clicked
-     * @see GLFW.GLFW_MOUSE_BUTTON_LEFT
+     * @see InputConstants#MOUSE_BUTTON_LEFT
      * @return true if the click was consumed, false otherwise
      */
     protected boolean mouseClickedOverElement(int button) {
@@ -947,7 +939,7 @@ public abstract class GuiElement {
 
     /**
      * Called when the mouse is dragged
-     * @see GLFW.GLFW_MOUSE_BUTTON_LEFT
+     * @see InputConstants#MOUSE_BUTTON_LEFT
      * @param button The mouse button that was dragged
      * @param deltaX The change in the x position of the mouse
      * @param deltaY The change in the y position of the mouse
@@ -959,7 +951,7 @@ public abstract class GuiElement {
 
     /**
      * Called when the mouse is released
-     * @see GLFW.GLFW_MOUSE_BUTTON_LEFT
+     * @see InputConstants#MOUSE_BUTTON_LEFT
      * @param button The mouse button that was released
      */
     protected void mouseReleased(int button) {
@@ -967,7 +959,7 @@ public abstract class GuiElement {
 
     /**
      * Called when the mouse is released over the element
-     * @see GLFW.GLFW_MOUSE_BUTTON_LEFT
+     * @see InputConstants#MOUSE_BUTTON_LEFT
      * @param button The mouse button that was released
      * @return true if the release was consumed, false otherwise
      */
@@ -994,7 +986,7 @@ public abstract class GuiElement {
     /**
      * Called when a key is pressed
      * @param keyCode The key code of the pressed key
-     *                @see GLFW.GLFW_MOUSE_BUTTON_LEFT
+     *                @see InputConstants
      * @param scanCode The scan code of the pressed key
      * @param modifiers The modifiers that were pressed (e.g. shift, ctrl, alt)
      * @return true if the key press was consumed, false otherwise
@@ -1016,63 +1008,71 @@ public abstract class GuiElement {
 
     /**
      * Checks if the the keyboard key is pressed down.
-     * @see GLFW.GLFW_KEY_SPACE... Keys
+     * @see InputConstants
      *
      * @return true if the given key is pressed
      */
     protected boolean isKeyPressed(int keyCode)
     {
         if (getRoot() == null) return false;
-        return GLFW.glfwGetKey(getRoot().getWindowHandle(), keyCode) == GLFW.GLFW_PRESS;
+        return getRoot().getInputProvider().isKeyDown(keyCode);
     }
     protected boolean isControlPressed()
     {
         if (getRoot() == null) return false;
-        return GLFW.glfwGetKey(getRoot().getWindowHandle(), GLFW.GLFW_KEY_LEFT_CONTROL) == GLFW.GLFW_PRESS;
+        return getRoot().getInputProvider().isKeyDown(InputConstants.KEY_LEFT_CONTROL);
     }
     protected boolean isShiftPressed()
     {
         if (getRoot() == null) return false;
-        return GLFW.glfwGetKey(getRoot().getWindowHandle(), GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS;
+        return getRoot().getInputProvider().isKeyDown(InputConstants.KEY_LEFT_SHIFT);
     }
     protected boolean isAltPressed()
     {
         if (getRoot() == null) return false;
-        return GLFW.glfwGetKey(getRoot().getWindowHandle(), GLFW.GLFW_KEY_LEFT_ALT) == GLFW.GLFW_PRESS;
+        return getRoot().getInputProvider().isKeyDown(InputConstants.KEY_LEFT_ALT);
     }
     /**
      * Polls the OS for the state of a specific mouse button.
      *
-     * @param button the GLFW mouse button code
-     * @return {@code true} if the button is currently held
+     * @param button the mouse button code (see {@link InputConstants})
+     * @return {@code true} if the button is currently held;
+     *         always {@code false} when the element is detached
      */
     public boolean isMouseButtonDown(int button)
     {
-        return GLFW.glfwGetMouseButton(getRoot().getWindowHandle(), button) == GLFW.GLFW_PRESS;
+        if (getRoot() == null) return false;
+        return getRoot().getInputProvider().isMouseButtonDown(button);
     }
 
     /**
-     * @return {@code true} if the left mouse button is currently held
+     * @return {@code true} if the left mouse button is currently held;
+     *         always {@code false} when the element is detached
      */
     public boolean isLeftMouseButtonDown()
     {
-        return GLFW.glfwGetMouseButton(getRoot().getWindowHandle(), GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
+        if (getRoot() == null) return false;
+        return getRoot().getInputProvider().isMouseButtonDown(InputConstants.MOUSE_BUTTON_LEFT);
     }
 
     /**
-     * @return {@code true} if the right mouse button is currently held
+     * @return {@code true} if the right mouse button is currently held;
+     *         always {@code false} when the element is detached
      */
     public boolean isRightMouseButtonDown()
     {
-        return GLFW.glfwGetMouseButton(getRoot().getWindowHandle(), GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS;
+        if (getRoot() == null) return false;
+        return getRoot().getInputProvider().isMouseButtonDown(InputConstants.MOUSE_BUTTON_RIGHT);
     }
 
     /**
-     * @return {@code true} if the middle mouse button is currently held
+     * @return {@code true} if the middle mouse button is currently held;
+     *         always {@code false} when the element is detached
      */
     public boolean isMiddleMouseButtonDown()
     {
-        return GLFW.glfwGetMouseButton(getRoot().getWindowHandle(), GLFW.GLFW_MOUSE_BUTTON_MIDDLE) == GLFW.GLFW_PRESS;
+        if (getRoot() == null) return false;
+        return getRoot().getInputProvider().isMouseButtonDown(InputConstants.MOUSE_BUTTON_MIDDLE);
     }
 
 
@@ -1164,21 +1164,13 @@ public abstract class GuiElement {
 
 
     /**
-     * @return the {@link Graphics} wrapper of this element's root
+     * @return the {@link IGraphics} wrapper of this element's root
      * @throws NullPointerException if this element has no root
      */
-    public Graphics getGraphics() {
+    public IGraphics getGraphics() {
         return root.getGraphics();
     }
 
-    /**
-     * @return the active {@link PoseStack} of this element's root
-     * @throws NullPointerException if this element has no root
-     */
-    public PoseStack getPoseStack()
-    {
-        return root.getPoseStack();
-    }
     public void graphicsPushPose() {
         root.pushPose();
     }
@@ -1215,24 +1207,6 @@ public abstract class GuiElement {
         return root;
     }
 
-    /**
-     * @return the Minecraft {@link Screen} that ultimately hosts this element,
-     *         or {@code null} if the element is detached
-     */
-    public Screen getScreen()
-    {
-        if(root == null)
-            return null;
-        return root.getScreen();
-    }
-
-    /**
-     * @return the default Minecraft font from the active client
-     */
-    public Font getFont()
-    {
-        return Gui.getFont();
-    }
 
     /**
      * @return the mouse x position relative to this element's local origin;
@@ -1650,7 +1624,8 @@ public abstract class GuiElement {
      */
     public int getTextWidth(String text)
     {
-        return (int)((float)getFont().width(text) * textFontScale);
+        if(root == null) return 0;
+        return (int)((float)root.getGraphics().getTextWidth(text) * textFontScale);
     }
 
     /**
@@ -1659,7 +1634,8 @@ public abstract class GuiElement {
      */
     public int getTextHeight()
     {
-        return (int)((float)getFont().lineHeight * textFontScale);
+        if(root == null) return (int)(9 * textFontScale);
+        return (int)((float)root.getGraphics().getFontLineHeight() * textFontScale);
     }
 
     /**
@@ -2042,14 +2018,6 @@ public abstract class GuiElement {
     {
         drawGradient(rect.x,rect.y, rect.width, rect.height, colorFrom, colorTo);
     }
-    public void drawGradient(RenderType renderType, int x, int y, int z, int width, int height, int colorFrom, int colorTo)
-    {
-        root.drawGradient(renderType, x,y,z,width, height, colorFrom, colorTo);
-    }
-    public void drawGradient(RenderType renderType, Rectangle rect, int z, int colorFrom, int colorTo)
-    {
-        drawGradient(renderType, rect.x,rect.y, z, rect.width, rect.height, colorFrom, colorTo);
-    }
 
     public void drawOutline(int x, int y, int width, int height, int color)
     {
@@ -2123,22 +2091,6 @@ public abstract class GuiElement {
         drawTexture(texture, pos.x, pos.y);
     }
 
-    public void drawTexture(TextureAtlasSprite sprite, int x, int y, int width, int height, int blitOffset)
-    {
-        root.drawTexture(sprite, x, y, width, height, blitOffset);
-    }
-    public void drawTexture(TextureAtlasSprite sprite, Rectangle area, int blitOffset)
-    {
-        drawTexture(sprite, area.x, area.y, area.width, area.height, blitOffset);
-    }
-    public void drawTexture(TextureAtlasSprite sprite, int x, int y, int width, int height, int blitOffset, float red, float green, float blue, float alpha)
-    {
-        root.drawTexture(sprite, x, y, width, height, blitOffset, red, green, blue, alpha);
-    }
-    public void drawTexture(TextureAtlasSprite sprite, Rectangle area, int blitOffset, float red, float green, float blue, float alpha)
-    {
-        drawTexture(sprite, area.x, area.y, area.width, area.height, blitOffset, red, green, blue, alpha);
-    }
 
 
     private void drawTooltipInternal(Component tooltip, int x, int y)
@@ -2423,12 +2375,14 @@ public abstract class GuiElement {
     {
         var lines = text.split("\n");
         int maxWidth = 0;
+        IGraphics g = root != null ? root.getGraphics() : null;
         for (String line : lines) {
-            int width = getFont().width(line);
+            int width = g != null ? g.getTextWidth(line) : 0;
             if (width > maxWidth)
                 maxWidth = width;
         }
-        int height = (int)((float)(getFont().lineHeight * lines.length) * fontScale);
+        int lineHeight = g != null ? g.getFontLineHeight() : 9;
+        int height = (int)((float)(lineHeight * lines.length) * fontScale);
         return new Point((int)((float)maxWidth*fontScale), height);
     }
 
@@ -2447,14 +2401,28 @@ public abstract class GuiElement {
     {
         drawFrame(rect.x, rect.y, rect.width, rect.height, color, thickness);
     }
+    /**
+     * @return the display scale factor from the owning Gui, or {@code 1.0} if
+     *         detached
+     */
     public double getGuiScale()
     {
-        return Gui.getMinecraftGuiScale();
+        return root != null ? root.getDisplayScaleFactor() : 1.0;
     }
 
+    /**
+     * Plays a local sound. Delegates to {@link Gui#playLocalSound} which
+     * calls through to a client-injected sound player callback. On the
+     * server this is a no-op.
+     *
+     * @param sound  the sound event
+     * @param volume volume multiplier
+     * @param pitch  pitch multiplier
+     */
     public void playLocalSound(SoundEvent sound, float volume, float pitch)
     {
-        Gui.playLocalSound(sound, volume, pitch);
+        if(root != null)
+            root.playLocalSound(sound, volume, pitch);
     }
     public void playLocalSound(SoundEvent sound, float volume)
     {

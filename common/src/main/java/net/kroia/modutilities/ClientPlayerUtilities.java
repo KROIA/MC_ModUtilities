@@ -11,7 +11,7 @@ import net.minecraft.world.item.TooltipFlag;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static net.kroia.modutilities.gui.Gui.getMinecraft;
+import net.minecraft.client.Minecraft;
 
 /**
  * Client-side helpers for working with the local player.
@@ -37,13 +37,13 @@ public class ClientPlayerUtilities {
      */
     public static String getItemDisplayText(ItemStack itemStack)
     {
-        Player player = getMinecraft().player;
+        Player player = Minecraft.getInstance().player;
         if(player == null)
         {
             return itemStack.getHoverName().getString();
         }
-        Item.TooltipContext context = Item.TooltipContext.of(getMinecraft().level);
-        List<Component> tooltip = itemStack.getTooltipLines(context, getMinecraft().player, TooltipFlag.Default.NORMAL);
+        Item.TooltipContext context = Item.TooltipContext.of(Minecraft.getInstance().level);
+        List<Component> tooltip = itemStack.getTooltipLines(context, Minecraft.getInstance().player, TooltipFlag.Default.NORMAL);
 
         List<String> tooltipStrings = tooltip.stream()
                 .map(Component::getString)
@@ -60,8 +60,8 @@ public class ClientPlayerUtilities {
      * @param message the message to display
      */
     public static void printToConsole(String message) {
-        if (getMinecraft().player != null) {
-            getMinecraft().player.sendSystemMessage(Component.literal(message));
+        if (Minecraft.getInstance().player != null) {
+            Minecraft.getInstance().player.sendSystemMessage(Component.literal(message));
         } else {
             System.out.println(message);
         }

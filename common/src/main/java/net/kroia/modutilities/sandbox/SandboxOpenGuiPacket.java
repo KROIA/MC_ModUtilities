@@ -43,7 +43,8 @@ public class SandboxOpenGuiPacket extends NetworkPacket {
         EXAMPLE_TABS,
         EXAMPLE_DASHBOARD,
         EXAMPLE_ITEM_SELECTION,
-        EXAMPLE_PLAYER_BROWSER
+        EXAMPLE_PLAYER_BROWSER,
+        DISPLAY_SHOWCASE
     }
     private SandboxOpenGuiPacket.GuiType guiType;
     public SandboxOpenGuiPacket(SandboxOpenGuiPacket.GuiType guiType) {
@@ -82,6 +83,9 @@ public class SandboxOpenGuiPacket extends NetworkPacket {
                 break;
             case EXAMPLE_PLAYER_BROWSER:
                 Minecraft.getInstance().submit(() -> ExamplePlayerBrowserScreen.open());
+                break;
+            case DISPLAY_SHOWCASE:
+                Minecraft.getInstance().submit(() -> ExampleDashboardScreen.open());
                 break;
             default:
         }

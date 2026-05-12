@@ -1,10 +1,10 @@
 package net.kroia.modutilities.gui.elements.base;
 
+import net.kroia.modutilities.gui.InputConstants;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Point;
 import net.kroia.modutilities.gui.geometry.Rectangle;
 import net.minecraft.sounds.SoundEvents;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -27,7 +27,7 @@ public abstract class Slider extends GuiElement {
 
     protected boolean isPressed = false;
     protected boolean isMovable = true;
-    protected int triggerButton = GLFW.GLFW_MOUSE_BUTTON_LEFT;
+    protected int triggerButton = InputConstants.MOUSE_BUTTON_LEFT;
     protected int sliderLineColor = DEFAULT_OUTLINE_COLOR;
     protected int colorIdle = DEFAULT_BACKGROUND_COLOR;
     protected int colorHover = DEFAULT_HOVER_BACKGROUND_COLOR;
@@ -88,7 +88,7 @@ public abstract class Slider extends GuiElement {
             color = colorHover;
         }
         if(contains && tooltipSupplier != null)
-            drawTooltip(tooltipSupplier.get(), getMouseX(), getMouseY()-getFont().lineHeight);
+            drawTooltip(tooltipSupplier.get(), getMouseX(), getMouseY()-getTextHeight());
 
         drawRect(sliderBounds.x, sliderBounds.y, sliderBounds.width, sliderBounds.height, sliderOutlineColor);
         drawRect(sliderBounds.x+1, sliderBounds.y+1, sliderBounds.width-2, sliderBounds.height-2, color);
@@ -233,17 +233,17 @@ public abstract class Slider extends GuiElement {
     }
 
     /**
-     * Sets the GLFW mouse button that initiates a drag interaction.
+     * Sets the mouse button that initiates a drag interaction.
      *
-     * @param triggerButton the GLFW mouse button code (e.g.
-     *                      {@link GLFW#GLFW_MOUSE_BUTTON_LEFT})
+     * @param triggerButton the mouse button code (e.g.
+     *                      {@link InputConstants#MOUSE_BUTTON_LEFT})
      */
     public void setTriggerButton(int triggerButton) {
         this.triggerButton = triggerButton;
     }
 
     /**
-     * @return the GLFW mouse button code that triggers slider dragging
+     * @return the mouse button code that triggers slider dragging
      */
     public int getTriggerButton() {
         return triggerButton;
