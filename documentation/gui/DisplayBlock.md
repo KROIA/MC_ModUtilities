@@ -38,6 +38,9 @@ ContentBuilder                          [common] Functional interface for GUI la
 DisplayConfig                           [common] Record holding display parameters
 ShapeProvider                           [common] Functional interface for voxel shapes
 GuiStateSync                            [common] Bidirectional state sync between Gui instances
+GuiInputSerializer                      [common] Serializes GUI input state to/from CompoundTag
+DisplayInputSyncPacket                  [common] C2S packet for input sync (dedicated server support)
+DisplayNetworking                       [common] Packet registration (called at mod init)
 DisplayClientHooks                      [client] Client-only hook entry points
 ```
 
@@ -49,9 +52,9 @@ The display block system uses a server-authoritative model:
 
 2. **Client renderer**: `AbstractDisplayBlockEntityRenderer` reads the client-side copy of the `Gui` (rebuilt from synced NBT), renders it into an offscreen framebuffer, and projects the resulting texture onto the block face as a quad. Each display group is rendered once per frame, regardless of how many blocks are in the group.
 
-3. **Interaction screen**: When a player right-clicks, `DisplayInteractionScreen` opens. It uses the same `ContentBuilder` to create a local GUI copy, then uses `GuiStateSync` to keep it synchronized with the server:
-   - **Display state** (labels, plots) flows from server to client via `syncDisplayState()`.
-   - **Input state** (sliders, text boxes, checkboxes, button clicks) flows from client to server via `syncInputState()`.
+3. **Interaction screen**: When a player right-clicks, `DisplayInteractionScreen` opens. It uses the same `ContentBuilder` to create a local GUI copy, then synchronizes in two directions:
+   - **Display state** (labels, plots) is read from the client-side block entity's Gui (kept up-to-date by the NBT sync above) via `GuiStateSync.syncDisplayState()`.
+   - **Input state** (sliders, text boxes, checkboxes, button clicks) is serialized into a `CompoundTag` by `GuiInputSerializer` and sent to the server via `DisplayInputSyncPacket` (a C2S network packet). This works on both singleplayer and dedicated servers.
 
 ### Multi-Block Grouping
 
@@ -632,7 +635,7 @@ For example, a 3x2 group with `fullBlock()` (256x256, scale 2):
 The display block system separates GUI layout (`ContentBuilder`) from server behavior (`wireCallbacks`) for a critical reason: the same layout must be buildable on both the server and the client.
 
 - **Server**: `ContentBuilder.build()` creates the layout, then `wireCallbacks()` attaches server-side logic (callbacks that modify BE fields, trigger syncs, etc.).
-- **Client interaction screen**: `ContentBuilder.build()` creates an identical layout for the interaction screen overlay. No server callbacks are attached -- instead, `GuiStateSync` handles bidirectional state transfer.
+- **Client interaction screen**: `ContentBuilder.build()` creates an identical layout for the interaction screen overlay. No server callbacks are attached -- instead, display state is synced via `GuiStateSync` (from the client-side block entity) and input state is sent to the server via `DisplayInputSyncPacket`.
 - **Client renderer**: The renderer uses the client-side copy of the Gui (reconstructed from NBT sync) and does not call the content builder directly.
 
 ### Rules for Content Builders
@@ -664,15 +667,39 @@ Display block entities use Minecraft's standard block entity sync mechanism:
 3. Minecraft calls `getUpdateTag()` which serializes the entity's state (including custom data) to NBT.
 4. The client receives the NBT via `getUpdatePacket()` (`ClientboundBlockEntityDataPacket`), and `loadAdditional()` rebuilds the GUI from the synced state.
 
-### Interaction Screen: GuiStateSync
+### Interaction Screen: Packet-Based Sync
 
-The interaction screen maintains bidirectional sync between the client GUI and the server GUI:
+The interaction screen works on both singleplayer and dedicated servers using a packet-based architecture:
 
-1. **Initial sync**: On screen open, `syncState()` copies all state from the server GUI to the client GUI.
+1. **Initial sync**: On screen open, `GuiStateSync.syncState()` copies all state from the client-side block entity's Gui to the screen's Gui.
 2. **Every 2 frames**:
-   - `syncDisplayState()`: Server labels and plots are copied to the client GUI (server-driven output).
-   - `syncInputState()`: Client slider values, text input, checkbox states, and button click counts are copied to the server GUI (player-driven input).
-3. After input sync, `onInputSynced()` is called on the block entity so it can read GUI values back into its fields.
+   - **Display (server to client)**: `GuiStateSync.syncDisplayState()` reads labels and plots from the client-side block entity's Gui (which is kept up-to-date by Minecraft's standard block entity NBT sync).
+   - **Input (client to server)**: `GuiInputSerializer.serializeInput()` captures all input element values (slider positions, text content, checkbox states, button click counts) into a `CompoundTag`. This is sent to the server via `DisplayInputSyncPacket` (a C2S packet registered through Architectury's `NetworkManager`).
+3. **Server-side handling**: The packet handler calls `GuiInputSerializer.applyInput()` on the server-side Gui, then calls `onInputSynced()` on the block entity so it can read GUI values back into its fields, then calls `syncToClientPublic()` to broadcast the update.
+4. **Screen close**: A final `DisplayInputSyncPacket` is sent with `closing=true`, which triggers `releaseEditor()` on the server to free the editor lock.
+
+### GuiInputSerializer
+
+Serializes GUI input state to/from `CompoundTag` by walking the element tree by index. Elements are keyed by their position in the tree (e.g., `"s0"` for slider at index 0, `"t3_1"` for textbox at child index 1 of element 3).
+
+| Method | Description |
+|--------|-------------|
+| `serializeInput(Gui)` | Walks the GUI tree, serializes slider values, textbox text, checkbox state, and button click counts into a CompoundTag |
+| `applyInput(CompoundTag, Gui)` | Walks the GUI tree in the same order, applies values from the tag. For buttons, uses `syncClickCount()` to replay missed clicks |
+
+### DisplayInputSyncPacket
+
+C2S packet carrying input state from the interaction screen to the server.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `controllerPos` | `BlockPos` | Position of the display group's controller block entity |
+| `inputState` | `CompoundTag` | Serialized GUI input state from `GuiInputSerializer` |
+| `closing` | `boolean` | If true, releases the editor lock after applying input |
+
+### DisplayNetworking
+
+Registers display block packets. Called automatically during mod initialization (`ModUtilitiesMod.init()`). No action needed from consuming mods.
 
 ### onInputSynced Hook
 
@@ -833,5 +860,5 @@ This is the absolute minimum: two classes, two method overrides on the block ent
 
 ---
 
-**Version:** 2.0.0_ALPHA
+**Version:** 2.0.1
 **Minecraft Version:** 1.21.1
