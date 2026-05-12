@@ -20,6 +20,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import org.joml.Matrix4f;
 
 import java.util.HashMap;
@@ -162,6 +164,7 @@ public class DisplayDemoBlockEntityRenderer implements BlockEntityRenderer<Displ
                 }
             }
             if (gui != null) {
+                updateClientMousePos(gui, controllerPos);
                 renderGuiToTexture(gui, partialTick, data);
                 data.lastRenderedFrame = currentFrame;
             }
@@ -179,6 +182,30 @@ public class DisplayDemoBlockEntityRenderer implements BlockEntityRenderer<Displ
         float v1 = 1.0f - (float) gy / gh;
 
         renderQuadOnFace(poseStack, bufferSource, facing, data.location, u0, v0, u1, v1);
+    }
+
+    private void updateClientMousePos(Gui gui, BlockPos controllerPos) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.level == null) return;
+
+        if (mc.hitResult instanceof BlockHitResult blockHit
+                && blockHit.getType() == HitResult.Type.BLOCK) {
+            BlockEntity hitBE = mc.level.getBlockEntity(blockHit.getBlockPos());
+            if (hitBE instanceof DisplayDemoBlockEntity hitDisplay
+                    && hitDisplay.isActive()
+                    && controllerPos.equals(hitDisplay.getControllerPos())) {
+                Direction hitFacing = mc.level.getBlockState(blockHit.getBlockPos())
+                        .getValue(HorizontalDirectionalBlock.FACING);
+                double[] coords = DisplayDemoBlock.computeGuiCoords(
+                        blockHit, blockHit.getBlockPos(), hitFacing, hitDisplay);
+                if (coords != null) {
+                    gui.storeMousePos((int) coords[0], (int) coords[1]);
+                    return;
+                }
+            }
+        }
+        // Not looking at this display — move mouse off-screen
+        gui.storeMousePos(-1, -1);
     }
 
     private void renderGuiToTexture(Gui gui, float partialTick, GroupRenderData data) {

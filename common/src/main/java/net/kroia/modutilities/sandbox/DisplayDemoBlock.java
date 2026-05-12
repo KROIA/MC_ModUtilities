@@ -3,6 +3,8 @@ package net.kroia.modutilities.sandbox;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.BlockGetter;
@@ -15,6 +17,8 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
@@ -66,6 +70,81 @@ public class DisplayDemoBlock extends HorizontalDirectionalBlock implements Enti
         // Face toward the player (opposite of the player's look direction)
         return this.defaultBlockState()
                 .setValue(FACING, context.getHorizontalDirection().getOpposite());
+    }
+
+    // -------------------------------------------------------------------------
+    // Player interaction — right-click to interact with the display GUI
+    // -------------------------------------------------------------------------
+
+    @Override
+    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
+                                               Player player, BlockHitResult hit) {
+        if (level.isClientSide()) return InteractionResult.SUCCESS;
+
+        BlockEntity be = level.getBlockEntity(pos);
+        if (!(be instanceof DisplayDemoBlockEntity displayBE) || !displayBE.isActive())
+            return InteractionResult.PASS;
+
+        // Find the controller that owns the Gui
+        DisplayDemoBlockEntity controller = displayBE.getControllerEntity();
+        if (controller == null || controller.getGui() == null)
+            return InteractionResult.PASS;
+
+        // Compute GUI coordinates from the 3D hit position
+        Direction facing = state.getValue(FACING);
+        double[] guiCoords = computeGuiCoords(hit, pos, facing, displayBE);
+        if (guiCoords == null) return InteractionResult.PASS;
+
+        // Delegate to the controller for interaction handling
+        controller.handleInteraction(player, guiCoords[0], guiCoords[1]);
+
+        return InteractionResult.SUCCESS;
+    }
+
+    /**
+     * Converts a 3D {@link BlockHitResult} into 2D GUI coordinates on the display.
+     * <p>
+     * The hit position is projected onto the block face to get UV coordinates [0..1],
+     * then scaled by the block's grid position and virtual resolution to produce
+     * pixel coordinates in the controller's GUI space.
+     *
+     * @param hit         the block hit result from the player interaction
+     * @param blockPos    the position of the hit block
+     * @param facing      the direction the display face is pointing
+     * @param blockEntity the block entity at the hit position
+     * @return a 2-element array {guiX, guiY}, or {@code null} if the facing is unsupported
+     */
+    public static double[] computeGuiCoords(BlockHitResult hit, BlockPos blockPos,
+                                            Direction facing, DisplayDemoBlockEntity blockEntity) {
+        Vec3 hitPos = hit.getLocation();
+        double localX = hitPos.x - blockPos.getX();
+        double localY = hitPos.y - blockPos.getY();
+        double localZ = hitPos.z - blockPos.getZ();
+
+        double u, v;
+        switch (facing) {
+            case SOUTH -> { u = localX;       v = 1.0 - localY; }
+            case NORTH -> { u = 1.0 - localX; v = 1.0 - localY; }
+            case EAST  -> { u = 1.0 - localZ; v = 1.0 - localY; }
+            case WEST  -> { u = localZ;        v = 1.0 - localY; }
+            default    -> { return null; }
+        }
+
+        // Clamp to [0, 1]
+        u = Math.max(0, Math.min(1, u));
+        v = Math.max(0, Math.min(1, v));
+
+        // Convert to GUI pixel coordinates:
+        // Each block covers VIRTUAL_WIDTH x VIRTUAL_HEIGHT pixels in the GUI.
+        // The block at grid (gx, gy) maps to the region starting at
+        // (gx * VIRTUAL_WIDTH, gy * VIRTUAL_HEIGHT).
+        int gx = blockEntity.getGridX();
+        int gy = blockEntity.getGridY();
+
+        double guiX = (gx + u) * DisplayDemoBlockEntity.VIRTUAL_WIDTH;
+        double guiY = (gy + v) * DisplayDemoBlockEntity.VIRTUAL_HEIGHT;
+
+        return new double[]{guiX, guiY};
     }
 
     @Nullable

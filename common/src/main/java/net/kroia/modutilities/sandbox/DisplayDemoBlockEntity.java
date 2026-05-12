@@ -2,6 +2,7 @@ package net.kroia.modutilities.sandbox;
 
 import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.elements.Button;
+import net.kroia.modutilities.gui.elements.HorizontalSlider;
 import net.kroia.modutilities.gui.elements.Label;
 import net.kroia.modutilities.gui.elements.Plot;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
@@ -12,10 +13,15 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.*;
 
@@ -42,8 +48,19 @@ public class DisplayDemoBlockEntity extends BlockEntity {
 
     // Only the controller has a Gui
     private Gui gui;
+    private int guiBuiltWidth = 0;
+    private int guiBuiltHeight = 0;
     private Plot plot;
+    private Label statusLabel;
     private float time = 0;
+    private boolean paused = false;
+    private double speed = 0.5;
+
+    // Interaction state (server-side only)
+    /** Maximum squared distance (in blocks) a player can interact from. 8 blocks = 64 squared. */
+    private static final double MAX_INTERACTION_DISTANCE_SQ = 64.0;
+    private final Set<UUID> interactingPlayers = new HashSet<>();
+    private final Map<UUID, double[]> lastMousePos = new HashMap<>();
 
     public DisplayDemoBlockEntity(BlockPos pos, BlockState blockState) {
         super(SandboxRegistration.DISPLAY_DEMO_BLOCK_ENTITY.get(), pos, blockState);
@@ -63,6 +80,99 @@ public class DisplayDemoBlockEntity extends BlockEntity {
     public int getGridX() { return gridX; }
     public int getGridY() { return gridY; }
 
+    /**
+     * Returns the controller block entity for this display group.
+     * If this block IS the controller, returns {@code this}.
+     *
+     * @return the controller entity, or {@code null} if the controller is missing/unloaded
+     */
+    public DisplayDemoBlockEntity getControllerEntity() {
+        if (isController()) return this;
+        if (level == null || controllerPos == null) return null;
+        BlockEntity be = level.getBlockEntity(controllerPos);
+        return be instanceof DisplayDemoBlockEntity ctrl ? ctrl : null;
+    }
+
+    // -------------------------------------------------------------------------
+    // Interaction handling (server-side)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Handles a player right-click interaction on the display. Each right-click
+     * sends a mouse-click event to the GUI at the computed coordinates. The player
+     * is also tracked for per-tick raycast hover/drag updates.
+     *
+     * @param player the interacting player
+     * @param guiX   the x coordinate in GUI space
+     * @param guiY   the y coordinate in GUI space
+     */
+    private final Set<UUID> mouseDown = new HashSet<>();
+    private final Map<UUID, Long> lastUseTime = new HashMap<>();
+    private static final long RELEASE_TIMEOUT_MS = 350;
+
+    public void handleInteraction(Player player, double guiX, double guiY) {
+        UUID playerId = player.getUUID();
+
+        if (!interactingPlayers.contains(playerId)) {
+            interactingPlayers.add(playerId);
+        }
+
+        lastUseTime.put(playerId, System.currentTimeMillis());
+
+        if (gui != null) {
+            if (!mouseDown.contains(playerId)) {
+                // First press — fire mouseClicked
+                mouseDown.add(playerId);
+                // Debug: print element positions
+                for (var el : gui.getElements()) {
+                    if (el instanceof HorizontalSlider s) {
+                        net.kroia.modutilities.ModUtilitiesMod.LOGGER.info(
+                                "[DisplayBlock] Slider bounds: x={} y={} w={} h={} globalPos=({},{}) | click=({},{})",
+                                s.getX(), s.getY(), s.getWidth(), s.getHeight(),
+                                s.getGlobalPosition().x, s.getGlobalPosition().y,
+                                (int) guiX, (int) guiY);
+                    }
+                }
+                boolean consumed = gui.mouseClicked(guiX, guiY, 0);
+                net.kroia.modutilities.ModUtilitiesMod.LOGGER.info(
+                        "[DisplayBlock] mouseClicked consumed={}", consumed);
+                lastMousePos.put(playerId, new double[]{guiX, guiY});
+                syncToClient();
+            } else {
+                // Held — update position for drag (raycast tracking handles the actual drag)
+                lastMousePos.put(playerId, new double[]{guiX, guiY});
+            }
+        }
+    }
+
+    /**
+     * Handles a mouse-release event for the given player.
+     *
+     * @param player the player releasing the mouse
+     * @param guiX   the x coordinate in GUI space
+     * @param guiY   the y coordinate in GUI space
+     */
+    public void handleMouseRelease(Player player, double guiX, double guiY) {
+        if (gui != null && interactingPlayers.contains(player.getUUID())) {
+            gui.mouseReleased(guiX, guiY, 0);
+            syncToClient();
+        }
+    }
+
+    /**
+     * Removes a player from interaction tracking. Fires a mouse-release event
+     * to clean up any pressed/dragged state on GUI elements.
+     *
+     * @param playerId the UUID of the player to remove
+     */
+    public void removeInteractingPlayer(UUID playerId) {
+        interactingPlayers.remove(playerId);
+        double[] last = lastMousePos.remove(playerId);
+        if (gui != null && last != null) {
+            gui.mouseReleased(last[0], last[1], 0);
+        }
+    }
+
     public void setDisabled() {
         this.controllerPos = null;
         this.groupWidth = 0;
@@ -71,6 +181,10 @@ public class DisplayDemoBlockEntity extends BlockEntity {
         this.gridY = 0;
         this.gui = null;
         this.plot = null;
+        this.statusLabel = null;
+        this.paused = false;
+        this.interactingPlayers.clear();
+        this.lastMousePos.clear();
         syncToClient();
     }
 
@@ -102,8 +216,11 @@ public class DisplayDemoBlockEntity extends BlockEntity {
             int totalW = gw * VIRTUAL_WIDTH;
             int totalH = gh * VIRTUAL_HEIGHT;
             this.gui = new Gui();
-            buildDashboard(gui, totalW, totalH);
+            buildDashboard(gui, totalW, totalH, this);
+            gui.init();
             capturePlot();
+            guiBuiltWidth = totalW;
+            guiBuiltHeight = totalH;
         } else {
             this.gui = null;
             this.plot = null;
@@ -128,6 +245,8 @@ public class DisplayDemoBlockEntity extends BlockEntity {
         tag.putInt("gh", groupHeight);
         tag.putInt("gx", gridX);
         tag.putInt("gy", gridY);
+        tag.putBoolean("paused", paused);
+        tag.putDouble("speed", speed);
     }
 
     @Override
@@ -140,14 +259,27 @@ public class DisplayDemoBlockEntity extends BlockEntity {
         groupHeight = tag.getInt("gh");
         gridX = tag.getInt("gx");
         gridY = tag.getInt("gy");
+        paused = tag.getBoolean("paused");
+        speed = tag.getDouble("speed");
+
+        syncStateToGui();
 
         if (isActive() && isController()) {
-            gui = new Gui();
-            buildDashboard(gui, groupWidth * VIRTUAL_WIDTH, groupHeight * VIRTUAL_HEIGHT);
-            capturePlot();
+            int neededW = groupWidth * VIRTUAL_WIDTH;
+            int neededH = groupHeight * VIRTUAL_HEIGHT;
+            if (gui == null || guiBuiltWidth != neededW || guiBuiltHeight != neededH) {
+                gui = new Gui();
+                buildDashboard(gui, neededW, neededH, this);
+                gui.init();
+                capturePlot();
+                guiBuiltWidth = neededW;
+                guiBuiltHeight = neededH;
+            }
         } else {
             gui = null;
             plot = null;
+            guiBuiltWidth = 0;
+            guiBuiltHeight = 0;
         }
     }
 
@@ -183,13 +315,20 @@ public class DisplayDemoBlockEntity extends BlockEntity {
     }
 
     /**
-     * Server tick. Only the controller ticks — animates the plot data.
+     * Server tick. Only the controller ticks — tracks interacting players
+     * and animates the plot data (unless paused).
      */
     public void serverTick() {
         trySyncToClient(); // sync runs for ALL blocks, not just controllers
         if (!isActive() || !isController() || gui == null) return;
 
-        time += 0.05f;
+        // Track interacting players' look direction for hover/drag
+        updateInteractingPlayers();
+
+        // Skip plot animation when paused
+        if (paused) return;
+
+        time += 0.05f * (float) speed;
         if (plot == null) return;
 
         plot.clearPlotData();
@@ -218,7 +357,127 @@ public class DisplayDemoBlockEntity extends BlockEntity {
         plot.addPlotData(zeroSeries);
     }
 
+    /**
+     * Raycasts from each interacting player's eye position to the display face.
+     * Updates stored mouse position and fires drag events if the cursor has moved.
+     * Removes players who are too far away or no longer online.
+     */
+    private void updateInteractingPlayers() {
+        if (level == null || interactingPlayers.isEmpty()) return;
+
+        long now = System.currentTimeMillis();
+        Iterator<UUID> it = interactingPlayers.iterator();
+        while (it.hasNext()) {
+            UUID playerId = it.next();
+            Player player = level.getPlayerByUUID(playerId);
+            if (player == null || player.distanceToSqr(Vec3.atCenterOf(getBlockPos())) > MAX_INTERACTION_DISTANCE_SQ) {
+                releasePlayer(playerId, it);
+                continue;
+            }
+
+            // Detect right-click release: useWithoutItem stops calling handleInteraction
+            if (mouseDown.contains(playerId)) {
+                Long lastUse = lastUseTime.get(playerId);
+                if (lastUse != null && now - lastUse > RELEASE_TIMEOUT_MS) {
+                    // Player released right-click — fire mouseReleased
+                    double[] last = lastMousePos.get(playerId);
+                    if (gui != null && last != null) {
+                        gui.mouseReleased(last[0], last[1], 0);
+                        syncToClient();
+                    }
+                    mouseDown.remove(playerId);
+                }
+            }
+
+            // Raycast from the player's eye to the display face
+            double[] guiCoords = raycastToDisplay(player);
+            if (guiCoords != null) {
+                gui.storeMousePos((int) guiCoords[0], (int) guiCoords[1]);
+                if (mouseDown.contains(playerId)) {
+                    double[] prev = lastMousePos.get(playerId);
+                    if (prev != null) {
+                        double dx = guiCoords[0] - prev[0];
+                        double dy = guiCoords[1] - prev[1];
+                        if (dx != 0 || dy != 0) {
+                            net.kroia.modutilities.ModUtilitiesMod.LOGGER.info(
+                                    "[DisplayBlock] Drag at ({},{}) delta=({},{})",
+                                    String.format("%.0f", guiCoords[0]), String.format("%.0f", guiCoords[1]),
+                                    String.format("%.1f", dx), String.format("%.1f", dy));
+                            gui.mouseDragged(guiCoords[0], guiCoords[1], 0, dx, dy);
+                            syncToClient();
+                        }
+                    }
+                } else {
+                    net.kroia.modutilities.ModUtilitiesMod.LOGGER.info(
+                            "[DisplayBlock] Raycast but mouseDown=false for player");
+                }
+                lastMousePos.put(playerId, guiCoords);
+            }
+        }
+    }
+
+    private void releasePlayer(UUID playerId, Iterator<UUID> it) {
+        it.remove();
+        double[] last = lastMousePos.remove(playerId);
+        if (gui != null && last != null) {
+            gui.mouseReleased(last[0], last[1], 0);
+            syncToClient();
+        }
+        mouseDown.remove(playerId);
+        lastUseTime.remove(playerId);
+    }
+
+    /**
+     * Raycasts from the player's eye in the look direction, checking if the ray
+     * hits a block in this display group. Returns GUI coordinates if it does.
+     *
+     * @param player the player to raycast from
+     * @return 2-element array {guiX, guiY}, or {@code null} if not looking at this display
+     */
+    private double[] raycastToDisplay(Player player) {
+        Vec3 eye = player.getEyePosition();
+        Vec3 look = player.getLookAngle();
+        Vec3 end = eye.add(look.scale(8.0)); // 8 block reach
+
+        BlockHitResult hit = level.clip(new ClipContext(
+                eye, end, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, player));
+
+        if (hit.getType() != HitResult.Type.BLOCK) return null;
+
+        BlockEntity be = level.getBlockEntity(hit.getBlockPos());
+        if (!(be instanceof DisplayDemoBlockEntity dbe) || !dbe.isActive()) return null;
+
+        // Verify this block belongs to OUR display group
+        if (!getBlockPos().equals(dbe.getControllerPos())) return null;
+
+        Direction facing = level.getBlockState(hit.getBlockPos()).getValue(HorizontalDirectionalBlock.FACING);
+        return DisplayDemoBlock.computeGuiCoords(hit, hit.getBlockPos(), facing, dbe);
+    }
+
     public Gui getGui() { return gui; }
+
+    /**
+     * Toggles the paused state of the plot animation. Updates the status label
+     * and button text to reflect the current state.
+     */
+    private void syncStateToGui() {
+        if (gui == null) return;
+        for (var el : gui.getElements()) {
+            if (el instanceof HorizontalSlider slider) {
+                slider.setSliderValue(speed);
+            }
+            if (el instanceof Label label && label.getText() != null && label.getText().startsWith("Speed:")) {
+                label.setText("Speed: " + (int) (speed * 100) + "%");
+            }
+        }
+    }
+
+    void togglePaused() {
+        paused = !paused;
+        net.kroia.modutilities.ModUtilitiesMod.LOGGER.info(
+                "[DisplayBlock] togglePaused -> paused={}", paused);
+        syncToClient();
+    }
 
     // -------------------------------------------------------------------------
     // Group recalculation (static)
@@ -415,9 +674,12 @@ public class DisplayDemoBlockEntity extends BlockEntity {
 
     /**
      * Builds the dashboard layout (same as ExampleDashboardScreen) at the given
-     * resolution.
+     * resolution. The Pause button is wired to toggle the {@code paused} flag
+     * on the owning block entity (if provided).
+     *
+     * @param owner the owning block entity (may be {@code null} for standalone use)
      */
-    public static void buildDashboard(Gui gui, int w, int h) {
+    private static void buildDashboard(Gui gui, int w, int h, DisplayDemoBlockEntity owner) {
         int margin = 10;
 
         Label title = new Label("Live Signal Dashboard");
@@ -463,13 +725,40 @@ public class DisplayDemoBlockEntity extends BlockEntity {
         gui.addElement(plot);
 
         Label statusLabel = new Label("Series: sine (blue), cosine (orange), zero (white)");
-        statusLabel.setBounds(0, plotTop + plotHeight + 6, w, 14);
+        statusLabel.setBounds(0, plotTop + plotHeight + 4, w, 12);
         statusLabel.setAlignment(GuiElement.Alignment.CENTER);
         gui.addElement(statusLabel);
 
-        Button pauseButton = new Button("Pause");
-        pauseButton.setBounds(w / 2 - 60, plotTop + plotHeight + 24, 120, 22);
+        int controlY = plotTop + plotHeight + 18;
+
+        Label speedLabel = new Label("Speed: 50%");
+        speedLabel.setBounds(margin, controlY, 60, 14);
+        speedLabel.setAlignment(GuiElement.Alignment.LEFT);
+        gui.addElement(speedLabel);
+
+        HorizontalSlider speedSlider = new HorizontalSlider(
+                margin + 62, controlY, w - margin * 2 - 62 - 70, 14);
+        speedSlider.setSliderValue(0.5);
+        speedSlider.setOnValueChanged(value -> {
+            if (owner != null) {
+                owner.speed = value;
+                owner.syncToClient();
+            }
+            speedLabel.setText("Speed: " + (int)(value * 100) + "%");
+        });
+        gui.addElement(speedSlider);
+
+        Button pauseButton = new Button("Pause", () -> {
+            if (owner != null) {
+                owner.togglePaused();
+            }
+        });
+        pauseButton.setBounds(w - margin - 65, controlY, 65, 14);
         gui.addElement(pauseButton);
+
+        if (owner != null) {
+            owner.statusLabel = statusLabel;
+        }
     }
 
     private void capturePlot() {
