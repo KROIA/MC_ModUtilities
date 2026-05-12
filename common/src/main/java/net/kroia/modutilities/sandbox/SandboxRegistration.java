@@ -6,6 +6,7 @@ import dev.architectury.registry.registries.RegistrySupplier;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.kroia.modutilities.ModUtilitiesMod;
+import net.kroia.modutilities.gui.display.client.AbstractDisplayBlockEntityRenderer;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
@@ -43,6 +44,21 @@ public class SandboxRegistration {
                     BlockEntityType.Builder.of(DisplayDemoBlockEntity::new, DISPLAY_DEMO_BLOCK.get())
                             .build(null));
 
+    // --- DisplayDemoPanelBlock ---
+    public static final RegistrySupplier<Block> DISPLAY_DEMO_PANEL_BLOCK =
+            BLOCKS.register("display_demo_panel_block", DisplayDemoPanelBlock::new);
+
+    public static final RegistrySupplier<Item> DISPLAY_DEMO_PANEL_BLOCK_ITEM =
+            ITEMS.register("display_demo_panel_block", () ->
+                    new BlockItem(DISPLAY_DEMO_PANEL_BLOCK.get(), new Item.Properties()));
+
+    @SuppressWarnings("unchecked")
+    public static final RegistrySupplier<BlockEntityType<DisplayDemoPanelBlockEntity>> DISPLAY_DEMO_PANEL_BLOCK_ENTITY =
+            (RegistrySupplier<BlockEntityType<DisplayDemoPanelBlockEntity>>) (RegistrySupplier<?>)
+            BLOCK_ENTITIES.register("display_demo_panel_block_entity", () ->
+                    BlockEntityType.Builder.of(DisplayDemoPanelBlockEntity::new, DISPLAY_DEMO_PANEL_BLOCK.get())
+                            .build(null));
+
     /**
      * Registers all deferred registries. Must be called during mod initialization
      * (before registry freeze).
@@ -64,6 +80,9 @@ public class SandboxRegistration {
     public static void registerClient() {
         DISPLAY_DEMO_BLOCK_ENTITY.listen(blockEntityType ->
                 BlockEntityRendererRegistry.register(blockEntityType,
-                        DisplayDemoBlockEntityRenderer::new));
+                        AbstractDisplayBlockEntityRenderer::new));
+        DISPLAY_DEMO_PANEL_BLOCK_ENTITY.listen(blockEntityType ->
+                BlockEntityRendererRegistry.register(blockEntityType,
+                        AbstractDisplayBlockEntityRenderer::new));
     }
 }

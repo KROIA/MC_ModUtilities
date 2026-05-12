@@ -1,4 +1,4 @@
-package net.kroia.modutilities.sandbox;
+package net.kroia.modutilities.gui.display.client;
 
 import com.mojang.blaze3d.pipeline.TextureTarget;
 import com.mojang.blaze3d.platform.NativeImage;
@@ -8,6 +8,8 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.client.ClientGraphics;
+import net.kroia.modutilities.gui.display.AbstractDisplayBlockEntity;
+import net.kroia.modutilities.gui.display.DisplayConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -27,33 +29,13 @@ import org.joml.Matrix4f;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Renderer for {@link DisplayDemoBlockEntity}. Supports multi-block display
- * groups: the controller block renders the full GUI to a shared texture, and
- * each block in the group renders its UV subset of that texture.
- * <p>
- * Per-group render data (framebuffer, texture, image) is keyed by the
- * controller's {@link BlockPos}. Non-controller blocks look up the controller's
- * render data to obtain the shared texture.
- */
 @Environment(EnvType.CLIENT)
-public class DisplayDemoBlockEntityRenderer implements BlockEntityRenderer<DisplayDemoBlockEntity> {
-
-    private static final int RENDER_SCALE = 2;
-
-    /**
-     * Maximum texture dimension (width or height) for the offscreen framebuffer.
-     * Groups whose combined resolution would exceed this are rendered at a
-     * reduced scale to stay within GPU texture size limits.
-     */
-    private static final int MAX_TEXTURE_DIM = 4096;
+public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEntity>
+        implements BlockEntityRenderer<T> {
 
     private final ClientGraphics clientGraphics;
     private MultiBufferSource.BufferSource offscreenBufferSource;
 
-    /**
-     * Per-group render data, keyed by the controller block's position.
-     */
     private static class GroupRenderData {
         DynamicTexture texture;
         NativeImage image;
@@ -67,16 +49,15 @@ public class DisplayDemoBlockEntityRenderer implements BlockEntityRenderer<Displ
         long lastRenderedFrame = -1;
     }
 
-
     private final Map<BlockPos, GroupRenderData> groupData = new HashMap<>();
 
-    public DisplayDemoBlockEntityRenderer(BlockEntityRendererProvider.Context context) {
+    public AbstractDisplayBlockEntityRenderer(BlockEntityRendererProvider.Context context) {
         this.clientGraphics = new ClientGraphics();
         clientGraphics.setFont(Minecraft.getInstance().font);
     }
 
     @Override
-    public boolean shouldRenderOffScreen(DisplayDemoBlockEntity blockEntity) {
+    public boolean shouldRenderOffScreen(T blockEntity) {
         return true;
     }
 
@@ -87,26 +68,24 @@ public class DisplayDemoBlockEntityRenderer implements BlockEntityRenderer<Displ
         }
     }
 
-    /**
-     * Computes the effective render scale for a group, reducing it if the
-     * combined resolution would exceed {@link #MAX_TEXTURE_DIM}.
-     */
-    private static int effectiveRenderScale(int gw, int gh) {
-        int scale = RENDER_SCALE;
+    private static int effectiveRenderScale(int gw, int gh, DisplayConfig config) {
+        int scale = config.renderScale();
+        int maxDim = config.maxTextureDim();
         while (scale > 1
-                && (gw * DisplayDemoBlockEntity.VIRTUAL_WIDTH * scale > MAX_TEXTURE_DIM
-                || gh * DisplayDemoBlockEntity.VIRTUAL_HEIGHT * scale > MAX_TEXTURE_DIM)) {
+                && (gw * config.virtualWidth() * scale > maxDim
+                || gh * config.virtualHeight() * scale > maxDim)) {
             scale--;
         }
         return scale;
     }
 
-    private GroupRenderData getOrCreateGroupData(BlockPos controllerPos, int gw, int gh) {
+    private GroupRenderData getOrCreateGroupData(BlockPos controllerPos, int gw, int gh,
+                                                 DisplayConfig config) {
         GroupRenderData data = groupData.get(controllerPos);
 
-        int scale = effectiveRenderScale(gw, gh);
-        int texW = gw * DisplayDemoBlockEntity.VIRTUAL_WIDTH * scale;
-        int texH = gh * DisplayDemoBlockEntity.VIRTUAL_HEIGHT * scale;
+        int scale = effectiveRenderScale(gw, gh, config);
+        int texW = gw * config.virtualWidth() * scale;
+        int texH = gh * config.virtualHeight() * scale;
 
         if (data != null && (data.groupWidth != gw || data.groupHeight != gh)) {
             Minecraft.getInstance().getTextureManager().release(data.location);
@@ -136,21 +115,20 @@ public class DisplayDemoBlockEntityRenderer implements BlockEntityRenderer<Displ
     }
 
     @Override
-    public void render(DisplayDemoBlockEntity blockEntity, float partialTick,
-                       PoseStack poseStack, MultiBufferSource bufferSource,
-                       int packedLight, int packedOverlay) {
+    public void render(T blockEntity, float partialTick, PoseStack poseStack,
+                       MultiBufferSource bufferSource, int packedLight, int packedOverlay) {
 
         if (!blockEntity.isActive()) return;
 
         BlockPos controllerPos = blockEntity.getControllerPos();
         if (controllerPos == null) return;
 
+        DisplayConfig config = blockEntity.getDisplayConfig();
         int gw = blockEntity.getGroupWidth();
         int gh = blockEntity.getGroupHeight();
 
-        GroupRenderData data = getOrCreateGroupData(controllerPos, gw, gh);
+        GroupRenderData data = getOrCreateGroupData(controllerPos, gw, gh, config);
 
-        // Any visible block in the group can trigger the texture update (once per frame)
         long currentFrame = Minecraft.getInstance().level != null
                 ? Minecraft.getInstance().level.getGameTime() : 0;
         if (data.lastRenderedFrame < currentFrame) {
@@ -159,44 +137,43 @@ public class DisplayDemoBlockEntityRenderer implements BlockEntityRenderer<Displ
                 gui = blockEntity.getGui();
             } else if (blockEntity.getLevel() != null) {
                 BlockEntity controllerBE = blockEntity.getLevel().getBlockEntity(controllerPos);
-                if (controllerBE instanceof DisplayDemoBlockEntity controller) {
+                if (controllerBE instanceof AbstractDisplayBlockEntity controller) {
                     gui = controller.getGui();
                 }
             }
             if (gui != null) {
-                updateClientMousePos(gui, controllerPos);
-                renderGuiToTexture(gui, partialTick, data);
+                updateClientMousePos(gui, controllerPos, config);
+                renderGuiToTexture(gui, partialTick, data, config);
                 data.lastRenderedFrame = currentFrame;
             }
         }
 
-        // Every block in the group renders its UV subset
         Direction facing = blockEntity.getBlockState().getValue(HorizontalDirectionalBlock.FACING);
         int gx = blockEntity.getGridX();
         int gy = blockEntity.getGridY();
 
         float u0 = (float) gx / gw;
         float u1 = (float) (gx + 1) / gw;
-        // Flip V: framebuffer is bottom-up, gridY=0 is top row
         float v0 = 1.0f - (float) (gy + 1) / gh;
         float v1 = 1.0f - (float) gy / gh;
 
-        renderQuadOnFace(poseStack, bufferSource, facing, data.location, u0, v0, u1, v1);
+        renderQuadOnFace(poseStack, bufferSource, facing, data.location,
+                u0, v0, u1, v1, config.faceOffset());
     }
 
-    private void updateClientMousePos(Gui gui, BlockPos controllerPos) {
+    private void updateClientMousePos(Gui gui, BlockPos controllerPos, DisplayConfig config) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return;
 
         if (mc.hitResult instanceof BlockHitResult blockHit
                 && blockHit.getType() == HitResult.Type.BLOCK) {
             BlockEntity hitBE = mc.level.getBlockEntity(blockHit.getBlockPos());
-            if (hitBE instanceof DisplayDemoBlockEntity hitDisplay
+            if (hitBE instanceof AbstractDisplayBlockEntity hitDisplay
                     && hitDisplay.isActive()
                     && controllerPos.equals(hitDisplay.getControllerPos())) {
                 Direction hitFacing = mc.level.getBlockState(blockHit.getBlockPos())
                         .getValue(HorizontalDirectionalBlock.FACING);
-                double[] coords = DisplayDemoBlock.computeGuiCoords(
+                double[] coords = AbstractDisplayBlockEntity.computeGuiCoordsFromHit(
                         blockHit, blockHit.getBlockPos(), hitFacing, hitDisplay);
                 if (coords != null) {
                     gui.storeMousePos((int) coords[0], (int) coords[1]);
@@ -204,17 +181,17 @@ public class DisplayDemoBlockEntityRenderer implements BlockEntityRenderer<Displ
                 }
             }
         }
-        // Not looking at this display — move mouse off-screen
         gui.storeMousePos(-1, -1);
     }
 
-    private void renderGuiToTexture(Gui gui, float partialTick, GroupRenderData data) {
+    private void renderGuiToTexture(Gui gui, float partialTick, GroupRenderData data,
+                                    DisplayConfig config) {
         Minecraft mc = Minecraft.getInstance();
 
         int texW = data.texWidth;
         int texH = data.texHeight;
-        int guiW = data.groupWidth * DisplayDemoBlockEntity.VIRTUAL_WIDTH;
-        int guiH = data.groupHeight * DisplayDemoBlockEntity.VIRTUAL_HEIGHT;
+        int guiW = data.groupWidth * config.virtualWidth();
+        int guiH = data.groupHeight * config.virtualHeight();
 
         ensureBufferSource();
 
@@ -230,7 +207,6 @@ public class DisplayDemoBlockEntityRenderer implements BlockEntityRenderer<Displ
         RenderSystem.clear(org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT
                 | org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT, false);
 
-        // Disable fog so text/GUI colors aren't tinted by sky color
         float[] prevFogColor = new float[4];
         prevFogColor[0] = RenderSystem.getShaderFogColor()[0];
         prevFogColor[1] = RenderSystem.getShaderFogColor()[1];
@@ -268,7 +244,6 @@ public class DisplayDemoBlockEntityRenderer implements BlockEntityRenderer<Displ
         guiGraphics.pose().popPose();
         offscreenBufferSource.endBatch();
 
-        // Save current texture binding, download framebuffer, restore
         int prevTexture = org.lwjgl.opengl.GL11.glGetInteger(org.lwjgl.opengl.GL11.GL_TEXTURE_BINDING_2D);
         data.framebuffer.bindRead();
         data.image.downloadTexture(0, false);
@@ -286,19 +261,9 @@ public class DisplayDemoBlockEntityRenderer implements BlockEntityRenderer<Displ
         RenderSystem.setShaderFogColor(prevFogColor[0], prevFogColor[1], prevFogColor[2], prevFogColor[3]);
     }
 
-    /**
-     * Renders a textured quad on the block face with the specified UV sub-region.
-     *
-     * @param u0 left U coordinate [0..1]
-     * @param v0 top V coordinate [0..1]
-     * @param u1 right U coordinate [0..1]
-     * @param v1 bottom V coordinate [0..1]
-     */
     private void renderQuadOnFace(PoseStack poseStack, MultiBufferSource bufferSource,
                                    Direction facing, ResourceLocation texture,
-                                   float u0, float v0, float u1, float v1) {
-        float offset = 0.005f;
-
+                                   float u0, float v0, float u1, float v1, float offset) {
         poseStack.pushPose();
 
         switch (facing) {

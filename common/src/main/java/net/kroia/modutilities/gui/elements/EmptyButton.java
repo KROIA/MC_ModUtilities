@@ -21,6 +21,7 @@ import net.minecraft.sounds.SoundEvents;
  */
 public class EmptyButton extends GuiElement {
     protected boolean isPressed = false;
+    protected int clickCount = 0;
     protected int colorHover = DEFAULT_HOVER_BACKGROUND_COLOR;
     protected int colorPressed = DEFAULT_FOCUSED_BACKGROUND_COLOR;
 
@@ -183,6 +184,21 @@ public class EmptyButton extends GuiElement {
     {
         return isPressed;
     }
+    public int getClickCount() { return clickCount; }
+
+    /**
+     * Syncs the click count from a remote source. If the source has more clicks,
+     * fires onFallingEdge for each delta to replay missed button presses.
+     */
+    public void syncClickCount(int sourceCount) {
+        int delta = sourceCount - clickCount;
+        if (delta > 0) {
+            for (int i = 0; i < delta; i++) {
+                if (onFallingEdge != null) onFallingEdge.run();
+            }
+            clickCount = sourceCount;
+        }
+    }
 
     @Override
     protected void renderBackground() {
@@ -223,6 +239,7 @@ public class EmptyButton extends GuiElement {
         if(!isPressed) {
             playLocalSound(SoundEvents.UI_BUTTON_CLICK.value(),0.5F);
             isPressed = true;
+            clickCount++;
             if(onFallingEdge != null) {
                 onFallingEdge.run();
             }

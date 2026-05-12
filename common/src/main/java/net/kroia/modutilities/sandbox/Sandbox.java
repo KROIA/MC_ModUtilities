@@ -150,6 +150,16 @@ public class Sandbox {
                                         player.sendSystemMessage(Component.literal("Gave DisplayBlock demo block"));
                                         return 1;
                                     }))
+                            .then(Commands.literal("giveDisplayPanel")
+                                    .executes(context -> {
+                                        ServerPlayer player = context.getSource().getPlayerOrException();
+                                        ItemStack displayPanel = new ItemStack(SandboxRegistration.DISPLAY_DEMO_PANEL_BLOCK.get());
+                                        if (!player.getInventory().add(displayPanel)) {
+                                            player.drop(displayPanel, false);
+                                        }
+                                        player.sendSystemMessage(Component.literal("Gave DisplayPanel demo block"));
+                                        return 1;
+                                    }))
             );
         }
 

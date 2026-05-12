@@ -1,6 +1,7 @@
 package net.kroia.modutilities.gui;
 
 import net.kroia.modutilities.gui.elements.CheckBox;
+import net.kroia.modutilities.gui.elements.EmptyButton;
 import net.kroia.modutilities.gui.elements.Label;
 import net.kroia.modutilities.gui.elements.Plot;
 import net.kroia.modutilities.gui.elements.TextBox;
@@ -103,6 +104,9 @@ public class GuiStateSync {
             }
             if (src instanceof CheckBox s && tgt instanceof CheckBox t) {
                 if (s.isChecked() != t.isChecked()) t.setChecked(s.isChecked());
+            }
+            if (src instanceof EmptyButton s && tgt instanceof EmptyButton t) {
+                t.syncClickCount(s.getClickCount());
             }
         }
 

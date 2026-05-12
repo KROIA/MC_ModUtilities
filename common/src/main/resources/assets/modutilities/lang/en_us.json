@@ -3,5 +3,6 @@
   "gui.modutilities.cancel": "Cancel",
   "gui.modutilities.search": "Search",
   "gui.modutilities.items": "Items",
-  "block.modutilities.display_demo_block": "Display Demo Block"
+  "block.modutilities.display_demo_block": "Display Demo Block",
+  "block.modutilities.display_demo_panel_block": "Display Panel (Demo)"
 }
