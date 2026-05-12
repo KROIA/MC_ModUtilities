@@ -7,6 +7,8 @@ import net.kroia.modutilities.gui.elements.TextBox;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.elements.base.Slider;
 
+import java.util.ArrayList;
+import java.util.ConcurrentModificationException;
 import java.util.List;
 
 /**
@@ -71,13 +73,20 @@ public class GuiStateSync {
                 if (s.getTextColor() != t.getTextColor()) t.setTextColor(s.getTextColor());
             }
             if (src instanceof Plot s && tgt instanceof Plot t) {
-                t.clearPlotData();
-                for (var series : s.getPlotDataList()) {
-                    Plot.PlotData copy = new Plot.PlotData();
-                    copy.color = series.color;
-                    copy.thickness = series.thickness;
-                    copy.yValues.addAll(series.yValues);
-                    t.addPlotData(copy);
+                try {
+                    List<Plot.PlotData> snapshot = new ArrayList<>();
+                    for (var series : s.getPlotDataList()) {
+                        Plot.PlotData copy = new Plot.PlotData();
+                        copy.color = series.color;
+                        copy.thickness = series.thickness;
+                        copy.yValues.addAll(series.yValues);
+                        snapshot.add(copy);
+                    }
+                    t.clearPlotData();
+                    for (var copy : snapshot) {
+                        t.addPlotData(copy);
+                    }
+                } catch (ConcurrentModificationException ignored) {
                 }
             }
         }

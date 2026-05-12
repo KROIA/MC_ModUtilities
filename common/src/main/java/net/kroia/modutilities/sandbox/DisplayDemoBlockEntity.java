@@ -56,6 +56,7 @@ public class DisplayDemoBlockEntity extends BlockEntity {
     private float time = 0;
     private boolean paused = false;
     private double speed = 0.5;
+    private String titleText = "Live Signal Dashboard";
 
     // Interaction state (server-side only)
     /** Maximum squared distance (in blocks) a player can interact from. 8 blocks = 64 squared. */
@@ -212,6 +213,7 @@ public class DisplayDemoBlockEntity extends BlockEntity {
             capturePlot();
             guiBuiltWidth = totalW;
             guiBuiltHeight = totalH;
+            syncStateToGui();
         } else {
             this.gui = null;
             this.plot = null;
@@ -238,6 +240,7 @@ public class DisplayDemoBlockEntity extends BlockEntity {
         tag.putInt("gy", gridY);
         tag.putBoolean("paused", paused);
         tag.putDouble("speed", speed);
+        tag.putString("titleText", titleText);
     }
 
     @Override
@@ -252,8 +255,9 @@ public class DisplayDemoBlockEntity extends BlockEntity {
         gridY = tag.getInt("gy");
         paused = tag.getBoolean("paused");
         speed = tag.getDouble("speed");
-
-        syncStateToGui();
+        if (tag.contains("titleText")) {
+            titleText = tag.getString("titleText");
+        }
 
         if (isActive() && isController()) {
             int neededW = groupWidth * VIRTUAL_WIDTH;
@@ -272,6 +276,8 @@ public class DisplayDemoBlockEntity extends BlockEntity {
             guiBuiltWidth = 0;
             guiBuiltHeight = 0;
         }
+
+        syncStateToGui();
     }
 
     @Override
@@ -450,6 +456,9 @@ public class DisplayDemoBlockEntity extends BlockEntity {
             if (el instanceof HorizontalSlider slider) {
                 speed = slider.getSliderValue();
             }
+            if (el instanceof TextBox tb) {
+                titleText = tb.getText();
+            }
         }
     }
 
@@ -466,16 +475,27 @@ public class DisplayDemoBlockEntity extends BlockEntity {
             if (el instanceof Label label && label.getText() != null && label.getText().startsWith("Speed:")) {
                 label.setText("Speed: " + (int) (speed * 100) + "%");
             }
+            if (el instanceof TextBox tb) {
+                tb.setText(titleText);
+            }
+        }
+        if (!gui.getElements().isEmpty() && gui.getElements().get(0) instanceof Label title
+                && !(gui.getElements().get(0) instanceof TextBox)) {
+            title.setText(titleText);
         }
     }
 
     public void handleTextInput(String text) {
         if (gui == null) return;
+        this.titleText = text;
         for (var el : gui.getElements()) {
             if (el instanceof TextBox tb) {
                 tb.setText(text);
                 break;
             }
+        }
+        if (!gui.getElements().isEmpty() && gui.getElements().get(0) instanceof Label title) {
+            title.setText(text);
         }
         syncToClient();
     }
@@ -548,6 +568,10 @@ public class DisplayDemoBlockEntity extends BlockEntity {
      * @param facing     the facing direction of the blocks in the group
      */
     public static void recalculateGroups(Level level, BlockPos changedPos, Direction facing) {
+        recalculateGroups(level, changedPos, facing, null);
+    }
+
+    public static void recalculateGroups(Level level, BlockPos changedPos, Direction facing, DisplayState inheritState) {
         // 1. Flood-fill to collect all connected same-facing DisplayDemoBlocks
         Set<BlockPos> connected = new HashSet<>();
         Queue<BlockPos> queue = new LinkedList<>();
@@ -572,6 +596,18 @@ public class DisplayDemoBlockEntity extends BlockEntity {
         }
 
         if (connected.isEmpty()) return;
+
+        DisplayState state = null;
+        for (BlockPos p : connected) {
+            BlockEntity be = level.getBlockEntity(p);
+            if (be instanceof DisplayDemoBlockEntity dbe && dbe.isController() && dbe.gui != null) {
+                state = dbe.captureState();
+                break;
+            }
+        }
+        if (state == null) {
+            state = inheritState;
+        }
 
         // 2. Find the top-left block (controller)
         BlockPos topLeft = findTopLeft(connected, facing);
@@ -615,6 +651,13 @@ public class DisplayDemoBlockEntity extends BlockEntity {
                 }
             }
         }
+
+        if (state != null) {
+            BlockEntity newCtrlBE = level.getBlockEntity(topLeft);
+            if (newCtrlBE instanceof DisplayDemoBlockEntity newCtrl) {
+                newCtrl.applyState(state);
+            }
+        }
     }
 
     /**
@@ -627,6 +670,10 @@ public class DisplayDemoBlockEntity extends BlockEntity {
      * @param facing     the facing direction of the removed block
      */
     public static void recalculateNeighborGroups(Level level, BlockPos removedPos, Direction facing) {
+        recalculateNeighborGroups(level, removedPos, facing, null);
+    }
+
+    public static void recalculateNeighborGroups(Level level, BlockPos removedPos, Direction facing, DisplayState inheritState) {
         Direction rightDir = getRightDirection(facing);
         BlockPos[] neighbors = {
                 removedPos.relative(rightDir),
@@ -642,7 +689,7 @@ public class DisplayDemoBlockEntity extends BlockEntity {
                 BlockState state = level.getBlockState(neighbor);
                 if (state.hasProperty(HorizontalDirectionalBlock.FACING)
                         && state.getValue(HorizontalDirectionalBlock.FACING) == facing) {
-                    recalculateGroups(level, neighbor, facing);
+                    recalculateGroups(level, neighbor, facing, inheritState);
                     processed.add(neighbor);
                 }
             }
@@ -854,5 +901,25 @@ public class DisplayDemoBlockEntity extends BlockEntity {
             }
         }
         plot = null;
+    }
+
+    // -------------------------------------------------------------------------
+    // State transfer
+    // -------------------------------------------------------------------------
+
+    public record DisplayState(double speed, String titleText, boolean paused, float time) {}
+
+    public DisplayState captureState() {
+        return new DisplayState(speed, titleText, paused, time);
+    }
+
+    public void applyState(DisplayState state) {
+        if (state == null) return;
+        this.speed = state.speed;
+        this.titleText = state.titleText;
+        this.paused = state.paused;
+        this.time = state.time;
+        syncStateToGui();
+        syncToClient();
     }
 }

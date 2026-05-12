@@ -100,7 +100,7 @@ public class DisplayDemoBlock extends HorizontalDirectionalBlock implements Enti
         } else {
             // Client: open the interaction screen — pass the clicked block pos,
             // the screen will find the server controller from there
-            SandboxClientHooks.openDisplayInteractionScreen(pos);
+            SandboxClientHooks.openDisplayInteractionScreen(pos.immutable());
         }
 
         return InteractionResult.SUCCESS;
@@ -182,10 +182,20 @@ public class DisplayDemoBlock extends HorizontalDirectionalBlock implements Enti
     public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
         if (!newState.is(state.getBlock())) {
             Direction facing = state.getValue(FACING);
+            DisplayDemoBlockEntity.DisplayState capturedState = null;
+            if (!level.isClientSide()) {
+                BlockEntity be = level.getBlockEntity(pos);
+                if (be instanceof DisplayDemoBlockEntity dbe) {
+                    DisplayDemoBlockEntity ctrl = dbe.getControllerEntity();
+                    if (ctrl != null) {
+                        capturedState = ctrl.captureState();
+                    }
+                }
+            }
             super.onRemove(state, level, pos, newState, movedByPiston);
             if (!level.isClientSide()) {
                 try {
-                    DisplayDemoBlockEntity.recalculateNeighborGroups(level, pos, facing);
+                    DisplayDemoBlockEntity.recalculateNeighborGroups(level, pos, facing, capturedState);
                 } catch (Exception e) {
                     net.kroia.modutilities.ModUtilitiesMod.LOGGER.warn("Failed to recalculate display groups on removal", e);
                 }
