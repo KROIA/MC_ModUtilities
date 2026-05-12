@@ -1,7 +1,5 @@
 package net.kroia.modutilities.gui.layout;
 
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 
 /**
@@ -12,7 +10,6 @@ import net.kroia.modutilities.gui.elements.base.GuiElement;
  * {@code layoutChangedInternal()} pipeline. Concrete subclasses include {@link LayoutHorizontal},
  * {@link LayoutVertical} and {@link LayoutGrid}.
  */
-@Environment(EnvType.CLIENT)
 public abstract class Layout {
     /** When false the layout is skipped and child positions/sizes are left untouched. */
     public boolean enabled = true;

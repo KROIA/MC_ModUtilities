@@ -1,44 +1,31 @@
 package net.kroia.modutilities.gui;
 
-import com.mojang.blaze3d.vertex.*;
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
-import net.kroia.modutilities.gui.elements.base.Vertex;
 import net.kroia.modutilities.gui.elements.base.VertexBuffer;
 import net.kroia.modutilities.gui.geometry.Rectangle;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.item.ItemStack;
-import org.joml.Matrix4f;
 import org.joml.Quaternionf;
-import org.lwjgl.glfw.GLFW;
-
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Root logical container of the project's GUI framework.
  * <p>
- * A {@code Gui} is not a Minecraft {@link Screen} itself; instead it owns a
+ * A {@code Gui} is not a Minecraft screen itself; instead it owns a
  * collection of top-level {@link GuiElement}s and forwards lifecycle, render,
- * and input events from a hosting screen ({@link GuiScreen} or
- * {@link GuiContainerScreen}) to those elements. It also tracks shared global
- * state such as mouse position, GUI scale, scissor rect, focused element and
- * z-ordering for the various render passes.
- *
- * @apiNote The whole {@code gui/} package is client-only
- *          ({@code @Environment(EnvType.CLIENT)}); this class must only be used
- *          on the client.
+ * and input events from a hosting screen to those elements. It also tracks
+ * shared global state such as mouse position, GUI scale, scissor rect,
+ * focused element and z-ordering for the various render passes.
+ * <p>
+ * This class has <b>no client-only dependencies</b>. It can be instantiated
+ * on both the client and the server. On the client, a hosting screen
+ * (e.g. GuiScreen or GuiContainerScreen) injects a {@code ClientGraphics}
+ * and {@code ClientInputProvider}; on the server, the default no-op
+ * {@link IGraphics} and {@link IInputProvider} are used.
  */
-@Environment(EnvType.CLIENT)
 public class Gui {
 
     protected int backgroundZ = 0;
@@ -46,12 +33,40 @@ public class Gui {
     protected int tooltipZ = 200;
     protected int gizmoZ = 300;
 
-    protected final Graphics graphics;
-    protected Screen parent;
+    /**
+     * Functional interface for playing a local sound.
+     */
+    @FunctionalInterface
+    public interface SoundPlayer {
+        void play(SoundEvent sound, float volume, float pitch);
+    }
+
+    private static IGraphics fallbackGraphics = new IGraphics() {};
+
+    /**
+     * Sets a static fallback graphics backend used by elements that are not
+     * yet attached to a Gui (e.g. during construction). On the client, this
+     * should be set once at startup with a font-aware backend so that
+     * {@link net.kroia.modutilities.gui.elements.base.GuiElement#getTextWidth}
+     * works before the element is added to a Gui.
+     */
+    public static void setFallbackGraphics(IGraphics graphics) {
+        if (graphics != null) fallbackGraphics = graphics;
+    }
+
+    public static IGraphics getFallbackGraphics() {
+        return fallbackGraphics;
+    }
+
+    protected IGraphics graphics;
+    protected IInputProvider inputProvider;
+    protected Object font;
+    protected SoundPlayer soundPlayer;
     protected int mousePosX, mousePosY;
 
     private float guiScale = 1.0f; // Scale of the GUI, default is 1.0 (no scaling)
     private float invGuiScale = 1.0f; // Inverse scale of the GUI, default is 1.0 (no scaling)
+    private double displayScaleFactor = 1.0; // Minecraft GUI scale, set by hosting screen
 
     protected float partialTick;
     private Rectangle globalScissorArea = null;
@@ -61,17 +76,99 @@ public class Gui {
     private final List<GuiElement> elements = new ArrayList<>();
 
     /**
-     * Creates a new GUI root bound to the given hosting screen.
-     *
-     * @param parent the Minecraft screen that will dispatch lifecycle events to
-     *               this {@code Gui}; typically a {@link GuiScreen} or
-     *               {@link GuiContainerScreen}
+     * Creates a new GUI root with no-op graphics and input backends.
+     * <p>
+     * On the client, call {@link #setGraphicsBackend(IGraphics)} and
+     * {@link #setInputProvider(IInputProvider)} to inject the real backends.
      */
-    public Gui(Screen parent)
+    public Gui()
     {
-        this.parent = parent;
-        this.graphics = new Graphics();
+        this.graphics = new IGraphics() {};
+        this.inputProvider = new IInputProvider() {};
+    }
 
+    /**
+     * Replaces the rendering backend used by this GUI.
+     * <p>
+     * On the client the hosting screen injects a ClientGraphics; on the
+     * server (or in headless tests) a no-op {@link IGraphics} can be used.
+     *
+     * @param graphics the new rendering backend
+     */
+    public void setGraphicsBackend(IGraphics graphics)
+    {
+        this.graphics = graphics;
+    }
+
+    /**
+     * Returns the input provider used by this GUI and its elements.
+     *
+     * @return the current {@link IInputProvider}
+     */
+    public IInputProvider getInputProvider()
+    {
+        return this.inputProvider;
+    }
+
+    /**
+     * Replaces the input provider used by this GUI.
+     * <p>
+     * On the client the hosting screen injects a ClientInputProvider;
+     * on the server (or in headless tests) a no-op {@link IInputProvider} can
+     * be used.
+     *
+     * @param provider the new input provider
+     */
+    public void setInputProvider(IInputProvider provider)
+    {
+        this.inputProvider = provider;
+    }
+
+    /**
+     * Sets the font object used for text rendering measurements.
+     * <p>
+     * On the client, the hosting screen passes {@code Minecraft.getInstance().font}.
+     * On the server, this remains {@code null} and text drawing methods no-op.
+     *
+     * @param font the font (client: {@code net.minecraft.client.gui.Font}),
+     *             or {@code null} for server-side usage
+     */
+    public void setFont(Object font)
+    {
+        this.font = font;
+    }
+
+    /**
+     * Returns the font object stored in this GUI.
+     * <p>
+     * On the server this returns {@code null}. Client code that needs the
+     * real {@code Font} type should cast the return value.
+     *
+     * @return the font object, or {@code null} if not set
+     */
+    public Object getFont()
+    {
+        return this.font;
+    }
+
+    /**
+     * Sets the Minecraft GUI display scale factor used by
+     * {@link #moveMouseToPos(int, int)} to convert from GUI coordinates to
+     * window-pixel coordinates.
+     *
+     * @param factor the Minecraft GUI scale (1.0, 2.0, 3.0, ...)
+     */
+    public void setDisplayScaleFactor(double factor)
+    {
+        this.displayScaleFactor = factor;
+    }
+
+    /**
+     * @return the Minecraft GUI display scale factor
+     */
+    public double getDisplayScaleFactor()
+    {
+        return this.displayScaleFactor;
     }
 
     /**
@@ -121,19 +218,11 @@ public class Gui {
     }
 
     /**
-     * @return the {@link Graphics} wrapper through which all drawing is performed
+     * @return the {@link IGraphics} wrapper through which all drawing is performed
      */
-    public Graphics getGraphics()
+    public IGraphics getGraphics()
     {
         return this.graphics;
-    }
-
-    /**
-     * @return the active {@link PoseStack} from the underlying graphics wrapper
-     */
-    public PoseStack getPoseStack()
-    {
-        return this.graphics.getPoseStack();
     }
 
     /**
@@ -160,22 +249,6 @@ public class Gui {
     public float getPartialTick()
     {
         return this.partialTick;
-    }
-
-    /**
-     * @return the default Minecraft {@link Font} from the active client instance
-     */
-    public static Font getFont()
-    {
-        return Minecraft.getInstance().font;
-    }
-
-    /**
-     * @return the active {@link Minecraft} client instance
-     */
-    public static Minecraft getMinecraft()
-    {
-        return Minecraft.getInstance();
     }
 
     /**
@@ -250,33 +323,16 @@ public class Gui {
         this.gizmoZ = z;
     }
 
-
     /**
-     * @return the Minecraft screen that hosts this {@code Gui}
-     */
-    public Screen getScreen()
-    {
-        return parent;
-    }
-
-    /**
-     * Reports whether the parent screen has finished its initialization.
+     * Reports whether the hosting screen has finished its initialization.
      * <p>
-     * Mirrors the parent's {@code isInitialized()} flag for {@link GuiScreen}
-     * and {@link GuiContainerScreen}; returns {@code false} for any other or
-     * absent parent.
+     * This method is overridden by client screen subclasses. The base
+     * implementation returns {@code false}.
      *
-     * @return {@code true} if the parent screen is initialized, {@code false}
-     *         otherwise
+     * @return {@code true} if the hosting screen is initialized
      */
     public boolean isInitialized()
     {
-        if(parent == null)
-            return false;
-        if(parent instanceof GuiScreen guiScreen)
-            return guiScreen.isInitialized();
-        if(parent instanceof GuiContainerScreen guiContainerScreen)
-            return guiContainerScreen.isInitialized();
         return false;
     }
 
@@ -379,18 +435,16 @@ public class Gui {
 
     /**
      * Moves the OS-level cursor to the given GUI-coordinate position, factoring
-     * in both Minecraft's GUI scale and this {@code Gui}'s additional scale.
+     * in both the display scale factor and this {@code Gui}'s additional scale.
      *
      * @param x the desired x position in GUI element coordinates
      * @param y the desired y position in GUI element coordinates
      */
     public void moveMouseToPos(int x, int y)
     {
-        double guiScaleFactor = getMinecraftGuiScale();
-        double newX = x * guiScaleFactor * guiScale;
-        double newY = y * guiScaleFactor * guiScale;
-        long windowHandle = getWindowHandle();
-        GLFW.glfwSetCursorPos(windowHandle, newX, newY);
+        double newX = x * displayScaleFactor * guiScale;
+        double newY = y * displayScaleFactor * guiScale;
+        inputProvider.setCursorPos(newX, newY);
     }
 
     /**
@@ -470,7 +524,7 @@ public class Gui {
      *
      * @param mouseX the mouse x position in window pixels
      * @param mouseY the mouse y position in window pixels
-     * @param button the GLFW mouse button code
+     * @param button the mouse button code
      * @return {@code true} if any element consumed the event
      */
     public boolean mouseClicked(double mouseX, double mouseY, int button)
@@ -489,7 +543,7 @@ public class Gui {
      *
      * @param mouseX the current mouse x position in window pixels
      * @param mouseY the current mouse y position in window pixels
-     * @param button the GLFW mouse button code held during the drag
+     * @param button the mouse button code held during the drag
      * @param deltaX the change in x since the previous event
      * @param deltaY the change in y since the previous event
      * @return {@code true} if any element consumed the event
@@ -510,7 +564,7 @@ public class Gui {
      *
      * @param mouseX the mouse x position in window pixels
      * @param mouseY the mouse y position in window pixels
-     * @param button the GLFW mouse button code that was released
+     * @param button the mouse button code that was released
      * @return {@code true} if any element consumed the event
      */
     public boolean mouseReleased(double mouseX, double mouseY, int button)
@@ -546,7 +600,7 @@ public class Gui {
     /**
      * Dispatches a key-press event to the top-level elements.
      *
-     * @param keyCode   the GLFW key code
+     * @param keyCode   the key code
      * @param scanCode  the platform-specific scan code
      * @param modifiers a bitmask of active modifier keys
      * @return {@code true} if any element consumed the event
@@ -594,9 +648,10 @@ public class Gui {
     {
         // Split text by new line
         String[] lines = text.split("\n");
+        int lineHeight = graphics.getFontLineHeight();
         for(int i = 0; i < lines.length; i++)
         {
-            graphics.drawString(getFont(), lines[i], x, y + i*getFont().lineHeight, color);
+            graphics.drawString(font, lines[i], x, y + i*lineHeight, color);
         }
     }
 
@@ -613,9 +668,10 @@ public class Gui {
     {
         // Split text by new line
         String[] lines = text.split("\n");
+        int lineHeight = graphics.getFontLineHeight();
         for(int i = 0; i < lines.length; i++)
         {
-            graphics.drawString(getFont(), lines[i], x, y + i*getFont().lineHeight, color, dropShadow);
+            graphics.drawString(font, lines[i], x, y + i*lineHeight, color, dropShadow);
         }
     }
     /**
@@ -631,9 +687,10 @@ public class Gui {
     {
         // Split text by new line
         String[] lines = text.getString().split("\n");
+        int lineHeight = graphics.getFontLineHeight();
         for(int i = 0; i < lines.length; i++)
         {
-            graphics.drawString(getFont(), lines[i], x, y + i*getFont().lineHeight, color);
+            graphics.drawString(font, lines[i], x, y + i*lineHeight, color);
         }
     }
 
@@ -650,9 +707,10 @@ public class Gui {
     {
         // Split text by new line
         String[] lines = text.getString().split("\n");
+        int lineHeight = graphics.getFontLineHeight();
         for(int i = 0; i < lines.length; i++)
         {
-            graphics.drawString(getFont(), lines[i], x, y + i*getFont().lineHeight, color, dropShadow);
+            graphics.drawString(font, lines[i], x, y + i*lineHeight, color, dropShadow);
         }
     }
     /**
@@ -671,8 +729,7 @@ public class Gui {
         scale(fontScale, fontScale, 1.f);
         // Split text by new line
         String[] lines = text.split("\n");
-        Font font = getFont();
-        int lineHeight = font.lineHeight;
+        int lineHeight = graphics.getFontLineHeight();
         for(int i = 0; i < lines.length; i++)
         {
             graphics.drawString(font, lines[i], 0, i*lineHeight, color);
@@ -697,8 +754,7 @@ public class Gui {
         scale(fontScale, fontScale, 1.f);
         // Split text by new line
         String[] lines = text.split("\n");
-        Font font = getFont();
-        int lineHeight = font.lineHeight;
+        int lineHeight = graphics.getFontLineHeight();
         for(int i = 0; i < lines.length; i++)
         {
             graphics.drawString(font, lines[i], 0, i*lineHeight, color, dropShadow);
@@ -722,8 +778,7 @@ public class Gui {
         scale(fontScale, fontScale, 1.f);
         // Split text by new line
         String[] lines = text.getString().split("\n");
-        Font font = getFont();
-        int lineHeight = font.lineHeight;
+        int lineHeight = graphics.getFontLineHeight();
         for(int i = 0; i < lines.length; i++)
         {
             graphics.drawString(font, lines[i], 0, i*lineHeight, color);
@@ -748,8 +803,7 @@ public class Gui {
         scale(fontScale, fontScale, 1.f);
         // Split text by new line
         String[] lines = text.getString().split("\n");
-        Font font = getFont();
-        int lineHeight = font.lineHeight;
+        int lineHeight = graphics.getFontLineHeight();
         for(int i = 0; i < lines.length; i++)
         {
             graphics.drawString(font, lines[i], 0, i*lineHeight, color, dropShadow);
@@ -760,70 +814,30 @@ public class Gui {
 
     /**
      * Draws a single line segment of a given thickness between two points.
+     * Delegates to {@link IGraphics#drawLine(int, int, int, int, float, int)}.
      *
      * @param x1        the start x coordinate
      * @param y1        the start y coordinate
      * @param x2        the end x coordinate
      * @param y2        the end y coordinate
-     * @param thickness the line thickness in GUI pixels; lines shorter than
-     *                  ~1e-4 units are skipped
+     * @param thickness the line thickness in GUI pixels
      * @param color     the packed ARGB color
      */
     public void drawLine(int x1, int y1, int x2, int y2, float thickness,  int color)
     {
-        class PointF
-        {
-            public float x;
-            public float y;
-            public PointF(float x, float y)
-            {
-                this.x = x;
-                this.y = y;
-            }
-        }
-
-        int red = (color >> 16) & 0xFF;
-        int green = (color >> 8) & 0xFF;
-        int blue = color & 0xFF;
-        int alpha = (color >> 24) & 0xFF;
-
-        PointF direction = new PointF(x2-x1, y2-y1);
-        float length = (float)Math.sqrt(direction.x*direction.x + direction.y*direction.y);
-        if(length < 0.0001F)
-            return;
-        PointF unitDirection = new PointF(direction.x/length, direction.y/length);
-        PointF normal = new PointF(-unitDirection.y, unitDirection.x);
-        PointF offset = new PointF(thickness/2*normal.x, thickness/2*normal.y);
-
-        PointF p1 = new PointF(x1+offset.x, y1+offset.y);
-        PointF p2 = new PointF(x2+offset.x, y2+offset.y);
-        PointF p3 = new PointF(x2-offset.x, y2-offset.y);
-        PointF p4 = new PointF(x1-offset.x, y1-offset.y);
-
-
-        Matrix4f matrix4f = graphics.getLastPoseMatrix();
-        VertexConsumer vertexconsumer = graphics.bufferSource().getBuffer(RenderType.debugQuads());
-        vertexconsumer.addVertex(matrix4f, (float)p1.x, (float)p1.y, (float)0).setColor(red, green, blue, alpha);
-        vertexconsumer.addVertex(matrix4f, (float)p2.x, (float)p2.y, (float)0).setColor(red, green, blue, alpha);
-        vertexconsumer.addVertex(matrix4f, (float)p3.x, (float)p3.y, (float)0).setColor(red, green, blue, alpha);
-        vertexconsumer.addVertex(matrix4f, (float)p4.x, (float)p4.y, (float)0).setColor(red, green, blue, alpha);
-        graphics.flush();
+        graphics.drawLine(x1, y1, x2, y2, thickness, color);
     }
+
     /**
      * Renders the contents of a {@link VertexBuffer} as quads in a single batch.
+     * Delegates to {@link IGraphics#drawVertexBuffer_QUADS(VertexBuffer)}.
      *
      * @param buffer the vertex buffer to render
      */
     public void drawVertexBuffer_QUADS(VertexBuffer buffer) {
-        Matrix4f matrix4f = graphics.getLastPoseMatrix();
-        RenderType renderType = RenderType.debugQuads();
-        VertexConsumer vertexconsumer = graphics.bufferSource().getBuffer(renderType);
-        for(Vertex vertex : buffer.getVertices())
-        {
-            vertexconsumer.addVertex(matrix4f, vertex.x, vertex.y, 0).setColor(vertex.red, vertex.green, vertex.blue, vertex.alpha);
-        }
-        graphics.flush();
+        graphics.drawVertexBuffer_QUADS(buffer);
     }
+
     /**
      * Fills a rectangle of the given size with a solid color.
      *
@@ -854,24 +868,6 @@ public class Gui {
     }
 
     /**
-     * Fills a rectangle with a vertical color gradient using a custom render type
-     * and z offset.
-     *
-     * @param renderType the render type to use
-     * @param x          the x position
-     * @param y          the y position
-     * @param z          the z offset
-     * @param width      the rectangle width
-     * @param height     the rectangle height
-     * @param colorFrom  the packed ARGB color at the top
-     * @param colorTo    the packed ARGB color at the bottom
-     */
-    public void drawGradient(RenderType renderType, int x, int y, int z, int width, int height, int colorFrom, int colorTo)
-    {
-        graphics.fillGradient(renderType, x,y,width+x,height+y,colorFrom,colorTo, z);
-    }
-
-    /**
      * Renders a 1px outline around the given rectangle.
      *
      * @param x      the x position
@@ -898,11 +894,11 @@ public class Gui {
         if(isScissorEnabled())
         {
             scissorPause();
-            graphics.renderTooltip(getFont(), tooltip, x,y);
+            graphics.renderTooltip(font, tooltip, x,y);
             scissorResume();
             return;
         }
-        graphics.renderTooltip(getFont(), tooltip, x,y);
+        graphics.renderTooltip(font, tooltip, x,y);
     }
     /**
      * Draws a multi-line string tooltip, treating {@code "\n"} as the line
@@ -924,11 +920,11 @@ public class Gui {
         if(isScissorEnabled())
         {
             scissorPause();
-            graphics.renderTooltip(getFont(), tooltipList, x,y);
+            graphics.renderTooltip(font, tooltipList, x,y);
             scissorResume();
             return;
         }
-        graphics.renderTooltip(getFont(), tooltipList, x,y);
+        graphics.renderTooltip(font, tooltipList, x,y);
     }
 
     /**
@@ -944,11 +940,11 @@ public class Gui {
         if(isScissorEnabled())
         {
             scissorPause();
-            graphics.renderTooltip(getFont(), stack, x,y);
+            graphics.renderTooltip(font, stack, x,y);
             scissorResume();
             return;
         }
-        graphics.renderTooltip(getFont(), stack, x,y);
+        graphics.renderTooltip(font, stack, x,y);
     }
 
     /**
@@ -962,7 +958,7 @@ public class Gui {
      */
     public void drawItem(ItemStack item, int x, int y, int seed)
     {
-        graphics.renderItem(item, getFont(), x, y, seed);
+        graphics.renderItem(item, font, x, y, seed);
     }
 
     /**
@@ -977,7 +973,7 @@ public class Gui {
      */
     public void drawItemWithDecoration(ItemStack item, int x, int y, int seed)
     {
-        graphics.renderItem(item, getFont(), x, y, seed);
+        graphics.renderItem(item, font, x, y, seed);
         int count = item.getCount();
         if(count > 1)
         {
@@ -985,7 +981,7 @@ public class Gui {
             String s = String.valueOf(count);
             pushPose();
             graphics.translate(0.0D, 0.0D, (double)(200));
-            drawText(s, x + 19 - 2 - getFont().width(s), y + 6 + 3, 16777215);
+            drawText(s, x + 19 - 2 - graphics.getTextWidth(s), y + 6 + 3, 16777215);
             popPose();
         }
     }
@@ -1002,7 +998,7 @@ public class Gui {
     {
         pushPose();
         graphics.translate(0.0D, 0.0D, (double)(z));
-        graphics.renderItem(item, getFont(), x, y, seed);
+        graphics.renderItem(item, font, x, y, seed);
         int count = item.getCount();
         if(count > 1)
         {
@@ -1010,7 +1006,7 @@ public class Gui {
             String s = String.valueOf(count);
             pushPose();
             graphics.translate(0.0D, 0.0D, (double)(200));
-            drawText(s, x + 19 - 2 - getFont().width(s), y + 6 + 3, 16777215);
+            drawText(s, x + 19 - 2 - graphics.getTextWidth(s), y + 6 + 3, 16777215);
             popPose();
         }
         popPose();
@@ -1053,40 +1049,6 @@ public class Gui {
     }
 
     /**
-     * Draws a {@link TextureAtlasSprite} at the given location and size.
-     *
-     * @param sprite     the sprite to render
-     * @param x          the x position
-     * @param y          the y position
-     * @param width      the rendered width
-     * @param height     the rendered height
-     * @param blitOffset the z (depth) offset
-     */
-    public void drawTexture(TextureAtlasSprite sprite, int x, int y, int width, int height, int blitOffset)
-    {
-        graphics.blit(x, y, blitOffset, width, height, sprite);
-    }
-
-    /**
-     * Draws a tinted {@link TextureAtlasSprite} at the given location and size.
-     *
-     * @param sprite     the sprite to render
-     * @param x          the x position
-     * @param y          the y position
-     * @param width      the rendered width
-     * @param height     the rendered height
-     * @param blitOffset the z (depth) offset
-     * @param red        the red color modulation (0.0 - 1.0)
-     * @param green      the green color modulation (0.0 - 1.0)
-     * @param blue       the blue color modulation (0.0 - 1.0)
-     * @param alpha      the alpha modulation (0.0 - 1.0)
-     */
-    public void drawTexture(TextureAtlasSprite sprite, int x, int y, int width, int height, int blitOffset, float red, float green, float blue, float alpha)
-    {
-        graphics.blit(x, y, blitOffset, width, height, sprite, red, green, blue, alpha);
-    }
-
-    /**
      * Convenience wrapper around {@link ResourceLocation#fromNamespaceAndPath(String, String)}
      * for use within mod code.
      *
@@ -1097,22 +1059,6 @@ public class Gui {
     public static ResourceLocation createResourceLocation(String modID, String path)
     {
         return ResourceLocation.fromNamespaceAndPath(modID, path);
-    }
-
-    /**
-     * @return the Minecraft window's reported GUI scale factor (1, 2, 3, ...)
-     */
-    public static double getMinecraftGuiScale()
-    {
-        return Minecraft.getInstance().getWindow().getGuiScale();
-    }
-
-    /**
-     * @return the GLFW window handle used by the active Minecraft client
-     */
-    public long getWindowHandle()
-    {
-        return Minecraft.getInstance().getWindow().getWindow();
     }
 
     /**
@@ -1255,29 +1201,31 @@ public class Gui {
     }
 
     /**
-     * Plays a sound at the local player's position. Has no effect if no level or
-     * player is currently available (e.g. on the main menu).
+     * Sets the sound player callback used by GUI elements to play local sounds.
+     * <p>
+     * On the client, the hosting screen injects a callback that uses
+     * {@code Minecraft.getInstance().level.playLocalSound(...)}. On the server
+     * this remains {@code null} and sound requests are silently ignored.
+     *
+     * @param soundPlayer the sound player callback, or {@code null} to disable
+     */
+    public void setSoundPlayer(SoundPlayer soundPlayer)
+    {
+        this.soundPlayer = soundPlayer;
+    }
+
+    /**
+     * Plays a local sound using the configured sound player callback.
+     * Has no effect if no sound player has been set (server-side).
      *
      * @param sound  the sound event to play
      * @param volume the volume multiplier
      * @param pitch  the pitch multiplier
      */
-    public static void playLocalSound(SoundEvent sound, float volume, float pitch)
+    public void playLocalSound(SoundEvent sound, float volume, float pitch)
     {
-        Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.level == null || minecraft.player == null) {
-            return;
-        }
-        minecraft.level.playLocalSound(
-                minecraft.player.getX(),
-                minecraft.player.getY(),
-                minecraft.player.getZ(),
-                sound,
-                SoundSource.PLAYERS,
-                volume,
-                pitch,
-                false
-        );
+        if(soundPlayer != null)
+            soundPlayer.play(sound, volume, pitch);
     }
 
 }

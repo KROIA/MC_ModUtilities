@@ -4,6 +4,7 @@ import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Point;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 
@@ -199,6 +200,13 @@ public class Plot extends GuiElement
     public void clearPlotData()
     {
         plots.clear();
+    }
+
+    /**
+     * Returns a read-only view of the current plot data series.
+     */
+    public List<PlotData> getPlotDataList() {
+        return Collections.unmodifiableList(plots);
     }
 
     /**
@@ -400,7 +408,7 @@ public class Plot extends GuiElement
         if(yLabel != null && !yLabel.isEmpty()) {
             graphicsPushPose();
             graphicsTranslate((float)getTextHeight()/2+1, (float)(yAxis.getMinPos()+yAxis.getMaxPos())/2, 0);
-            getPoseStack().mulPose(com.mojang.math.Axis.ZP.rotationDegrees(-90));
+            graphicMulPose(com.mojang.math.Axis.ZP.rotationDegrees(-90));
             drawText(yLabel, 0,0, Alignment.TOP);
             graphicsPopPose();
         }

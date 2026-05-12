@@ -137,7 +137,29 @@ public class Sandbox {
                                     .then(Commands.literal("itemSelection")
                                             .executes(ctx -> sendOpenExample(ctx, SandboxOpenGuiPacket.GuiType.EXAMPLE_ITEM_SELECTION)))
                                     .then(Commands.literal("playerBrowser")
-                                            .executes(ctx -> sendOpenExample(ctx, SandboxOpenGuiPacket.GuiType.EXAMPLE_PLAYER_BROWSER))))
+                                            .executes(ctx -> sendOpenExample(ctx, SandboxOpenGuiPacket.GuiType.EXAMPLE_PLAYER_BROWSER)))
+                                    .then(Commands.literal("displayShowcase")
+                                            .executes(ctx -> sendOpenExample(ctx, SandboxOpenGuiPacket.GuiType.DISPLAY_SHOWCASE))))
+                            .then(Commands.literal("giveDisplayBlock")
+                                    .executes(context -> {
+                                        ServerPlayer player = context.getSource().getPlayerOrException();
+                                        ItemStack displayBlock = new ItemStack(SandboxRegistration.DISPLAY_DEMO_BLOCK.get());
+                                        if (!player.getInventory().add(displayBlock)) {
+                                            player.drop(displayBlock, false);
+                                        }
+                                        player.sendSystemMessage(Component.literal("Gave DisplayBlock demo block"));
+                                        return 1;
+                                    }))
+                            .then(Commands.literal("giveDisplayPanel")
+                                    .executes(context -> {
+                                        ServerPlayer player = context.getSource().getPlayerOrException();
+                                        ItemStack displayPanel = new ItemStack(SandboxRegistration.DISPLAY_DEMO_PANEL_BLOCK.get());
+                                        if (!player.getInventory().add(displayPanel)) {
+                                            player.drop(displayPanel, false);
+                                        }
+                                        player.sendSystemMessage(Component.literal("Gave DisplayPanel demo block"));
+                                        return 1;
+                                    }))
             );
         }
 
@@ -225,6 +247,17 @@ public class Sandbox {
 
     public static void init()
     {
+        // Register sandbox blocks, items, and block entities
+        SandboxRegistration.register();
+
+        // Register client-side renderers and input handlers (only on physical client)
+        if (UtilitiesPlatform.isClient()) {
+            SandboxRegistration.registerClient();
+            dev.architectury.event.events.client.ClientTickEvent.CLIENT_POST.register(mc -> {
+                DisplayInputHandler.clientTick();
+            });
+        }
+
         if (TestRegistry.ENABLE_TESTS) {
             TestRegistry.register(new EventTests());
             if (UtilitiesPlatform.isClient()) {

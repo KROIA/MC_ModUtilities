@@ -1,6 +1,6 @@
 package net.kroia.modutilities.gui.elements;
 
-import net.kroia.modutilities.gui.Graphics;
+import net.kroia.modutilities.gui.IGraphics;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Point;
 import net.minecraft.world.item.ItemStack;

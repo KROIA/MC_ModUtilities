@@ -47,6 +47,7 @@ public class CloseButton extends Button{
     @Override
     public void setOutlineColor(int color) {
         super.setOutlineColor(color);
+        if (line1 == null || line2 == null) return;
         for(Vertex vertex : line1.getVertices())
             vertex.setColor(color);
         for(Vertex vertex : line2.getVertices())

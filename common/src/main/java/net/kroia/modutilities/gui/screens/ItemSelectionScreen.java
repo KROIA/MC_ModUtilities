@@ -2,7 +2,7 @@ package net.kroia.modutilities.gui.screens;
 
 import net.kroia.modutilities.ItemUtilities;
 import net.kroia.modutilities.gui.Gui;
-import net.kroia.modutilities.gui.GuiScreen;
+import net.kroia.modutilities.gui.client.GuiScreen;
 import net.kroia.modutilities.gui.elements.*;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;

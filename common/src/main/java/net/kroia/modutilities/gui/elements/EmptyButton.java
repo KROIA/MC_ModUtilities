@@ -1,9 +1,9 @@
 package net.kroia.modutilities.gui.elements;
 
 import net.kroia.modutilities.ColorUtilities;
+import net.kroia.modutilities.gui.InputConstants;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.minecraft.sounds.SoundEvents;
-import org.lwjgl.glfw.GLFW;
 
 /**
  * An invisible (or color-only) clickable region without label or icon.
@@ -21,6 +21,7 @@ import org.lwjgl.glfw.GLFW;
  */
 public class EmptyButton extends GuiElement {
     protected boolean isPressed = false;
+    protected int clickCount = 0;
     protected int colorHover = DEFAULT_HOVER_BACKGROUND_COLOR;
     protected int colorPressed = DEFAULT_FOCUSED_BACKGROUND_COLOR;
 
@@ -28,7 +29,7 @@ public class EmptyButton extends GuiElement {
     protected Runnable onRisingEdge = null;
     protected Runnable onDown = null;
     protected boolean isClickable = true;
-    protected int triggerButton = GLFW.GLFW_MOUSE_BUTTON_LEFT;
+    protected int triggerButton = InputConstants.MOUSE_BUTTON_LEFT;
 
     /**
      * Creates an empty button with default size and no callbacks.
@@ -163,14 +164,14 @@ public class EmptyButton extends GuiElement {
     }
     /**
      * Sets which mouse button triggers the click callbacks.
-     * @param button the GLFW mouse button code (e.g. {@code GLFW_MOUSE_BUTTON_LEFT})
+     * @param button the mouse button code (e.g. {@link InputConstants#MOUSE_BUTTON_LEFT})
      */
     public void setTriggerButton(int button)
     {
         triggerButton = button;
     }
     /**
-     * @return the GLFW mouse button code that triggers the click callbacks
+     * @return the mouse button code that triggers the click callbacks
      */
     public int getTriggerButton()
     {
@@ -182,6 +183,21 @@ public class EmptyButton extends GuiElement {
     public boolean isPressed()
     {
         return isPressed;
+    }
+    public int getClickCount() { return clickCount; }
+
+    /**
+     * Syncs the click count from a remote source. If the source has more clicks,
+     * fires onFallingEdge for each delta to replay missed button presses.
+     */
+    public void syncClickCount(int sourceCount) {
+        int delta = sourceCount - clickCount;
+        if (delta > 0) {
+            for (int i = 0; i < delta; i++) {
+                if (onFallingEdge != null) onFallingEdge.run();
+            }
+            clickCount = sourceCount;
+        }
     }
 
     @Override
@@ -223,6 +239,7 @@ public class EmptyButton extends GuiElement {
         if(!isPressed) {
             playLocalSound(SoundEvents.UI_BUTTON_CLICK.value(),0.5F);
             isPressed = true;
+            clickCount++;
             if(onFallingEdge != null) {
                 onFallingEdge.run();
             }

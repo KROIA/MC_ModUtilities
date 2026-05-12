@@ -1,5 +1,6 @@
 package net.kroia.modutilities;
 
+import net.kroia.modutilities.gui.display.DisplayNetworking;
 import net.kroia.modutilities.sandbox.Sandbox;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -25,6 +26,7 @@ public class ModUtilitiesMod {
      */
     public static void init()
     {
+        DisplayNetworking.init();
         Sandbox.init();
     }
 

@@ -1,4 +1,4 @@
-package net.kroia.modutilities.gui.elements;
+package net.kroia.modutilities.gui.client;
 
 import com.google.common.collect.Sets;
 import com.mojang.blaze3d.platform.InputConstants;
@@ -92,7 +92,7 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
     private ItemStack lastQuickMoved;
     protected int slotColor;
 
-    protected Minecraft minecraft = Gui.getMinecraft();
+    protected Minecraft minecraft = Minecraft.getInstance();
 
     public final GuiTexture background_texture;
 
@@ -249,7 +249,9 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
      * @param color      the highlight color in {@code 0xAARRGGBB} format
      */
     public void renderSlotHighlight(int x, int y, int blitOffset, int color) {
-        drawGradient(RenderType.guiOverlay(), x, y, blitOffset, 16, 16, color, color);
+        if(getRoot() != null && getRoot().getGraphics() instanceof net.kroia.modutilities.gui.client.ClientGraphics cg) {
+            cg.fillGradient(RenderType.guiOverlay(), x, y, x + 16, y + 16, color, color, blitOffset);
+        }
     }
 
     protected void renderTooltip(int pX, int pY) {
@@ -317,7 +319,9 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
             Pair<ResourceLocation, ResourceLocation> pair = pSlot.getNoItemIcon();
             if (pair != null) {
                 TextureAtlasSprite textureatlassprite = (TextureAtlasSprite)minecraft.getTextureAtlas((ResourceLocation)pair.getFirst()).apply((ResourceLocation)pair.getSecond());
-                drawTexture(textureatlassprite, i, j, 16, 16, 0);
+                if(getRoot() != null && getRoot().getGraphics() instanceof net.kroia.modutilities.gui.client.ClientGraphics cg) {
+                    cg.blit(i, j, 0, 16, 16, textureatlassprite);
+                }
                 flag1 = true;
             }
         }

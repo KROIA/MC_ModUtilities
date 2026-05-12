@@ -1,5 +1,7 @@
 # InventoryView
 
+> **v2.0.1 package change:** `InventoryView` has moved from `net.kroia.modutilities.gui.elements` to `net.kroia.modutilities.gui.client`. Update your imports accordingly.
+
 ## Overview
 
 The `InventoryView` displays a player's inventory with interactive item slots. It supports drag-and-drop, item splitting, quick-move (shift-click), and all standard Minecraft inventory interactions. Ideal for custom inventory interfaces and container GUIs.

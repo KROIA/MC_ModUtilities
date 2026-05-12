@@ -8,7 +8,8 @@ See the [documentation](../documentation/README.md) for API guides and usage exa
 
 | Version | Date | Notes |
 |---|---|---|
-| [2.0.0_ALPHA](v2.0.0_ALPHA.md) | In development | Test suite framework, documentation, 50+ bug fixes |
+| [2.0.1](v2.0.1.md) | In development | |
+| [2.0.0_ALPHA](v2.0.0_ALPHA.md) | 2026-05-10 | Test suite framework, documentation, 80+ bug fixes |
 
 ---
 

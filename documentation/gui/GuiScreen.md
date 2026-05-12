@@ -1,5 +1,7 @@
 # GuiScreen
 
+> **v2.0.1 package change:** `GuiScreen` has moved from `net.kroia.modutilities.gui` to `net.kroia.modutilities.gui.client`. Update your imports accordingly.
+
 ## Overview
 
 The GuiScreen class is used to create graphical user interfaces that are not associated with any inventory (unlike chest GUIs, for example). If you need an inventory to be displayed, use [GuiContainerScreen](GuiContainerScreen.md) instead.

@@ -1,4 +1,7 @@
 # Gui Container Screen
+
+> **v2.0.1 package change:** `GuiContainerScreen` has moved from `net.kroia.modutilities.gui` to `net.kroia.modutilities.gui.client`. Update your imports accordingly.
+
 The Gui Container Screen is a variant of the [Gui Screen](GuiScreen.md).
 All features providec by the [Gui Screen](GuiScreen.md) will work in this too.
 Visit the [Gui Screen](GuiScreen.md) to check out further informations what the GuiScreen can do.

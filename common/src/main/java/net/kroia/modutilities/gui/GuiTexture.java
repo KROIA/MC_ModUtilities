@@ -1,10 +1,7 @@
 package net.kroia.modutilities.gui;
 
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 import net.minecraft.resources.ResourceLocation;
 
-@Environment(EnvType.CLIENT)
 public class GuiTexture {
     private final ResourceLocation resourceLocation;
     private final int width;

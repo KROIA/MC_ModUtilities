@@ -1,4 +1,4 @@
-package net.kroia.modutilities.gui.elements;
+package net.kroia.modutilities.gui.client;
 
 import net.kroia.modutilities.gui.GuiTexture;
 import net.kroia.modutilities.gui.elements.base.GuiElement;

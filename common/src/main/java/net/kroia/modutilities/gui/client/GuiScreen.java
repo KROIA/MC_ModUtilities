@@ -1,75 +1,111 @@
-package net.kroia.modutilities.gui;
+package net.kroia.modutilities.gui.client;
 
-
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
+import net.kroia.modutilities.gui.Gui;
+import net.kroia.modutilities.gui.InputConstants;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Point;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics; // mc>=1.20.1
 //import com.mojang.blaze3d.vertex.PoseStack; // mc<=1.19.4
-
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundSource;
 import org.lwjgl.glfw.GLFW;
+
+import java.util.List;
 
 
 /**
- * Abstract Minecraft {@link AbstractContainerScreen} that hosts a {@link Gui}
- * root, intended for inventory-style screens backed by an
- * {@link AbstractContainerMenu}.
+ * Abstract Minecraft {@link Screen} that hosts a {@link Gui} root.
  * <p>
- * Subclasses provide their layout in {@link #updateLayout(Gui)}, which is
- * invoked by {@link #init()} after the Minecraft container screen state has
- * been set up. After {@link #init()} completes, {@link #isInitialized()} returns
- * {@code true}.
+ * Subclasses provide their layout in {@link #updateLayout(Gui)}, which is called
+ * by {@link #init()} after the underlying screen state has been prepared. After
+ * {@link #init()} completes, {@link #isInitialized()} returns {@code true}.
  * <p>
- * Mouse, keyboard and render callbacks are forwarded to the embedded
- * {@link Gui}; F3-F6 debug toggles are handled when
- * {@link #setDebugKeysEnabled(boolean) debug keys} are enabled.
+ * The screen forwards all mouse, keyboard and render callbacks from Minecraft
+ * to the embedded {@link Gui}, and exposes a number of debug toggles that can
+ * be controlled with the F3-F6 keys when {@link #setDebugKeysEnabled(boolean)
+ * debug keys} are enabled.
  *
- * @param <T> the {@link AbstractContainerMenu} subtype this screen is bound to
- * @apiNote The whole {@code gui/} package is client-only
- *          ({@code @Environment(EnvType.CLIENT)}).
+ * @apiNote This class is client-only ({@code @Environment(EnvType.CLIENT)}).
  */
-public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extends AbstractContainerScreen<T> {
+@Environment(EnvType.CLIENT)
+public abstract class GuiScreen extends Screen {
 
     protected final Gui gui;
     protected final Screen parent;
+    private final ClientGraphics clientGraphics;
     protected boolean debugKeysEnabled = true;
     protected boolean enableGizmos = false;
     protected boolean enableBackground = true;
     protected boolean enableForeground = true;
     protected boolean enableTooltip = true; // Enable tooltip rendering by default
-    protected boolean isInitialized = false;
 
     /**
-     * Creates a new {@code GuiContainerScreen} without a parent screen.
+     * Creates a new {@code GuiScreen} without a parent screen. Closing this
+     * screen will return to no screen at all.
      *
-     * @param pMenu             the container menu
-     * @param pPlayerInventory  the player's inventory
-     * @param pTitle            the screen title
+     * @param pTitle the screen title
      */
-    public GuiContainerScreen(T pMenu, Inventory pPlayerInventory, Component pTitle) {
-        super(pMenu, pPlayerInventory, pTitle);
-        this.gui = new Gui(this);
+    protected GuiScreen(Component pTitle) {
+        super(pTitle);
+        this.gui = new Gui();
         this.parent = null;
+        this.clientGraphics = new ClientGraphics();
+        injectClientDependencies();
     }
 
     /**
-     * Creates a new {@code GuiContainerScreen} that returns to the given parent
-     * screen when closed.
+     * Creates a new {@code GuiScreen} that returns to the given parent screen
+     * when closed.
      *
-     * @param pMenu             the container menu
-     * @param pPlayerInventory  the player's inventory
-     * @param pTitle            the screen title
-     * @param parent            the screen to display after this one is closed
+     * @param pTitle the screen title
+     * @param parent the screen to display after this one is closed
      */
-    protected GuiContainerScreen(T pMenu, Inventory pPlayerInventory, Component pTitle, Screen parent) {
-        super(pMenu, pPlayerInventory, pTitle);
-        this.gui = new Gui(this);
+    protected GuiScreen(Component pTitle, Screen parent) {
+        super(pTitle);
+        this.gui = new Gui();
         this.parent = parent;
+        this.clientGraphics = new ClientGraphics();
+        injectClientDependencies();
+    }
+
+    /**
+     * Injects client-only backends into the embedded Gui.
+     */
+    private void injectClientDependencies() {
+        gui.setGraphicsBackend(clientGraphics);
+        gui.setInputProvider(new ClientInputProvider(Minecraft.getInstance().getWindow().getWindow()));
+        gui.setFont(Minecraft.getInstance().font);
+        gui.setDisplayScaleFactor(Minecraft.getInstance().getWindow().getGuiScale());
+        gui.setSoundPlayer((sound, volume, pitch) -> playLocalSound(sound, volume, pitch));
+        clientGraphics.setFont(Minecraft.getInstance().font);
+
+        // Set the static fallback so elements can measure text before being attached to a Gui
+        ensureFallbackGraphics();
+    }
+
+    /**
+     * Returns the client graphics backend used by the embedded Gui.
+     *
+     * @return the {@link ClientGraphics} instance
+     */
+    private static boolean fallbackInitialized = false;
+
+    private static void ensureFallbackGraphics() {
+        if (!fallbackInitialized) {
+            ClientGraphics fallback = new ClientGraphics();
+            fallback.setFont(Minecraft.getInstance().font);
+            Gui.setFallbackGraphics(fallback);
+            fallbackInitialized = true;
+        }
+    }
+
+    public ClientGraphics getClientGraphics() {
+        return clientGraphics;
     }
 
     /**
@@ -86,6 +122,8 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
             mc.setScreen(screen);
         }
     }
+
+    protected boolean isInitialized = false;
 
     /**
      * Sets whether the F3-F6 debug toggle keys are processed by this screen.
@@ -198,6 +236,8 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     @Override
     public final void init() {
         super.init();
+        // Re-inject display scale (may have changed on resize)
+        gui.setDisplayScaleFactor(Minecraft.getInstance().getWindow().getGuiScale());
         gui.init();
         updateLayout(gui);
         isInitialized = true;
@@ -244,6 +284,28 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     }
 
     /**
+     * Removes every top-level element from the embedded {@link Gui}.
+     */
+    protected void removeAllElements() {
+        gui.removeAllElements();
+    }
+
+    /**
+     * @return the currently focused element of the embedded {@link Gui}, or
+     *         {@code null} if no element has focus
+     */
+    protected GuiElement getFocusedElement() {
+        return gui.getFocusedElement();
+    }
+
+    /**
+     * @return the live list of top-level elements on the embedded {@link Gui}
+     */
+    public List<GuiElement> getElements() {
+        return gui.getElements();
+    }
+
+    /**
      * @return the screen width converted to GUI element coordinates
      */
     protected int getWidth() {
@@ -261,7 +323,6 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     public boolean isPauseScreen() {
         return false;
     }
-
 
     /**
      * Convenience wrapper around {@link #onClose()}.
@@ -283,29 +344,25 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     }
 
 
-
     // mc>=1.20.1
     @Override
-    public void renderBackground(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        gui.getGraphics().setGraphics(guiGraphics);
-        super.renderBackground(guiGraphics, mouseX, mouseY, partialTick);
-        //gui.storeMousePos((int)((float)pMouseX*invGuiScale), (int)((float)pMouseY*invGuiScale));
-        gui.setPartialTick(partialTick);
+    public void renderBackground(GuiGraphics guiGraphics, int pMouseX, int pMouseY, float pPartialTick) {
+        if(this.minecraft == null || !enableBackground)
+        {
+            return;
+        }
+        clientGraphics.setGraphics(guiGraphics);
+        super.renderBackground(guiGraphics, pMouseX, pMouseY, pPartialTick);
         gui.renderBackground();
-    }
-    @Override
-    protected void renderBg(GuiGraphics guiGraphics, float partialTick, int mouseX, int mouseY)
-    {
-
     }
 
     @Override
     public void render(GuiGraphics pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) {
-        gui.getGraphics().setGraphics(pGuiGraphics);
-        gui.storeMousePos(pMouseX, pMouseY);
-        if(enableBackground)
-            renderBackground(pGuiGraphics, pMouseX, pMouseY, pPartialTick);
+        clientGraphics.setGraphics(pGuiGraphics);
+        gui.storeMousePos(pMouseX,pMouseY);
         gui.setPartialTick(pPartialTick);
+        if(enableBackground)
+            this.renderBackground(pGuiGraphics, pMouseX, pMouseY, pPartialTick);
         if(enableForeground)
             gui.render();
         if(enableTooltip)
@@ -318,20 +375,22 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     /*
     // mc<=1.19.4
     @Override
-    protected void renderBg(PoseStack guiGraphics, float pPartialTick, int pMouseX, int pMouseY) {
-        gui.getGraphics().setGraphics(guiGraphics);
-        renderBackground(guiGraphics);
-        gui.setMousePos(pMouseX, pMouseY);
-        gui.setPartialTick(pPartialTick);
+    public void renderBackground(PoseStack guiGraphics) {
+        if(this.minecraft == null)
+        {
+            return;
+        }
+        clientGraphics.setGraphics(guiGraphics);
+        super.renderBackground(guiGraphics);
         gui.renderBackground();
     }
 
     @Override
     public void render(PoseStack pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) {
-        gui.getGraphics().setGraphics(pGuiGraphics);
-        renderBg(pGuiGraphics, pPartialTick, pMouseX, pMouseY);
+        clientGraphics.setGraphics(pGuiGraphics);
         gui.setMousePos(pMouseX, pMouseY);
         gui.setPartialTick(pPartialTick);
+        this.renderBackground(pGuiGraphics);
         gui.render();
         gui.renderTooltip();
         if(enableGizmos)
@@ -342,7 +401,7 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if(!gui.mouseClicked(mouseX, mouseY, button))
-            return false; //return super.mouseClicked(mouseX, mouseY, button);
+            return super.mouseClicked(mouseX, mouseY, button);
         return true;
     }
     @Override
@@ -384,20 +443,19 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
 
     /**
      * Checks if the the keyboard key is pressed down.
-     * @see GLFW.GLFW_KEY_SPACE... Keys
      *
      * @return true if the given key is pressed
      */
     protected boolean isKeyPressed(int keyCode)
     {
-        return GLFW.glfwGetKey(gui.getWindowHandle(), keyCode) == GLFW.GLFW_PRESS;
+        return gui.getInputProvider().isKeyDown(keyCode);
     }
     /**
      * @return {@code true} if the left control key is currently pressed
      */
     protected boolean isControlPressed()
     {
-        return GLFW.glfwGetKey(gui.getWindowHandle(), GLFW.GLFW_KEY_LEFT_CONTROL) == GLFW.GLFW_PRESS;
+        return gui.getInputProvider().isKeyDown(InputConstants.KEY_LEFT_CONTROL);
     }
 
     /**
@@ -405,7 +463,7 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
      */
     protected boolean isShiftPressed()
     {
-        return GLFW.glfwGetKey(gui.getWindowHandle(), GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS;
+        return gui.getInputProvider().isKeyDown(InputConstants.KEY_LEFT_SHIFT);
     }
 
     /**
@@ -413,7 +471,7 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
      */
     protected boolean isAltPressed()
     {
-        return GLFW.glfwGetKey(gui.getWindowHandle(), GLFW.GLFW_KEY_LEFT_ALT) == GLFW.GLFW_PRESS;
+        return gui.getInputProvider().isKeyDown(InputConstants.KEY_LEFT_ALT);
     }
 
     /**
@@ -427,8 +485,43 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
         gui.moveMouseToPos(x, y);
     }
 
+    /**
+     * @return the Minecraft window's reported GUI scale factor (1, 2, 3, ...)
+     */
+    public static double getMinecraftGuiScale()
+    {
+        return Minecraft.getInstance().getWindow().getGuiScale();
+    }
+
+    /**
+     * Plays a sound at the local player's position. Has no effect if no level or
+     * player is currently available (e.g. on the main menu).
+     *
+     * @param sound  the sound event to play
+     * @param volume the volume multiplier
+     * @param pitch  the pitch multiplier
+     */
+    public static void playLocalSound(SoundEvent sound, float volume, float pitch)
+    {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.level == null || minecraft.player == null) {
+            return;
+        }
+        minecraft.level.playLocalSound(
+                minecraft.player.getX(),
+                minecraft.player.getY(),
+                minecraft.player.getZ(),
+                sound,
+                SoundSource.PLAYERS,
+                volume,
+                pitch,
+                false
+        );
+    }
+
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+
         if(debugKeysEnabled) {
             switch (keyCode) {
                 case GLFW.GLFW_KEY_F3: {
@@ -453,8 +546,15 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
         boolean ret = gui.keyPressed(keyCode, scanCode, modifiers);
         if(ret)
             return true;
-        if(gui.getFocusedElement() == null)
-            return super.keyPressed(keyCode, scanCode, modifiers);
+        if(gui.getFocusedElement() == null) {
+            ret = super.keyPressed(keyCode, scanCode, modifiers);
+            if(ret)
+                return true;
+            if(keyCode == GLFW.GLFW_KEY_E) {
+                onClose();
+                return true;
+            }
+        }
         return true;
     }
 

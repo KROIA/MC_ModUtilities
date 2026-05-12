@@ -1,5 +1,7 @@
 # ContainerView
 
+> **v2.0.1 package change:** `ContainerView` has moved from `net.kroia.modutilities.gui.elements` to `net.kroia.modutilities.gui.client`. Update your imports accordingly.
+
 ## Overview
 
 The `ContainerView` is a sophisticated container interface that integrates with Minecraft's `AbstractContainerMenu` system. It provides full inventory interaction capabilities including drag-and-drop, quick-craft, item stacking, and keyboard shortcuts. This is a complete implementation of Minecraft's standard container interface.
