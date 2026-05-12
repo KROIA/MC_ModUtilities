@@ -207,11 +207,15 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         RenderSystem.clear(org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT
                 | org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT, false);
 
+        float[] prevShaderColor = RenderSystem.getShaderColor().clone();
+
         float[] prevFogColor = new float[4];
         prevFogColor[0] = RenderSystem.getShaderFogColor()[0];
         prevFogColor[1] = RenderSystem.getShaderFogColor()[1];
         prevFogColor[2] = RenderSystem.getShaderFogColor()[2];
         prevFogColor[3] = RenderSystem.getShaderFogColor()[3];
+        float prevFogStart = RenderSystem.getShaderFogStart();
+        float prevFogEnd = RenderSystem.getShaderFogEnd();
         RenderSystem.setShaderFogColor(0, 0, 0, 0);
         RenderSystem.setShaderFogStart(Float.MAX_VALUE);
         RenderSystem.setShaderFogEnd(Float.MAX_VALUE);
@@ -250,7 +254,6 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         data.framebuffer.unbindRead();
         RenderSystem.bindTexture(prevTexture);
         data.texture.upload();
-        RenderSystem.bindTexture(prevTexture);
 
         data.framebuffer.unbindWrite();
         prevTarget.bindWrite(false);
@@ -258,7 +261,10 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         RenderSystem.applyModelViewMatrix();
         RenderSystem.viewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
         RenderSystem.setProjectionMatrix(prevProjection, prevSorting);
+        RenderSystem.setShaderColor(prevShaderColor[0], prevShaderColor[1], prevShaderColor[2], prevShaderColor[3]);
         RenderSystem.setShaderFogColor(prevFogColor[0], prevFogColor[1], prevFogColor[2], prevFogColor[3]);
+        RenderSystem.setShaderFogStart(prevFogStart);
+        RenderSystem.setShaderFogEnd(prevFogEnd);
     }
 
     private void renderQuadOnFace(PoseStack poseStack, MultiBufferSource bufferSource,
