@@ -34,23 +34,17 @@ public class StreamSystem {
     /**
      * Guard to ensure packets are only registered once, even if multiple mods call setup().
      */
-    private static boolean packetsRegistered = false;
-
     /**
      * Sets up the StreamSystem with the provided NetworkManager.
-     * This method initializes the StreamManager and registers the necessary packets for stream handling.
      * Re-invoking this method replaces any existing StreamManager so the system survives an
      * integrated-server restart (e.g. opening a new singleplayer world in the same JVM).
      * Previously registered streams are re-bound to the new manager.
+     * <p>
+     * Packet registration is handled by {@link ModUtilitiesMod#init()}.
      *
      * @param networkManager The NetworkManager to use for packet handling.
-     *
-     * @apiNote
-     * Must be called once on the client and once on the server side during mod initialization.
      */
     public static void setup(@NotNull NetworkPacketManager networkManager) {
-        // Replace any existing manager so the system survives an integrated-server
-        // restart (e.g. opening a new singleplayer world in the same JVM).
         STREAM_MANAGER = new StreamManager(networkManager);
 
         Map<String, StreamRegistry.RegistryData<?,?>> requests = REGISTRY.getRegistry();
@@ -59,15 +53,6 @@ public class StreamSystem {
             GenericStream<?, ?> request = entry.getValue().stream;
             if(request != null)
                 request.setManager(STREAM_MANAGER);
-        }
-
-        // Register packets for streaming (only once – multiple mods may call setup())
-        if (!packetsRegistered) {
-            networkManager.registerS2C(GenericStreamPacket.TYPE, GenericStreamPacket.STREAM_CODEC, GenericStreamPacket.HANDLER, GenericStreamPacket.HANDLER);
-            networkManager.registerC2S(StreamStartPacket.TYPE, StreamStartPacket.STREAM_CODEC, StreamStartPacket.HANDLER, StreamStartPacket.HANDLER);
-            networkManager.registerC2S(StreamStopClientSenderPacket.TYPE, StreamStopClientSenderPacket.STREAM_CODEC, StreamStopClientSenderPacket.HANDLER, StreamStopClientSenderPacket.HANDLER);
-            networkManager.registerS2C(StreamStopServerSenderPacket.TYPE, StreamStopServerSenderPacket.STREAM_CODEC, StreamStopServerSenderPacket.HANDLER, StreamStopServerSenderPacket.HANDLER);
-            packetsRegistered = true;
         }
     }
 

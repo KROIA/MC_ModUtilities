@@ -31,25 +31,16 @@ public class AsynchronousRequestResponseSystem {
     private static RequestManager REQUEST_MANAGER;
 
     /**
-     * Guard to ensure packets are only registered once, even if multiple mods call setup().
-     */
-    private static boolean packetsRegistered = false;
-
-
-    /**
      * Sets up the ARRS with the provided NetworkManager.
-     * This method initializes the RequestManager and registers the C2S/S2C packets used
-     * for request/response handling. All previously registered requests are re-bound to
-     * the new manager.
+     * Re-invoking this method replaces any existing RequestManager so the system survives an
+     * integrated-server restart (e.g. opening a new singleplayer world in the same JVM).
+     * All previously registered requests are re-bound to the new manager.
+     * <p>
+     * Packet registration is handled by {@link net.kroia.modutilities.ModUtilitiesMod#init()}.
      *
-     * @param networkManager The NetworkManager to use for packet handling.
-     * @apiNote Safe to invoke more than once in the same JVM (e.g. when an integrated server
-     *          restarts after the player opens a different singleplayer world); any existing
-     *          {@link RequestManager} will be replaced.
+     * @param networkManager The NetworkManager to use for packet sending.
      */
     public static void setup(@NotNull NetworkPacketManager networkManager) {
-        // Replace any existing manager so the system survives an integrated-server
-        // restart (e.g. opening a new singleplayer world in the same JVM).
         REQUEST_MANAGER = new RequestManager(networkManager);
 
         Map<String, RequestRegistry.RegistryData<?,?>> requests = REGISTRY.getRegistry();
@@ -58,13 +49,6 @@ public class AsynchronousRequestResponseSystem {
             GenericRequest<?, ?> request = entry.getValue().request;
             if(request != null)
                 request.setManager(REQUEST_MANAGER);
-        }
-
-        // Register packets for ARRS (only once – multiple mods may call setup())
-        if (!packetsRegistered) {
-            networkManager.registerC2S(GenericRequestPacket.TYPE, GenericRequestPacket.STREAM_CODEC);
-            networkManager.registerS2C(GenericResponsePacket.TYPE, GenericResponsePacket.STREAM_CODEC);
-            packetsRegistered = true;
         }
     }
 
