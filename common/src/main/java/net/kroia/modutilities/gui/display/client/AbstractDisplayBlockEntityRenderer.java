@@ -97,6 +97,11 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         }
 
         if (data == null) {
+            int prevTexture = org.lwjgl.opengl.GL11.glGetInteger(org.lwjgl.opengl.GL11.GL_TEXTURE_BINDING_2D);
+            int[] prevViewport = new int[4];
+            org.lwjgl.opengl.GL11.glGetIntegerv(org.lwjgl.opengl.GL11.GL_VIEWPORT, prevViewport);
+            com.mojang.blaze3d.pipeline.RenderTarget prevTarget = Minecraft.getInstance().getMainRenderTarget();
+
             data = new GroupRenderData();
             data.groupWidth = gw;
             data.groupHeight = gh;
@@ -119,6 +124,10 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
             Minecraft.getInstance().getTextureManager().register(data.location, data.texture);
             data.layoutInitialized = false;
             groupData.put(controllerPos, data);
+
+            prevTarget.bindWrite(false);
+            RenderSystem.viewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
+            RenderSystem.bindTexture(prevTexture);
         }
 
         return data;
