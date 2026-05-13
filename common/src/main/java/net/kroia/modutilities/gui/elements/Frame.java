@@ -1,6 +1,7 @@
 package net.kroia.modutilities.gui.elements;
 
 import net.kroia.modutilities.gui.elements.base.GuiElement;
+import net.minecraft.nbt.CompoundTag;
 
 /**
  * Invisible grouping container for {@link GuiElement} children.
@@ -39,6 +40,21 @@ public class Frame extends GuiElement {
         super(x, y, width, height);
     }
 
+
+    @Override
+    public CompoundTag serializeState() {
+        CompoundTag tag = super.serializeState();
+        tag.putInt("bgColor", getBackgroundColor());
+        return tag;
+    }
+
+    @Override
+    public void deserializeState(CompoundTag tag) {
+        super.deserializeState(tag);
+        if (tag.contains("bgColor")) {
+            setBackgroundColor(tag.getInt("bgColor"));
+        }
+    }
 
     @Override
     protected void render() {

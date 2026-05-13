@@ -2,7 +2,8 @@ package net.kroia.modutilities.gui.elements;
 
 
 import net.kroia.modutilities.gui.elements.base.GuiElement;
-import net.minecraft.sounds.SoundEvents;
+
+import java.util.List;
 
 /**
  * A standard clickable button rendered with a centered text {@link Label}.
@@ -20,8 +21,8 @@ public class Button extends EmptyButton {
     public Button(String text) {
         super();
         label = new Label(text);
-        label.setAlignment(Alignment.CENTER);
         addChild(label);
+        label.setAlignment(Alignment.CENTER);
     }
     /**
      * Creates a button at the given position and size with the specified label text.
@@ -107,6 +108,11 @@ public class Button extends EmptyButton {
         return label.getAlignment();
     }
 
+
+    @Override
+    public List<GuiElement> getSerializableChildren() {
+        return List.of();
+    }
 
     @Override
     protected void render() {

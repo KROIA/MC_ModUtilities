@@ -9,6 +9,7 @@ import net.kroia.modutilities.gui.GuiTexture;
 import net.kroia.modutilities.gui.geometry.Point;
 import net.kroia.modutilities.gui.geometry.Rectangle;
 import net.kroia.modutilities.gui.layout.Layout;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
@@ -47,6 +48,8 @@ import java.util.function.Supplier;
  *          abstractions.
  */
 public abstract class GuiElement {
+
+    public enum SyncCategory { NONE, INPUT, DISPLAY }
 
     /**
      * Anchor positions used when aligning sub-rectangles (e.g. labels, tooltip
@@ -96,6 +99,8 @@ public abstract class GuiElement {
     private Gui root;
     private GuiElement parent = null;
     private GuiElement rootParent = null;
+    private String id = null;
+    private boolean dirty = false;
     private final Rectangle bounds;
     private float zPos = 0.0f;
     private final Point globalPositon = new Point(0,0);
@@ -252,6 +257,7 @@ public abstract class GuiElement {
      */
     public void setEnabled(boolean visible)
     {
+        if (isEnabled != visible) markDirty();
         isEnabled = visible;
         if(!isEnabled)
         {
@@ -266,6 +272,27 @@ public abstract class GuiElement {
     public boolean isEnabled()
     {
         return isEnabled;
+    }
+
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
+
+    public boolean isDirty() { return dirty; }
+    public void clearDirty() { dirty = false; }
+    protected void markDirty() { dirty = true; }
+
+    public SyncCategory getSyncCategory() { return SyncCategory.NONE; }
+
+    public CompoundTag serializeState() {
+        CompoundTag tag = new CompoundTag();
+        tag.putBoolean("enabled", isEnabled());
+        return tag;
+    }
+
+    public void deserializeState(CompoundTag tag) {
+        if (tag.contains("enabled")) {
+            setEnabled(tag.getBoolean("enabled"));
+        }
     }
 
     /**
@@ -549,6 +576,7 @@ public abstract class GuiElement {
 
 
     public void setTextColor(int textColor) {
+        if (this.textColor != textColor) markDirty();
         this.textColor = textColor;
     }
     public int getTextColor() {
@@ -816,6 +844,7 @@ public abstract class GuiElement {
         isRelayoutingThis = true;
         layoutChanged();
         isRelayoutingThis = false;
+        markDirty();
 
         for (GuiElement child : childs) {
             child.layoutChangedInternal();
@@ -1349,6 +1378,10 @@ public abstract class GuiElement {
      */
     public List<GuiElement> getChilds()
     {
+        return childs;
+    }
+
+    public List<GuiElement> getSerializableChildren() {
         return childs;
     }
 

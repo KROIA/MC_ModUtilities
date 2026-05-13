@@ -2,8 +2,10 @@ package net.kroia.modutilities.gui.elements;
 
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Rectangle;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.sounds.SoundEvents;
 
+import java.util.List;
 import java.util.function.Consumer;
 
 /**
@@ -138,6 +140,7 @@ public class CheckBox extends GuiElement {
         if(isChecked == checked)
             return;
         isChecked = checked;
+        markDirty();
         if(onStateChanged != null)
         {
             onStateChanged.accept(isChecked);
@@ -150,6 +153,28 @@ public class CheckBox extends GuiElement {
         {
             onUnchecked.run();
         }
+    }
+
+    @Override
+    public List<GuiElement> getSerializableChildren() {
+        return List.of();
+    }
+
+    @Override
+    public SyncCategory getSyncCategory() { return SyncCategory.INPUT; }
+
+    @Override
+    public CompoundTag serializeState() {
+        CompoundTag tag = super.serializeState();
+        tag.putBoolean("checked", isChecked);
+        return tag;
+    }
+
+    @Override
+    public void deserializeState(CompoundTag tag) {
+        super.deserializeState(tag);
+        if(tag.contains("checked"))
+            setChecked(tag.getBoolean("checked"));
     }
     /**
      * Sets whether the user can toggle the checkbox by clicking it.
@@ -274,20 +299,8 @@ public class CheckBox extends GuiElement {
 
         if(hitboxRect.contains(getMouseX(),getMouseY()))
         {
-            isChecked = !isChecked;
+            setChecked(!isChecked);
             playLocalSound(SoundEvents.UI_BUTTON_CLICK.value(),0.5F);
-            if(onStateChanged != null)
-            {
-                onStateChanged.accept(isChecked);
-            }
-            if(isChecked && onChecked != null)
-            {
-                onChecked.run();
-            }
-            if(!isChecked && onUnchecked != null)
-            {
-                onUnchecked.run();
-            }
             return true;
         }
         return false;

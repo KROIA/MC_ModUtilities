@@ -1,6 +1,7 @@
 package net.kroia.modutilities.gui.display;
 
 import net.kroia.modutilities.gui.Gui;
+import net.kroia.modutilities.gui.display.client.DisplayClientHooks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -233,6 +234,11 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
 
         updateInteractingPlayers();
         onControllerTick();
+
+        if (gui.hasStructuralChanges()) {
+            gui.getAndClearStructuralChanges();
+            syncToClient();
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -251,6 +257,12 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
         tag.putInt("gh", groupHeight);
         tag.putInt("gx", gridX);
         tag.putInt("gy", gridY);
+        if (gui != null && gui.getStructureVersion() > 0) {
+            tag.put("guiTree", gui.serializeTree());
+        }
+        if (gui != null) {
+            tag.put("guiInput", GuiInputSerializer.serializeInput(gui));
+        }
         saveCustomData(tag, registries);
     }
 
@@ -274,6 +286,13 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
                 buildAndInitGui(neededW, neededH);
                 guiBuiltWidth = neededW;
                 guiBuiltHeight = neededH;
+            }
+            if (tag.contains("guiTree") && tag.getCompound("guiTree").getInt("structureVersion") > 0) {
+                gui.deserializeTree(tag.getCompound("guiTree"));
+                gui.init();
+            }
+            if (tag.contains("guiInput")) {
+                GuiInputSerializer.applyInput(tag.getCompound("guiInput"), gui);
             }
         } else {
             gui = null;
@@ -499,9 +518,17 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
 
     private void buildAndInitGui(int w, int h) {
         gui = new Gui();
+        if (level != null && level.isClientSide()) {
+            DisplayClientHooks.ensureGraphics();
+        }
+        gui.setGraphicsBackend(Gui.getFallbackGraphics());
         getContentBuilder().build(gui, w, h);
         wireCallbacks(gui);
         gui.init();
+        gui.resetStructureVersion();
+        if (level != null && !level.isClientSide()) {
+            gui.setTrackStructuralChanges(true);
+        }
     }
 
     private void syncToClient() {

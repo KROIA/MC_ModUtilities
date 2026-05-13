@@ -3,8 +3,10 @@ package net.kroia.modutilities.gui.elements;
 import net.kroia.modutilities.ColorUtilities;
 import net.kroia.modutilities.gui.InputConstants;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
+import net.minecraft.nbt.CompoundTag;
 
 import java.awt.event.InputEvent;
+import java.util.List;
 import java.util.function.Consumer;
 
 /**
@@ -305,9 +307,33 @@ public class TextBox extends GuiElement {
      * @apiNote This bypasses regex validation and does not fire the text-changed callback.
      */
     public void setText(String text) {
+        if(!this.text.equals(text))
+            markDirty();
         this.text = text;
         currentCursorPos = Math.min(text.length(), currentCursorPos);
         updateTextLabel();
+    }
+
+    @Override
+    public List<GuiElement> getSerializableChildren() {
+        return List.of();
+    }
+
+    @Override
+    public SyncCategory getSyncCategory() { return SyncCategory.INPUT; }
+
+    @Override
+    public CompoundTag serializeState() {
+        CompoundTag tag = super.serializeState();
+        tag.putString("text", text);
+        return tag;
+    }
+
+    @Override
+    public void deserializeState(CompoundTag tag) {
+        super.deserializeState(tag);
+        if(tag.contains("text"))
+            setText(tag.getString("text"));
     }
     /**
      * Sets the text to the string representation of the given double value.

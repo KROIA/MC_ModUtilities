@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.context.CommandContext;
 import dev.architectury.event.events.common.CommandRegistrationEvent;
+import net.kroia.modutilities.gui.display.client.DisplayRenderProfiler;
 import net.kroia.modutilities.JsonUtilities;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.UtilitiesPlatform;
@@ -158,6 +159,15 @@ public class Sandbox {
                                             player.drop(displayPanel, false);
                                         }
                                         player.sendSystemMessage(Component.literal("Gave DisplayPanel demo block"));
+                                        return 1;
+                                    }))
+                            .then(Commands.literal("displayProfiler")
+                                    .executes(context -> {
+                                        boolean nowEnabled = !DisplayRenderProfiler.isEnabled();
+                                        DisplayRenderProfiler.setEnabled(nowEnabled);
+                                        context.getSource().sendSuccess(
+                                                () -> Component.literal("Display profiler " + (nowEnabled ? "enabled" : "disabled")),
+                                                false);
                                         return 1;
                                     }))
             );

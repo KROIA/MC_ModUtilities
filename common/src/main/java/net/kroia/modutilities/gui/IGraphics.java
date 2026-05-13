@@ -240,7 +240,15 @@ public interface IGraphics {
      * @param text the text to measure (may contain {@code \n})
      * @return the width in GUI pixels, or {@code 0} when no font is available
      */
-    default int getTextWidth(String text) { return 0; }
+    default int getTextWidth(String text) {
+        if (text == null || text.isEmpty()) return 0;
+        if (!text.contains("\n")) return text.length() * 6;
+        int max = 0;
+        for (String line : text.split("\n", -1)) {
+            max = Math.max(max, line.length() * 6);
+        }
+        return max;
+    }
 
     // ── Line / vertex drawing ──────────────────────────────────────────────
 

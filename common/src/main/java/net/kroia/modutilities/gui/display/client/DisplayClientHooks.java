@@ -11,7 +11,19 @@ import net.minecraft.core.BlockPos;
 @Environment(EnvType.CLIENT)
 public final class DisplayClientHooks {
 
+    private static boolean graphicsInitialized = false;
+
     private DisplayClientHooks() {}
+
+    public static void ensureGraphics() {
+        if (!graphicsInitialized) {
+            net.kroia.modutilities.gui.client.ClientGraphics fallback =
+                    new net.kroia.modutilities.gui.client.ClientGraphics();
+            fallback.setFont(net.minecraft.client.Minecraft.getInstance().font);
+            net.kroia.modutilities.gui.Gui.setFallbackGraphics(fallback);
+            graphicsInitialized = true;
+        }
+    }
 
     public static void openInteractionScreen(BlockPos controllerPos) {
         DisplayInteractionScreen.open(controllerPos);

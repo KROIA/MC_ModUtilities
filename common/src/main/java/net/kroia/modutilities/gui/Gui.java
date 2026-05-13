@@ -3,6 +3,8 @@ package net.kroia.modutilities.gui;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.elements.base.VertexBuffer;
 import net.kroia.modutilities.gui.geometry.Rectangle;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
@@ -74,6 +76,10 @@ public class Gui {
     protected GuiElement focusedElement = null;
 
     private final List<GuiElement> elements = new ArrayList<>();
+
+    private final List<GuiStructuralChange> structuralChanges = new ArrayList<>();
+    private boolean trackStructuralChanges = false;
+    private int structureVersion = 0;
 
     /**
      * Creates a new GUI root with no-op graphics and input backends.
@@ -346,6 +352,12 @@ public class Gui {
     {
         element.setRoot(this);
         elements.add(element);
+        structureVersion++;
+        if (trackStructuralChanges) {
+            structuralChanges.add(new GuiStructuralChange(
+                    GuiStructuralChange.Type.ADDED, null, elements.size() - 1,
+                    serializeElement(element)));
+        }
     }
 
     /**
@@ -355,8 +367,20 @@ public class Gui {
      */
     public void removeElement(GuiElement element)
     {
+        if (trackStructuralChanges) {
+            int index = elements.indexOf(element);
+            if (index >= 0) {
+                CompoundTag data = new CompoundTag();
+                String elementId = element.getId();
+                if (elementId != null) data.putString("id", elementId);
+                data.putInt("removedIndex", index);
+                structuralChanges.add(new GuiStructuralChange(
+                        GuiStructuralChange.Type.REMOVED, null, index, data));
+            }
+        }
         element.setRoot(null);
         elements.remove(element);
+        structureVersion++;
     }
 
     /**
@@ -365,11 +389,13 @@ public class Gui {
      */
     public void removeAllElements()
     {
-        for(GuiElement element : elements)
-        {
-            element.setRoot(null);
+        if (!elements.isEmpty()) {
+            for (GuiElement element : elements) {
+                element.setRoot(null);
+            }
+            elements.clear();
+            structureVersion++;
         }
-        elements.clear();
     }
 
     /**
@@ -378,6 +404,184 @@ public class Gui {
     public List<GuiElement> getElements()
     {
         return elements;
+    }
+
+    public boolean hasAnyDirty() {
+        for (GuiElement element : elements) {
+            if (hasAnyDirtyRecursive(element)) return true;
+        }
+        return false;
+    }
+
+    public void clearAllDirty() {
+        for (GuiElement element : elements) {
+            clearAllDirtyRecursive(element);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Structural change tracking
+    // -------------------------------------------------------------------------
+
+    public int getStructureVersion() {
+        return structureVersion;
+    }
+
+    public void resetStructureVersion() {
+        structureVersion = 0;
+        structuralChanges.clear();
+    }
+
+    public void setTrackStructuralChanges(boolean track) {
+        this.trackStructuralChanges = track;
+        if (!track) structuralChanges.clear();
+    }
+
+    public boolean isTrackingStructuralChanges() {
+        return trackStructuralChanges;
+    }
+
+    public boolean hasStructuralChanges() {
+        return !structuralChanges.isEmpty();
+    }
+
+    public List<GuiStructuralChange> getAndClearStructuralChanges() {
+        List<GuiStructuralChange> changes = new ArrayList<>(structuralChanges);
+        structuralChanges.clear();
+        return changes;
+    }
+
+    public void applyStructuralChanges(List<GuiStructuralChange> changes) {
+        for (GuiStructuralChange change : changes) {
+            switch (change.getType()) {
+                case ADDED -> {
+                    GuiElement element = deserializeElement(change.getElementData());
+                    if (element != null) {
+                        if (change.getParentId() == null) {
+                            addElement(element);
+                        }
+                    }
+                }
+                case REMOVED -> {
+                    int index = change.getIndex();
+                    if (change.getParentId() == null && index >= 0 && index < elements.size()) {
+                        removeElement(elements.get(index));
+                    }
+                }
+            }
+        }
+    }
+
+    private static boolean hasAnyDirtyRecursive(GuiElement element) {
+        if (element.isDirty()) return true;
+        for (GuiElement child : element.getChilds()) {
+            if (hasAnyDirtyRecursive(child)) return true;
+        }
+        return false;
+    }
+
+    private static void clearAllDirtyRecursive(GuiElement element) {
+        element.clearDirty();
+        for (GuiElement child : element.getChilds()) {
+            clearAllDirtyRecursive(child);
+        }
+    }
+
+    public CompoundTag serializeTree() {
+        CompoundTag tag = new CompoundTag();
+        tag.putInt("structureVersion", structureVersion);
+        ListTag elementsTag = new ListTag();
+        for (GuiElement element : elements) {
+            CompoundTag elementTag = serializeElement(element);
+            if (elementTag != null) elementsTag.add(elementTag);
+        }
+        tag.put("elements", elementsTag);
+        return tag;
+    }
+
+    public void deserializeTree(CompoundTag tag) {
+        boolean wasTracking = trackStructuralChanges;
+        trackStructuralChanges = false;
+
+        for (GuiElement element : elements) {
+            element.setRoot(null);
+        }
+        elements.clear();
+
+        if (!tag.contains("elements")) {
+            if (tag.contains("structureVersion")) {
+                structureVersion = tag.getInt("structureVersion");
+            }
+            trackStructuralChanges = wasTracking;
+            return;
+        }
+
+        ListTag elementsTag = tag.getList("elements", 10);
+        for (int i = 0; i < elementsTag.size(); i++) {
+            GuiElement element = deserializeElement(elementsTag.getCompound(i));
+            if (element != null) {
+                element.setRoot(this);
+                elements.add(element);
+            }
+        }
+
+        if (tag.contains("structureVersion")) {
+            structureVersion = tag.getInt("structureVersion");
+        }
+        trackStructuralChanges = wasTracking;
+    }
+
+    private static CompoundTag serializeElement(GuiElement element) {
+        String typeKey = GuiElementRegistry.getTypeKey(element);
+        if (typeKey == null) return null;
+
+        CompoundTag tag = new CompoundTag();
+        tag.putString("type", typeKey);
+        if (element.getId() != null) tag.putString("id", element.getId());
+
+        tag.putInt("x", element.getX());
+        tag.putInt("y", element.getY());
+        tag.putInt("w", element.getWidth());
+        tag.putInt("h", element.getHeight());
+
+        tag.put("state", element.serializeState());
+
+        List<GuiElement> children = element.getSerializableChildren();
+        if (!children.isEmpty()) {
+            ListTag childrenTag = new ListTag();
+            for (GuiElement child : children) {
+                CompoundTag childTag = serializeElement(child);
+                if (childTag != null) childrenTag.add(childTag);
+            }
+            if (!childrenTag.isEmpty()) tag.put("children", childrenTag);
+        }
+
+        return tag;
+    }
+
+    private static GuiElement deserializeElement(CompoundTag tag) {
+        String typeKey = tag.getString("type");
+        GuiElement element = GuiElementRegistry.create(typeKey);
+        if (element == null) return null;
+
+        if (tag.contains("id")) element.setId(tag.getString("id"));
+
+        element.setPosition(tag.getInt("x"), tag.getInt("y"));
+        element.setSize(tag.getInt("w"), tag.getInt("h"));
+
+        if (tag.contains("state")) {
+            element.deserializeState(tag.getCompound("state"));
+        }
+
+        if (tag.contains("children")) {
+            ListTag childrenTag = tag.getList("children", 10);
+            for (int i = 0; i < childrenTag.size(); i++) {
+                GuiElement child = deserializeElement(childrenTag.getCompound(i));
+                if (child != null) element.addChild(child);
+            }
+        }
+
+        return element;
     }
 
     /**
