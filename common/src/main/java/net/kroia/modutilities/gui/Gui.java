@@ -69,6 +69,8 @@ public class Gui {
     private float guiScale = 1.0f; // Scale of the GUI, default is 1.0 (no scaling)
     private float invGuiScale = 1.0f; // Inverse scale of the GUI, default is 1.0 (no scaling)
     private double displayScaleFactor = 1.0; // Minecraft GUI scale, set by hosting screen
+    private int offscreenScissorScale = 0; // >0: use raw GL scissor with this scale instead of GuiGraphics
+    private int offscreenFramebufferHeight = 0;
 
     protected float partialTick;
     private Rectangle globalScissorArea = null;
@@ -221,6 +223,16 @@ public class Gui {
         }
         this.guiScale = guiScale;
         this.invGuiScale = 1.0f / this.guiScale;
+    }
+
+    public void setOffscreenScissorMode(int renderScale, int framebufferHeight) {
+        this.offscreenScissorScale = renderScale;
+        this.offscreenFramebufferHeight = framebufferHeight;
+    }
+
+    public void clearOffscreenScissorMode() {
+        this.offscreenScissorScale = 0;
+        this.offscreenFramebufferHeight = 0;
     }
 
     /**
@@ -1274,6 +1286,16 @@ public class Gui {
     public void enableScissor(Rectangle rect)
     {
         globalScissorArea = rect;
+        if (offscreenScissorScale > 0) {
+            int s = offscreenScissorScale;
+            int glX = rect.x * s;
+            int glY = offscreenFramebufferHeight - (rect.y + rect.height) * s;
+            int glW = rect.width * s;
+            int glH = rect.height * s;
+            org.lwjgl.opengl.GL11.glEnable(org.lwjgl.opengl.GL11.GL_SCISSOR_TEST);
+            org.lwjgl.opengl.GL11.glScissor(glX, glY, glW, glH);
+            return;
+        }
         int x1 = (int)((float)rect.x * guiScale);
         int y1 = (int)((float)rect.y * guiScale);
         int x2 = (int)(((float)rect.x+(float)rect.width)*guiScale);
@@ -1288,6 +1310,10 @@ public class Gui {
     public void disableScissor()
     {
         globalScissorArea = null;
+        if (offscreenScissorScale > 0) {
+            org.lwjgl.opengl.GL11.glDisable(org.lwjgl.opengl.GL11.GL_SCISSOR_TEST);
+            return;
+        }
         graphics.disableScissor();
     }
 
@@ -1314,6 +1340,10 @@ public class Gui {
      */
     public void scissorPause()
     {
+        if (offscreenScissorScale > 0) {
+            org.lwjgl.opengl.GL11.glDisable(org.lwjgl.opengl.GL11.GL_SCISSOR_TEST);
+            return;
+        }
         graphics.disableScissor();
     }
 

@@ -92,6 +92,14 @@ public class CheckBox extends GuiElement {
      * Sets the alignment of the label text within its bounds.
      * @param alignment the alignment (e.g. {@link Alignment#LEFT})
      */
+    public void setText(String text) {
+        label.setText(text);
+    }
+
+    public String getText() {
+        return label.getText();
+    }
+
     public void setTextAlignment(Alignment alignment)
     {
         label.setAlignment(alignment);
@@ -167,6 +175,7 @@ public class CheckBox extends GuiElement {
     public CompoundTag serializeState() {
         CompoundTag tag = super.serializeState();
         tag.putBoolean("checked", isChecked);
+        tag.putString("label", label.getText());
         return tag;
     }
 
@@ -175,6 +184,8 @@ public class CheckBox extends GuiElement {
         super.deserializeState(tag);
         if(tag.contains("checked"))
             setChecked(tag.getBoolean("checked"));
+        if(tag.contains("label"))
+            label.setText(tag.getString("label"));
     }
     /**
      * Sets whether the user can toggle the checkbox by clicking it.

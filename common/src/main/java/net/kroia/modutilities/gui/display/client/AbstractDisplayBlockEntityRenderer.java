@@ -301,10 +301,15 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
             data.layoutInitialized = true;
         }
 
+        int scale = texW / guiW;
+        gui.setOffscreenScissorMode(scale, texH);
+
         DisplayRenderProfiler.begin(controllerPos, DisplayRenderProfiler.Category.GUI_RENDER);
         gui.renderBackground();
         gui.render();
         DisplayRenderProfiler.end(controllerPos, DisplayRenderProfiler.Category.GUI_RENDER);
+
+        gui.clearOffscreenScissorMode();
 
         guiGraphics.pose().popPose();
         offscreenBufferSource.endBatch();

@@ -161,6 +161,16 @@ public class Sandbox {
                                         player.sendSystemMessage(Component.literal("Gave DisplayPanel demo block"));
                                         return 1;
                                     }))
+                            .then(Commands.literal("giveChartDemo")
+                                    .executes(context -> {
+                                        ServerPlayer player = context.getSource().getPlayerOrException();
+                                        ItemStack chartBlock = new ItemStack(SandboxRegistration.CHART_DEMO_BLOCK.get());
+                                        if (!player.getInventory().add(chartBlock)) {
+                                            player.drop(chartBlock, false);
+                                        }
+                                        player.sendSystemMessage(Component.literal("Gave ChartDemo block"));
+                                        return 1;
+                                    }))
                             .then(Commands.literal("displayProfiler")
                                     .executes(context -> {
                                         boolean nowEnabled = !DisplayRenderProfiler.isEnabled();
@@ -259,6 +269,8 @@ public class Sandbox {
     {
         // Register sandbox blocks, items, and block entities
         SandboxRegistration.register();
+        net.kroia.modutilities.gui.GuiElementRegistry.register(
+                "sandbox_line_chart", SandboxLineChart.class, SandboxLineChart::new);
 
         // Register client-side renderers and input handlers (only on physical client)
         if (UtilitiesPlatform.isClient()) {

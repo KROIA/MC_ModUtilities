@@ -2,6 +2,7 @@ package net.kroia.modutilities.gui.elements;
 
 
 import net.kroia.modutilities.gui.elements.base.GuiElement;
+import net.minecraft.nbt.CompoundTag;
 
 import java.util.List;
 
@@ -112,6 +113,21 @@ public class Button extends EmptyButton {
     @Override
     public List<GuiElement> getSerializableChildren() {
         return List.of();
+    }
+
+    @Override
+    public CompoundTag serializeState() {
+        CompoundTag tag = super.serializeState();
+        tag.putString("label", label.getText());
+        return tag;
+    }
+
+    @Override
+    public void deserializeState(CompoundTag tag) {
+        super.deserializeState(tag);
+        if (tag.contains("label")) {
+            label.setText(tag.getString("label"));
+        }
     }
 
     @Override
