@@ -1,6 +1,7 @@
 package net.kroia.modutilities.gui.display.client;
 
 import com.mojang.blaze3d.pipeline.TextureTarget;
+import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;
 import net.fabricmc.api.EnvType;
@@ -254,6 +255,9 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         VertexSorting prevSorting = RenderSystem.getVertexSorting();
         int[] prevViewport = new int[4];
         org.lwjgl.opengl.GL11.glGetIntegerv(org.lwjgl.opengl.GL11.GL_VIEWPORT, prevViewport);
+        boolean prevDepthTest = org.lwjgl.opengl.GL11.glIsEnabled(org.lwjgl.opengl.GL11.GL_DEPTH_TEST);
+        boolean prevBlend = org.lwjgl.opengl.GL11.glIsEnabled(org.lwjgl.opengl.GL11.GL_BLEND);
+        boolean prevCull = org.lwjgl.opengl.GL11.glIsEnabled(org.lwjgl.opengl.GL11.GL_CULL_FACE);
 
         data.framebuffer.bindWrite(false);
         RenderSystem.viewport(0, 0, texW, texH);
@@ -304,6 +308,8 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         int scale = texW / guiW;
         gui.setOffscreenScissorMode(scale, texH);
 
+        Lighting.setupForFlatItems();
+
         DisplayRenderProfiler.begin(controllerPos, DisplayRenderProfiler.Category.GUI_RENDER);
         gui.renderBackground();
         gui.render();
@@ -335,6 +341,10 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         RenderSystem.setShaderFogColor(prevFogColor[0], prevFogColor[1], prevFogColor[2], prevFogColor[3]);
         RenderSystem.setShaderFogStart(prevFogStart);
         RenderSystem.setShaderFogEnd(prevFogEnd);
+        if (prevDepthTest) RenderSystem.enableDepthTest(); else RenderSystem.disableDepthTest();
+        if (prevBlend) RenderSystem.enableBlend(); else RenderSystem.disableBlend();
+        if (prevCull) RenderSystem.enableCull(); else RenderSystem.disableCull();
+        Lighting.setupLevel();
     }
 
     private void renderQuadOnFace(PoseStack poseStack, MultiBufferSource bufferSource,

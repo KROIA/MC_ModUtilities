@@ -161,6 +161,16 @@ public class Sandbox {
                                         player.sendSystemMessage(Component.literal("Gave DisplayPanel demo block"));
                                         return 1;
                                     }))
+                            .then(Commands.literal("giveBackPanel")
+                                    .executes(context -> {
+                                        ServerPlayer player = context.getSource().getPlayerOrException();
+                                        ItemStack backPanel = new ItemStack(SandboxRegistration.DISPLAY_DEMO_BACK_PANEL_BLOCK.get());
+                                        if (!player.getInventory().add(backPanel)) {
+                                            player.drop(backPanel, false);
+                                        }
+                                        player.sendSystemMessage(Component.literal("Gave BackPanel demo block"));
+                                        return 1;
+                                    }))
                             .then(Commands.literal("giveChartDemo")
                                     .executes(context -> {
                                         ServerPlayer player = context.getSource().getPlayerOrException();

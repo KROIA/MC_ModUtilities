@@ -11,7 +11,10 @@ Display blocks are in-world Minecraft blocks that render GUI elements directly o
 - **Server-authoritative interaction**: The server owns the GUI state. Players interact by right-clicking; the server processes mouse events and syncs results to all clients.
 - **Interaction screen**: Right-clicking opens a full-screen overlay that mirrors the display's content, enabling precise input (sliders, text fields, checkboxes) via `GuiStateSync`.
 - **Channel-based merge prevention**: Different display block types can coexist without merging by using distinct channel IDs.
-- **Two built-in shape variants**: Full block (solid cube with inset face) and flat panel (thin glass-pane-like shape).
+- **Three built-in shape variants**: Full block (solid cube with inset face), flat panel (thin glass-pane-like shape centered in the block), and back panel (thin panel flush against the back face).
+- **Built-in textures and block models**: ModUtilities ships reusable block models (`display_full_block`, `display_flat_panel`, `display_back_panel`) with dark tech panel textures. Dependent mods can parent their models directly to these without providing custom textures.
+- **Configurable interaction mode**: Open the synced interaction screen on right-click (default), or display-only with custom logic by overriding `opensSyncedScreenOnUse()`.
+- **Runtime GUI swapping**: Call `rebuildGui()` to clear and rebuild the display content at runtime, enabling dynamic views that change based on block entity state.
 
 ---
 
@@ -336,7 +339,44 @@ You need standard Minecraft resource files for the block to appear in-game. The 
 }
 ```
 
-**Block model JSON** (`assets/mymod/models/block/my_display_block.json`):
+**Block model JSON -- Option A: Use ModUtilities' built-in models (recommended)**
+
+ModUtilities ships three reusable block models with dark tech panel textures. Parent your block model to one of these to avoid creating custom textures:
+
+`assets/mymod/models/block/my_display_block.json`:
+
+```json
+{
+  "parent": "modutilities:block/display_full_block"
+}
+```
+
+`assets/mymod/models/item/my_display_block.json`:
+
+```json
+{
+  "parent": "mymod:block/my_display_block"
+}
+```
+
+Available built-in models:
+
+| Model | Description |
+|-------|-------------|
+| `modutilities:block/display_full_block` | Solid cube with dark tech panel texture. The north (front) face uses a darker texture (`display_block_front`); all other faces use `display_block_side` |
+| `modutilities:block/display_flat_panel` | Thin center panel (2 pixels wide). Front/back faces use `display_panel` texture; edges use `display_block_side` |
+| `modutilities:block/display_back_panel` | Thin back-face panel (2 pixels wide, flush against the back). Same textures as the flat panel |
+
+These models reference the following textures (all shipped with ModUtilities):
+- `modutilities:block/display_block_side` -- dark tech panel side texture
+- `modutilities:block/display_block_front` -- darker front face texture
+- `modutilities:block/display_panel` -- dark glass-like panel texture
+
+**Block model JSON -- Option B: Custom texture**
+
+If you want a custom look, create your own model and texture:
+
+`assets/mymod/models/block/my_display_block.json`:
 
 ```json
 {
@@ -347,13 +387,15 @@ You need standard Minecraft resource files for the block to appear in-game. The 
 }
 ```
 
-**Item model JSON** (`assets/mymod/models/item/my_display_block.json`):
+`assets/mymod/models/item/my_display_block.json`:
 
 ```json
 {
   "parent": "mymod:block/my_display_block"
 }
 ```
+
+You will need a block texture at `assets/mymod/textures/block/my_display_block.png`. The GUI is rendered as an overlay on top of this texture.
 
 **Language file entry** (`assets/mymod/lang/en_us.json`):
 
@@ -363,7 +405,99 @@ You need standard Minecraft resource files for the block to appear in-game. The 
 }
 ```
 
-You also need a block texture at `assets/mymod/textures/block/my_display_block.png`. The GUI is rendered as an overlay on top of this texture.
+---
+
+## Display-Only Blocks (No Interaction Screen)
+
+By default, right-clicking a display block opens the synced interaction screen. For blocks that should only display information -- dashboards, status boards, info panels -- override `opensSyncedScreenOnUse()` to return `false`.
+
+```java
+public class StatusBoardBlockEntity extends AbstractDisplayBlockEntity {
+
+    public StatusBoardBlockEntity(BlockPos pos, BlockState blockState) {
+        super(MyModRegistration.STATUS_BOARD_ENTITY.get(), pos, blockState);
+    }
+
+    @Override
+    public DisplayConfig getDisplayConfig() {
+        return DisplayConfig.backPanel();
+    }
+
+    @Override
+    public ContentBuilder getContentBuilder() {
+        return StatusBoardBlockEntity::buildContent;
+    }
+
+    @Override
+    public boolean opensSyncedScreenOnUse() {
+        return false;
+    }
+
+    @Override
+    protected void onControllerTick() {
+        // Update display content every second
+        if (gui == null || level == null) return;
+        if (level.getGameTime() % 20 != 0) return;
+        
+        for (var el : gui.getElements()) {
+            if (el instanceof Label l && "time".equals(l.getId())) {
+                l.setText("Time: " + level.getDayTime());
+                syncToClientPublic();
+            }
+        }
+    }
+
+    private static void buildContent(Gui gui, int w, int h) {
+        Label title = new Label("Status Board");
+        title.setBounds(0, 10, w, 16);
+        title.setAlignment(GuiElement.Alignment.CENTER);
+        gui.addElement(title);
+
+        Label time = new Label("Time: 0");
+        time.setId("time");
+        time.setBounds(0, h / 2, w, 14);
+        time.setAlignment(GuiElement.Alignment.CENTER);
+        gui.addElement(time);
+    }
+}
+```
+
+**Key points:**
+
+- `opensSyncedScreenOnUse()` returns `false` -- right-clicking does nothing (returns `PASS` to Minecraft, allowing other interactions like placing blocks against it).
+- `onControllerTick()` runs every server tick on the controller only. Use it to update GUI elements based on game state or block entity data.
+- `syncToClientPublic()` pushes the current GUI state to all clients, triggering a re-render on the block face. Call it after modifying any display elements.
+
+---
+
+## Dynamic Content (GUI Swapping)
+
+Use `rebuildGui()` to swap the displayed GUI at runtime. The `ContentBuilder` returned by `getContentBuilder()` can vary based on block entity state, and calling `rebuildGui()` clears the current GUI and rebuilds it using the current builder.
+
+```java
+// In your block entity
+private boolean showDetailView = false;
+
+@Override
+public ContentBuilder getContentBuilder() {
+    return showDetailView 
+        ? MyBlockEntity::buildDetailView 
+        : MyBlockEntity::buildOverview;
+}
+
+// Call this when you want to switch views
+public void switchView() {
+    showDetailView = !showDetailView;
+    rebuildGui();  // Clears current GUI, calls getContentBuilder().build(), syncs to clients
+}
+```
+
+**Key points:**
+
+- `rebuildGui()` clears the current GUI, calls `getContentBuilder().build()` with the current group dimensions, then runs `wireCallbacks()` again. The rebuilt state is automatically synced to clients.
+- The `ContentBuilder` returned by `getContentBuilder()` can change dynamically based on block entity state -- each call to `rebuildGui()` re-evaluates which builder to use.
+- Automatically syncs to clients after rebuilding.
+- Only works on the controller entity. Calling on a non-controller member has no effect.
 
 ---
 
@@ -405,10 +539,13 @@ public record DisplayConfig(
 |--------|-------------|
 | `fullBlock()` | 256x256 virtual, scale 2, slightly inset face (0.005), solid cube shape |
 | `fullBlock(int w, int h)` | Same as above with custom virtual dimensions |
-| `flatPanel()` | 256x256 virtual, scale 2, recessed face offset, thin 2-pixel-wide panel shape |
-| `flatPanel(int w, int h)` | Same as above with custom virtual dimensions |
 | `fullBlock(int w, int h, int interval, int maxDist)` | Custom virtual dimensions with render throttling and distance LOD |
-| `flatPanel(int w, int h, int interval, int maxDist)` | Same for flat panel variant |
+| `flatPanel()` | 256x256 virtual, scale 2, recessed face offset (-7/16), thin 2-pixel-wide center panel shape |
+| `flatPanel(int w, int h)` | Same as above with custom virtual dimensions |
+| `flatPanel(int w, int h, int interval, int maxDist)` | Same for flat panel variant with render throttling and distance LOD |
+| `backPanel()` | 256x256 virtual, scale 2, recessed face offset (-14/16), thin 2-pixel panel on the back face |
+| `backPanel(int w, int h)` | Same as above with custom virtual dimensions |
+| `backPanel(int w, int h, int interval, int maxDist)` | Same for back panel variant with render throttling and distance LOD |
 
 For a 2x3 multi-block group with `fullBlock()`, the total GUI resolution is 512x768 virtual pixels (rendered at 1024x1536 texture pixels with scale 2).
 
@@ -465,6 +602,7 @@ The core block entity class. Extend this to create custom display block entities
 | `loadCustomData(CompoundTag, Provider)` | No-op | Load custom block entity state from NBT |
 | `onInputSynced()` | No-op | Called after the interaction screen syncs input state into the server GUI. Read element values back into BE fields |
 | `getChannelId()` | `"default"` | Return a channel identifier. Blocks only merge with adjacent blocks that share the same channel ID and facing |
+| `opensSyncedScreenOnUse()` | `true` | Whether right-clicking opens the built-in synced interaction screen. Override to return `false` for display-only blocks or blocks with custom interaction logic |
 
 **Public API -- group state:**
 
@@ -480,11 +618,12 @@ The core block entity class. Extend this to create custom display block entities
 | `getGridY()` | `int` | This block's row index within the group (0 = top) |
 | `getGui()` | `Gui` | The GUI instance (non-null only on the controller) |
 
-**Public API -- sync and interaction:**
+**Public API -- sync, interaction, and GUI management:**
 
 | Method | Description |
 |--------|-------------|
-| `syncToClientPublic()` | Marks the entity for client sync on the next tick. Call after modifying state that should be visible to clients |
+| `syncToClientPublic()` | Marks the entity for client sync on the next tick. Call after modifying state that should be visible to clients. This is the standard way to push updates to clients and trigger a re-render on the block face |
+| `rebuildGui()` | Clears the current GUI and rebuilds it using the `ContentBuilder` returned by `getContentBuilder()`. Call when the display content needs to change at runtime (e.g., switching views, updating after major data changes). Only works on the controller. Automatically syncs to clients |
 | `handleInteraction(Player, double, double)` | Process a mouse click at the given GUI coordinates (server-side) |
 | `handleMouseRelease(Player, double, double)` | Process a mouse release (server-side) |
 | `tryAcquireEditor(UUID)` | Attempt to lock the display for exclusive editing by a player. Returns false if another player holds the lock |
@@ -519,7 +658,7 @@ The base block class. Extend this to create custom display blocks.
 
 - Horizontal facing via `FACING` block state property.
 - Voxel shape delegated to the block entity's `DisplayConfig.shapeProvider()`.
-- Player interaction: acquires editor lock on server, opens interaction screen on client.
+- Player interaction: checks `opensSyncedScreenOnUse()` -- if true, acquires editor lock on server and opens interaction screen on client; if false, returns `PASS`.
 - Block entity ticker: calls `serverTick()` on the block entity every tick.
 - Placement/removal: triggers group recalculation with state transfer.
 
@@ -867,6 +1006,33 @@ Source files:
 - `common/src/main/java/net/kroia/modutilities/sandbox/DisplayDemoPanelBlock.java`
 - `common/src/main/java/net/kroia/modutilities/sandbox/DisplayDemoPanelBlockEntity.java`
 
+### Back Panel Example
+
+The sandbox `DisplayDemoBackPanelBlock` / `DisplayDemoBackPanelBlockEntity` demonstrates a back-panel display with:
+
+- A thin panel flush against the back face of the block
+- Display-only mode (`opensSyncedScreenOnUse()` returns `false`) -- no interaction screen
+- A different channel ID (`"back_panel"`) to prevent merging with other display types
+- An uptime timer updated every second via `onControllerTick()`
+- Server-side label updates pushed to clients via `syncToClientPublic()`
+
+Source files:
+- `common/src/main/java/net/kroia/modutilities/sandbox/DisplayDemoBackPanelBlock.java`
+- `common/src/main/java/net/kroia/modutilities/sandbox/DisplayDemoBackPanelBlockEntity.java`
+
+### Chart Demo Example
+
+The sandbox `ChartDemoBlock` / `ChartDemoBlockEntity` demonstrates a display block hosting a `SandboxLineChart` with:
+
+- Scissor clipping test in the offscreen display block renderer
+- Sine, cosine, and square wave data series
+- Interactive pan and zoom on the chart
+- A different channel ID (`"chart_demo"`) to prevent merging with other display types
+
+Source files:
+- `common/src/main/java/net/kroia/modutilities/sandbox/ChartDemoBlock.java`
+- `common/src/main/java/net/kroia/modutilities/sandbox/ChartDemoBlockEntity.java`
+
 ### Minimal Example: Simplest Possible Display Block
 
 A display block that shows a single centered label with no interactivity:
@@ -959,5 +1125,5 @@ This is the absolute minimum: two classes, two method overrides on the block ent
 
 ---
 
-**Version:** 2.0.0_ALPHA
+**Version:** 2.0.1
 **Minecraft Version:** 1.21.1

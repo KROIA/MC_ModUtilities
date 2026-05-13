@@ -74,6 +74,17 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
     public String getChannelId() { return "default"; }
 
     /**
+     * Whether right-clicking the display block opens the built-in synced interaction screen.
+     * Override and return {@code false} to disable the default screen — useful for
+     * display-only blocks or blocks that implement custom interaction logic.
+     *
+     * @return {@code true} to open the synced screen on use (default), {@code false} to skip it
+     */
+    public boolean opensSyncedScreenOnUse() {
+        return true;
+    }
+
+    /**
      * Called after the interaction screen syncs input state into this entity's GUI.
      * Override to read GUI element values back into block entity fields and update
      * dependent elements (e.g. labels that reflect slider values).
@@ -217,6 +228,24 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
             this.gui = null;
         }
 
+        syncToClient();
+    }
+
+    /**
+     * Clears the current GUI and rebuilds it using the {@link ContentBuilder}.
+     * Call this when the display content needs to change at runtime (e.g., switching
+     * between different views, updating after data changes).
+     * <p>
+     * Only has effect on the controller entity. Automatically syncs to clients.
+     */
+    public void rebuildGui() {
+        if (!isController() || level == null) return;
+        DisplayConfig config = getDisplayConfig();
+        int w = groupWidth * config.virtualWidth();
+        int h = groupHeight * config.virtualHeight();
+        buildAndInitGui(w, h);
+        guiBuiltWidth = w;
+        guiBuiltHeight = h;
         syncToClient();
     }
 
@@ -523,7 +552,9 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
         }
         gui.setGraphicsBackend(Gui.getFallbackGraphics());
         getContentBuilder().build(gui, w, h);
-        wireCallbacks(gui);
+        if (level == null || !level.isClientSide()) {
+            wireCallbacks(gui);
+        }
         gui.init();
         gui.resetStructureVersion();
         if (level != null && !level.isClientSide()) {

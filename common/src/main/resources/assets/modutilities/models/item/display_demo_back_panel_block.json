@@ -12,8 +12,8 @@
       "faces": {
         "north": { "texture": "#pane" },
         "south": { "texture": "#pane" },
-        "east":  { "texture": "#edge" },
-        "west":  { "texture": "#edge" },
+        "east":  { "uv": [7, 0, 9, 16], "texture": "#edge" },
+        "west":  { "uv": [7, 0, 9, 16], "texture": "#edge" },
         "up":    { "uv": [7, 0, 9, 16], "texture": "#edge", "rotation": 90 },
         "down":  { "uv": [7, 0, 9, 16], "texture": "#edge", "rotation": 90 }
       }

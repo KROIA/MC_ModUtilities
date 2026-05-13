@@ -1,6 +1,3 @@
 {
-  "parent": "minecraft:block/cube_all",
-  "textures": {
-    "all": "minecraft:block/black_concrete"
-  }
+  "parent": "modutilities:block/display_full_block"
 }
