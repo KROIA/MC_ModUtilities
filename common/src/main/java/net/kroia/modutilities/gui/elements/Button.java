@@ -20,7 +20,7 @@ public class Button extends EmptyButton {
      * @param text the button label
      */
     public Button(String text) {
-        super();
+        super(0,0,10,20);
         label = new Label(text);
         addChild(label);
         label.setAlignment(Alignment.CENTER);
