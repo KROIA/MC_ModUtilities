@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.context.CommandContext;
 import dev.architectury.event.events.common.CommandRegistrationEvent;
+import net.kroia.modutilities.gui.display.client.DisplayRenderProfiler;
 import net.kroia.modutilities.JsonUtilities;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.UtilitiesPlatform;
@@ -160,6 +161,35 @@ public class Sandbox {
                                         player.sendSystemMessage(Component.literal("Gave DisplayPanel demo block"));
                                         return 1;
                                     }))
+                            .then(Commands.literal("giveBackPanel")
+                                    .executes(context -> {
+                                        ServerPlayer player = context.getSource().getPlayerOrException();
+                                        ItemStack backPanel = new ItemStack(SandboxRegistration.DISPLAY_DEMO_BACK_PANEL_BLOCK.get());
+                                        if (!player.getInventory().add(backPanel)) {
+                                            player.drop(backPanel, false);
+                                        }
+                                        player.sendSystemMessage(Component.literal("Gave BackPanel demo block"));
+                                        return 1;
+                                    }))
+                            .then(Commands.literal("giveChartDemo")
+                                    .executes(context -> {
+                                        ServerPlayer player = context.getSource().getPlayerOrException();
+                                        ItemStack chartBlock = new ItemStack(SandboxRegistration.CHART_DEMO_BLOCK.get());
+                                        if (!player.getInventory().add(chartBlock)) {
+                                            player.drop(chartBlock, false);
+                                        }
+                                        player.sendSystemMessage(Component.literal("Gave ChartDemo block"));
+                                        return 1;
+                                    }))
+                            .then(Commands.literal("displayProfiler")
+                                    .executes(context -> {
+                                        boolean nowEnabled = !DisplayRenderProfiler.isEnabled();
+                                        DisplayRenderProfiler.setEnabled(nowEnabled);
+                                        context.getSource().sendSuccess(
+                                                () -> Component.literal("Display profiler " + (nowEnabled ? "enabled" : "disabled")),
+                                                false);
+                                        return 1;
+                                    }))
             );
         }
 
@@ -249,6 +279,8 @@ public class Sandbox {
     {
         // Register sandbox blocks, items, and block entities
         SandboxRegistration.register();
+        net.kroia.modutilities.gui.GuiElementRegistry.register(
+                "sandbox_line_chart", SandboxLineChart.class, SandboxLineChart::new);
 
         // Register client-side renderers and input handlers (only on physical client)
         if (UtilitiesPlatform.isClient()) {

@@ -4,6 +4,7 @@ import net.kroia.modutilities.gui.InputConstants;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Point;
 import net.kroia.modutilities.gui.geometry.Rectangle;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.sounds.SoundEvents;
 
 import java.util.function.Consumer;
@@ -107,7 +108,26 @@ public abstract class Slider extends GuiElement {
             value = 0.0;
         if(value > 1.0)
             value = 1.0;
+        if(Math.abs(this.sliderValue - value) > 0.001)
+            markDirty();
         this.sliderValue = value;
+    }
+
+    @Override
+    public SyncCategory getSyncCategory() { return SyncCategory.INPUT; }
+
+    @Override
+    public CompoundTag serializeState() {
+        CompoundTag tag = super.serializeState();
+        tag.putDouble("value", sliderValue);
+        return tag;
+    }
+
+    @Override
+    public void deserializeState(CompoundTag tag) {
+        super.deserializeState(tag);
+        if(tag.contains("value"))
+            setSliderValue(tag.getDouble("value"));
     }
 
     /**

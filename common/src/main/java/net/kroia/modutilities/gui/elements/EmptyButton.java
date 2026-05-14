@@ -3,6 +3,7 @@ package net.kroia.modutilities.gui.elements;
 import net.kroia.modutilities.ColorUtilities;
 import net.kroia.modutilities.gui.InputConstants;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.sounds.SoundEvents;
 
 /**
@@ -197,6 +198,25 @@ public class EmptyButton extends GuiElement {
                 if (onFallingEdge != null) onFallingEdge.run();
             }
             clickCount = sourceCount;
+            markDirty();
+        }
+    }
+
+    @Override
+    public SyncCategory getSyncCategory() { return SyncCategory.INPUT; }
+
+    @Override
+    public CompoundTag serializeState() {
+        CompoundTag tag = super.serializeState();
+        tag.putInt("clickCount", clickCount);
+        return tag;
+    }
+
+    @Override
+    public void deserializeState(CompoundTag tag) {
+        super.deserializeState(tag);
+        if (tag.contains("clickCount")) {
+            syncClickCount(tag.getInt("clickCount"));
         }
     }
 
@@ -240,6 +260,7 @@ public class EmptyButton extends GuiElement {
             playLocalSound(SoundEvents.UI_BUTTON_CLICK.value(),0.5F);
             isPressed = true;
             clickCount++;
+            markDirty();
             if(onFallingEdge != null) {
                 onFallingEdge.run();
             }

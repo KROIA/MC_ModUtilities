@@ -3,6 +3,7 @@
   "textures": {
     "particle": "modutilities:block/display_panel",
     "pane": "modutilities:block/display_panel",
+    "front": "modutilities:block/display_block_front",
     "edge": "modutilities:block/display_block_side"
   },
   "elements": [
@@ -10,10 +11,10 @@
       "from": [0, 0, 7],
       "to": [16, 16, 9],
       "faces": {
-        "north": { "texture": "#pane" },
+        "north": { "texture": "#front" },
         "south": { "texture": "#pane" },
-        "east":  { "texture": "#edge" },
-        "west":  { "texture": "#edge" },
+        "east":  { "uv": [7, 0, 9, 16], "texture": "#edge" },
+        "west":  { "uv": [7, 0, 9, 16], "texture": "#edge" },
         "up":    { "uv": [7, 0, 9, 16], "texture": "#edge", "rotation": 90 },
         "down":  { "uv": [7, 0, 9, 16], "texture": "#edge", "rotation": 90 }
       }

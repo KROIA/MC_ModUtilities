@@ -1,7 +1,7 @@
 package net.kroia.modutilities.gui.display.client;
 
 import com.mojang.blaze3d.pipeline.TextureTarget;
-import com.mojang.blaze3d.platform.NativeImage;
+import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;
 import net.fabricmc.api.EnvType;
@@ -35,10 +35,10 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
 
     private final ClientGraphics clientGraphics;
     private MultiBufferSource.BufferSource offscreenBufferSource;
+    private GuiGraphics cachedGuiGraphics;
 
     private static class GroupRenderData {
         DynamicTexture texture;
-        NativeImage image;
         ResourceLocation location;
         TextureTarget framebuffer;
         boolean layoutInitialized;
@@ -47,6 +47,8 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         int texWidth;
         int texHeight;
         long lastRenderedFrame = -1;
+        int lastMouseX = -1;
+        int lastMouseY = -1;
     }
 
     private final Map<BlockPos, GroupRenderData> groupData = new HashMap<>();
@@ -54,6 +56,7 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
     public AbstractDisplayBlockEntityRenderer(BlockEntityRendererProvider.Context context) {
         this.clientGraphics = new ClientGraphics();
         clientGraphics.setFont(Minecraft.getInstance().font);
+        Gui.setFallbackGraphics(clientGraphics);
     }
 
     @Override
@@ -95,13 +98,26 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         }
 
         if (data == null) {
+            int prevTexture = org.lwjgl.opengl.GL11.glGetInteger(org.lwjgl.opengl.GL11.GL_TEXTURE_BINDING_2D);
+            int[] prevViewport = new int[4];
+            org.lwjgl.opengl.GL11.glGetIntegerv(org.lwjgl.opengl.GL11.GL_VIEWPORT, prevViewport);
+            com.mojang.blaze3d.pipeline.RenderTarget prevTarget = Minecraft.getInstance().getMainRenderTarget();
+
             data = new GroupRenderData();
             data.groupWidth = gw;
             data.groupHeight = gh;
             data.texWidth = texW;
             data.texHeight = texH;
-            data.image = new NativeImage(texW, texH, false);
-            data.texture = new DynamicTexture(data.image);
+            data.texture = new DynamicTexture(texW, texH, false);
+            RenderSystem.bindTexture(data.texture.getId());
+            org.lwjgl.opengl.GL11.glTexImage2D(org.lwjgl.opengl.GL11.GL_TEXTURE_2D, 0,
+                    org.lwjgl.opengl.GL11.GL_RGBA, texW, texH, 0,
+                    org.lwjgl.opengl.GL11.GL_RGBA, org.lwjgl.opengl.GL11.GL_UNSIGNED_BYTE,
+                    (java.nio.ByteBuffer) null);
+            org.lwjgl.opengl.GL11.glTexParameteri(org.lwjgl.opengl.GL11.GL_TEXTURE_2D,
+                    org.lwjgl.opengl.GL11.GL_TEXTURE_MIN_FILTER, org.lwjgl.opengl.GL11.GL_NEAREST);
+            org.lwjgl.opengl.GL11.glTexParameteri(org.lwjgl.opengl.GL11.GL_TEXTURE_2D,
+                    org.lwjgl.opengl.GL11.GL_TEXTURE_MAG_FILTER, org.lwjgl.opengl.GL11.GL_NEAREST);
             data.framebuffer = new TextureTarget(texW, texH, true, false);
             data.location = ResourceLocation.fromNamespaceAndPath("modutilities",
                     "dynamic/display_group_" + controllerPos.getX() + "_"
@@ -109,6 +125,10 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
             Minecraft.getInstance().getTextureManager().register(data.location, data.texture);
             data.layoutInitialized = false;
             groupData.put(controllerPos, data);
+
+            prevTarget.bindWrite(false);
+            RenderSystem.viewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
+            RenderSystem.bindTexture(prevTexture);
         }
 
         return data;
@@ -122,6 +142,8 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
 
         BlockPos controllerPos = blockEntity.getControllerPos();
         if (controllerPos == null) return;
+
+        DisplayRenderProfiler.begin(controllerPos, DisplayRenderProfiler.Category.TOTAL);
 
         DisplayConfig config = blockEntity.getDisplayConfig();
         int gw = blockEntity.getGroupWidth();
@@ -143,7 +165,36 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
             }
             if (gui != null) {
                 updateClientMousePos(gui, controllerPos, config);
-                renderGuiToTexture(gui, partialTick, data, config);
+
+                boolean skipRender = false;
+
+                int maxDist = config.maxRenderDistance();
+                if (maxDist > 0 && Minecraft.getInstance().player != null) {
+                    double distSq = Minecraft.getInstance().player.blockPosition().distSqr(controllerPos);
+                    if (distSq > (long) maxDist * maxDist) {
+                        skipRender = true;
+                    }
+                }
+
+                if (!skipRender && config.renderInterval() > 1
+                        && data.layoutInitialized
+                        && currentFrame % config.renderInterval() != 0) {
+                    skipRender = true;
+                }
+
+                if (!skipRender) {
+                    boolean needsRender = !data.layoutInitialized
+                            || gui.hasAnyDirty()
+                            || gui.getMousePosX() != data.lastMouseX
+                            || gui.getMousePosY() != data.lastMouseY;
+
+                    if (needsRender) {
+                        gui.clearAllDirty();
+                        renderGuiToTexture(gui, partialTick, data, config, controllerPos);
+                        data.lastMouseX = gui.getMousePosX();
+                        data.lastMouseY = gui.getMousePosY();
+                    }
+                }
                 data.lastRenderedFrame = currentFrame;
             }
         }
@@ -157,8 +208,12 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         float v0 = 1.0f - (float) (gy + 1) / gh;
         float v1 = 1.0f - (float) gy / gh;
 
+        DisplayRenderProfiler.begin(controllerPos, DisplayRenderProfiler.Category.QUAD_RENDER);
         renderQuadOnFace(poseStack, bufferSource, facing, data.location,
                 u0, v0, u1, v1, config.faceOffset());
+        DisplayRenderProfiler.end(controllerPos, DisplayRenderProfiler.Category.QUAD_RENDER);
+
+        DisplayRenderProfiler.end(controllerPos, DisplayRenderProfiler.Category.TOTAL);
     }
 
     private void updateClientMousePos(Gui gui, BlockPos controllerPos, DisplayConfig config) {
@@ -185,7 +240,7 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
     }
 
     private void renderGuiToTexture(Gui gui, float partialTick, GroupRenderData data,
-                                    DisplayConfig config) {
+                                    DisplayConfig config, BlockPos controllerPos) {
         Minecraft mc = Minecraft.getInstance();
 
         int texW = data.texWidth;
@@ -200,6 +255,9 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         VertexSorting prevSorting = RenderSystem.getVertexSorting();
         int[] prevViewport = new int[4];
         org.lwjgl.opengl.GL11.glGetIntegerv(org.lwjgl.opengl.GL11.GL_VIEWPORT, prevViewport);
+        boolean prevDepthTest = org.lwjgl.opengl.GL11.glIsEnabled(org.lwjgl.opengl.GL11.GL_DEPTH_TEST);
+        boolean prevBlend = org.lwjgl.opengl.GL11.glIsEnabled(org.lwjgl.opengl.GL11.GL_BLEND);
+        boolean prevCull = org.lwjgl.opengl.GL11.glIsEnabled(org.lwjgl.opengl.GL11.GL_CULL_FACE);
 
         data.framebuffer.bindWrite(false);
         RenderSystem.viewport(0, 0, texW, texH);
@@ -226,7 +284,10 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         RenderSystem.getModelViewStack().identity();
         RenderSystem.applyModelViewMatrix();
 
-        GuiGraphics guiGraphics = new GuiGraphics(mc, offscreenBufferSource);
+        if (cachedGuiGraphics == null) {
+            cachedGuiGraphics = new GuiGraphics(mc, offscreenBufferSource);
+        }
+        GuiGraphics guiGraphics = cachedGuiGraphics;
         guiGraphics.pose().pushPose();
         guiGraphics.pose().translate(0, 0, -11000);
 
@@ -238,22 +299,37 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         gui.setPartialTick(partialTick);
 
         if (!data.layoutInitialized) {
-            gui.init();
+            for (int pass = 0; pass < 3; pass++) {
+                gui.init();
+            }
             data.layoutInitialized = true;
         }
 
+        int scale = texW / guiW;
+        gui.setOffscreenScissorMode(scale, texH);
+
+        Lighting.setupForFlatItems();
+
+        DisplayRenderProfiler.begin(controllerPos, DisplayRenderProfiler.Category.GUI_RENDER);
         gui.renderBackground();
         gui.render();
+        DisplayRenderProfiler.end(controllerPos, DisplayRenderProfiler.Category.GUI_RENDER);
+
+        gui.clearOffscreenScissorMode();
 
         guiGraphics.pose().popPose();
         offscreenBufferSource.endBatch();
 
-        int prevTexture = org.lwjgl.opengl.GL11.glGetInteger(org.lwjgl.opengl.GL11.GL_TEXTURE_BINDING_2D);
+        DisplayRenderProfiler.storeTextureSize(controllerPos, texW, texH);
+        DisplayRenderProfiler.begin(controllerPos, DisplayRenderProfiler.Category.TEXTURE_TRANSFER);
         data.framebuffer.bindRead();
-        data.image.downloadTexture(0, false);
-        data.framebuffer.unbindRead();
+        int prevTexture = org.lwjgl.opengl.GL11.glGetInteger(org.lwjgl.opengl.GL11.GL_TEXTURE_BINDING_2D);
+        RenderSystem.bindTexture(data.texture.getId());
+        org.lwjgl.opengl.GL11.glCopyTexSubImage2D(
+                org.lwjgl.opengl.GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, texW, texH);
         RenderSystem.bindTexture(prevTexture);
-        data.texture.upload();
+        data.framebuffer.unbindRead();
+        DisplayRenderProfiler.end(controllerPos, DisplayRenderProfiler.Category.TEXTURE_TRANSFER);
 
         data.framebuffer.unbindWrite();
         prevTarget.bindWrite(false);
@@ -265,6 +341,10 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         RenderSystem.setShaderFogColor(prevFogColor[0], prevFogColor[1], prevFogColor[2], prevFogColor[3]);
         RenderSystem.setShaderFogStart(prevFogStart);
         RenderSystem.setShaderFogEnd(prevFogEnd);
+        if (prevDepthTest) RenderSystem.enableDepthTest(); else RenderSystem.disableDepthTest();
+        if (prevBlend) RenderSystem.enableBlend(); else RenderSystem.disableBlend();
+        if (prevCull) RenderSystem.enableCull(); else RenderSystem.disableCull();
+        Lighting.setupLevel();
     }
 
     private void renderQuadOnFace(PoseStack poseStack, MultiBufferSource bufferSource,

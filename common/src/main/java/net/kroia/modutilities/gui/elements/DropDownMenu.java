@@ -6,6 +6,7 @@ import net.kroia.modutilities.gui.elements.base.ListView;
 import net.kroia.modutilities.gui.layout.Layout;
 import net.kroia.modutilities.gui.layout.LayoutHorizontal;
 import net.kroia.modutilities.gui.layout.LayoutVertical;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.sounds.SoundEvents;
 
 import java.util.ArrayList;
@@ -259,6 +260,26 @@ public class DropDownMenu extends GuiElement {
     }
 
     @Override
+    public List<GuiElement> getSerializableChildren() {
+        return List.of();
+    }
+
+    @Override
+    public CompoundTag serializeState() {
+        CompoundTag tag = super.serializeState();
+        tag.putInt("selectedIndex", selectedIndex);
+        return tag;
+    }
+
+    @Override
+    public void deserializeState(CompoundTag tag) {
+        super.deserializeState(tag);
+        if (tag.contains("selectedIndex")) {
+            setSelectedIndex(tag.getInt("selectedIndex"));
+        }
+    }
+
+    @Override
     protected void render() {
 
     }
@@ -400,7 +421,9 @@ public class DropDownMenu extends GuiElement {
                 return;
             }
             GuiElement el = childs_.get(0);
+            int oldIndex = selectedIndex;
             selectedIndex = index;
+            if (oldIndex != selectedIndex) markDirty();
             optionSelected.accept(index, el);
         }
     }

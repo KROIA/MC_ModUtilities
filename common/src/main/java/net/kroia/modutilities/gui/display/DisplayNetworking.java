@@ -14,7 +14,6 @@ public class DisplayNetworking {
         if (initialized) return;
         initialized = true;
 
-        // Register C2S packet: client sends input state to server
         NetworkManager.registerReceiver(
                 NetworkManager.Side.C2S,
                 DisplayInputSyncPacket.TYPE,

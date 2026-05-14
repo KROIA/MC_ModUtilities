@@ -11,7 +11,10 @@ Display blocks are in-world Minecraft blocks that render GUI elements directly o
 - **Server-authoritative interaction**: The server owns the GUI state. Players interact by right-clicking; the server processes mouse events and syncs results to all clients.
 - **Interaction screen**: Right-clicking opens a full-screen overlay that mirrors the display's content, enabling precise input (sliders, text fields, checkboxes) via `GuiStateSync`.
 - **Channel-based merge prevention**: Different display block types can coexist without merging by using distinct channel IDs.
-- **Two built-in shape variants**: Full block (solid cube with inset face) and flat panel (thin glass-pane-like shape).
+- **Three built-in shape variants**: Full block (solid cube with inset face), flat panel (thin glass-pane-like shape centered in the block), and back panel (thin panel flush against the back face).
+- **Built-in textures and block models**: ModUtilities ships reusable block models (`display_full_block`, `display_flat_panel`, `display_back_panel`) with dark tech panel textures. Dependent mods can parent their models directly to these without providing custom textures.
+- **Configurable interaction mode**: Open the synced interaction screen on right-click (default), or display-only with custom logic by overriding `opensSyncedScreenOnUse()`.
+- **Runtime GUI swapping**: Call `rebuildGui()` to clear and rebuild the display content at runtime, enabling dynamic views that change based on block entity state.
 
 ---
 
@@ -42,6 +45,9 @@ GuiInputSerializer                      [common] Serializes GUI input state to/f
 DisplayInputSyncPacket                  [common] C2S packet for input sync (dedicated server support)
 DisplayNetworking                       [common] Packet registration (called at mod init)
 DisplayClientHooks                      [client] Client-only hook entry points
+DisplayRenderProfiler                   [client] Toggleable per-group render timing profiler
+GuiElementRegistry                      [common] Element type factory registry (16 built-in types)
+GuiStructuralChange                     [common] Structural change event record (ADDED/REMOVED)
 ```
 
 ### Server/Client Split
@@ -50,7 +56,7 @@ The display block system uses a server-authoritative model:
 
 1. **Server side**: The `AbstractDisplayBlockEntity` owns a `Gui` instance. The `ContentBuilder` creates the visual layout, and `wireCallbacks()` attaches server-side behavior (button handlers, slider listeners, etc.). The server processes all mouse events (click, drag, release) and updates the GUI state. State is synced to clients via block entity NBT update packets.
 
-2. **Client renderer**: `AbstractDisplayBlockEntityRenderer` reads the client-side copy of the `Gui` (rebuilt from synced NBT), renders it into an offscreen framebuffer, and projects the resulting texture onto the block face as a quad. Each display group is rendered once per frame, regardless of how many blocks are in the group.
+2. **Client renderer**: `AbstractDisplayBlockEntityRenderer` reads the client-side copy of the `Gui` (rebuilt from synced NBT), renders it into an offscreen framebuffer, and projects the resulting texture onto the block face as a quad. Each display group is rendered once per frame, regardless of how many blocks are in the group. The renderer uses `glCopyTexSubImage2D` for GPU-to-GPU texture copy (no CPU round-trip), dirty-flag rendering that skips unchanged displays, and distance-based LOD and render interval throttling for distant or low-priority displays.
 
 3. **Interaction screen**: When a player right-clicks, `DisplayInteractionScreen` opens. It uses the same `ContentBuilder` to create a local GUI copy, then synchronizes in two directions:
    - **Display state** (labels, plots) is read from the client-side block entity's Gui (kept up-to-date by the NBT sync above) via `GuiStateSync.syncDisplayState()`.
@@ -333,7 +339,44 @@ You need standard Minecraft resource files for the block to appear in-game. The 
 }
 ```
 
-**Block model JSON** (`assets/mymod/models/block/my_display_block.json`):
+**Block model JSON -- Option A: Use ModUtilities' built-in models (recommended)**
+
+ModUtilities ships three reusable block models with dark tech panel textures. Parent your block model to one of these to avoid creating custom textures:
+
+`assets/mymod/models/block/my_display_block.json`:
+
+```json
+{
+  "parent": "modutilities:block/display_full_block"
+}
+```
+
+`assets/mymod/models/item/my_display_block.json`:
+
+```json
+{
+  "parent": "mymod:block/my_display_block"
+}
+```
+
+Available built-in models:
+
+| Model | Description |
+|-------|-------------|
+| `modutilities:block/display_full_block` | Solid cube with dark tech panel texture. The north (front) face uses a darker texture (`display_block_front`); all other faces use `display_block_side` |
+| `modutilities:block/display_flat_panel` | Thin center panel (2 pixels wide). Front/back faces use `display_panel` texture; edges use `display_block_side` |
+| `modutilities:block/display_back_panel` | Thin back-face panel (2 pixels wide, flush against the back). Same textures as the flat panel |
+
+These models reference the following textures (all shipped with ModUtilities):
+- `modutilities:block/display_block_side` -- dark tech panel side texture
+- `modutilities:block/display_block_front` -- darker front face texture
+- `modutilities:block/display_panel` -- dark glass-like panel texture
+
+**Block model JSON -- Option B: Custom texture**
+
+If you want a custom look, create your own model and texture:
+
+`assets/mymod/models/block/my_display_block.json`:
 
 ```json
 {
@@ -344,13 +387,15 @@ You need standard Minecraft resource files for the block to appear in-game. The 
 }
 ```
 
-**Item model JSON** (`assets/mymod/models/item/my_display_block.json`):
+`assets/mymod/models/item/my_display_block.json`:
 
 ```json
 {
   "parent": "mymod:block/my_display_block"
 }
 ```
+
+You will need a block texture at `assets/mymod/textures/block/my_display_block.png`. The GUI is rendered as an overlay on top of this texture.
 
 **Language file entry** (`assets/mymod/lang/en_us.json`):
 
@@ -360,7 +405,99 @@ You need standard Minecraft resource files for the block to appear in-game. The 
 }
 ```
 
-You also need a block texture at `assets/mymod/textures/block/my_display_block.png`. The GUI is rendered as an overlay on top of this texture.
+---
+
+## Display-Only Blocks (No Interaction Screen)
+
+By default, right-clicking a display block opens the synced interaction screen. For blocks that should only display information -- dashboards, status boards, info panels -- override `opensSyncedScreenOnUse()` to return `false`.
+
+```java
+public class StatusBoardBlockEntity extends AbstractDisplayBlockEntity {
+
+    public StatusBoardBlockEntity(BlockPos pos, BlockState blockState) {
+        super(MyModRegistration.STATUS_BOARD_ENTITY.get(), pos, blockState);
+    }
+
+    @Override
+    public DisplayConfig getDisplayConfig() {
+        return DisplayConfig.backPanel();
+    }
+
+    @Override
+    public ContentBuilder getContentBuilder() {
+        return StatusBoardBlockEntity::buildContent;
+    }
+
+    @Override
+    public boolean opensSyncedScreenOnUse() {
+        return false;
+    }
+
+    @Override
+    protected void onControllerTick() {
+        // Update display content every second
+        if (gui == null || level == null) return;
+        if (level.getGameTime() % 20 != 0) return;
+        
+        for (var el : gui.getElements()) {
+            if (el instanceof Label l && "time".equals(l.getId())) {
+                l.setText("Time: " + level.getDayTime());
+                syncToClientPublic();
+            }
+        }
+    }
+
+    private static void buildContent(Gui gui, int w, int h) {
+        Label title = new Label("Status Board");
+        title.setBounds(0, 10, w, 16);
+        title.setAlignment(GuiElement.Alignment.CENTER);
+        gui.addElement(title);
+
+        Label time = new Label("Time: 0");
+        time.setId("time");
+        time.setBounds(0, h / 2, w, 14);
+        time.setAlignment(GuiElement.Alignment.CENTER);
+        gui.addElement(time);
+    }
+}
+```
+
+**Key points:**
+
+- `opensSyncedScreenOnUse()` returns `false` -- right-clicking does nothing (returns `PASS` to Minecraft, allowing other interactions like placing blocks against it).
+- `onControllerTick()` runs every server tick on the controller only. Use it to update GUI elements based on game state or block entity data.
+- `syncToClientPublic()` pushes the current GUI state to all clients, triggering a re-render on the block face. Call it after modifying any display elements.
+
+---
+
+## Dynamic Content (GUI Swapping)
+
+Use `rebuildGui()` to swap the displayed GUI at runtime. The `ContentBuilder` returned by `getContentBuilder()` can vary based on block entity state, and calling `rebuildGui()` clears the current GUI and rebuilds it using the current builder.
+
+```java
+// In your block entity
+private boolean showDetailView = false;
+
+@Override
+public ContentBuilder getContentBuilder() {
+    return showDetailView 
+        ? MyBlockEntity::buildDetailView 
+        : MyBlockEntity::buildOverview;
+}
+
+// Call this when you want to switch views
+public void switchView() {
+    showDetailView = !showDetailView;
+    rebuildGui();  // Clears current GUI, calls getContentBuilder().build(), syncs to clients
+}
+```
+
+**Key points:**
+
+- `rebuildGui()` clears the current GUI, calls `getContentBuilder().build()` with the current group dimensions, then runs `wireCallbacks()` again. The rebuilt state is automatically synced to clients.
+- The `ContentBuilder` returned by `getContentBuilder()` can change dynamically based on block entity state -- each call to `rebuildGui()` re-evaluates which builder to use.
+- Automatically syncs to clients after rebuilding.
+- Only works on the controller entity. Calling on a non-controller member has no effect.
 
 ---
 
@@ -377,7 +514,9 @@ public record DisplayConfig(
     int renderScale,
     int maxTextureDim,
     float faceOffset,
-    ShapeProvider shapeProvider
+    ShapeProvider shapeProvider,
+    int renderInterval,
+    int maxRenderDistance
 )
 ```
 
@@ -391,6 +530,8 @@ public record DisplayConfig(
 | `maxTextureDim` | `int` | Maximum texture dimension in pixels. Render scale is reduced if the group texture would exceed this (default: 4096) |
 | `faceOffset` | `float` | Offset from the block face in block units. Positive moves the display outward; negative moves it inward |
 | `shapeProvider` | `ShapeProvider` | Provides the collision/outline VoxelShape for each facing direction |
+| `renderInterval` | `int` | Ticks between GUI re-renders. 1 = every tick (default). Higher values throttle animated displays |
+| `maxRenderDistance` | `int` | Maximum distance in blocks for GUI rendering. 0 = unlimited (default). Beyond this distance, the cached texture is reused without re-rendering |
 
 **Factory methods:**
 
@@ -398,8 +539,13 @@ public record DisplayConfig(
 |--------|-------------|
 | `fullBlock()` | 256x256 virtual, scale 2, slightly inset face (0.005), solid cube shape |
 | `fullBlock(int w, int h)` | Same as above with custom virtual dimensions |
-| `flatPanel()` | 256x256 virtual, scale 2, recessed face offset, thin 2-pixel-wide panel shape |
+| `fullBlock(int w, int h, int interval, int maxDist)` | Custom virtual dimensions with render throttling and distance LOD |
+| `flatPanel()` | 256x256 virtual, scale 2, recessed face offset (-7/16), thin 2-pixel-wide center panel shape |
 | `flatPanel(int w, int h)` | Same as above with custom virtual dimensions |
+| `flatPanel(int w, int h, int interval, int maxDist)` | Same for flat panel variant with render throttling and distance LOD |
+| `backPanel()` | 256x256 virtual, scale 2, recessed face offset (-14/16), thin 2-pixel panel on the back face |
+| `backPanel(int w, int h)` | Same as above with custom virtual dimensions |
+| `backPanel(int w, int h, int interval, int maxDist)` | Same for back panel variant with render throttling and distance LOD |
 
 For a 2x3 multi-block group with `fullBlock()`, the total GUI resolution is 512x768 virtual pixels (rendered at 1024x1536 texture pixels with scale 2).
 
@@ -456,6 +602,7 @@ The core block entity class. Extend this to create custom display block entities
 | `loadCustomData(CompoundTag, Provider)` | No-op | Load custom block entity state from NBT |
 | `onInputSynced()` | No-op | Called after the interaction screen syncs input state into the server GUI. Read element values back into BE fields |
 | `getChannelId()` | `"default"` | Return a channel identifier. Blocks only merge with adjacent blocks that share the same channel ID and facing |
+| `opensSyncedScreenOnUse()` | `true` | Whether right-clicking opens the built-in synced interaction screen. Override to return `false` for display-only blocks or blocks with custom interaction logic |
 
 **Public API -- group state:**
 
@@ -471,11 +618,12 @@ The core block entity class. Extend this to create custom display block entities
 | `getGridY()` | `int` | This block's row index within the group (0 = top) |
 | `getGui()` | `Gui` | The GUI instance (non-null only on the controller) |
 
-**Public API -- sync and interaction:**
+**Public API -- sync, interaction, and GUI management:**
 
 | Method | Description |
 |--------|-------------|
-| `syncToClientPublic()` | Marks the entity for client sync on the next tick. Call after modifying state that should be visible to clients |
+| `syncToClientPublic()` | Marks the entity for client sync on the next tick. Call after modifying state that should be visible to clients. This is the standard way to push updates to clients and trigger a re-render on the block face |
+| `rebuildGui()` | Clears the current GUI and rebuilds it using the `ContentBuilder` returned by `getContentBuilder()`. Call when the display content needs to change at runtime (e.g., switching views, updating after major data changes). Only works on the controller. Automatically syncs to clients |
 | `handleInteraction(Player, double, double)` | Process a mouse click at the given GUI coordinates (server-side) |
 | `handleMouseRelease(Player, double, double)` | Process a mouse release (server-side) |
 | `tryAcquireEditor(UUID)` | Attempt to lock the display for exclusive editing by a player. Returns false if another player holds the lock |
@@ -510,7 +658,7 @@ The base block class. Extend this to create custom display blocks.
 
 - Horizontal facing via `FACING` block state property.
 - Voxel shape delegated to the block entity's `DisplayConfig.shapeProvider()`.
-- Player interaction: acquires editor lock on server, opens interaction screen on client.
+- Player interaction: checks `opensSyncedScreenOnUse()` -- if true, acquires editor lock on server and opens interaction screen on client; if false, returns `PASS`.
 - Block entity ticker: calls `serverTick()` on the block entity every tick.
 - Placement/removal: triggers group recalculation with state transfer.
 
@@ -525,11 +673,17 @@ BlockEntityRendererRegistry.register(blockEntityType,
 
 The renderer:
 
-- Maintains a per-group render data cache (dynamic texture, framebuffer, NativeImage).
+- Maintains a per-group render data cache (dynamic texture, framebuffer).
 - Renders the controller's `Gui` into an offscreen framebuffer once per frame per group.
 - Projects the appropriate UV sub-region of the group texture onto each member block's face.
 - Automatically adjusts render scale downward if the group texture would exceed `maxTextureDim`.
 - Updates the client-side mouse position on the Gui based on the player's crosshair raycast.
+- Uses `glCopyTexSubImage2D` for GPU-to-GPU texture copy (no CPU round-trip).
+- Skips `renderGuiToTexture()` when no elements are dirty and mouse position unchanged (dirty-flag optimization).
+- Caches `GuiGraphics` instance across frames to avoid per-render allocation.
+- Respects `DisplayConfig.renderInterval()` to throttle re-renders for animated displays.
+- Respects `DisplayConfig.maxRenderDistance()` to skip GUI rendering for distant displays.
+- Saves/restores all GL state (texture binding, render target, viewport, projection, fog, shader color) to prevent rendering artifacts.
 
 ### DisplayInteractionScreen
 
@@ -549,6 +703,7 @@ Client-only static utility class. Contains:
 | Method | Description |
 |--------|-------------|
 | `openInteractionScreen(BlockPos)` | Opens a `DisplayInteractionScreen` for the block at the given position |
+| `ensureGraphics()` | Initializes the fallback `ClientGraphics` with Minecraft's font. Called automatically before GUI initialization on the client so text width computation works outside the renderer |
 
 Called from `AbstractDisplayBlock.openInteractionScreen()` when `level.isClientSide()` is true. This indirection keeps client-only imports out of common code.
 
@@ -563,6 +718,7 @@ Utility class for synchronizing state between two `Gui` instances that share the
 | `syncState(source, target)` | Both | Copies all interactive and display state |
 | `syncDisplayState(source, target)` | Server to client | Copies Label text/color and Plot data |
 | `syncInputState(source, target)` | Client to server | Copies Slider values, TextBox text, CheckBox state, and EmptyButton click counts |
+| `syncDirtyState(source, target)` | Both | Copies only elements where `isDirty()` is true; children still visited recursively |
 
 **Element types synced:**
 
@@ -577,7 +733,9 @@ Utility class for synchronizing state between two `Gui` instances that share the
 
 **Always synced:** `enabled` state on all elements.
 
-The sync walks both element trees in parallel by index. This means the source and target must have been built by the same `ContentBuilder` with the same element order.
+Elements are matched by ID first (via `GuiElement.getId()`), falling back to index position. This enables stable sync even when element order changes slightly.
+
+Each element declares a `SyncCategory` (NONE, INPUT, or DISPLAY). `syncDisplayState` only syncs DISPLAY elements, `syncInputState` only syncs INPUT elements. `syncState` and `syncDirtyState` sync all categories.
 
 #### Button Click Propagation
 
@@ -680,12 +838,92 @@ The interaction screen works on both singleplayer and dedicated servers using a 
 
 ### GuiInputSerializer
 
-Serializes GUI input state to/from `CompoundTag` by walking the element tree by index. Elements are keyed by their position in the tree (e.g., `"s0"` for slider at index 0, `"t3_1"` for textbox at child index 1 of element 3).
+Serializes GUI input state to/from `CompoundTag` by walking the element tree. Elements are keyed by their ID (if set via `setId()`) or index path. Each element's state is stored as a nested CompoundTag via `serializeState()`.
 
 | Method | Description |
 |--------|-------------|
-| `serializeInput(Gui)` | Walks the GUI tree, serializes slider values, textbox text, checkbox state, and button click counts into a CompoundTag |
-| `applyInput(CompoundTag, Gui)` | Walks the GUI tree in the same order, applies values from the tag. For buttons, uses `syncClickCount()` to replay missed clicks |
+| `serializeInput(Gui)` | Serializes all INPUT-category element state into a CompoundTag |
+| `serializeDirtyInput(Gui)` | Serializes only dirty INPUT-category elements (for bandwidth-efficient delta sync) |
+| `applyInput(CompoundTag, Gui)` | Applies serialized state. Works for both full and delta tags (only processes keys present in the tag) |
+
+### GuiElement ISyncable API
+
+All GUI elements support per-element state serialization and dirty tracking:
+
+| Method | Description |
+|--------|-------------|
+| `getId()` / `setId(String)` | Optional element ID for stable matching during sync |
+| `serializeState()` | Serializes element-specific state to CompoundTag. Base implementation includes `enabled` |
+| `deserializeState(CompoundTag)` | Restores state from CompoundTag |
+| `isDirty()` | Returns true if state changed since last `clearDirty()` |
+| `clearDirty()` | Resets the dirty flag |
+| `getSyncCategory()` | Returns `NONE`, `INPUT`, or `DISPLAY` -- determines which sync paths include this element |
+| `getSerializableChildren()` | Returns children for tree serialization (excludes internal children like TextBox's label) |
+
+**SyncCategory assignments:**
+
+| Category | Elements |
+|----------|----------|
+| INPUT | Slider, TextBox, CheckBox, EmptyButton |
+| DISPLAY | Label, Plot |
+| NONE | Frame, TabElement, DropDownMenu, and all others |
+
+State-changing setters (e.g., `setSliderValue`, `setText`, `setChecked`) automatically call `markDirty()`.
+
+### GuiElementRegistry
+
+Maps string type keys to element factory functions for tree serialization/deserialization.
+
+```java
+// Register a custom element type
+GuiElementRegistry.register("my_widget", MyWidget.class, MyWidget::new);
+
+// Create an element from a type key
+GuiElement element = GuiElementRegistry.create("my_widget");
+
+// Get the type key for serialization
+String key = GuiElementRegistry.getTypeKey(element);
+```
+
+**Built-in registrations:** `label`, `textbox`, `checkbox`, `empty_button`, `button`, `close_button`, `horizontal_slider`, `vertical_slider`, `frame`, `plot`, `texture_element`, `tab_element`, `dropdown_menu`, `item_view`, `horizontal_list_view`, `vertical_list_view`
+
+### Dynamic Element Sync
+
+The display block system supports dynamic GUI trees where elements are added or removed at runtime on the server.
+
+**Full tree serialization:**
+```java
+CompoundTag tree = gui.serializeTree();   // Serialize structure + state
+gui.deserializeTree(tree);                // Reconstruct from tag
+```
+
+**Structural change tracking:**
+
+When `gui.setTrackStructuralChanges(true)` is enabled, `addElement()` and `removeElement()` log `GuiStructuralChange` events and increment `gui.getStructureVersion()`.
+
+The `DisplayInteractionScreen` detects version mismatches and performs a full tree resync automatically. Block entities serialize the GUI tree into NBT when structural changes have occurred (`structureVersion > 0`).
+
+### DisplayRenderProfiler
+
+Toggleable profiler that measures per-group render timing.
+
+**Toggle:** `/modutilities displayProfiler` command or `DisplayRenderProfiler.setEnabled(true/false)`
+
+**Categories measured:**
+
+| Category | What it measures |
+|----------|-----------------|
+| TOTAL | Entire `render()` method per block per frame |
+| GUI_RENDER | `gui.renderBackground()` + `gui.render()` (once per group per tick) |
+| TEXTURE_TRANSFER | `glCopyTexSubImage2D` GPU copy (once per group per tick) |
+| QUAD_RENDER | Textured quad draw on block face (per block per frame) |
+
+**Output format:**
+```
+[DisplayProfiler] group@(x,y,z) WxH samples=gui/total | total: min/avg/max us | gui: min/avg/max us | transfer: min/avg/max us | quad: min/avg/max us
+```
+
+Reports every 100 GUI_RENDER samples, and flushes remaining data when disabled.
 
 ### DisplayInputSyncPacket
 
@@ -767,6 +1005,33 @@ The sandbox `DisplayDemoPanelBlock` / `DisplayDemoPanelBlockEntity` demonstrates
 Source files:
 - `common/src/main/java/net/kroia/modutilities/sandbox/DisplayDemoPanelBlock.java`
 - `common/src/main/java/net/kroia/modutilities/sandbox/DisplayDemoPanelBlockEntity.java`
+
+### Back Panel Example
+
+The sandbox `DisplayDemoBackPanelBlock` / `DisplayDemoBackPanelBlockEntity` demonstrates a back-panel display with:
+
+- A thin panel flush against the back face of the block
+- Display-only mode (`opensSyncedScreenOnUse()` returns `false`) -- no interaction screen
+- A different channel ID (`"back_panel"`) to prevent merging with other display types
+- An uptime timer updated every second via `onControllerTick()`
+- Server-side label updates pushed to clients via `syncToClientPublic()`
+
+Source files:
+- `common/src/main/java/net/kroia/modutilities/sandbox/DisplayDemoBackPanelBlock.java`
+- `common/src/main/java/net/kroia/modutilities/sandbox/DisplayDemoBackPanelBlockEntity.java`
+
+### Chart Demo Example
+
+The sandbox `ChartDemoBlock` / `ChartDemoBlockEntity` demonstrates a display block hosting a `SandboxLineChart` with:
+
+- Scissor clipping test in the offscreen display block renderer
+- Sine, cosine, and square wave data series
+- Interactive pan and zoom on the chart
+- A different channel ID (`"chart_demo"`) to prevent merging with other display types
+
+Source files:
+- `common/src/main/java/net/kroia/modutilities/sandbox/ChartDemoBlock.java`
+- `common/src/main/java/net/kroia/modutilities/sandbox/ChartDemoBlockEntity.java`
 
 ### Minimal Example: Simplest Possible Display Block
 

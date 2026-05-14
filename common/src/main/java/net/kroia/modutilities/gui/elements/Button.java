@@ -2,7 +2,9 @@ package net.kroia.modutilities.gui.elements;
 
 
 import net.kroia.modutilities.gui.elements.base.GuiElement;
-import net.minecraft.sounds.SoundEvents;
+import net.minecraft.nbt.CompoundTag;
+
+import java.util.List;
 
 /**
  * A standard clickable button rendered with a centered text {@link Label}.
@@ -18,10 +20,10 @@ public class Button extends EmptyButton {
      * @param text the button label
      */
     public Button(String text) {
-        super();
+        super(0,0,10,20);
         label = new Label(text);
-        label.setAlignment(Alignment.CENTER);
         addChild(label);
+        label.setAlignment(Alignment.CENTER);
     }
     /**
      * Creates a button at the given position and size with the specified label text.
@@ -107,6 +109,26 @@ public class Button extends EmptyButton {
         return label.getAlignment();
     }
 
+
+    @Override
+    public List<GuiElement> getSerializableChildren() {
+        return List.of();
+    }
+
+    @Override
+    public CompoundTag serializeState() {
+        CompoundTag tag = super.serializeState();
+        tag.putString("label", label.getText());
+        return tag;
+    }
+
+    @Override
+    public void deserializeState(CompoundTag tag) {
+        super.deserializeState(tag);
+        if (tag.contains("label")) {
+            label.setText(tag.getString("label"));
+        }
+    }
 
     @Override
     protected void render() {

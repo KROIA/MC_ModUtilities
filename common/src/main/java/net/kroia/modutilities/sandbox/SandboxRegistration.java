@@ -59,6 +59,36 @@ public class SandboxRegistration {
                     BlockEntityType.Builder.of(DisplayDemoPanelBlockEntity::new, DISPLAY_DEMO_PANEL_BLOCK.get())
                             .build(null));
 
+    // --- DisplayDemoBackPanelBlock ---
+    public static final RegistrySupplier<Block> DISPLAY_DEMO_BACK_PANEL_BLOCK =
+            BLOCKS.register("display_demo_back_panel_block", DisplayDemoBackPanelBlock::new);
+
+    public static final RegistrySupplier<Item> DISPLAY_DEMO_BACK_PANEL_BLOCK_ITEM =
+            ITEMS.register("display_demo_back_panel_block", () ->
+                    new BlockItem(DISPLAY_DEMO_BACK_PANEL_BLOCK.get(), new Item.Properties()));
+
+    @SuppressWarnings("unchecked")
+    public static final RegistrySupplier<BlockEntityType<DisplayDemoBackPanelBlockEntity>> DISPLAY_DEMO_BACK_PANEL_BLOCK_ENTITY =
+            (RegistrySupplier<BlockEntityType<DisplayDemoBackPanelBlockEntity>>) (RegistrySupplier<?>)
+            BLOCK_ENTITIES.register("display_demo_back_panel_block_entity", () ->
+                    BlockEntityType.Builder.of(DisplayDemoBackPanelBlockEntity::new, DISPLAY_DEMO_BACK_PANEL_BLOCK.get())
+                            .build(null));
+
+    // --- ChartDemoBlock ---
+    public static final RegistrySupplier<Block> CHART_DEMO_BLOCK =
+            BLOCKS.register("chart_demo_block", ChartDemoBlock::new);
+
+    public static final RegistrySupplier<Item> CHART_DEMO_BLOCK_ITEM =
+            ITEMS.register("chart_demo_block", () ->
+                    new BlockItem(CHART_DEMO_BLOCK.get(), new Item.Properties()));
+
+    @SuppressWarnings("unchecked")
+    public static final RegistrySupplier<BlockEntityType<ChartDemoBlockEntity>> CHART_DEMO_BLOCK_ENTITY =
+            (RegistrySupplier<BlockEntityType<ChartDemoBlockEntity>>) (RegistrySupplier<?>)
+            BLOCK_ENTITIES.register("chart_demo_block_entity", () ->
+                    BlockEntityType.Builder.of(ChartDemoBlockEntity::new, CHART_DEMO_BLOCK.get())
+                            .build(null));
+
     /**
      * Registers all deferred registries. Must be called during mod initialization
      * (before registry freeze).
@@ -82,6 +112,12 @@ public class SandboxRegistration {
                 BlockEntityRendererRegistry.register(blockEntityType,
                         AbstractDisplayBlockEntityRenderer::new));
         DISPLAY_DEMO_PANEL_BLOCK_ENTITY.listen(blockEntityType ->
+                BlockEntityRendererRegistry.register(blockEntityType,
+                        AbstractDisplayBlockEntityRenderer::new));
+        DISPLAY_DEMO_BACK_PANEL_BLOCK_ENTITY.listen(blockEntityType ->
+                BlockEntityRendererRegistry.register(blockEntityType,
+                        AbstractDisplayBlockEntityRenderer::new));
+        CHART_DEMO_BLOCK_ENTITY.listen(blockEntityType ->
                 BlockEntityRendererRegistry.register(blockEntityType,
                         AbstractDisplayBlockEntityRenderer::new));
     }

@@ -29,8 +29,8 @@ public class DisplayInteractionScreen extends GuiScreen {
 
     private BlockPos controllerPos;
     private int syncCounter = 0;
-    private boolean contentBuilt = false;
     private boolean initialSyncDone = false;
+    private int lastStructureVersion = -1;
 
     public DisplayInteractionScreen(BlockPos controllerPos) {
         super(Component.literal("Display Interaction"));
@@ -72,18 +72,17 @@ public class DisplayInteractionScreen extends GuiScreen {
 
     @Override
     protected void updateLayout(Gui gui) {
-        if (!contentBuilt) {
-            ContentBuilder builder = getContentBuilder();
-            if (builder != null) {
-                builder.build(gui, getWidth(), getHeight());
-                contentBuilt = true;
-            }
+        ContentBuilder builder = getContentBuilder();
+        if (builder != null) {
+            gui.removeAllElements();
+            builder.build(gui, getWidth(), getHeight());
         }
         gui.init();
 
         Gui displayGui = getDisplayGui();
         if (displayGui != null) {
             GuiStateSync.syncState(displayGui, gui);
+            lastStructureVersion = displayGui.getStructureVersion();
             initialSyncDone = true;
         }
     }
@@ -91,18 +90,30 @@ public class DisplayInteractionScreen extends GuiScreen {
     @Override
     public void render(net.minecraft.client.gui.GuiGraphics guiGraphics,
                        int mouseX, int mouseY, float partialTick) {
+        boolean inputDirty = gui != null && gui.hasAnyDirty();
         syncCounter++;
-        if (syncCounter >= 2) {
+        if (syncCounter >= 2 || inputDirty) {
             syncCounter = 0;
             if (!initialSyncDone) {
                 Gui displayGui = getDisplayGui();
                 if (displayGui != null && gui != null) {
                     GuiStateSync.syncState(displayGui, gui);
+                    lastStructureVersion = displayGui.getStructureVersion();
                     initialSyncDone = true;
                 }
             } else {
-                syncDisplayFromClient();
+                Gui displayGui = getDisplayGui();
+                if (displayGui != null && gui != null
+                        && displayGui.getStructureVersion() != lastStructureVersion) {
+                    CompoundTag treeData = displayGui.serializeTree();
+                    gui.deserializeTree(treeData);
+                    gui.init();
+                    lastStructureVersion = displayGui.getStructureVersion();
+                } else {
+                    syncDisplayFromClient();
+                }
                 syncInputToServer();
+                if (gui != null) gui.clearAllDirty();
             }
         }
 

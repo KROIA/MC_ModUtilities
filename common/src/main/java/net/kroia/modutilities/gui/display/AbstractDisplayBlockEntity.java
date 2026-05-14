@@ -1,6 +1,7 @@
 package net.kroia.modutilities.gui.display;
 
 import net.kroia.modutilities.gui.Gui;
+import net.kroia.modutilities.gui.display.client.DisplayClientHooks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -71,6 +72,17 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
     protected void loadCustomData(CompoundTag tag, HolderLookup.Provider registries) {}
 
     public String getChannelId() { return "default"; }
+
+    /**
+     * Whether right-clicking the display block opens the built-in synced interaction screen.
+     * Override and return {@code false} to disable the default screen — useful for
+     * display-only blocks or blocks that implement custom interaction logic.
+     *
+     * @return {@code true} to open the synced screen on use (default), {@code false} to skip it
+     */
+    public boolean opensSyncedScreenOnUse() {
+        return true;
+    }
 
     /**
      * Called after the interaction screen syncs input state into this entity's GUI.
@@ -219,6 +231,24 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
         syncToClient();
     }
 
+    /**
+     * Clears the current GUI and rebuilds it using the {@link ContentBuilder}.
+     * Call this when the display content needs to change at runtime (e.g., switching
+     * between different views, updating after data changes).
+     * <p>
+     * Only has effect on the controller entity. Automatically syncs to clients.
+     */
+    public void rebuildGui() {
+        if (!isController() || level == null) return;
+        DisplayConfig config = getDisplayConfig();
+        int w = groupWidth * config.virtualWidth();
+        int h = groupHeight * config.virtualHeight();
+        buildAndInitGui(w, h);
+        guiBuiltWidth = w;
+        guiBuiltHeight = h;
+        syncToClient();
+    }
+
     public void syncToClientPublic() {
         syncToClient();
     }
@@ -233,6 +263,11 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
 
         updateInteractingPlayers();
         onControllerTick();
+
+        if (gui.hasStructuralChanges()) {
+            gui.getAndClearStructuralChanges();
+            syncToClient();
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -251,6 +286,12 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
         tag.putInt("gh", groupHeight);
         tag.putInt("gx", gridX);
         tag.putInt("gy", gridY);
+        if (gui != null && gui.getStructureVersion() > 0) {
+            tag.put("guiTree", gui.serializeTree());
+        }
+        if (gui != null) {
+            tag.put("guiInput", GuiInputSerializer.serializeInput(gui));
+        }
         saveCustomData(tag, registries);
     }
 
@@ -274,6 +315,13 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
                 buildAndInitGui(neededW, neededH);
                 guiBuiltWidth = neededW;
                 guiBuiltHeight = neededH;
+            }
+            if (tag.contains("guiTree") && tag.getCompound("guiTree").getInt("structureVersion") > 0) {
+                gui.deserializeTree(tag.getCompound("guiTree"));
+                gui.init();
+            }
+            if (tag.contains("guiInput")) {
+                GuiInputSerializer.applyInput(tag.getCompound("guiInput"), gui);
             }
         } else {
             gui = null;
@@ -499,9 +547,19 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
 
     private void buildAndInitGui(int w, int h) {
         gui = new Gui();
+        if (level != null && level.isClientSide()) {
+            DisplayClientHooks.ensureGraphics();
+        }
+        gui.setGraphicsBackend(Gui.getFallbackGraphics());
         getContentBuilder().build(gui, w, h);
-        wireCallbacks(gui);
+        if (level == null || !level.isClientSide()) {
+            wireCallbacks(gui);
+        }
         gui.init();
+        gui.resetStructureVersion();
+        if (level != null && !level.isClientSide()) {
+            gui.setTrackStructuralChanges(true);
+        }
     }
 
     private void syncToClient() {

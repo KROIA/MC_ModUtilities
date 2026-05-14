@@ -83,6 +83,9 @@ public abstract class AbstractDisplayBlock extends HorizontalDirectionalBlock im
         if (controller == null || controller.getGui() == null)
             return InteractionResult.PASS;
 
+        if (!controller.opensSyncedScreenOnUse())
+            return InteractionResult.PASS;
+
         if (!level.isClientSide()) {
             if (!controller.tryAcquireEditor(player.getUUID())) {
                 player.displayClientMessage(

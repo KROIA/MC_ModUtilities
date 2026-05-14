@@ -110,10 +110,7 @@ public class MultiServerPacketRegistry
                                                                 ForwardPacketHandler<? super T> handler)
     {
         ResourceLocation loc = packetType.id();
-        if(registry.containsKey(loc))
-        {
-            throw new RuntimeException("MultiServerPacketRegistry.register(...): Packet with packetID = "+loc+" is already registered!");
-        }
+        if(registry.containsKey(loc)) return;
 
         RegistryObject registryObject = new RegistryObject(codec, handler, packetType.id().toString());
         registry.put(loc, registryObject);
@@ -126,17 +123,12 @@ public class MultiServerPacketRegistry
      * @param packetType The {@link CustomPacketPayload.Type} identifying the packet.
      * @param codec      Stream codec used to serialize/deserialize the payload.
      * @param <T>        The concrete payload type.
-     *
-     * @throws RuntimeException If a packet with the same ID has already been registered.
      */
     public static <T extends CustomPacketPayload> void register(CustomPacketPayload.Type<T> packetType,
                                                                 StreamCodec<RegistryFriendlyByteBuf, T> codec)
     {
         ResourceLocation loc = packetType.id();
-        if(registry.containsKey(loc))
-        {
-            throw new RuntimeException("MultiServerPacketRegistry.register(...): Packet with packetID = "+loc+" is already registered!");
-        }
+        if(registry.containsKey(loc)) return;
 
         RegistryObject registryObject = new RegistryObject(codec, NetworkPacket.HANDLER, packetType.id().toString());
         registry.put(loc, registryObject);

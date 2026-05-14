@@ -3,6 +3,7 @@ package net.kroia.modutilities.gui.elements;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Point;
 import net.kroia.modutilities.gui.geometry.Rectangle;
+import net.minecraft.nbt.CompoundTag;
 
 import java.util.Objects;
 
@@ -57,7 +58,9 @@ public class Label extends GuiElement {
      */
     public void setText(String text)
     {
-        this.text = Objects.requireNonNullElse(text, "");
+        String newText = Objects.requireNonNullElse(text, "");
+        if (!this.text.equals(newText)) markDirty();
+        this.text = newText;
         layoutChangedInternal();
     }
 
@@ -104,6 +107,24 @@ public class Label extends GuiElement {
     public int getPadding()
     {
         return padding;
+    }
+
+    @Override
+    public SyncCategory getSyncCategory() { return SyncCategory.DISPLAY; }
+
+    @Override
+    public CompoundTag serializeState() {
+        CompoundTag tag = super.serializeState();
+        tag.putString("text", text);
+        tag.putInt("textColor", getTextColor());
+        return tag;
+    }
+
+    @Override
+    public void deserializeState(CompoundTag tag) {
+        super.deserializeState(tag);
+        if (tag.contains("text")) setText(tag.getString("text"));
+        if (tag.contains("textColor")) setTextColor(tag.getInt("textColor"));
     }
 
     /*@Override

@@ -2,6 +2,7 @@ package net.kroia.modutilities.gui.elements;
 
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Point;
+import net.minecraft.nbt.CompoundTag;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -176,6 +177,7 @@ public class Plot extends GuiElement
         {
             plots.clear();
             plots.add(data);
+            markDirty();
         }
     }
 
@@ -191,6 +193,7 @@ public class Plot extends GuiElement
         if(data != null)
         {
             plots.add(data);
+            markDirty();
         }
     }
 
@@ -200,6 +203,7 @@ public class Plot extends GuiElement
     public void clearPlotData()
     {
         plots.clear();
+        markDirty();
     }
 
     /**
@@ -353,6 +357,51 @@ public class Plot extends GuiElement
     }
 
 
+
+    @Override
+    public SyncCategory getSyncCategory() { return SyncCategory.DISPLAY; }
+
+    @Override
+    public CompoundTag serializeState() {
+        CompoundTag tag = super.serializeState();
+        CompoundTag plotsTag = new CompoundTag();
+        plotsTag.putInt("count", plots.size());
+        for (int i = 0; i < plots.size(); i++) {
+            PlotData pd = plots.get(i);
+            CompoundTag pdTag = new CompoundTag();
+            pdTag.putInt("color", pd.color);
+            pdTag.putFloat("thickness", pd.thickness);
+            int[] yArr = new int[pd.yValues.size()];
+            for (int j = 0; j < pd.yValues.size(); j++)
+                yArr[j] = Float.floatToRawIntBits(pd.yValues.get(j));
+            pdTag.putIntArray("yValues", yArr);
+            plotsTag.put("p" + i, pdTag);
+        }
+        tag.put("plots", plotsTag);
+        return tag;
+    }
+
+    @Override
+    public void deserializeState(CompoundTag tag) {
+        super.deserializeState(tag);
+        if (tag.contains("plots")) {
+            CompoundTag plotsTag = tag.getCompound("plots");
+            int count = plotsTag.getInt("count");
+            plots.clear();
+            for (int i = 0; i < count; i++) {
+                String key = "p" + i;
+                if (!plotsTag.contains(key)) continue;
+                CompoundTag pdTag = plotsTag.getCompound(key);
+                PlotData pd = new PlotData();
+                pd.color = pdTag.getInt("color");
+                pd.thickness = pdTag.getFloat("thickness");
+                int[] yArr = pdTag.getIntArray("yValues");
+                for (int bits : yArr)
+                    pd.yValues.add(Float.intBitsToFloat(bits));
+                plots.add(pd);
+            }
+        }
+    }
 
     @Override
     protected void render() {

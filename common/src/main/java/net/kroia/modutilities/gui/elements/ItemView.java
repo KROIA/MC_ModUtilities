@@ -3,7 +3,11 @@ package net.kroia.modutilities.gui.elements;
 import net.kroia.modutilities.gui.IGraphics;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Point;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
 /**
  * Renders a single {@link ItemStack} as a Minecraft inventory icon.
@@ -87,6 +91,7 @@ public class ItemView extends GuiElement {
      */
     public void setItemStack(ItemStack itemStack) {
         this.itemStack = itemStack;
+        markDirty();
     }
 
     /**
@@ -129,6 +134,36 @@ public class ItemView extends GuiElement {
     public boolean isShowTooltip() {
         return showTooltip;
     }
+    @Override
+    public SyncCategory getSyncCategory() {
+        return SyncCategory.DISPLAY;
+    }
+
+    @Override
+    public CompoundTag serializeState() {
+        CompoundTag tag = super.serializeState();
+        if (itemStack != null && !itemStack.isEmpty()) {
+            tag.putString("item", BuiltInRegistries.ITEM.getKey(itemStack.getItem()).toString());
+            tag.putInt("count", itemStack.getCount());
+        }
+        return tag;
+    }
+
+    @Override
+    public void deserializeState(CompoundTag tag) {
+        super.deserializeState(tag);
+        if (tag.contains("item")) {
+            var item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(tag.getString("item")));
+            if (item != Items.AIR) {
+                this.itemStack = new ItemStack(item, tag.getInt("count"));
+            } else {
+                this.itemStack = null;
+            }
+        } else {
+            this.itemStack = null;
+        }
+    }
+
     @Override
     protected void render() {
         if(itemStack == null)

@@ -3,6 +3,7 @@ package net.kroia.modutilities.gui.elements;
 import net.kroia.modutilities.ColorUtilities;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Rectangle;
+import net.minecraft.nbt.CompoundTag;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -349,6 +350,7 @@ public class TabElement extends GuiElement {
     public void selectTab(int index)
     {
         if (index >= 0 && index < tabs.size()) {
+            int oldIndex = selectedTabIndex;
             // remove old tab elements
             Tab oldTab = getSelectedTabInstance();
             if(oldTab != null) {
@@ -367,11 +369,7 @@ public class TabElement extends GuiElement {
                 label.setAlignment(selectedTitleLabelAlignment);
             }
             super.addChild(tab.tabElement);
-            // Force full layout: set content bounds, then init entire subtree
-            /*int w = getWidth();
-            int h = getHeight() - titleHeight;
-            tab.tabElement.setBounds(0, titleHeight, w, h);
-            tab.tabElement.init();*/
+            if (oldIndex != selectedTabIndex) markDirty();
         }
         else
         {
@@ -380,7 +378,9 @@ public class TabElement extends GuiElement {
             if(oldTab != null) {
                 super.removeChild(oldTab.tabElement);
             }
+            int oldIndex = selectedTabIndex;
             selectedTabIndex = -1;
+            if (oldIndex != selectedTabIndex) markDirty();
             layoutChangedInternal();
         }
     }
@@ -449,6 +449,26 @@ public class TabElement extends GuiElement {
 
 
 
+
+    @Override
+    public List<GuiElement> getSerializableChildren() {
+        return List.of();
+    }
+
+    @Override
+    public CompoundTag serializeState() {
+        CompoundTag tag = super.serializeState();
+        tag.putInt("selectedTab", selectedTabIndex);
+        return tag;
+    }
+
+    @Override
+    public void deserializeState(CompoundTag tag) {
+        super.deserializeState(tag);
+        if (tag.contains("selectedTab")) {
+            selectTab(tag.getInt("selectedTab"));
+        }
+    }
 
     @Override
     public void init() {

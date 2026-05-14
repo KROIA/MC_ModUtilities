@@ -212,8 +212,8 @@ public class DisplayDemoBlockEntity extends AbstractDisplayBlockEntity {
 
         Label statusLabel = new Label("Series: sine (blue), cosine (orange), zero (white)");
         statusLabel.setBounds(0, plotTop + plotHeight + 4, w, 12);
-        statusLabel.setAlignment(GuiElement.Alignment.CENTER);
         gui.addElement(statusLabel);
+        statusLabel.setAlignment(GuiElement.Alignment.CENTER);
 
         int controlY = plotTop + plotHeight + 18;
 
