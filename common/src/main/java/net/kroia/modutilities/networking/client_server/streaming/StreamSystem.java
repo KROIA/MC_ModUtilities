@@ -254,7 +254,13 @@ public class StreamSystem {
         }
         if(MultiServerManager.isRunning() && MultiServerManager.isSlave() && stream.needsRoutingToMaster())
         {
+            // Save the buffer position before the redirected holder consumes the context
+            // data, then restore it so the forwarded packet retains the full context for
+            // the master to decode. Without this, REGISTRY_FRIENDLY_BYTE_BUF_CODEC only
+            // encodes bytes from readerIndex onward, and the master gets an empty context.
+            int savedReaderIndex = buf.readerIndex();
             STREAM_MANAGER.startRedirectedServerSenderStream(stream, streamID, buf, targetPlayerUUID);
+            buf.readerIndex(savedReaderIndex);
             ModUtilitiesMod.LOGGER.info("[StreamSystem] Redirecting packet: "+packet.streamTypeID+" to master");
             MultiServerManager.sendToMaster(targetPlayerUUID,  packet);
         }
