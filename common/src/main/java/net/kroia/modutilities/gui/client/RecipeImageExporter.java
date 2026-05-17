@@ -194,26 +194,44 @@ public class RecipeImageExporter {
     /**
      * Exports a shaped crafting recipe using pattern strings and item ID maps.
      *
-     * @param pattern  1-3 row strings (e.g. "ABA", " C "). Space = empty slot.
-     * @param keyMap   character → item ID (e.g. 'A' → "minecraft:iron_ingot")
-     * @param resultId item ID of the result (e.g. "stockmarket:trading_software")
-     * @param outputPath where to save the PNG
-     * @param scale    pixel scale factor
+     * @param pattern     1-3 row strings (e.g. "ABA", " C "). Space = empty slot.
+     * @param keyMap      character -> item ID (e.g. 'A' -> "minecraft:iron_ingot")
+     * @param resultId    item ID of the result (e.g. "stockmarket:trading_software")
+     * @param resultCount number of result items (shown as stack count decoration)
+     * @param outputPath  where to save the PNG
+     * @param scale       pixel scale factor
      * @return true if export succeeded
      */
     public static boolean exportShapedRecipe(String[] pattern, Map<Character, String> keyMap,
-                                             String resultId, Path outputPath, int scale) {
+                                             String resultId, int resultCount,
+                                             Path outputPath, int scale) {
         ItemStack[][] grid = patternToGrid(pattern, keyMap);
-        ItemStack result = ItemUtilities.createItemStackFromId(resultId);
+        ItemStack result = ItemUtilities.createItemStackFromId(resultId, resultCount);
         return exportShapedRecipe(grid, result, outputPath, scale);
+    }
+
+    /**
+     * Exports a shaped crafting recipe using pattern strings with result count 1.
+     */
+    public static boolean exportShapedRecipe(String[] pattern, Map<Character, String> keyMap,
+                                             String resultId, Path outputPath, int scale) {
+        return exportShapedRecipe(pattern, keyMap, resultId, 1, outputPath, scale);
     }
 
     /**
      * Exports a shaped crafting recipe using pattern strings with default scale (4x).
      */
     public static boolean exportShapedRecipe(String[] pattern, Map<Character, String> keyMap,
+                                             String resultId, int resultCount, Path outputPath) {
+        return exportShapedRecipe(pattern, keyMap, resultId, resultCount, outputPath, DEFAULT_SCALE);
+    }
+
+    /**
+     * Exports a shaped crafting recipe using pattern strings with result count 1 and default scale.
+     */
+    public static boolean exportShapedRecipe(String[] pattern, Map<Character, String> keyMap,
                                              String resultId, Path outputPath) {
-        return exportShapedRecipe(pattern, keyMap, resultId, outputPath, DEFAULT_SCALE);
+        return exportShapedRecipe(pattern, keyMap, resultId, 1, outputPath, DEFAULT_SCALE);
     }
 
     /**
