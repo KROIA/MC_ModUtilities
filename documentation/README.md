@@ -23,14 +23,36 @@ The GUI library provides a modern, component-based system for creating user inte
 
 **Components:**
 - [Button](gui/GuiElements/Button.md) - Interactive button elements
+- [CheckBox](gui/GuiElements/CheckBox.md) - Toggle checkbox elements
+- [CloseButton](gui/GuiElements/CloseButton.md) - Close button for screens
+- [ContainerView](gui/GuiElements/ContainerView.md) - Container-based views
+- [DropDownMenu](gui/GuiElements/DropDownMenu.md) - Drop-down selection menus
+- [EmptyButton](gui/GuiElements/EmptyButton.md) - Unstyled button base
+- [Frame](gui/GuiElements/Frame.md) - Bordered frame container
+- [HorizontalSlider](gui/GuiElements/HorizontalSlider.md) - Horizontal slider control
+- [InventoryView](gui/GuiElements/InventoryView.md) - Player/container inventory display
+- [ItemSelectionView](gui/GuiElements/ItemSelectionView.md) - Item picker interface
+- [ItemView](gui/GuiElements/ItemView.md) - Single item display
+- [Label](gui/GuiElements/Label.md) - Text label elements
 - [ListView](gui/GuiElements/ListView.md) - Scrollable list views
+- [Plot](gui/GuiElements/Plot.md) - Data plotting and charts
+- [TabElement](gui/GuiElements/TabElement.md) - Tab-based navigation
+- [TextBox](gui/GuiElements/TextBox.md) - Text input fields
+- [TextureElement](gui/GuiElements/TextureElement.md) - Texture rendering element
+- [VerticalSlider](gui/GuiElements/VerticalSlider.md) - Vertical slider control
+
+**Layout:**
+- [Layout System](gui/Layout.md) - Automatic layout management for GUI elements
+
+**Use Cases:**
+- [Dashboard](gui/usecases/Dashboard.md) - Building dashboard-style interfaces
+- [Dialog](gui/usecases/Dialog.md) - Creating dialog and confirmation screens
+- [Form](gui/usecases/Form.md) - Building input forms
+- [Settings](gui/usecases/Settings.md) - Settings screen patterns
+- [Tabs](gui/usecases/Tabs.md) - Tabbed interface patterns
 
 **Display Blocks:**
 - [Display Block System](gui/DisplayBlock.md) - In-world blocks that render GUI elements on their face
-
-**See Also:**
-- GUI Layout System (documentation pending)
-- Additional GUI elements documentation (in progress)
 
 #### Networking System
 Comprehensive networking library for client-server communication.
@@ -46,31 +68,35 @@ Comprehensive networking library for client-server communication.
 - [Stream System](networking/StreamSystem.md) - Continuous data streaming
 - [GenericStream](networking/GenericStream.md) - Creating custom streams
 
-**See Also:**
-- Multi-Server Networking (documentation pending)
+**Multi-Server:**
+- [Multi-Server Networking](networking/MultiServerNetworking.md) - TCP-based Master/Slave multi-server communication
 
 ### Utility Systems
 
 #### Settings & Configuration
-- Settings Library (documentation pending) - JSON-based configuration system
+- [Settings Library](systems/Settings.md) - JSON-based configuration system
 
 #### Persistence
-- Persistence System (documentation pending) - NBT storage and data archives
+- [Persistence System](systems/Persistence.md) - NBT storage and data archives
 
 #### Events
-- Event System (documentation pending) - Signal and DataEvent classes
+- [Event System](systems/Events.md) - Signal and DataEvent classes
 
 #### Utility Classes
-- Utility Classes Reference (documentation pending)
+- [Utility Classes Reference](systems/Utilities.md)
   - ItemUtilities
   - ColorUtilities (RGB/RGBA manipulation)
   - PlayerUtilities (Client and Server)
   - JsonUtilities
 
+#### Client Utilities
+- RecipeImageExporter - Off-screen framebuffer renderer for crafting recipe PNG export (documentation pending)
+
 ### Development
 
-#### Testing & Examples
+#### Testing
 - [Sandbox System](development/Sandbox.md) - Development testing framework
+- [Test Suite](testing/TestSuite.md) - Automated test suite for library features
 
 #### Contributing
 - JavaDoc documentation (in progress)
@@ -81,7 +107,8 @@ Comprehensive networking library for client-server communication.
 - **New to MC_ModUtilities?** Start with the [Project README](../README.md) and [GUI Library Overview](gui/GuiLibrary.md)
 - **Need to send data?** Check the [Networking Overview](networking/Networking.md)
 - **Building UIs?** See the [GUI Library Overview](gui/GuiLibrary.md) and [GuiScreen](gui/GuiScreen.md)
-- **Testing features?** Use the [Sandbox System](development/Sandbox.md)
+- **Multi-server setup?** See [Multi-Server Networking](networking/MultiServerNetworking.md)
+- **Testing features?** Use the [Sandbox System](development/Sandbox.md) and [Test Suite](testing/TestSuite.md)
 
 ## Documentation Status
 
@@ -92,14 +119,16 @@ Legend:
 
 | System | Status | Notes |
 |--------|--------|-------|
-| GUI Library | Partial | Core docs complete, 15+ components need documentation |
+| GUI Library | Complete | 18 component docs, layout, 5 use cases, display block |
 | Networking (Client-Server) | Complete | All major features documented |
-| Networking (Multi-Server) | Pending | TCP Master/Slave system needs docs |
-| Settings Library | Pending | JSON parser system needs docs |
-| Persistence System | Pending | NBT and archive system needs docs |
-| Event System | Pending | Signal and DataEvent need docs |
-| Utility Classes | Pending | Helper functions need API reference |
+| Networking (Multi-Server) | Complete | TCP Master/Slave system documented |
+| Settings Library | Complete | JSON parser system documented |
+| Persistence System | Complete | NBT and archive system documented |
+| Event System | Complete | Signal and DataEvent documented |
+| Utility Classes | Complete | Helper functions API reference documented |
 | Sandbox System | Complete | Development testing framework documented |
+| Test Suite | Complete | Automated test suite documented |
+| RecipeImageExporter | Pending | Crafting recipe PNG export needs docs |
 
 ## Prerequisites by System
 
@@ -179,6 +208,6 @@ When adding new documentation:
 
 ---
 
-**Version:** 2.0.0_ALPHA  
+**Version:** 2.0.1  
 **Minecraft Version:** 1.21.1  
 **Last Updated:** May 2026

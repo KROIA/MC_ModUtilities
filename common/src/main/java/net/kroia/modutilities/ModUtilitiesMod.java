@@ -18,11 +18,17 @@ public class ModUtilitiesMod {
     public static final String MOD_ID = "modutilities";
     public static final Logger LOGGER = LogManager.getLogger(MOD_ID);
 
+
+    // Set to false for release builds to hide dev-only commands (exportrecipes, testScreen, etc.)
+    public static final boolean ENABLE_DEV_FEATURES = true;
+
     public static void init()
     {
         registerSharedPackets();
         DisplayNetworking.init();
-        Sandbox.init();
+        if (ENABLE_DEV_FEATURES) {
+            Sandbox.init();
+        }
     }
 
     private static void registerSharedPackets() {
