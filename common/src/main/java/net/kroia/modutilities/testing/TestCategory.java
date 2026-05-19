@@ -14,18 +14,24 @@ public class TestCategory {
 
     private static final List<TestCategory> ALL_CATEGORIES = new ArrayList<>();
 
+    private final String modId;
     private final String name;
     private final String description;
     private final ServerType serverType;
     private final boolean needsMinecraftContext;
 
-    public TestCategory(String name, String description, ServerType serverType,
+    public TestCategory(String modId, String name, String description, ServerType serverType,
                         boolean needsMinecraftContext) {
+        this.modId = modId;
         this.name = name;
         this.description = description;
         this.serverType = serverType;
         this.needsMinecraftContext = needsMinecraftContext;
         ALL_CATEGORIES.add(this);
+    }
+
+    public String getModId() {
+        return modId;
     }
 
     public String getName() {

@@ -13,7 +13,7 @@ import java.util.concurrent.CompletableFuture;
 public class TestCommandRegistration {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher,
-                                String commandRoot, String modName, boolean isSlave) {
+                                String commandRoot, String modName, String modId, boolean isSlave) {
         if (!TestRegistry.ENABLE_TESTS) return;
 
         dispatcher.register(
@@ -22,24 +22,24 @@ public class TestCommandRegistration {
                     .requires(source -> source.hasPermission(2))
                     .executes(context -> {
                         ServerPlayer player = context.getSource().getPlayerOrException();
-                        new TestRunner(modName, isSlave, player.getServer())
+                        new TestRunner(modName, modId, isSlave, player.getServer())
                             .runAll(player);
                         return 1;
                     })
                     .then(Commands.literal("list")
                         .executes(context -> {
                             ServerPlayer player = context.getSource().getPlayerOrException();
-                            new TestRunner(modName, isSlave, player.getServer())
+                            new TestRunner(modName, modId, isSlave, player.getServer())
                                 .listCategories(player);
                             return 1;
                         })
                     )
                     .then(Commands.argument("category", StringArgumentType.string())
-                        .suggests((context, builder) -> suggestCategories(builder, isSlave))
+                        .suggests((context, builder) -> suggestCategories(builder, isSlave, modId))
                         .executes(context -> {
                             ServerPlayer player = context.getSource().getPlayerOrException();
                             String cat = StringArgumentType.getString(context, "category");
-                            new TestRunner(modName, isSlave, player.getServer())
+                            new TestRunner(modName, modId, isSlave, player.getServer())
                                 .runCategory(player, cat);
                             return 1;
                         })
@@ -49,8 +49,8 @@ public class TestCommandRegistration {
     }
 
     private static CompletableFuture<Suggestions> suggestCategories(
-            SuggestionsBuilder builder, boolean isSlave) {
-        for (String cat : TestRegistry.getAvailableCategories(isSlave)) {
+            SuggestionsBuilder builder, boolean isSlave, String modId) {
+        for (String cat : TestRegistry.getAvailableCategories(isSlave, modId)) {
             builder.suggest(cat);
         }
         return CompletableFuture.completedFuture(builder.build());

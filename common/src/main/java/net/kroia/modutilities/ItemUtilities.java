@@ -1,8 +1,14 @@
 package net.kroia.modutilities;
 
+import com.mojang.serialization.DynamicOps;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.component.DataComponentPatch;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.Tag;
+import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.TagKey;
@@ -499,5 +505,81 @@ public class ItemUtilities {
         ItemEntity itemEntity = new ItemEntity(level, position.x, position.y, position.z, stack);
         itemEntity.setDefaultPickUpDelay(); // Set default pickup delay
         level.addFreshEntity(itemEntity); // Add the item entity to the world
+    }
+
+    /**
+     * Serializes an {@link ItemStack} to a {@link CompoundTag}, preserving item ID, count,
+     * and all {@link DataComponentPatch} data (enchantments, custom names, durability, etc.).
+     *
+     * @param stack the item stack to serialize; may be {@code null} or empty
+     * @return a compound tag describing the stack, or an empty tag for null/empty stacks
+     */
+    public static CompoundTag serializeItemStack(ItemStack stack) {
+        CompoundTag tag = new CompoundTag();
+        if (stack == null || stack.isEmpty()) {
+            return tag;
+        }
+
+        tag.putString("id", BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
+        tag.putInt("count", stack.getCount());
+
+        DataComponentPatch patch = stack.getComponentsPatch();
+        if (!patch.isEmpty()) {
+            try {
+                Tag componentTag = DataComponentPatch.CODEC
+                        .encodeStart(componentOps(), patch)
+                        .getOrThrow();
+                tag.put("components", componentTag);
+            } catch (IllegalStateException e) {
+                // Registry context mismatch (e.g., NeoForge server/client holder divergence).
+                // Item ID and count are still preserved; only component data is lost.
+            }
+        }
+
+        return tag;
+    }
+
+    /**
+     * Deserializes an {@link ItemStack} from a {@link CompoundTag} produced by
+     * {@link #serializeItemStack(ItemStack)}, restoring item ID, count, and all component data.
+     *
+     * @param tag the compound tag to read; may be {@code null}
+     * @return the reconstructed item stack, or {@link ItemStack#EMPTY} for null/invalid input
+     */
+    public static ItemStack deserializeItemStack(CompoundTag tag) {
+        if (tag == null || !tag.contains("id")) {
+            return ItemStack.EMPTY;
+        }
+
+        String id = tag.getString("id");
+        Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(id));
+        if (item == Items.AIR && !id.equals("minecraft:air")) {
+            return ItemStack.EMPTY;
+        }
+
+        int count = tag.contains("count") ? tag.getInt("count") : 1;
+        ItemStack stack = new ItemStack(item, count);
+
+        if (tag.contains("components")) {
+            Tag componentsTag = tag.get("components");
+            DataComponentPatch patch = DataComponentPatch.CODEC
+                    .parse(componentOps(), componentsTag)
+                    .getOrThrow();
+            stack.applyComponents(patch);
+        }
+
+        return stack;
+    }
+
+    private static DynamicOps<Tag> componentOps() {
+        // Prefer server-side registry — ItemStack holders are typically resolved
+        // against it, and NeoForge validates holder-registry affinity during encoding.
+        RegistryAccess registryAccess = UtilitiesPlatform.getRegistryAccessServerSide();
+        if (registryAccess == null) {
+            registryAccess = UtilitiesPlatform.getRegistryAccess();
+        }
+        return registryAccess != null
+                ? RegistryOps.create(NbtOps.INSTANCE, registryAccess)
+                : NbtOps.INSTANCE;
     }
 }

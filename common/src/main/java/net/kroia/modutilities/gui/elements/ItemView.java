@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui.elements;
 
+import net.kroia.modutilities.ItemUtilities;
 import net.kroia.modutilities.gui.IGraphics;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Point;
@@ -143,8 +144,7 @@ public class ItemView extends GuiElement {
     public CompoundTag serializeState() {
         CompoundTag tag = super.serializeState();
         if (itemStack != null && !itemStack.isEmpty()) {
-            tag.putString("item", BuiltInRegistries.ITEM.getKey(itemStack.getItem()).toString());
-            tag.putInt("count", itemStack.getCount());
+            tag.put("itemStack", ItemUtilities.serializeItemStack(itemStack));
         }
         return tag;
     }
@@ -152,7 +152,11 @@ public class ItemView extends GuiElement {
     @Override
     public void deserializeState(CompoundTag tag) {
         super.deserializeState(tag);
-        if (tag.contains("item")) {
+        if (tag.contains("itemStack")) {
+            ItemStack stack = ItemUtilities.deserializeItemStack(tag.getCompound("itemStack"));
+            this.itemStack = stack.isEmpty() ? null : stack;
+        } else if (tag.contains("item")) {
+            // Backward compatibility: old format with just item ID + count
             var item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(tag.getString("item")));
             if (item != Items.AIR) {
                 this.itemStack = new ItemStack(item, tag.getInt("count"));

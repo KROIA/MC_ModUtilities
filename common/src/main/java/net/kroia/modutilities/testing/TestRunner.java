@@ -15,17 +15,19 @@ import java.util.function.Supplier;
 public class TestRunner {
 
     private final String prefix;
+    private final String modId;
     private final boolean isSlave;
     private final @Nullable MinecraftServer server;
 
-    public TestRunner(String modName, boolean isSlave, @Nullable MinecraftServer server) {
+    public TestRunner(String modName, String modId, boolean isSlave, @Nullable MinecraftServer server) {
         this.prefix = "[" + modName + " Test] ";
+        this.modId = modId;
         this.isSlave = isSlave;
         this.server = server;
     }
 
     public void runAll(ServerPlayer player) {
-        List<TestSuite> suites = TestRegistry.getTestSuites();
+        List<TestSuite> suites = TestRegistry.getTestSuites(modId);
         int totalPassed = 0;
         int totalFailed = 0;
         int totalError = 0;
@@ -65,7 +67,7 @@ public class TestRunner {
             return;
         }
 
-        List<TestSuite> suites = TestRegistry.getTestSuites();
+        List<TestSuite> suites = TestRegistry.getTestSuites(modId);
         int totalPassed = 0;
         int totalFailed = 0;
         int totalError = 0;
@@ -97,9 +99,10 @@ public class TestRunner {
                 .withStyle(ChatFormatting.GOLD)
                 .append(Component.literal("Available test categories:").withStyle(ChatFormatting.WHITE)));
 
-        List<TestSuite> suites = TestRegistry.getTestSuites();
+        List<TestSuite> suites = TestRegistry.getTestSuites(modId);
 
         for (TestCategory category : TestCategory.getAllCategories()) {
+            if (!category.getModId().equals(modId)) continue;
             boolean canRun = category.canRunOn(isSlave);
             int testCount = 0;
             for (TestSuite suite : suites) {

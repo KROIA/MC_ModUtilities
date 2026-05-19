@@ -27,11 +27,35 @@ public class TestRegistry {
         return Collections.unmodifiableList(testSuites);
     }
 
+    public static List<TestSuite> getTestSuites(String modId) {
+        List<TestSuite> filtered = new ArrayList<>();
+        for (TestSuite suite : testSuites) {
+            if (suite.getCategory().getModId().equals(modId)) {
+                filtered.add(suite);
+            }
+        }
+        return Collections.unmodifiableList(filtered);
+    }
+
     public static List<String> getAvailableCategories(boolean isSlave) {
         List<String> categories = new ArrayList<>();
         for (TestSuite suite : testSuites) {
             TestCategory category = suite.getCategory();
             if (category.canRunOn(isSlave)) {
+                String name = category.getName();
+                if (!categories.contains(name)) {
+                    categories.add(name);
+                }
+            }
+        }
+        return categories;
+    }
+
+    public static List<String> getAvailableCategories(boolean isSlave, String modId) {
+        List<String> categories = new ArrayList<>();
+        for (TestSuite suite : testSuites) {
+            TestCategory category = suite.getCategory();
+            if (category.getModId().equals(modId) && category.canRunOn(isSlave)) {
                 String name = category.getName();
                 if (!categories.contains(name)) {
                     categories.add(name);
