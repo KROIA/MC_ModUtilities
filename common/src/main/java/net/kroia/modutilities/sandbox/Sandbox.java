@@ -307,7 +307,7 @@ public class Sandbox {
         CommandRegistrationEvent.EVENT.register((dispatcher, registryAccess, environment) -> {
             SandboxCommand.register(dispatcher);
             boolean isSlave = false; // TODO: detect from MultiServerManager if available
-            TestCommandRegistration.register(dispatcher, "modutilities", "ModUtilities", isSlave);
+            TestCommandRegistration.register(dispatcher, "modutilities", "ModUtilities", "modutilities", isSlave);
         });
         network = new SandboxNetwork();
         //TABS.register();
