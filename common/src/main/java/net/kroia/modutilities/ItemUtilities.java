@@ -525,10 +525,15 @@ public class ItemUtilities {
 
         DataComponentPatch patch = stack.getComponentsPatch();
         if (!patch.isEmpty()) {
-            Tag componentTag = DataComponentPatch.CODEC
-                    .encodeStart(componentOps(), patch)
-                    .getOrThrow();
-            tag.put("components", componentTag);
+            try {
+                Tag componentTag = DataComponentPatch.CODEC
+                        .encodeStart(componentOps(), patch)
+                        .getOrThrow();
+                tag.put("components", componentTag);
+            } catch (IllegalStateException e) {
+                // Registry context mismatch (e.g., NeoForge server/client holder divergence).
+                // Item ID and count are still preserved; only component data is lost.
+            }
         }
 
         return tag;
@@ -567,7 +572,12 @@ public class ItemUtilities {
     }
 
     private static DynamicOps<Tag> componentOps() {
-        RegistryAccess registryAccess = UtilitiesPlatform.getRegistryAccess();
+        // Prefer server-side registry — ItemStack holders are typically resolved
+        // against it, and NeoForge validates holder-registry affinity during encoding.
+        RegistryAccess registryAccess = UtilitiesPlatform.getRegistryAccessServerSide();
+        if (registryAccess == null) {
+            registryAccess = UtilitiesPlatform.getRegistryAccess();
+        }
         return registryAccess != null
                 ? RegistryOps.create(NbtOps.INSTANCE, registryAccess)
                 : NbtOps.INSTANCE;
