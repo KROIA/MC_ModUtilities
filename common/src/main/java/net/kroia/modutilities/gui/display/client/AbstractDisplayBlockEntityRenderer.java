@@ -66,8 +66,15 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
 
     private void ensureBufferSource() {
         if (offscreenBufferSource == null) {
-            offscreenBufferSource = MultiBufferSource.immediate(
-                    new com.mojang.blaze3d.vertex.ByteBufferBuilder(786432));
+            // Fixed buffers for glint render types so enchanted items can render
+            // without the glint buffer flushing the base item buffer
+            java.util.SequencedMap<RenderType, com.mojang.blaze3d.vertex.ByteBufferBuilder> fixedBuffers = new java.util.LinkedHashMap<>();
+            fixedBuffers.put(RenderType.glint(), new com.mojang.blaze3d.vertex.ByteBufferBuilder(256));
+            fixedBuffers.put(RenderType.entityGlint(), new com.mojang.blaze3d.vertex.ByteBufferBuilder(256));
+            fixedBuffers.put(RenderType.entityGlintDirect(), new com.mojang.blaze3d.vertex.ByteBufferBuilder(256));
+            fixedBuffers.put(RenderType.armorEntityGlint(), new com.mojang.blaze3d.vertex.ByteBufferBuilder(256));
+            offscreenBufferSource = MultiBufferSource.immediateWithBuffers(
+                    fixedBuffers, new com.mojang.blaze3d.vertex.ByteBufferBuilder(786432));
         }
     }
 
