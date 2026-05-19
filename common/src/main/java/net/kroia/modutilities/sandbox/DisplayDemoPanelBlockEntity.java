@@ -4,11 +4,19 @@ import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.display.AbstractDisplayBlockEntity;
 import net.kroia.modutilities.gui.display.ContentBuilder;
 import net.kroia.modutilities.gui.display.DisplayConfig;
+import net.kroia.modutilities.UtilitiesPlatform;
 import net.kroia.modutilities.gui.elements.Button;
 import net.kroia.modutilities.gui.elements.CheckBox;
+import net.kroia.modutilities.gui.elements.ItemView;
 import net.kroia.modutilities.gui.elements.Label;
 import net.kroia.modutilities.gui.elements.TextBox;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.world.item.EnchantedBookItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.enchantment.EnchantmentInstance;
+import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -169,6 +177,20 @@ public class DisplayDemoPanelBlockEntity extends AbstractDisplayBlockEntity {
         statusInput.setText("All systems nominal");
         statusInput.setMaxChars(30);
         gui.addElement(statusInput);
+        y += 22;
+
+        // Enchanted book item view
+        ItemView bookView = new ItemView();
+        bookView.setShowTooltip(true);
+        bookView.setBounds(margin, y, 16, 16);
+        RegistryAccess registryAccess = UtilitiesPlatform.getRegistryAccess();
+        if (registryAccess != null) {
+            var sharpness = registryAccess.registryOrThrow(Registries.ENCHANTMENT)
+                    .getHolder(Enchantments.SHARPNESS);
+            sharpness.ifPresent(holder ->
+                    bookView.setItemStack(EnchantedBookItem.createForEnchantment(new EnchantmentInstance(holder, 1))));
+        }
+        gui.addElement(bookView);
     }
 
     // -------------------------------------------------------------------------
