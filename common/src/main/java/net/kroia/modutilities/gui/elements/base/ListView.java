@@ -169,6 +169,25 @@ public abstract class ListView extends GuiElement{
     }
 
     /**
+     * Returns the current scroll offset in pixels.
+     * @return the scroll offset
+     */
+    public int getScrollOffset() {
+        return scrollOffset;
+    }
+
+    /**
+     * Sets the scroll offset in pixels and updates the scroll position immediately.
+     * The value is clamped to the valid range.
+     * @param offset the scroll offset to set
+     */
+    public void setScrollOffset(int offset) {
+        this.scrollOffset = Math.max(Math.min(offset, allObjectSize - getContentDimension2()), 0);
+        updateElementPositions();
+        setScrollBarBounds();
+    }
+
+    /**
      * Sets the background color drawn behind the scrollbar.
      *
      * @param color the packed ARGB color
