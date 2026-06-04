@@ -13,6 +13,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 
+import java.io.IOException;
 import java.util.function.Consumer;
 
 /**
@@ -141,15 +142,33 @@ public class SlavePacketHandler extends SimpleChannelInboundHandler<Payload> {
     }
 
     /**
-     * Logs uncaught exceptions raised in the inbound pipeline and closes the
-     * channel so the standard reconnect logic can take over.
+     * Called by Netty when an uncaught exception bubbles up the inbound pipeline.
+     * <p>
+     * Classifies the cause by <em>expectedness</em> before logging:
+     * <ul>
+     *   <li>A routine {@link IOException} (which also covers
+     *       {@link java.net.SocketException}, e.g. {@code "Connection reset"}) is a normal
+     *       master disconnect and is logged at DEBUG, since
+     *       {@link #channelInactive(ChannelHandlerContext)} already logs the reconnect at
+     *       WARN and schedules the retry (avoids double-logging).</li>
+     *   <li>Any non-{@code IOException} cause is a genuine pipeline failure
+     *       (decode/runtime) and is logged at ERROR with the full stack trace.</li>
+     * </ul>
+     * In every case the channel is closed so the standard reconnect logic can take over.
      *
      * @param ctx   The Netty channel context in which the exception occurred.
      * @param cause The {@link Throwable} that bubbled up the pipeline.
      */
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-        error("Exception in child inbound handler", cause);
+        if (cause instanceof IOException) {
+            // Routine disconnect from the master (e.g. "Connection reset"); channelInactive logs the
+            // reconnect WARN and schedules the retry — keep this quiet to avoid double-logging.
+            debug("Connection to master reset: "+cause);
+        } else {
+            // Genuine pipeline failure — keep the full stack trace.
+            error("Exception in child inbound handler", cause);
+        }
         ctx.close();
     }
 
