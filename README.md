@@ -5,7 +5,7 @@ This is a comprehensive utilities library mod that provides common functionality
 This mod is only needed for the Quilt platform since it does not include the jar inside the mod which uses this dependency.
 Fabric and NeoForge both include this mod, so you don't need it as a separate dependency.
 
-**Current Version**: v2.0.2  
+**Current Version**: v2.0.3  
 **Minecraft Version**: 1.21.1  
 **Supported Platforms**: Fabric, NeoForge, Quilt
 
@@ -47,7 +47,7 @@ Fabric and NeoForge both include this mod, so you don't need it as a separate de
 ### Current Development Version
 | Minecraft | Version | Platform |
 |-----------|---------|----------|
-| ![Minecraft Version](https://img.shields.io/badge/Minecraft-1.21.1-green) | ![Version](https://img.shields.io/badge/v2.0.2-orange) | Fabric, NeoForge, Quilt |
+| ![Minecraft Version](https://img.shields.io/badge/Minecraft-1.21.1-green) | ![Version](https://img.shields.io/badge/v2.0.3-orange) | Fabric, NeoForge, Quilt |
 
 ### Legacy Versions
 | Minecraft | Quilt |
@@ -72,7 +72,8 @@ All notable changes are documented in version-specific files under `changelog/`.
 
 | Version | Date | Notes |
 |---|---|---|
-| [2.0.2](changelog/v2.0.2.md) | In Development | |
+| [2.0.3](changelog/v2.0.3.md) | In Development | |
+| [2.0.2](changelog/v2.0.2.md) | 2026-06-07 | Maintenance release — version sync |
 | [2.0.1](changelog/v2.0.1.md) | 2026-05-21 | |
 | [2.0.0_ALPHA](changelog/v2.0.0_ALPHA.md) | 2026-05-10 | Test suite framework, documentation, 80+ bug fixes |
 
