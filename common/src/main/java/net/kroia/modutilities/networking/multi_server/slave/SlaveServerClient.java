@@ -285,7 +285,7 @@ public class SlaveServerClient {
      */
     public boolean sendToMaster(@Nullable UUID senderPlayerUUID, CustomPacketPayload packet) {
         //info("Sending packet: '"+packet.type().id()+"' to master for player '" + senderPlayerUUID+"'");
-        ForwardPacketPayload payload = MultiServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID, serverId, packet);
+        ForwardPacketPayload payload = MultiServerPacketRegistry.createForwardPacketPayload(senderPlayerUUID, packet);
         return sendToMaster(payload);
     }
     /**

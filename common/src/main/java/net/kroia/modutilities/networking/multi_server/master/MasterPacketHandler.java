@@ -136,7 +136,11 @@ public class MasterPacketHandler extends SimpleChannelInboundHandler<Payload> {
                 ByteBuf buf = ctx.alloc().buffer();
                 buf.writeBytes(bb.data());
                 RegistryFriendlyByteBuf dataBuf = new RegistryFriendlyByteBuf(buf, mcServer.registryAccess());
-                ForwardPacketContext context = new ForwardPacketContext(ctx, bb.senderServerID(), bb.senderPlayerUUID());
+                // this.serverId is set once at handshake success and is trustworthy per-socket.
+                // Forwarded packets are already rejected before handshake (the serverId == null
+                // guard just above), so this is the AUTHENTICATED identity of the sending slave,
+                // not a spoofable payload-supplied value.
+                ForwardPacketContext context = new ForwardPacketContext(ctx, this.serverId, bb.senderPlayerUUID());
                 // buffer ownership transferred to handleByteBufOnMasterSide — do NOT release here
                 MultiServerPacketRegistry.handleByteBufOnMasterSide(packetResouceLoc, dataBuf, context);
             }

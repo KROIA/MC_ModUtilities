@@ -290,13 +290,11 @@ public class MultiServerPacketRegistry
      *
      * @param senderPlayerUUID The UUID of the player that triggered this packet, or
      *                         {@code null} for server-initiated traffic.
-     * @param senderServerID   The slave server ID that is sending (or originating) the packet.
      * @param packet           The payload to wrap; its type must already be registered.
      * @return                 A populated {@link ForwardPacketPayload}, or {@code null} if
      *                         the packet's type is not registered.
      */
     public static ForwardPacketPayload createForwardPacketPayload(@Nullable UUID senderPlayerUUID,
-                                                                  String senderServerID,
                                                                   CustomPacketPayload packet)
     {
         ResourceLocation packetType = packet.type().id();
@@ -307,7 +305,7 @@ public class MultiServerPacketRegistry
         byte[] data = new byte[encoded.readableBytes()];
         encoded.readBytes(data);
         encoded.release();
-        ForwardPacketPayload payload = new ForwardPacketPayload(senderPlayerUUID, senderServerID, packetType, data);
+        ForwardPacketPayload payload = new ForwardPacketPayload(senderPlayerUUID, packetType, data);
         return payload;
     }
 

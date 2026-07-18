@@ -28,9 +28,14 @@ public class ForwardPacketContext
     public final ChannelHandlerContext channelContext;
 
     /**
-     * The Server ID of the slave that originally sent this packet. On the master side
-     * this identifies the source slave; on a slave receiving a relayed packet it
-     * identifies the originating slave.
+     * The Server ID of the peer that sent this packet. On the master side this
+     * identifies the source slave; on a slave receiving a relayed packet it is the
+     * constant {@code "master"}.
+     * <p>
+     * This value is derived from the <b>authenticated connection</b> — the handshake
+     * {@code serverId} bound to the socket on the master, and the constant
+     * {@code "master"} on the slave — and is <b>not</b> a payload-supplied value.
+     * It therefore cannot be spoofed per-packet and is safe to use for trust decisions.
      */
     public final String senderServerID;
 

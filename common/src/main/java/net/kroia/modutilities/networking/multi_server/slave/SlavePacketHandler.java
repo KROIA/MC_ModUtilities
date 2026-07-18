@@ -7,6 +7,7 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.networking.multi_server.ForwardPacketContext;
 import net.kroia.modutilities.networking.multi_server.MultiServerPacketRegistry;
+import net.kroia.modutilities.networking.multi_server.master.MasterTCPServer;
 import net.kroia.modutilities.networking.multi_server.payload.*;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
@@ -112,7 +113,10 @@ public class SlavePacketHandler extends SimpleChannelInboundHandler<Payload> {
                 ByteBuf buf = ctx.alloc().buffer();
                 buf.writeBytes(bb.data());
                 RegistryFriendlyByteBuf dataBuf = new RegistryFriendlyByteBuf(buf, mcServer.registryAccess());
-                ForwardPacketContext context = new ForwardPacketContext(ctx, bb.senderServerID(), bb.senderPlayerUUID());
+                // The slave's sole authenticated peer is the master, so the sender is always
+                // "master". This reproduces exactly the value the master previously stamped on
+                // the wire, so downstream "master" comparisons are unaffected.
+                ForwardPacketContext context = new ForwardPacketContext(ctx, MasterTCPServer.MASTER_SERVER_ID, bb.senderPlayerUUID());
                 // buffer ownership transferred to handleByteBufOnSlaveSide — do NOT release here
                 MultiServerPacketRegistry.handleByteBufOnSlaveSide(packetResouceLoc, dataBuf, context);
             }
