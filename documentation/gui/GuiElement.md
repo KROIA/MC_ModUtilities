@@ -36,6 +36,7 @@ This is the most important class for the Gui Library, each element which is visi
 - TextBox
 - TextureElement
 - DropDownMenu
+- ExpandablePanel
   
 
 

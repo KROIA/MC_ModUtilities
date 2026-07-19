@@ -8,6 +8,7 @@ import net.kroia.modutilities.gui.client.GuiScreen;
 import net.kroia.modutilities.gui.elements.Button;
 import net.kroia.modutilities.gui.elements.CheckBox;
 import net.kroia.modutilities.gui.elements.DropDownMenu;
+import net.kroia.modutilities.gui.elements.ExpandablePanel;
 import net.kroia.modutilities.gui.elements.HorizontalSlider;
 import net.kroia.modutilities.gui.elements.Label;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
@@ -43,6 +44,7 @@ public class ExampleSettingsScreen extends GuiScreen {
     private final CheckBox fullscreenCheckBox;
     private final Label difficultyLabel;
     private final DropDownMenu difficultyDropDown;
+    private final ExpandablePanel advancedPanel;
     private final Button applyButton;
 
     public ExampleSettingsScreen() {
@@ -92,6 +94,15 @@ public class ExampleSettingsScreen extends GuiScreen {
             difficultyDropDown.addOption(option);
         }
         addElement(difficultyDropDown);
+
+        // Collapsible "Advanced" section holding extra option rows.
+        advancedPanel = new ExpandablePanel("Advanced", false);
+        advancedPanel.addChild(new CheckBox("Reduce particles"));
+        advancedPanel.addChild(new CheckBox("Show debug overlay"));
+        Label hint = new Label("These options require a restart.");
+        hint.setHeight(16);
+        advancedPanel.addChild(hint);
+        addElement(advancedPanel);
 
         applyButton = new Button("Apply", this::onApply);
         addElement(applyButton);
@@ -145,6 +156,11 @@ public class ExampleSettingsScreen extends GuiScreen {
         // Note: setBounds on a DropDownMenu in unexpanded state. Expanded list grows downward.
         difficultyDropDown.setBounds(x + labelWidth + 6, y, controlWidth, rowHeight);
         y += rowHeight + spacing * 2;
+
+        // Note: the panel grows downward when expanded; content overlaps the
+        // button below, matching the DropDownMenu caveat above (demo only).
+        advancedPanel.setBounds(x, y, labelWidth + controlWidth, advancedPanel.getHeaderHeight());
+        y += advancedPanel.getHeaderHeight() + spacing * 2;
 
         applyButton.setBounds(x + totalWidth / 2 - 50, y, 100, 22);
     }
