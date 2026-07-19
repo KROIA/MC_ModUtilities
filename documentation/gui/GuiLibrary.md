@@ -119,6 +119,7 @@ import net.kroia.modutilities.gui.client.InventoryView;
   - [InventoryView](GuiElements/InventoryView.md) - Player inventory display
   - [ItemSelectionView](GuiElements/ItemSelectionView.md) - Item selection grid
   - [TabElement](GuiElements/TabElement.md) - Tabbed container
+  - [ExpandablePanel](GuiElements/ExpandablePanel.md) - Collapsible container with a header
 
 ## Architecture
 

@@ -72,6 +72,7 @@ public class ServerSenderStreamHolder<CONTEXT_DATA, DATA>
         this.stream.setStreamID(streamID);
         this.stream.setRequestorPlayerUUID(playerUUID);
         this.stream.setContextData(contextDataBuf);
+        this.stream.setSlaveServerID(slaveServerID);
         this.playerUUID = playerUUID;
         this.slaveServerID = slaveServerID;
     }

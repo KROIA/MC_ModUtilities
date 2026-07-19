@@ -19,6 +19,7 @@ public abstract class GenericStream<CONTEXT_DATA, DATA> {
     private UUID StreamID = null;
     private @Nullable UUID requestorPlayerUUID = null;
     private CONTEXT_DATA contextData = null;
+    private @Nullable String slaveServerID = null;
 
     /**
      * Creates a copy of this stream. to provide a stream based storage for variables
@@ -239,6 +240,23 @@ public abstract class GenericStream<CONTEXT_DATA, DATA> {
         return this.contextData;
     }
 
+    /**
+     * Returns the id of the slave server this stream is sending to.
+     * For a master-local stream (a direct-to-master client stream) this is
+     * {@code null} or empty.
+     * <p>
+     * Subclasses MAY use this id to make per-origin decisions inside their
+     * per-tick update. ModUtilities itself attaches NO policy or meaning to it;
+     * it is exposed purely as the raw originating id.
+     *
+     * @return The slave server id this stream is sending to, or {@code null}/empty
+     *         for a master-local stream.
+     */
+    public @Nullable String getSlaveServerID()
+    {
+        return this.slaveServerID;
+    }
+
 
     /**
      * Convenience method to start a server-to-client stream using this stream definition.
@@ -326,6 +344,11 @@ public abstract class GenericStream<CONTEXT_DATA, DATA> {
         this.StreamID = other.StreamID;
         this.requestorPlayerUUID = other.requestorPlayerUUID;
         this.contextData = other.contextData;
+        this.slaveServerID = other.slaveServerID;
+    }
+    public void setSlaveServerID(@Nullable String id)
+    {
+        this.slaveServerID = id;
     }
     public final void setStreamID(UUID streamID)
     {
