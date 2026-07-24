@@ -3,6 +3,8 @@ package net.kroia.modutilities.networking;
 
 
 import dev.architectury.networking.NetworkManager;
+import dev.architectury.platform.Platform;
+import dev.architectury.utils.Env;
 import net.kroia.modutilities.networking.client_server.NetworkPacket;
 import net.kroia.modutilities.networking.client_server.PacketHandler;
 import net.kroia.modutilities.networking.client_server.arrs.AsynchronousRequestResponseSystem;
@@ -104,6 +106,14 @@ public abstract class NetworkPacketManager {
 
     /**
      * Registers a server-to-client packet type with a custom handler.
+     * <p>
+     * Safe to call from common init on both physical clients and dedicated servers. On the client
+     * the full receiver is installed (which also registers the payload TYPE via Architectury); on
+     * the dedicated server only the payload TYPE is registered, so the server can still encode
+     * outgoing S2C packets. This avoids dispatching to the
+     * {@code @Environment(EnvType.CLIENT)}-stripped {@code Adaptor#registerS2C} on Fabric
+     * dedicated servers (which would throw {@link AbstractMethodError}) and also avoids
+     * double-registering the payload TYPE on the client.
      *
      * @param packetType  the packet payload type identifier.
      * @param streamCodec the codec used to serialize/deserialize the packet on the wire.
@@ -112,11 +122,19 @@ public abstract class NetworkPacketManager {
      */
     public <T extends NetworkPacket> void registerS2C(CustomPacketPayload.Type<T> packetType, StreamCodec<RegistryFriendlyByteBuf, T> streamCodec, PacketHandler<? super T> handler) {
 
-        NetworkManager.registerReceiver(NetworkManager.Side.S2C, packetType, streamCodec, handler::handleClient);
+        if (Platform.getEnvironment() == Env.CLIENT) {
+            NetworkManager.registerReceiver(NetworkManager.Side.S2C, packetType, streamCodec, handler::handleClient);
+        } else {
+            NetworkManager.registerS2CPayloadType(packetType, streamCodec);
+        }
         //NetworkManager.registerReceiver(NetworkManager.Side.C2S, packetType, streamCodec, handler::handleServer);
     }
     /**
      * Registers a server-to-client packet type with a custom handler and a multi-server forward handler.
+     * <p>
+     * Safe to call from common init on both physical clients and dedicated servers; see
+     * {@link #registerS2C(CustomPacketPayload.Type, StreamCodec, PacketHandler)} for the split
+     * rationale. The multi-server forward handler is always registered.
      *
      * @param packetType     the packet payload type identifier.
      * @param streamCodec    the codec used to serialize/deserialize the packet on the wire.
@@ -126,7 +144,11 @@ public abstract class NetworkPacketManager {
      */
     public <T extends NetworkPacket> void registerS2C(CustomPacketPayload.Type<T> packetType, StreamCodec<RegistryFriendlyByteBuf, T> streamCodec, PacketHandler<? super T> handler, ForwardPacketHandler<? super T> forwardHandler) {
 
-        NetworkManager.registerReceiver(NetworkManager.Side.S2C, packetType, streamCodec, handler::handleClient);
+        if (Platform.getEnvironment() == Env.CLIENT) {
+            NetworkManager.registerReceiver(NetworkManager.Side.S2C, packetType, streamCodec, handler::handleClient);
+        } else {
+            NetworkManager.registerS2CPayloadType(packetType, streamCodec);
+        }
         MultiServerPacketRegistry.register(packetType, streamCodec, forwardHandler);
         //NetworkManager.registerReceiver(NetworkManager.Side.C2S, packetType, streamCodec, handler::handleServer);
     }
@@ -134,6 +156,10 @@ public abstract class NetworkPacketManager {
     /**
      * Registers a server-to-client packet type using {@link NetworkPacket#HANDLER} for both the client receiver
      * and the multi-server relay path.
+     * <p>
+     * Safe to call from common init on both physical clients and dedicated servers; see
+     * {@link #registerS2C(CustomPacketPayload.Type, StreamCodec, PacketHandler)} for the split
+     * rationale.
      *
      * @param packetType  the packet payload type identifier.
      * @param streamCodec the codec used to serialize/deserialize the packet on the wire.
@@ -141,7 +167,11 @@ public abstract class NetworkPacketManager {
      */
     public <T extends NetworkPacket> void registerS2C(CustomPacketPayload.Type<T> packetType, StreamCodec<RegistryFriendlyByteBuf, T> streamCodec) {
 
-        NetworkManager.registerReceiver(NetworkManager.Side.S2C, packetType, streamCodec, NetworkPacket.HANDLER::handleClient);
+        if (Platform.getEnvironment() == Env.CLIENT) {
+            NetworkManager.registerReceiver(NetworkManager.Side.S2C, packetType, streamCodec, NetworkPacket.HANDLER::handleClient);
+        } else {
+            NetworkManager.registerS2CPayloadType(packetType, streamCodec);
+        }
         MultiServerPacketRegistry.register(packetType, streamCodec, NetworkPacket.HANDLER);
         //NetworkManager.registerReceiver(NetworkManager.Side.C2S, packetType, streamCodec, NetworkPacket.HANDLER::handleServer);
     }

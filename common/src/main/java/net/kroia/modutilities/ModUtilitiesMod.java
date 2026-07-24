@@ -1,6 +1,8 @@
 package net.kroia.modutilities;
 
 import dev.architectury.networking.NetworkManager;
+import dev.architectury.platform.Platform;
+import dev.architectury.utils.Env;
 import net.kroia.modutilities.gui.display.DisplayNetworking;
 import net.kroia.modutilities.networking.client_server.NetworkPacket;
 import net.kroia.modutilities.networking.client_server.arrs.GenericRequestPacket;
@@ -32,15 +34,31 @@ public class ModUtilitiesMod {
     }
 
     private static void registerSharedPackets() {
-        // Stream system — Architectury registration
-        NetworkManager.registerReceiver(NetworkManager.Side.S2C, GenericStreamPacket.TYPE,
-                GenericStreamPacket.STREAM_CODEC, GenericStreamPacket.HANDLER::handleClient);
+        final boolean isClient = Platform.getEnvironment() == Env.CLIENT;
+
+        // Stream system — Architectury registration.
+        //
+        // On the client, registerReceiver(Side.S2C, ...) also registers the payload TYPE via
+        // Fabric's PayloadTypeRegistry, so pre-calling registerS2CPayloadType there would double-
+        // register and crash. On the dedicated server the client-only adaptor path is stripped
+        // (@Environment(EnvType.CLIENT) in architectury-fabric 13.0.8), so we register just the
+        // TYPE so the server can still encode outgoing S2C packets.
+        if (isClient) {
+            NetworkManager.registerReceiver(NetworkManager.Side.S2C, GenericStreamPacket.TYPE,
+                    GenericStreamPacket.STREAM_CODEC, GenericStreamPacket.HANDLER::handleClient);
+        } else {
+            NetworkManager.registerS2CPayloadType(GenericStreamPacket.TYPE, GenericStreamPacket.STREAM_CODEC);
+        }
         NetworkManager.registerReceiver(NetworkManager.Side.C2S, StreamStartPacket.TYPE,
                 StreamStartPacket.STREAM_CODEC, StreamStartPacket.HANDLER::handleServer);
         NetworkManager.registerReceiver(NetworkManager.Side.C2S, StreamStopClientSenderPacket.TYPE,
                 StreamStopClientSenderPacket.STREAM_CODEC, StreamStopClientSenderPacket.HANDLER::handleServer);
-        NetworkManager.registerReceiver(NetworkManager.Side.S2C, StreamStopServerSenderPacket.TYPE,
-                StreamStopServerSenderPacket.STREAM_CODEC, StreamStopServerSenderPacket.HANDLER::handleClient);
+        if (isClient) {
+            NetworkManager.registerReceiver(NetworkManager.Side.S2C, StreamStopServerSenderPacket.TYPE,
+                    StreamStopServerSenderPacket.STREAM_CODEC, StreamStopServerSenderPacket.HANDLER::handleClient);
+        } else {
+            NetworkManager.registerS2CPayloadType(StreamStopServerSenderPacket.TYPE, StreamStopServerSenderPacket.STREAM_CODEC);
+        }
 
         // Stream system — MultiServer forwarding
         MultiServerPacketRegistry.register(GenericStreamPacket.TYPE, GenericStreamPacket.STREAM_CODEC, GenericStreamPacket.HANDLER);
@@ -51,8 +69,12 @@ public class ModUtilitiesMod {
         // ARRS — Architectury registration
         NetworkManager.registerReceiver(NetworkManager.Side.C2S, GenericRequestPacket.TYPE,
                 GenericRequestPacket.STREAM_CODEC, NetworkPacket.HANDLER::handleServer);
-        NetworkManager.registerReceiver(NetworkManager.Side.S2C, GenericResponsePacket.TYPE,
-                GenericResponsePacket.STREAM_CODEC, NetworkPacket.HANDLER::handleClient);
+        if (isClient) {
+            NetworkManager.registerReceiver(NetworkManager.Side.S2C, GenericResponsePacket.TYPE,
+                    GenericResponsePacket.STREAM_CODEC, NetworkPacket.HANDLER::handleClient);
+        } else {
+            NetworkManager.registerS2CPayloadType(GenericResponsePacket.TYPE, GenericResponsePacket.STREAM_CODEC);
+        }
 
         // ARRS — MultiServer forwarding
         MultiServerPacketRegistry.register(GenericRequestPacket.TYPE, GenericRequestPacket.STREAM_CODEC);
