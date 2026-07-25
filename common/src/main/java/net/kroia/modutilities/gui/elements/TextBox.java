@@ -305,12 +305,15 @@ public class TextBox extends GuiElement {
      * The cursor is clamped to remain within the new text bounds.
      * @param text the new text content
      * @apiNote This bypasses regex validation and does not fire the text-changed callback.
+     * Any active selection is cleared.
      */
     public void setText(String text) {
         if(!this.text.equals(text))
             markDirty();
         this.text = text;
         currentCursorPos = Math.min(text.length(), currentCursorPos);
+        selectionCursonIdxStart = -1;
+        selectionCursonIdxEnd = -1;
         updateTextLabel();
     }
 
@@ -504,9 +507,11 @@ public class TextBox extends GuiElement {
             }
             case InputConstants.KEY_C:
             {
-                if(isControlDown && selectionCursonIdxStart != -1 && selectionCursonIdxEnd != -1)
+                if(isControlDown && hasValidSelection())
                 {
-                    String subString = text.substring(selectionCursonIdxStart, selectionCursonIdxEnd);
+                    int s = Math.min(selectionCursonIdxStart, selectionCursonIdxEnd);
+                    int e = Math.max(selectionCursonIdxStart, selectionCursonIdxEnd);
+                    String subString = text.substring(s, e);
                     // put substring into clipboard
                     if (getRoot() != null) getRoot().getInputProvider().setClipboard(subString);
                     return true;
@@ -515,10 +520,12 @@ public class TextBox extends GuiElement {
             }
             case InputConstants.KEY_X:
             {
-                if(isControlDown && selectionCursonIdxStart != -1 && selectionCursonIdxEnd != -1)
+                if(isControlDown && hasValidSelection())
                 {
-                    String subString = text.substring(selectionCursonIdxStart, selectionCursonIdxEnd);
-                    text = text.substring(0, selectionCursonIdxStart) +  text.substring(selectionCursonIdxEnd);
+                    int s = Math.min(selectionCursonIdxStart, selectionCursonIdxEnd);
+                    int e = Math.max(selectionCursonIdxStart, selectionCursonIdxEnd);
+                    String subString = text.substring(s, e);
+                    text = text.substring(0, s) +  text.substring(e);
                     // put substring into clipboard
                     if (getRoot() != null) getRoot().getInputProvider().setClipboard(subString);
                     selectionCursonIdxStart = -1;
@@ -536,10 +543,12 @@ public class TextBox extends GuiElement {
                     String clipboard = getRoot() != null ? getRoot().getInputProvider().getClipboard() : "";
                     String newText = text;
                     int currentCursorPosTmp = currentCursorPos;
-                    if(selectionCursonIdxStart != -1 && selectionCursonIdxEnd != -1)
+                    if(hasValidSelection())
                     {
-                        newText = text.substring(0, selectionCursonIdxStart) + text.substring(selectionCursonIdxEnd);
-                        currentCursorPosTmp =  selectionCursonIdxStart;
+                        int s = Math.min(selectionCursonIdxStart, selectionCursonIdxEnd);
+                        int e = Math.max(selectionCursonIdxStart, selectionCursonIdxEnd);
+                        newText = text.substring(0, s) + text.substring(e);
+                        currentCursorPosTmp =  s;
                     }
                     String textToCursorTmp = newText.substring(0, currentCursorPosTmp);
                     String textAfterCursorTmp = newText.substring(currentCursorPosTmp);
@@ -548,12 +557,14 @@ public class TextBox extends GuiElement {
                         return false;
 
                     boolean hasChanged = false;
-                    if(selectionCursonIdxStart != -1 && selectionCursonIdxEnd != -1)
+                    if(hasValidSelection())
                     {
+                        int s = Math.min(selectionCursonIdxStart, selectionCursonIdxEnd);
+                        int e = Math.max(selectionCursonIdxStart, selectionCursonIdxEnd);
                         // overwrite the current selection
                         // remove selected text section
-                        text = text.substring(0, selectionCursonIdxStart) + text.substring(selectionCursonIdxEnd);
-                        currentCursorPos = selectionCursonIdxStart;
+                        text = text.substring(0, s) + text.substring(e);
+                        currentCursorPos = s;
                         selectionCursonIdxStart = -1;
                         selectionCursonIdxEnd = -1;
                         hasChanged = true;
@@ -612,11 +623,13 @@ public class TextBox extends GuiElement {
                         return true;
                     }
                 }
-                else if(selectionCursonIdxStart != -1 && selectionCursonIdxEnd != -1)
+                else if(hasValidSelection())
                 {
+                    int s = Math.min(selectionCursonIdxStart, selectionCursonIdxEnd);
+                    int e = Math.max(selectionCursonIdxStart, selectionCursonIdxEnd);
                     // remove selected text section
-                    text = text.substring(0, selectionCursonIdxStart) + text.substring(selectionCursonIdxEnd);
-                    currentCursorPos = selectionCursonIdxStart;
+                    text = text.substring(0, s) + text.substring(e);
+                    currentCursorPos = s;
                     selectionCursonIdxStart = -1;
                     selectionCursonIdxEnd = -1;
                     updateTextLabel();
@@ -672,12 +685,14 @@ public class TextBox extends GuiElement {
                         return true;
                     }
                 }
-                else if(selectionCursonIdxStart != -1 && selectionCursonIdxEnd != -1)
+                else if(hasValidSelection())
                 {
+                    int s = Math.min(selectionCursonIdxStart, selectionCursonIdxEnd);
+                    int e = Math.max(selectionCursonIdxStart, selectionCursonIdxEnd);
                     // remove selected text section
-                    String newText = text.substring(0, selectionCursonIdxStart) + text.substring(selectionCursonIdxEnd);
+                    String newText = text.substring(0, s) + text.substring(e);
                     text = newText;
-                    currentCursorPos = selectionCursonIdxStart;
+                    currentCursorPos = s;
                     selectionCursonIdxStart = -1;
                     selectionCursonIdxEnd = -1;
                     updateTextLabel();
@@ -861,11 +876,13 @@ public class TextBox extends GuiElement {
 
         if(canConsume(codePoint))
         {
-            if(selectionCursonIdxStart != -1 && selectionCursonIdxEnd != -1)
+            if(hasValidSelection())
             {
+                int s = Math.min(selectionCursonIdxStart, selectionCursonIdxEnd);
+                int e = Math.max(selectionCursonIdxStart, selectionCursonIdxEnd);
                 // remove selected text section
-                text = text.substring(0, selectionCursonIdxStart) + text.substring(selectionCursonIdxEnd);
-                currentCursorPos = selectionCursonIdxStart;
+                text = text.substring(0, s) + text.substring(e);
+                currentCursorPos = s;
                 selectionCursonIdxStart = -1;
                 selectionCursonIdxEnd = -1;
                 //updateTextLabel();
@@ -883,6 +900,11 @@ public class TextBox extends GuiElement {
             return true;
         }
         return false;
+    }
+    private boolean hasValidSelection() {
+        if (selectionCursonIdxStart < 0 || selectionCursonIdxEnd < 0) return false;
+        int len = text.length();
+        return selectionCursonIdxStart <= len && selectionCursonIdxEnd <= len;
     }
     private void updateTextLabel()
     {
