@@ -2,6 +2,14 @@ architectury {
     common rootProject.enabled_platforms.split(',')
 }
 
+repositories {
+    maven {
+        // Jared's maven hosts JEI since January 2023.
+        name = "Jared's maven"
+        url = "https://maven.blamejared.com/"
+    }
+}
+
 dependencies {
     // We depend on Fabric Loader here to use the Fabric @Environment annotations,
     // which get remapped to the correct annotations on each platform.
@@ -10,4 +18,9 @@ dependencies {
 
     // Architectury API. This is optional, and you can comment it out if you don't need it.
     modImplementation "dev.architectury:architectury:$rootProject.architectury_api_version"
+
+    // JEI common API — compileOnly so JEI stays a soft dependency. The
+    // ModUtilitiesJeiPlugin is only class-loaded when JEI is present
+    // (annotation scan on NeoForge, jei_mod_plugin entrypoint on Fabric).
+    compileOnly("mezz.jei:jei-${rootProject.minecraft_version}-common-api:${rootProject.jei_version}")
 }
