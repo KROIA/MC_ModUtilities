@@ -13,6 +13,7 @@ import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
@@ -36,6 +37,15 @@ public class DisplayDemoBlockEntity extends AbstractDisplayBlockEntity {
 
     public DisplayDemoBlockEntity(BlockPos pos, BlockState blockState) {
         super(SandboxRegistration.DISPLAY_DEMO_BLOCK_ENTITY.get(), pos, blockState);
+    }
+
+    /**
+     * Subclass hook: allows perf-tuned / alternate variants (e.g.
+     * {@link DisplayDemoPerfBlockEntity}) to pass their own registered
+     * {@link BlockEntityType} while reusing all demo tick/wire/save/load logic.
+     */
+    protected DisplayDemoBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState blockState) {
+        super(type, pos, blockState);
     }
 
     // -------------------------------------------------------------------------
@@ -96,6 +106,20 @@ public class DisplayDemoBlockEntity extends AbstractDisplayBlockEntity {
         if (paused) return;
 
         time += 0.05f * (float) speed;
+        // Refresh `plot` from the current gui every tick, don't cache. Two reasons:
+        //  1. wireCallbacks() only runs server-side, so on the client `plot` is null
+        //     initially and must be resolved locally.
+        //  2. When display blocks form or dissolve multi-block groups, rebuildGui()
+        //     replaces `this.gui` with a new instance — any cached plot reference
+        //     points at the old gui's element and animation silently stops.
+        if (gui == null) return;
+        plot = null;
+        for (var el : gui.getElements()) {
+            if (el instanceof Plot p) {
+                plot = p;
+                break;
+            }
+        }
         if (plot == null) return;
 
         plot.clearPlotData();
