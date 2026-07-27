@@ -21,6 +21,11 @@ import net.minecraft.network.chat.Component;
  *  - A Button that performs final validation and reports the result
  *
  * Open via: /modutilities openExample form
+ *
+ * Also serves as the reproducer for Task #99 (TextBox stale-selection crash):
+ * type text into any field, press Ctrl+A to select all, click "Clear" (which
+ * calls setText("") externally), then press Backspace/Delete. Before the fix
+ * this threw StringIndexOutOfBoundsException; after the fix it is a no-op.
  */
 @Environment(EnvType.CLIENT)
 public class ExampleFormScreen extends GuiScreen {
@@ -39,6 +44,7 @@ public class ExampleFormScreen extends GuiScreen {
     private final TextBox emailField;
     private final Label statusLabel;
     private final Button submitButton;
+    private final Button clearButton;
 
     public ExampleFormScreen() {
         super(Component.literal("Form Example"));
@@ -67,6 +73,7 @@ public class ExampleFormScreen extends GuiScreen {
         statusLabel.setAlignment(GuiElement.Alignment.CENTER);
 
         submitButton = new Button("Submit", this::onSubmit);
+        clearButton = new Button("Clear", this::onClear);
 
         addElement(title);
         addElement(nameLabel);
@@ -77,6 +84,7 @@ public class ExampleFormScreen extends GuiScreen {
         addElement(emailField);
         addElement(statusLabel);
         addElement(submitButton);
+        addElement(clearButton);
 
         validateLive();
     }
@@ -131,6 +139,13 @@ public class ExampleFormScreen extends GuiScreen {
         statusLabel.setTextColor(0xFF55FFFF);
     }
 
+    private void onClear() {
+        nameField.setText("");
+        ageField.setText("");
+        emailField.setText("");
+        validateLive();
+    }
+
     @Override
     protected void updateLayout(Gui gui) {
         int totalWidth = LABEL_WIDTH + 4 + FIELD_WIDTH;
@@ -155,6 +170,11 @@ public class ExampleFormScreen extends GuiScreen {
         statusLabel.setBounds(x, y, totalWidth, 16);
         y = statusLabel.getBottom() + FIELD_SPACING;
 
-        submitButton.setBounds(x + totalWidth / 2 - 60, y, 120, 22);
+        int buttonWidth = 90;
+        int buttonGap = 10;
+        int totalButtonSpan = buttonWidth * 2 + buttonGap;
+        int buttonsX = x + (totalWidth - totalButtonSpan) / 2;
+        submitButton.setBounds(buttonsX, y, buttonWidth, 22);
+        clearButton.setBounds(buttonsX + buttonWidth + buttonGap, y, buttonWidth, 22);
     }
 }

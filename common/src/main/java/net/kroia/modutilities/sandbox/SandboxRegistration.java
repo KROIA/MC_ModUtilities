@@ -44,6 +44,21 @@ public class SandboxRegistration {
                     BlockEntityType.Builder.of(DisplayDemoBlockEntity::new, DISPLAY_DEMO_BLOCK.get())
                             .build(null));
 
+    // --- DisplayDemoPerfBlock (Task #94 A/B: renderInterval + maxRenderDistance) ---
+    public static final RegistrySupplier<Block> DISPLAY_DEMO_PERF_BLOCK =
+            BLOCKS.register("display_demo_perf_block", DisplayDemoPerfBlock::new);
+
+    public static final RegistrySupplier<Item> DISPLAY_DEMO_PERF_BLOCK_ITEM =
+            ITEMS.register("display_demo_perf_block", () ->
+                    new BlockItem(DISPLAY_DEMO_PERF_BLOCK.get(), new Item.Properties()));
+
+    @SuppressWarnings("unchecked")
+    public static final RegistrySupplier<BlockEntityType<DisplayDemoPerfBlockEntity>> DISPLAY_DEMO_PERF_BLOCK_ENTITY =
+            (RegistrySupplier<BlockEntityType<DisplayDemoPerfBlockEntity>>) (RegistrySupplier<?>)
+            BLOCK_ENTITIES.register("display_demo_perf_block_entity", () ->
+                    BlockEntityType.Builder.of(DisplayDemoPerfBlockEntity::new, DISPLAY_DEMO_PERF_BLOCK.get())
+                            .build(null));
+
     // --- DisplayDemoPanelBlock ---
     public static final RegistrySupplier<Block> DISPLAY_DEMO_PANEL_BLOCK =
             BLOCKS.register("display_demo_panel_block", DisplayDemoPanelBlock::new);
@@ -109,6 +124,9 @@ public class SandboxRegistration {
     @Environment(EnvType.CLIENT)
     public static void registerClient() {
         DISPLAY_DEMO_BLOCK_ENTITY.listen(blockEntityType ->
+                BlockEntityRendererRegistry.register(blockEntityType,
+                        AbstractDisplayBlockEntityRenderer::new));
+        DISPLAY_DEMO_PERF_BLOCK_ENTITY.listen(blockEntityType ->
                 BlockEntityRendererRegistry.register(blockEntityType,
                         AbstractDisplayBlockEntityRenderer::new));
         DISPLAY_DEMO_PANEL_BLOCK_ENTITY.listen(blockEntityType ->
