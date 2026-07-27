@@ -51,7 +51,10 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         int lastMouseY = -1;
     }
 
-    private final Map<BlockPos, GroupRenderData> groupData = new HashMap<>();
+    // Static so multiple renderer instances (one per BE type) share one texture per
+    // group. Otherwise mixed-type groups collide on the shared TextureManager location
+    // and render into different textures, only one of which is actually shown.
+    private static final Map<BlockPos, GroupRenderData> groupData = new HashMap<>();
 
     public AbstractDisplayBlockEntityRenderer(BlockEntityRendererProvider.Context context) {
         this.clientGraphics = new ClientGraphics();
@@ -152,31 +155,45 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
 
         DisplayRenderProfiler.begin(controllerPos, DisplayRenderProfiler.Category.TOTAL);
 
-        DisplayConfig config = blockEntity.getDisplayConfig();
-        int gw = blockEntity.getGroupWidth();
-        int gh = blockEntity.getGroupHeight();
+        // Resolve the controller BE once. Config, group dimensions, and the gui
+        // must all come from the controller — never from the block being rendered
+        // — so that mixed-BE-type groups behave deterministically (controller wins).
+        AbstractDisplayBlockEntity controller = null;
+        if (blockEntity.isController()) {
+            controller = blockEntity;
+        } else if (blockEntity.getLevel() != null) {
+            BlockEntity controllerBE = blockEntity.getLevel().getBlockEntity(controllerPos);
+            if (controllerBE instanceof AbstractDisplayBlockEntity ctrl) {
+                controller = ctrl;
+            }
+        }
+        if (controller == null) {
+            DisplayRenderProfiler.end(controllerPos, DisplayRenderProfiler.Category.TOTAL);
+            return;
+        }
+
+        DisplayConfig config = controller.getDisplayConfig();
+        int gw = controller.getGroupWidth();
+        int gh = controller.getGroupHeight();
 
         GroupRenderData data = getOrCreateGroupData(controllerPos, gw, gh, config);
 
         long currentFrame = Minecraft.getInstance().level != null
                 ? Minecraft.getInstance().level.getGameTime() : 0;
         if (data.lastRenderedFrame < currentFrame) {
-            Gui gui = null;
-            if (blockEntity.isController()) {
-                gui = blockEntity.getGui();
-            } else if (blockEntity.getLevel() != null) {
-                BlockEntity controllerBE = blockEntity.getLevel().getBlockEntity(controllerPos);
-                if (controllerBE instanceof AbstractDisplayBlockEntity controller) {
-                    gui = controller.getGui();
-                }
-            }
+            Gui gui = controller.getGui();
             if (gui != null) {
                 updateClientMousePos(gui, controllerPos, config);
 
                 boolean skipRender = false;
 
                 int maxDist = config.maxRenderDistance();
-                if (maxDist > 0 && Minecraft.getInstance().player != null) {
+                // Only apply the distance cutoff AFTER the first render has produced
+                // content in the texture. Skipping the initial render would leave the
+                // GPU texture uninitialized (renders as black) until the player walks
+                // within range — with this guard, beyond-distance blocks show the last
+                // known frame instead.
+                if (maxDist > 0 && data.layoutInitialized && Minecraft.getInstance().player != null) {
                     double distSq = Minecraft.getInstance().player.blockPosition().distSqr(controllerPos);
                     if (distSq > (long) maxDist * maxDist) {
                         skipRender = true;
