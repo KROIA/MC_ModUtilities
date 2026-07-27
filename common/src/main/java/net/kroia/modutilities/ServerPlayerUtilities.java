@@ -201,6 +201,10 @@ public class ServerPlayerUtilities {
      *          remaining amount that did not fit in the inventory. This is intentional —
      *          dependent mods (e.g. BankSystem) rely on passing the mutated stack to
      *          {@code dropItemAtPlayer} afterwards to handle overflow items.
+     * @implNote Merge targets are matched via {@link ItemStack#isSameItemSameComponents(ItemStack, ItemStack)},
+     *           so stacks with differing data components (enchantments, damage, custom data, etc.)
+     *           are <b>not</b> merged. This mirrors vanilla {@link Inventory#add(ItemStack)} semantics
+     *           and respects mod hooks (e.g. TerraFirmaCraft food decay) that gate merging on component state.
      */
     public static int addToPlayerInventory(ServerPlayer player, ItemStack stack)
     {
@@ -218,7 +222,9 @@ public class ServerPlayerUtilities {
                 continue;
 
             ItemStack currentStack = inventory.getItem(i);
-            if(currentStack.isEmpty() || (currentStack.is(stackCpy.getItem()) && currentStack.getCount() < maxStackSize))
+            // Merge only onto stacks with identical components — matches vanilla Inventory.add
+            // and respects mod hooks (e.g. TFC food decay) that gate merging on component state.
+            if(currentStack.isEmpty() || (ItemStack.isSameItemSameComponents(currentStack, stackCpy) && currentStack.getCount() < maxStackSize))
             {
                 // If the slot is empty or contains the same item and has space, add the stack
                 int spaceInSlot = maxStackSize - currentStack.getCount();

@@ -6,6 +6,7 @@ import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.InputConstants;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Point;
+import net.kroia.modutilities.gui.jei.JeiOverlayControl;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics; // mc>=1.20.1
 //import com.mojang.blaze3d.vertex.PoseStack; // mc<=1.19.4
@@ -43,6 +44,12 @@ public abstract class GuiScreen extends Screen {
     protected boolean enableBackground = true;
     protected boolean enableForeground = true;
     protected boolean enableTooltip = true; // Enable tooltip rendering by default
+
+    // JEI overlay hide/show opt-in state (see setHideJeiOverlay / setHideJeiButtons).
+    // Both default off — screens that don't opt in never touch the JEI broker,
+    // so the untouched-path behavior of this base class is unchanged.
+    private boolean hideJeiOverlay = false;
+    private String[] hideJeiButtonNames = null;
 
     /**
      * Creates a new {@code GuiScreen} without a parent screen. Closing this
@@ -240,7 +247,76 @@ public abstract class GuiScreen extends Screen {
         gui.setDisplayScaleFactor(Minecraft.getInstance().getWindow().getGuiScale());
         gui.init();
         updateLayout(gui);
+        applyJeiOverlayHide();
         isInitialized = true;
+    }
+
+    /**
+     * Applies the JEI overlay hide state configured via
+     * {@link #setHideJeiOverlay(boolean)} and {@link #setHideJeiButtons(String...)}
+     * to the broker. Fires from {@link #init()} on open AND on every resize /
+     * GUI-scale change; the broker's hider is idempotent so re-hiding is a
+     * no-op. Restore fires from {@link #onClose()} and {@link #removed()}.
+     */
+    private void applyJeiOverlayHide() {
+        if (hideJeiOverlay) {
+            JeiOverlayControl.setHidden(true);
+        }
+        if (hideJeiButtonNames != null && hideJeiButtonNames.length > 0) {
+            JeiOverlayControl.setButtonsHidden(true, hideJeiButtonNames);
+        }
+    }
+
+    /**
+     * Releases any JEI overlay hide previously applied by
+     * {@link #applyJeiOverlayHide()}. Called from both {@link #onClose()} and
+     * {@link #removed()} — belt-and-suspenders so a screen swap that bypasses
+     * {@code onClose} still restores JEI.
+     */
+    private void releaseJeiOverlayHide() {
+        if (hideJeiOverlay) {
+            JeiOverlayControl.setHidden(false);
+        }
+        if (hideJeiButtonNames != null && hideJeiButtonNames.length > 0) {
+            JeiOverlayControl.setButtonsHidden(false, hideJeiButtonNames);
+        }
+    }
+
+    /**
+     * Opt this screen into hiding JEI's ingredient list AND bookmark overlays
+     * (including their overlay buttons) while it is open. Safe to call whether
+     * or not JEI is installed — {@link JeiOverlayControl} silently no-ops when
+     * JEI is absent.
+     * <p>
+     * Set from the subclass constructor or before {@link #init()} runs, and it
+     * takes effect on the next {@code init}. May be flipped at runtime; the
+     * change applies on the next lifecycle transition (a subsequent
+     * {@code init}, or the matching restore on {@code onClose}/{@code removed}).
+     *
+     * @param hide {@code true} to hide JEI while this screen is open
+     */
+    protected final void setHideJeiOverlay(boolean hide) {
+        this.hideJeiOverlay = hide;
+    }
+
+    /**
+     * Opt this screen into hiding only the named JEI overlay buttons (by
+     * JEI's wrapper field name, e.g. {@code "bookmarkButton"},
+     * {@code "historyButton"}, {@code "configButton"}) while it is open. The
+     * ingredient list itself stays visible. Unknown names are silently
+     * ignored. Passing no arguments (or {@code null}) clears the opt-in.
+     * <p>
+     * The names passed here are also used to release the buttons on restore,
+     * so the same list must remain in effect across the screen's lifetime for
+     * the ownership tracking in the JEI plugin to work.
+     * <p>
+     * May be combined with {@link #setHideJeiOverlay(boolean)}; the JEI
+     * plugin's per-button ownership model handles the overlap.
+     *
+     * @param buttonFieldNames JEI wrapper field names of the buttons to hide
+     */
+    protected final void setHideJeiButtons(String... buttonFieldNames) {
+        this.hideJeiButtonNames = buttonFieldNames;
     }
 
     @Override
@@ -334,6 +410,10 @@ public abstract class GuiScreen extends Screen {
 
     @Override
     public void onClose() {
+        // Restore JEI overlays before we route to the parent screen. The
+        // matching removed() override is the belt-and-suspenders path for
+        // screen swaps that bypass onClose.
+        releaseJeiOverlayHide();
         super.onClose();
         if(this.minecraft != null) {
             int mousePosX = getMouseX();
@@ -341,6 +421,19 @@ public abstract class GuiScreen extends Screen {
             this.minecraft.setScreen(parent);
             setMousePos(mousePosX, mousePosY);
         }
+    }
+
+    /**
+     * Called by Minecraft whenever this screen is removed — either replaced
+     * by another screen, or after {@link #onClose()} routes back to the
+     * parent. Restoring JEI here (in addition to {@link #onClose()}) covers
+     * the case where the screen is swapped out without a player-triggered
+     * close. Idempotent: the broker no-ops if we did not flip JEI.
+     */
+    @Override
+    public void removed() {
+        super.removed();
+        releaseJeiOverlayHide();
     }
 
 

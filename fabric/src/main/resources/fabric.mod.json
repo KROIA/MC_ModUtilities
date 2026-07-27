@@ -17,7 +17,10 @@
     "main": [
       "net.kroia.fabric.ModUtilitiesFabric"
     ],
-    "client": []
+    "client": [],
+    "jei_mod_plugin": [
+      "net.kroia.modutilities.gui.jei.ModUtilitiesJeiPlugin"
+    ]
   },
   "mixins": [
     "modutilities.mixins.json"

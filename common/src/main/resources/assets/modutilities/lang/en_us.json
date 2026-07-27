@@ -4,5 +4,6 @@
   "gui.modutilities.search": "Search",
   "gui.modutilities.items": "Items",
   "block.modutilities.display_demo_block": "Display Demo Block",
+  "block.modutilities.display_demo_perf_block": "Display Demo Block (Perf)",
   "block.modutilities.display_demo_panel_block": "Display Panel (Demo)"
 }

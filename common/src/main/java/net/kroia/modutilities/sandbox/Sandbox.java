@@ -7,6 +7,7 @@ import dev.architectury.event.events.common.CommandRegistrationEvent;
 import net.kroia.modutilities.gui.display.client.DisplayRenderProfiler;
 import net.kroia.modutilities.JsonUtilities;
 import net.kroia.modutilities.ModUtilitiesMod;
+import net.kroia.modutilities.ServerPlayerUtilities;
 import net.kroia.modutilities.UtilitiesPlatform;
 import net.kroia.modutilities.networking.NetworkPacketManager;
 import net.kroia.modutilities.networking.client_server.streaming.StreamSystem;
@@ -24,9 +25,12 @@ import net.kroia.modutilities.testing.tests.StreamingTests;
 import net.kroia.modutilities.testing.tests.UtilityTests;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -151,6 +155,16 @@ public class Sandbox {
                                         player.sendSystemMessage(Component.literal("Gave DisplayBlock demo block"));
                                         return 1;
                                     }))
+                            .then(Commands.literal("giveDisplayPerfBlock")
+                                    .executes(context -> {
+                                        ServerPlayer player = context.getSource().getPlayerOrException();
+                                        ItemStack perfBlock = new ItemStack(SandboxRegistration.DISPLAY_DEMO_PERF_BLOCK.get());
+                                        if (!player.getInventory().add(perfBlock)) {
+                                            player.drop(perfBlock, false);
+                                        }
+                                        player.sendSystemMessage(Component.literal("Gave DisplayBlock (Perf) demo block"));
+                                        return 1;
+                                    }))
                             .then(Commands.literal("giveDisplayPanel")
                                     .executes(context -> {
                                         ServerPlayer player = context.getSource().getPlayerOrException();
@@ -180,6 +194,72 @@ public class Sandbox {
                                         }
                                         player.sendSystemMessage(Component.literal("Gave ChartDemo block"));
                                         return 1;
+                                    }))
+                            .then(Commands.literal("testInventoryMerge")
+                                    .executes(context -> {
+                                        ServerPlayer player = context.getSource().getPlayerOrException();
+                                        Inventory inv = player.getInventory();
+
+                                        // 1. Find the first empty main-inventory slot.
+                                        int namedSlot = -1;
+                                        for (int i = 0; i < inv.getContainerSize(); i++) {
+                                            if (!ServerPlayerUtilities.isMainInventorySlot(i))
+                                                continue;
+                                            if (inv.getItem(i).isEmpty()) {
+                                                namedSlot = i;
+                                                break;
+                                            }
+                                        }
+                                        if (namedSlot < 0) {
+                                            player.sendSystemMessage(Component.literal("Test failed: no empty inventory slot available"));
+                                            return 0;
+                                        }
+
+                                        // 2. Place a named golden apple in that slot.
+                                        ItemStack namedItem = new ItemStack(Items.GOLDEN_APPLE, 1);
+                                        namedItem.set(DataComponents.CUSTOM_NAME, Component.literal("TEST_NAMED"));
+                                        inv.setItem(namedSlot, namedItem);
+
+                                        // 3. Call the helper with a plain golden apple (no custom name).
+                                        ItemStack plainItem = new ItemStack(Items.GOLDEN_APPLE, 1);
+                                        ServerPlayerUtilities.addToPlayerInventory(player, plainItem);
+
+                                        // 4. Read back the state.
+                                        ItemStack namedAfter = inv.getItem(namedSlot);
+                                        int namedCount = namedAfter.getCount();
+                                        int plainSlot = -1;
+                                        for (int i = 0; i < inv.getContainerSize(); i++) {
+                                            if (!ServerPlayerUtilities.isMainInventorySlot(i))
+                                                continue;
+                                            if (i == namedSlot)
+                                                continue;
+                                            ItemStack s = inv.getItem(i);
+                                            if (s.is(Items.GOLDEN_APPLE) && !s.has(DataComponents.CUSTOM_NAME)) {
+                                                plainSlot = i;
+                                                break;
+                                            }
+                                        }
+
+                                        // 5. Report result.
+                                        if (namedCount == 1 && plainSlot >= 0) {
+                                            player.sendSystemMessage(Component.literal(
+                                                    "[OK] FIX WORKS: named golden apple in slot " + namedSlot
+                                                            + " (count 1), plain golden apple in slot " + plainSlot
+                                                            + " - no merge (component-aware)"));
+                                            return 1;
+                                        } else if (namedCount == 2 && plainSlot == -1) {
+                                            player.sendSystemMessage(Component.literal(
+                                                    "[FAIL] FIX FAILED: named apple slot " + namedSlot
+                                                            + " now has count 2 - plain apple was merged, components ignored"));
+                                            return 0;
+                                        } else {
+                                            player.sendSystemMessage(Component.literal(
+                                                    "[?] INCONCLUSIVE: namedSlot=" + namedSlot
+                                                            + " count=" + namedCount
+                                                            + ", plainSlot=" + plainSlot
+                                                            + " - inspect inventory manually"));
+                                            return 0;
+                                        }
                                     }))
                             .then(Commands.literal("displayProfiler")
                                     .executes(context -> {
