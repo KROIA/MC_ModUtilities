@@ -22,7 +22,7 @@ public class ModUtilitiesMod {
 
 
     // Set to false for release builds to hide dev-only commands (exportrecipes, testScreen, etc.)
-    public static final boolean ENABLE_DEV_FEATURES = true;
+    public static final boolean ENABLE_DEV_FEATURES = false;
 
     public static void init()
     {
