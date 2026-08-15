@@ -28,6 +28,9 @@ public class Label extends GuiElement {
     private String text;
     private int padding = GuiElement.DEFAULT_PADDING;
     private Point textPos = new Point(0,0);
+    private boolean autoScrollEnabled = true;
+    private int currentScrollOffsetX = 0;
+    private int manualScrollOffsetX = 0;
 
     /**
      * Creates an empty label with default size and {@link Alignment#LEFT} alignment.
@@ -134,7 +137,72 @@ public class Label extends GuiElement {
 
     @Override
     public void render() {
-        drawText(text, textPos);
+        int innerWidth = getWidth() - padding * 2;
+        int innerHeight = getHeight() - padding * 2;
+        int textWidth = getTextWidth(text);
+        if (textWidth <= innerWidth || innerWidth <= 0) {
+            currentScrollOffsetX = 0;
+            drawText(text, textPos);
+            return;
+        }
+        int overflow = textWidth - innerWidth;
+        int offset;
+        if (!autoScrollEnabled) {
+            offset = Math.max(0, Math.min(overflow, manualScrollOffsetX));
+        } else {
+            long dwellMs = 1000L;
+            long pxPerSec = 30L;
+            long travelMs = Math.max(1L, (long) overflow * 1000L / pxPerSec);
+            long cycleMs = 2L * (dwellMs + travelMs);
+            long t = System.currentTimeMillis() % cycleMs;
+            if (t < dwellMs) {
+                offset = 0;
+            } else if (t < dwellMs + travelMs) {
+                offset = (int) ((t - dwellMs) * overflow / travelMs);
+            } else if (t < 2L * dwellMs + travelMs) {
+                offset = overflow;
+            } else {
+                offset = overflow - (int) ((t - 2L * dwellMs - travelMs) * overflow / travelMs);
+            }
+        }
+        currentScrollOffsetX = offset;
+        enableScissor(padding, padding, innerWidth, innerHeight);
+        drawText(text, padding - offset, textPos.y);
+        disableScissor();
+    }
+
+    /**
+     * Enables or disables the horizontal auto-scroll animation for overflowing text.
+     * When disabled, overflowing text is drawn left-anchored and clipped to the label bounds.
+     */
+    public void setAutoScrollEnabled(boolean enabled) {
+        this.autoScrollEnabled = enabled;
+        if (!enabled) currentScrollOffsetX = 0;
+    }
+
+    public boolean isAutoScrollEnabled() {
+        return autoScrollEnabled;
+    }
+
+    /**
+     * @return the current horizontal scroll offset in pixels applied to the text on the last render pass.
+     *         Zero when the text fits or auto-scroll is disabled.
+     */
+    public int getCurrentScrollOffsetX() {
+        return currentScrollOffsetX;
+    }
+
+    /**
+     * Sets the manual horizontal scroll offset in pixels, used only when
+     * {@link #isAutoScrollEnabled()} is {@code false}. Clamped at render time to the
+     * valid overflow range.
+     */
+    public void setManualScrollOffsetX(int x) {
+        this.manualScrollOffsetX = x;
+    }
+
+    public int getManualScrollOffsetX() {
+        return manualScrollOffsetX;
     }
     @Override
     protected void renderGizmos()

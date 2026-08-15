@@ -7,6 +7,7 @@ import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.client.GuiScreen;
 import net.kroia.modutilities.gui.elements.Button;
 import net.kroia.modutilities.gui.elements.Label;
+import net.kroia.modutilities.gui.elements.MultiLineTextBox;
 import net.kroia.modutilities.gui.elements.TextBox;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.minecraft.network.chat.Component;
@@ -43,6 +44,9 @@ public class ExampleFormScreen extends GuiScreen {
     private final Label emailLabel;
     private final TextBox emailField;
     private final Label statusLabel;
+    private final Label descriptionLabel;
+    private final MultiLineTextBox descriptionField;
+    private final Label overflowLabel;
     private final Button submitButton;
     private final Button clearButton;
 
@@ -72,6 +76,13 @@ public class ExampleFormScreen extends GuiScreen {
         statusLabel = new Label("");
         statusLabel.setAlignment(GuiElement.Alignment.CENTER);
 
+        descriptionLabel = new Label("Description:");
+        descriptionField = new MultiLineTextBox();
+        descriptionField.setPlaceholder("Type a multi-line description here...");
+        descriptionField.setMaxLength(2048);
+
+        overflowLabel = new Label("This is a very long label text that should scroll back and forth because it clearly does not fit inside the label bounds available here.");
+
         submitButton = new Button("Submit", this::onSubmit);
         clearButton = new Button("Clear", this::onClear);
 
@@ -83,6 +94,9 @@ public class ExampleFormScreen extends GuiScreen {
         addElement(emailLabel);
         addElement(emailField);
         addElement(statusLabel);
+        addElement(descriptionLabel);
+        addElement(descriptionField);
+        addElement(overflowLabel);
         addElement(submitButton);
         addElement(clearButton);
 
@@ -150,7 +164,7 @@ public class ExampleFormScreen extends GuiScreen {
     protected void updateLayout(Gui gui) {
         int totalWidth = LABEL_WIDTH + 4 + FIELD_WIDTH;
         int x = (getWidth() - totalWidth) / 2;
-        int y = Math.max(20, getHeight() / 2 - 80);
+        int y = Math.max(10, getHeight() / 2 - 140);
 
         title.setBounds(x, y, totalWidth, 22);
         y = title.getBottom() + FIELD_SPACING;
@@ -169,6 +183,13 @@ public class ExampleFormScreen extends GuiScreen {
 
         statusLabel.setBounds(x, y, totalWidth, 16);
         y = statusLabel.getBottom() + FIELD_SPACING;
+
+        descriptionLabel.setBounds(x, y, LABEL_WIDTH, FIELD_HEIGHT);
+        descriptionField.setBounds(x + LABEL_WIDTH + 4, y, FIELD_WIDTH, 120);
+        y = descriptionField.getBottom() + FIELD_SPACING;
+
+        overflowLabel.setBounds(x, y, 180, FIELD_HEIGHT);
+        y = overflowLabel.getBottom() + FIELD_SPACING;
 
         int buttonWidth = 90;
         int buttonGap = 10;

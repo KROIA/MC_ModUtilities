@@ -43,14 +43,16 @@ public class TextBox extends GuiElement {
     private final Label textLabel;
     private int maxChars = 20;
     //private int maxDecimalChar = 20;
-    private int cursorColor = 0xFF222222;
+    private int cursorColor = 0xFFFFFFFF;
     private int selectionColor = 0xAA222222;
+    private int viewScrollX = 0;
     private int backgroundColor;
     private int hoverBackgroundColor;
     private int focusedBackgroundColor;
     private int currentCursorPos = 0;
     private int cursorBlinkCounter = 0;
     private boolean cursorVisible = false;
+    private static final int BLINK_TICKS = 45;
 
     private int labelPadding = 2;
 
@@ -383,11 +385,17 @@ public class TextBox extends GuiElement {
         super.setBackgroundColor(isFocused()?focusedBackgroundColor:(isMouseOver()?hoverBackgroundColor:backgroundColor));
         super.renderBackground();
 
+        if(isFocused()) ensureCursorVisible();
+
         if(selectionCursonIdxStart > -1 && selectionCursonIdxEnd > -1)
         {
-            int startX = getCursorXPos(selectionCursonIdxStart);
-            int endX = getCursorXPos(selectionCursonIdxEnd);
+            int startX = getCursorXPos(selectionCursonIdxStart) - viewScrollX;
+            int endX = getCursorXPos(selectionCursonIdxEnd) - viewScrollX;
+            int clipX = textLabel.getX() + textLabel.getPadding();
+            int clipW = textLabel.getWidth() - 2*textLabel.getPadding();
+            enableScissor(clipX, textLabel.getTop(), clipW, textLabel.getHeight());
             drawRect(startX, textLabel.getTop(), endX-startX, textLabel.getHeight(), selectionColor);
+            disableScissor();
         }
     }
     @Override
@@ -398,19 +406,37 @@ public class TextBox extends GuiElement {
         if(isFocused())
         {
             cursorBlinkCounter++;
-            if(cursorBlinkCounter > 40)
+            if(cursorBlinkCounter >= BLINK_TICKS)
             {
                 cursorBlinkCounter = 0;
                 cursorVisible = !cursorVisible;
             }
             if(cursorVisible) {
-
-                int cursorX = getCursorXPos(currentCursorPos);
-                drawRect(cursorX+1, 3,1, getHeight()-6, cursorColor);
-                drawRect(cursorX, 2,3, 1, cursorColor);
-                drawRect(cursorX, getHeight()-4,3, 1, cursorColor);
+                int cursorX = getCursorXPos(currentCursorPos) - viewScrollX;
+                int textH = getTextHeight();
+                int cy = textLabel.getTop() + (textLabel.getHeight() - textH) / 2;
+                int clipX = textLabel.getX() + textLabel.getPadding();
+                int clipW = textLabel.getWidth() - 2*textLabel.getPadding();
+                enableScissor(clipX, textLabel.getTop(), clipW, textLabel.getHeight());
+                drawRect(cursorX, cy, 1, textH, cursorColor);
+                disableScissor();
             }
         }
+    }
+
+    private void ensureCursorVisible() {
+        int innerW = textLabel.getWidth() - 2*textLabel.getPadding();
+        if (innerW <= 0) { viewScrollX = 0; textLabel.setManualScrollOffsetX(0); return; }
+        int textWidth = textLabel.getTextWidth(text);
+        int cursorPixelX = textLabel.getTextWidth(text.substring(0, Math.min(currentCursorPos, text.length())));
+        int margin = 2;
+        if (cursorPixelX - viewScrollX < margin)
+            viewScrollX = Math.max(0, cursorPixelX - margin);
+        else if (cursorPixelX - viewScrollX > innerW - margin)
+            viewScrollX = cursorPixelX - innerW + margin;
+        int maxScroll = Math.max(0, textWidth - innerW);
+        viewScrollX = Math.max(0, Math.min(maxScroll, viewScrollX));
+        textLabel.setManualScrollOffsetX(viewScrollX);
     }
     private int getCursorXPos(int cursorPos)
     {
@@ -437,7 +463,10 @@ public class TextBox extends GuiElement {
     @Override
     public boolean mouseClickedOverElement(int button)
     {
+        // Capture the label's current scroll offset BEFORE focusing (which freezes it).
+        int scrollOffset = textLabel.getCurrentScrollOffsetX();
         setFocused();
+        textLabel.setAutoScrollEnabled(false);
         // Get cursor position
         double mouseX = getMouseX();
         int cursorPos = 0;
@@ -448,6 +477,7 @@ public class TextBox extends GuiElement {
         }
         else
             mouseX -= textLabel.getX();
+        mouseX += scrollOffset;
 
         for (int i = 0; i < text.length(); i++) {
             String subString = text.substring(0, i);
@@ -468,6 +498,9 @@ public class TextBox extends GuiElement {
     @Override
     public void focusLost() {
         cursorVisible = false;
+        viewScrollX = 0;
+        textLabel.setManualScrollOffsetX(0);
+        textLabel.setAutoScrollEnabled(true);
     }
 
     @Override
