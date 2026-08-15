@@ -34,7 +34,7 @@ public class DropDownMenu extends GuiElement {
         @Override
         protected boolean mouseClickedOverElement(int button)
         {
-            return false;
+            return isClickable && triggerButton == button;
         }
         @Override
         protected void mouseClicked(int button) {

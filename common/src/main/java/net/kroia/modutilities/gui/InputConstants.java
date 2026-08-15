@@ -29,6 +29,12 @@ public final class InputConstants {
     public static final int KEY_DELETE        = 261;
     public static final int KEY_RIGHT         = 262;
     public static final int KEY_LEFT          = 263;
+    public static final int KEY_DOWN          = 264;
+    public static final int KEY_UP            = 265;
+    public static final int KEY_PAGE_UP       = 266;
+    public static final int KEY_PAGE_DOWN     = 267;
+    public static final int KEY_HOME          = 268;
+    public static final int KEY_END           = 269;
 
     public static final int KEY_F3            = 292;
     public static final int KEY_F4            = 293;
