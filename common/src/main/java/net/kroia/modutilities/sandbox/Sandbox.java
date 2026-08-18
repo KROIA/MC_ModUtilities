@@ -83,6 +83,12 @@ public class Sandbox {
                                         SandboxOpenGuiPacket.send(player, SandboxOpenGuiPacket.GuiType.TEST_SCREEN);
                                         return 1;
                                     }))
+                            .then(Commands.literal("openItemPerfScreen")
+                                    .executes(context -> {
+                                        ServerPlayer player = context.getSource().getPlayerOrException();
+                                        SandboxOpenGuiPacket.send(player, SandboxOpenGuiPacket.GuiType.ITEM_PERF_SCREEN);
+                                        return 1;
+                                    }))
                             .then(Commands.literal("saveItemInHand")
                                     .executes(context -> {
                                         ServerPlayer player = context.getSource().getPlayerOrException();

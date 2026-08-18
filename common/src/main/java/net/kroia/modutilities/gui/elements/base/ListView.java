@@ -74,6 +74,18 @@ public abstract class ListView extends GuiElement{
         protected void layoutChanged() {
             parentListView.childsChanged();
         }
+
+        /**
+         * Viewport cull: only render children whose (scroll-container-local)
+         * bounds intersect the visible scroll window. Both the scissor rect and
+         * the child bounds are expressed in this container's local coordinate
+         * space, so a plain rectangle intersection is the whole test. Off-screen
+         * children skip all three render passes entirely.
+         */
+        @Override
+        protected boolean shouldRenderChild(GuiElement child) {
+            return parentListView.getScissorRect().intersects(child.getBounds());
+        }
     }
 
 

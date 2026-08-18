@@ -9,6 +9,7 @@ import net.kroia.modutilities.sandbox.gui.ExampleDashboardScreen;
 import net.kroia.modutilities.sandbox.gui.ExampleDialogScreen;
 import net.kroia.modutilities.sandbox.gui.ExampleFormScreen;
 import net.kroia.modutilities.sandbox.gui.ExampleItemSelectionScreen;
+import net.kroia.modutilities.sandbox.gui.ItemPerfTestScreen;
 import net.kroia.modutilities.sandbox.gui.ExamplePlayerBrowserScreen;
 import net.kroia.modutilities.sandbox.gui.ExampleSettingsScreen;
 import net.kroia.modutilities.sandbox.gui.ExampleTabsScreen;
@@ -44,7 +45,8 @@ public class SandboxOpenGuiPacket extends NetworkPacket {
         EXAMPLE_DASHBOARD,
         EXAMPLE_ITEM_SELECTION,
         EXAMPLE_PLAYER_BROWSER,
-        DISPLAY_SHOWCASE
+        DISPLAY_SHOWCASE,
+        ITEM_PERF_SCREEN
     }
     private SandboxOpenGuiPacket.GuiType guiType;
     public SandboxOpenGuiPacket(SandboxOpenGuiPacket.GuiType guiType) {
@@ -86,6 +88,9 @@ public class SandboxOpenGuiPacket extends NetworkPacket {
                 break;
             case DISPLAY_SHOWCASE:
                 Minecraft.getInstance().submit(() -> ExampleDashboardScreen.open());
+                break;
+            case ITEM_PERF_SCREEN:
+                Minecraft.getInstance().submit(() -> ItemPerfTestScreen.open());
                 break;
             default:
         }
