@@ -627,6 +627,25 @@ public abstract class GuiElement {
     }
 
     /**
+     * Per-child render gate consulted by all three render passes
+     * ({@code renderBackgroundInternal}, {@code renderInternal},
+     * {@code renderGizmosInternal}) before recursing into a child.
+     * <p>
+     * Returns {@code true} by default so every child renders. Container
+     * subclasses can override this to skip children that fall outside a
+     * visible viewport (viewport culling), avoiding the cost of running
+     * their render passes at all. The GPU scissor still clips pixels; this
+     * merely skips the geometry-level work for fully off-screen children.
+     *
+     * @param child the child element about to be rendered
+     * @return {@code true} to render the child, {@code false} to skip it
+     */
+    protected boolean shouldRenderChild(GuiElement child)
+    {
+        return true;
+    }
+
+    /**
      * Framework hook that runs the background render pass for this element and
      * its descendants, applying the local transform on the pose stack. Called
      * by the parent {@link Gui} or parent element; subclasses normally do not
@@ -641,6 +660,8 @@ public abstract class GuiElement {
         graphics.translate((float)getX(), (float)getY(), zPos);
         renderBackground();
         for (GuiElement child : childs) {
+            if(!shouldRenderChild(child))
+                continue;
             child.renderBackgroundInternal();
         }
         graphics.popPose();
@@ -659,6 +680,8 @@ public abstract class GuiElement {
         graphics.translate((float)getX(), (float)getY(), zPos);
         render();
         for (GuiElement child : childs) {
+            if(!shouldRenderChild(child))
+                continue;
             child.renderInternal();
         }
         graphics.popPose();
@@ -784,6 +807,8 @@ public abstract class GuiElement {
         graphics.translate((float)getX(), (float)getY(), zPos);
         renderGizmos();
         for (GuiElement child : childs) {
+            if(!shouldRenderChild(child))
+                continue;
             child.renderGizmosInternal();
         }
         graphics.popPose();
