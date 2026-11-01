@@ -365,6 +365,13 @@ public class Sandbox {
     {
         // Register sandbox blocks, items, and block entities
         SandboxRegistration.register();
+
+        // Placeholder examples: TAB %modutilities_sandbox_time% / %modutilities_sandbox_player%,
+        // Placeholder API %modutilities:sandbox_time% / %modutilities:sandbox_player%
+        net.kroia.modutilities.placeholder.PlaceholderRegistry.registerServer(ModUtilitiesMod.MOD_ID, "sandbox_time", 1000,
+                () -> String.valueOf(System.currentTimeMillis() / 1000));
+        net.kroia.modutilities.placeholder.PlaceholderRegistry.registerPlayer(ModUtilitiesMod.MOD_ID, "sandbox_player", 1000,
+                player -> player.getGameProfile().getName());
         net.kroia.modutilities.gui.GuiElementRegistry.register(
                 "sandbox_line_chart", SandboxLineChart.class, SandboxLineChart::new);
 

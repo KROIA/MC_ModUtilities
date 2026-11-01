@@ -82,6 +82,9 @@ Comprehensive networking library for client-server communication.
 #### Events
 - [Event System](systems/Events.md) - Signal and DataEvent classes
 
+#### Placeholders
+- [Placeholders](systems/Placeholders.md) - Shared placeholder registry bridged to TAB and Placeholder API
+
 #### Utility Classes
 - [Utility Classes Reference](systems/Utilities.md)
   - ItemUtilities
@@ -125,6 +128,7 @@ Legend:
 | Settings Library | Complete | JSON parser system documented |
 | Persistence System | Complete | NBT and archive system documented |
 | Event System | Complete | Signal and DataEvent documented |
+| Placeholders | Complete | Registry, TAB and Placeholder API backends documented |
 | Utility Classes | Complete | Helper functions API reference documented |
 | Sandbox System | Complete | Development testing framework documented |
 | Test Suite | Complete | Automated test suite documented |

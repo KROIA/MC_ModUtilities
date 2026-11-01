@@ -1,5 +1,6 @@
 package net.kroia.modutilities;
 
+import dev.architectury.event.events.common.LifecycleEvent;
 import dev.architectury.networking.NetworkManager;
 import dev.architectury.platform.Platform;
 import dev.architectury.utils.Env;
@@ -12,6 +13,7 @@ import net.kroia.modutilities.networking.client_server.streaming.StreamStartPack
 import net.kroia.modutilities.networking.client_server.streaming.StreamStopClientSenderPacket;
 import net.kroia.modutilities.networking.client_server.streaming.StreamStopServerSenderPacket;
 import net.kroia.modutilities.networking.multi_server.MultiServerPacketRegistry;
+import net.kroia.modutilities.placeholder.TabPlaceholderBackend;
 import net.kroia.modutilities.sandbox.Sandbox;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -28,6 +30,16 @@ public class ModUtilitiesMod {
     {
         registerSharedPackets();
         DisplayNetworking.init();
+        if (ModChecker.isModLoaded("tab")) {
+            // TabPlaceholderBackend is only class-loaded inside this guard (soft dependency).
+            LifecycleEvent.SERVER_STARTED.register(server -> {
+                try {
+                    TabPlaceholderBackend.onServerStarted();
+                } catch (Exception | LinkageError e) {
+                    LOGGER.error("[Placeholder] TAB bridge failed", e);
+                }
+            });
+        }
         if (ENABLE_DEV_FEATURES) {
             Sandbox.init();
         }
