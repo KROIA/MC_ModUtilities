@@ -2,8 +2,6 @@ package net.kroia.modutilities.gui.client;
 
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 import net.kroia.modutilities.gui.IGraphics;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.kroia.modutilities.gui.elements.base.Vertex;
@@ -50,9 +48,8 @@ import java.util.Optional;
  *   <li>Overloads that accept {@link RenderType} or {@link TextureAtlasSprite}</li>
  * </ul>
  *
- * @apiNote This class is client-only ({@code @Environment(EnvType.CLIENT)}).
+ * @apiNote This class is client-only.
  */
-@Environment(EnvType.CLIENT)
 public class ClientGraphics implements IGraphics {
 
     GuiGraphics graphics;// mc>=1.20.1 mc<=1.21.11
