@@ -14,17 +14,18 @@ import net.kroia.modutilities.networking.client_server.streaming.StreamStopClien
 import net.kroia.modutilities.networking.client_server.streaming.StreamStopServerSenderPacket;
 import net.kroia.modutilities.networking.multi_server.MultiServerPacketRegistry;
 import net.kroia.modutilities.placeholder.TabPlaceholderBackend;
-import net.kroia.modutilities.sandbox.Sandbox;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public class ModUtilitiesMod {
     public static final String MOD_ID = "modutilities";
+    private static final String DEV_BOOTSTRAP = "net.kroia.modutilities.testing.DevBootstrap";
     public static final Logger LOGGER = LogManager.getLogger(MOD_ID);
 
 
-    // Set to false for release builds to hide dev-only commands (exportrecipes, testScreen, etc.)
-    public static final boolean ENABLE_DEV_FEATURES = false;
+    // Dev-only code (sandbox, unit tests, autotest) is switched by enable_dev_features in gradle.properties:
+    // Gradle compiles the dev packages only when it is true, and this flag follows from their presence.
+    public static final boolean ENABLE_DEV_FEATURES = devClassesPresent();
 
     public static void init()
     {
@@ -41,7 +42,20 @@ public class ModUtilitiesMod {
             });
         }
         if (ENABLE_DEV_FEATURES) {
-            Sandbox.init();
+            initDevFeatures();
+        }
+    }
+
+    /**
+     * Starts the dev-only code (sandbox, unit tests, autotest). It is compiled only when
+     * gradle.properties has {@code enable_dev_features=true}, so it is reached reflectively:
+     * release code must compile without it.
+     */
+    private static void initDevFeatures() {
+        try {
+            Class.forName(DEV_BOOTSTRAP).getMethod("init").invoke(null);
+        } catch (ReflectiveOperationException e) {
+            LOGGER.error("Dev features are enabled but {} is missing or failed; check enable_dev_features in gradle.properties", DEV_BOOTSTRAP, e);
         }
     }
 
@@ -91,6 +105,15 @@ public class ModUtilitiesMod {
         // ARRS — MultiServer forwarding
         MultiServerPacketRegistry.register(GenericRequestPacket.TYPE, GenericRequestPacket.STREAM_CODEC);
         MultiServerPacketRegistry.register(GenericResponsePacket.TYPE, GenericResponsePacket.STREAM_CODEC);
+    }
+
+    private static boolean devClassesPresent() {
+        try {
+            Class.forName(DEV_BOOTSTRAP, false, ModUtilitiesMod.class.getClassLoader());
+            return true;
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
     }
 
     public static boolean isClientInitialized() {
