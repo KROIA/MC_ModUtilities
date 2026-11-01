@@ -1,7 +1,5 @@
 package net.kroia.modutilities.sandbox.gui;
 
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.client.GuiScreen;
 import net.kroia.modutilities.gui.elements.Button;
@@ -10,7 +8,6 @@ import net.kroia.modutilities.gui.elements.TabElement;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.minecraft.network.chat.Component;
 
-@Environment(EnvType.CLIENT)
 public class ExampleTabsScreen extends GuiScreen {
 
     private final TabElement tabElement;

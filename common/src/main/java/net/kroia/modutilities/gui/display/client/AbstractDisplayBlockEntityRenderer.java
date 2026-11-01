@@ -6,8 +6,6 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;
 import com.mojang.blaze3d.ProjectionType; // mc>=1.21.2
 //import net.minecraft.client.renderer.FogParameters; // mc>=1.21.2 mc<=1.21.5
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.client.ClientGraphics;
 import net.kroia.modutilities.gui.display.AbstractDisplayBlockEntity;
@@ -34,7 +32,6 @@ import org.joml.Matrix4f;
 import java.util.HashMap;
 import java.util.Map;
 
-@Environment(EnvType.CLIENT)
 public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEntity>
         implements BlockEntityRenderer<T> { // mc<=1.21.8
         //implements BlockEntityRenderer<T, AbstractDisplayBlockEntityRenderer.DisplayRenderState> { // mc>=1.21.9

@@ -1,7 +1,5 @@
 package net.kroia.modutilities.sandbox;
 
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 
 /**
  * Client-side handler that monitors whether the player is looking at a
@@ -12,7 +10,6 @@ import net.fabricmc.api.Environment;
  * Retained as a stub for potential future client-side tick logic
  * (e.g. visual feedback when looking at a locked display).
  */
-@Environment(EnvType.CLIENT)
 public class DisplayInputHandler {
 
     public static void clientTick() {
