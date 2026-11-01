@@ -1,5 +1,6 @@
 package net.kroia.modutilities.testing.tests;
 
+import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.TimerMillis;
 import net.kroia.modutilities.persistence.ChunkedNBT;
 import net.kroia.modutilities.persistence.DataPersistence;
@@ -143,12 +144,12 @@ public class PersistenceTests extends TestSuite {
 
             // Verify each element
             for (int i = 0; i < elementCount; i++) {
-                CompoundTag tag = loaded.getCompound(i);
-                int idx = tag.getInt("index");
+                CompoundTag tag = NbtCompat.getCompound(loaded, i);
+                int idx = NbtCompat.getInt(tag, "index");
                 if (idx != i) {
                     return fail("Element " + i + " has wrong index: " + idx);
                 }
-                String label = tag.getString("label");
+                String label = NbtCompat.getString(tag, "label");
                 if (!label.equals("item_" + i)) {
                     return fail("Element " + i + " has wrong label: " + label);
                 }
