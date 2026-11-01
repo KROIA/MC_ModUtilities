@@ -2,15 +2,16 @@ package net.kroia.modutilities.networking.multi_server;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import dev.architectury.platform.Platform;
 import net.kroia.modutilities.ModUtilitiesMod;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 /**
- * Simple JSON config loaded from {@code config/MultiServerConfig.json}.
+ * Simple JSON config loaded from {@code config/modutilities/MultiServerConfig.json}.
+ * A file at the old location {@code config/MultiServerConfig.json} is moved there once.
  *
  * Example master config (MultiServerConfig.json on the master server):
  * <pre>
@@ -36,7 +37,9 @@ import java.nio.file.Paths;
  */
 public class MultiServerConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Path CONFIG_PATH = Paths.get("config", "MultiServerConfig.json");
+    private static final Path CONFIG_PATH = Platform.getConfigFolder().resolve("modutilities").resolve("MultiServerConfig.json");
+    /** Location before every mod file moved into its mod-named folder; migrated by {@link #load()}. */
+    private static final Path OLD_CONFIG_PATH = Platform.getConfigFolder().resolve("MultiServerConfig.json");
 
     private static volatile MultiServerConfig instance = null;
 
@@ -85,6 +88,7 @@ public class MultiServerConfig {
     }
 
     private static MultiServerConfig load() {
+        migrateOldLocation();
         if (!Files.exists(CONFIG_PATH)) {
             MultiServerConfig defaults = new MultiServerConfig();
             defaults.save();
@@ -98,6 +102,18 @@ public class MultiServerConfig {
         } catch (IOException e) {
             error("Failed to read config, using defaults", e);
             return new MultiServerConfig();
+        }
+    }
+
+    /** Moves the old {@code config/MultiServerConfig.json} into the mod folder, never overwriting a new one. */
+    private static void migrateOldLocation() {
+        if (!Files.exists(OLD_CONFIG_PATH) || Files.exists(CONFIG_PATH)) return;
+        try {
+            Files.createDirectories(CONFIG_PATH.getParent());
+            Files.move(OLD_CONFIG_PATH, CONFIG_PATH);
+            info("Moved " + OLD_CONFIG_PATH + " to " + CONFIG_PATH);
+        } catch (IOException e) {
+            error("Failed to move " + OLD_CONFIG_PATH + " to " + CONFIG_PATH, e);
         }
     }
 
