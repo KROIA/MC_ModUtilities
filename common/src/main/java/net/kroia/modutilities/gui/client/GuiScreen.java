@@ -8,7 +8,8 @@ import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Point;
 import net.kroia.modutilities.gui.jei.JeiOverlayControl;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics; // mc>=1.20.1
+import net.minecraft.client.gui.GuiGraphics; // mc>=1.20.1 mc<=1.21.11
+//import net.minecraft.client.gui.GuiGraphicsExtractor; // mc>=26.1
 //import com.mojang.blaze3d.vertex.PoseStack; // mc<=1.19.4
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -438,19 +439,22 @@ public abstract class GuiScreen extends Screen {
 
 
     // mc>=1.20.1
-    @Override
-    public void renderBackground(GuiGraphics guiGraphics, int pMouseX, int pMouseY, float pPartialTick) {
+    @Override // mc<=1.21.11 (26.1: called from extractBackground)
+    public void renderBackground(GuiGraphics guiGraphics, int pMouseX, int pMouseY, float pPartialTick) { // mc<=1.21.11
+    //public void renderBackground(GuiGraphicsExtractor guiGraphics, int pMouseX, int pMouseY, float pPartialTick) { // mc>=26.1
         if(this.minecraft == null || !enableBackground)
         {
             return;
         }
         clientGraphics.setGraphics(guiGraphics);
-        super.renderBackground(guiGraphics, pMouseX, pMouseY, pPartialTick);
+        super.renderBackground(guiGraphics, pMouseX, pMouseY, pPartialTick); // mc<=1.21.11
+        //super.extractBackground(guiGraphics, pMouseX, pMouseY, pPartialTick); // mc>=26.1
         gui.renderBackground();
     }
 
-    @Override
-    public void render(GuiGraphics pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) {
+    @Override // mc<=1.21.11 (26.1: called from extractRenderState)
+    public void render(GuiGraphics pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) { // mc<=1.21.11
+    //public void render(GuiGraphicsExtractor pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) { // mc>=26.1
         clientGraphics.setGraphics(pGuiGraphics);
         gui.storeMousePos(pMouseX,pMouseY);
         gui.setPartialTick(pPartialTick);
@@ -465,6 +469,18 @@ public abstract class GuiScreen extends Screen {
         if(enableGizmos)
             gui.renderGizmos();
     }
+
+    // mc>=26.1: Screen renders through extractBackground/extractRenderState; forward to the methods above so
+    // subclasses keep overriding render(...) and renderBackground(...).
+    //@Override // mc>=26.1
+    //public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) { // mc>=26.1
+        //renderBackground(graphics, mouseX, mouseY, partialTick); // mc>=26.1
+    //} // mc>=26.1
+
+    //@Override // mc>=26.1
+    //public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) { // mc>=26.1
+        //render(graphics, mouseX, mouseY, partialTick); // mc>=26.1
+    //} // mc>=26.1
 
 
     /*
@@ -659,7 +675,8 @@ public abstract class GuiScreen extends Screen {
     public boolean charTyped(char codePoint, int modifiers) {
         if(!gui.charTyped(codePoint, modifiers))
             //return super.charTyped(codePoint, modifiers); // mc<=1.21.8
-            return super.charTyped(new net.minecraft.client.input.CharacterEvent(codePoint, modifiers)); // mc>=1.21.9
+            return super.charTyped(new net.minecraft.client.input.CharacterEvent(codePoint, modifiers)); // mc>=1.21.9 mc<=1.21.11
+            //return super.charTyped(new net.minecraft.client.input.CharacterEvent(codePoint)); // mc>=26.1
         return true;
     }
 
@@ -694,7 +711,8 @@ public abstract class GuiScreen extends Screen {
     public boolean charTyped(net.minecraft.client.input.CharacterEvent event) { // mc>=1.21.9
         boolean handled = false; // mc>=1.21.9
         for (char c : Character.toChars(event.codepoint())) // mc>=1.21.9
-            handled |= charTyped(c, event.modifiers()); // mc>=1.21.9
+            handled |= charTyped(c, event.modifiers()); // mc>=1.21.9 mc<=1.21.11
+            //handled |= charTyped(c, InputCompat.currentModifiers()); // mc>=26.1
         return handled; // mc>=1.21.9
     } // mc>=1.21.9
 

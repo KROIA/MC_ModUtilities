@@ -5,7 +5,8 @@ import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.flag.FeatureFlagSet;
-import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.ClickType; // mc<=1.21.11
+//import net.minecraft.world.inventory.ContainerInput; // mc>=26.1
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
@@ -27,7 +28,8 @@ public class CreativeModeItemSelectionScreen extends CreativeModeInventoryScreen
     }
 
     @Override
-    protected void slotClicked(@Nullable Slot slot, int slotId, int mouseButton, ClickType type)
+    protected void slotClicked(@Nullable Slot slot, int slotId, int mouseButton, ClickType type) // mc<=1.21.11
+    //protected void slotClicked(@Nullable Slot slot, int slotId, int mouseButton, ContainerInput type) // mc>=26.1
     {
         if(slot != null)
         {

@@ -29,7 +29,8 @@ public class LevelRendererMixin {
             //BlockPos pos, BlockState state, CallbackInfo ci) { // mc<=1.21.1
             //BlockPos pos, BlockState state, int color, CallbackInfo ci) { // mc>=1.21.2 mc<=1.21.8
             //net.minecraft.client.renderer.state.BlockOutlineRenderState outline, int color, CallbackInfo ci) { // mc>=1.21.9 mc<=1.21.10
-            net.minecraft.client.renderer.state.BlockOutlineRenderState outline, int color, float lineWidth, CallbackInfo ci) { // mc>=1.21.11
+            net.minecraft.client.renderer.state.BlockOutlineRenderState outline, int color, float lineWidth, CallbackInfo ci) { // mc>=1.21.11 mc<=1.21.11
+            //net.minecraft.client.renderer.state.level.BlockOutlineRenderState outline, int color, float lineWidth, CallbackInfo ci) { // mc>=26.1
         net.minecraft.client.multiplayer.ClientLevel level = net.minecraft.client.Minecraft.getInstance().level; // mc>=1.21.9
         if (level == null) return; // mc>=1.21.9
         BlockState state = level.getBlockState(outline.pos()); // mc>=1.21.9

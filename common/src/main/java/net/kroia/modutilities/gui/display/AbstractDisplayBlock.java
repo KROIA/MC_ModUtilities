@@ -88,7 +88,7 @@ public abstract class AbstractDisplayBlock extends HorizontalDirectionalBlock im
 
         if (!level.isClientSide()) {
             if (!controller.tryAcquireEditor(player.getUUID())) {
-                player.displayClientMessage(
+                net.kroia.modutilities.PlayerCompat.sendMessage(player,
                         net.minecraft.network.chat.Component.literal("Display is being edited by another player."),
                         true);
                 return InteractionResult.FAIL;

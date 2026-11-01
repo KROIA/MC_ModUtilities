@@ -9,7 +9,8 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.kroia.modutilities.gui.elements.base.Vertex;
 import net.kroia.modutilities.gui.elements.base.VertexBuffer;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics; // mc>=1.20.1
+import net.minecraft.client.gui.GuiGraphics; // mc>=1.20.1 mc<=1.21.11
+//import net.minecraft.client.gui.GuiGraphicsExtractor; // mc>=26.1
 //import com.mojang.blaze3d.vertex.PoseStack; // mc<=1.19.4
 import net.minecraft.client.renderer.MultiBufferSource;
 //import net.minecraft.client.renderer.RenderType; // mc<=1.21.10
@@ -54,7 +55,8 @@ import java.util.Optional;
 @Environment(EnvType.CLIENT)
 public class ClientGraphics implements IGraphics {
 
-    GuiGraphics graphics;// mc>=1.20.1
+    GuiGraphics graphics;// mc>=1.20.1 mc<=1.21.11
+    //GuiGraphicsExtractor graphics;// mc>=26.1
     //PoseStack graphics; // mc<1.19.4
     private Font font;
     private boolean enableShadow = true;
@@ -108,7 +110,8 @@ public class ClientGraphics implements IGraphics {
      *
      * @param graphics the current frame's {@link GuiGraphics} instance
      */
-    public void setGraphics(GuiGraphics graphics)
+    public void setGraphics(GuiGraphics graphics) // mc<=1.21.11
+    //public void setGraphics(GuiGraphicsExtractor graphics) // mc>=26.1
     {
         this.graphics = graphics;
         scissorStack.clear(); // mc>=1.21.6
@@ -117,7 +120,8 @@ public class ClientGraphics implements IGraphics {
     /**
      * @return the currently active {@link GuiGraphics}, or {@code null} if none is set
      */
-    public GuiGraphics getGraphics()
+    public GuiGraphics getGraphics() // mc<=1.21.11
+    //public GuiGraphicsExtractor getGraphics() // mc>=26.1
     {
         return graphics;
     }
@@ -146,7 +150,8 @@ public class ClientGraphics implements IGraphics {
     public void drawString(Object font, String text, int x, int y, int color)
     {
         //font.draw(graphics, text, x, y, color);  // mc<=1.19.4
-        graphics.drawString((Font) font, text, x, y, opaqueIfNoAlpha(color), enableShadow); // mc>=1.20.1
+        graphics.drawString((Font) font, text, x, y, opaqueIfNoAlpha(color), enableShadow); // mc>=1.20.1 mc<=1.21.11
+        //graphics.text((Font) font, text, x, y, opaqueIfNoAlpha(color), enableShadow); // mc>=26.1
     }
 
     /**
@@ -163,7 +168,8 @@ public class ClientGraphics implements IGraphics {
     public void drawString(Object font, String text, int x, int y, int color, boolean dropShadow)
     {
         //font.draw(graphics, text, x, y, color);  // mc<=1.19.4
-        graphics.drawString((Font) font, text, x, y, opaqueIfNoAlpha(color), dropShadow); // mc>=1.20.1
+        graphics.drawString((Font) font, text, x, y, opaqueIfNoAlpha(color), dropShadow); // mc>=1.20.1 mc<=1.21.11
+        //graphics.text((Font) font, text, x, y, opaqueIfNoAlpha(color), dropShadow); // mc>=26.1
     }
 
     /**
@@ -309,8 +315,10 @@ public class ClientGraphics implements IGraphics {
     {
         //ItemRenderer itemRenderer = Minecraft.getInstance().getItemRenderer(); // mc<=1.19.4
         //itemRenderer.renderGuiItem(graphics, itemStack, x, y); // mc<=1.19.4
-        graphics.renderItem(itemStack, x, y); // mc>=1.20.1
-        graphics.renderItemDecorations((Font) font, itemStack, x, y); // mc>=1.20.1
+        graphics.renderItem(itemStack, x, y); // mc>=1.20.1 mc<=1.21.11
+        //graphics.item(itemStack, x, y); // mc>=26.1
+        graphics.renderItemDecorations((Font) font, itemStack, x, y); // mc>=1.20.1 mc<=1.21.11
+        //graphics.itemDecorations((Font) font, itemStack, x, y); // mc>=26.1
     }
 
     /**
@@ -328,8 +336,10 @@ public class ClientGraphics implements IGraphics {
     {
         //ItemRenderer itemRenderer = Minecraft.getInstance().getItemRenderer(); // mc<=1.19.4
         //itemRenderer.renderGuiItem(graphics, itemStack, x, y); // mc<=1.19.4
-        graphics.renderItem(itemStack, x, y, seed); // mc>=1.20.1
-        graphics.renderItemDecorations((Font) font, itemStack, x, y); // mc>=1.20.1
+        graphics.renderItem(itemStack, x, y, seed); // mc>=1.20.1 mc<=1.21.11
+        //graphics.item(itemStack, x, y, seed); // mc>=26.1
+        graphics.renderItemDecorations((Font) font, itemStack, x, y); // mc>=1.20.1 mc<=1.21.11
+        //graphics.itemDecorations((Font) font, itemStack, x, y); // mc>=26.1
     }
 
 
@@ -655,7 +665,8 @@ public class ClientGraphics implements IGraphics {
         ScreenRectangle bounds = GuiColoredQuadsRenderState.boundsOf(pose, xy); // mc>=1.21.6
         if (bounds != null && scissor != null) bounds = scissor.intersection(bounds); // mc>=1.21.6
         if (bounds == null) return; // mc>=1.21.6 (fully clipped)
-        ((GuiGraphicsAccessor) graphics).modutilities$getGuiRenderState().submitGuiElement( // mc>=1.21.6
+        ((GuiGraphicsAccessor) graphics).modutilities$getGuiRenderState().submitGuiElement( // mc>=1.21.6 mc<=1.21.11
+        //((GuiGraphicsAccessor) graphics).modutilities$getGuiRenderState().addGuiElement( // mc>=26.1
                 new GuiColoredQuadsRenderState(pose, xy, colors, scissor, bounds)); // mc>=1.21.6
     } // mc>=1.21.6
 
