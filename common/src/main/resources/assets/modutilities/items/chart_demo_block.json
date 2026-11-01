@@ -1,0 +1,6 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "modutilities:item/chart_demo_block"
+  }
+}

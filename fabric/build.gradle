@@ -53,10 +53,12 @@ dependencies {
     // them without JEI present. Without modRuntimeOnly, runClient crashes
     // with "TypeNotPresentException: Type mezz/jei/... not present" the first
     // time ModUtilitiesJeiPlugin is touched during transform.
-    modCompileOnlyApi("mezz.jei:jei-${rootProject.jei_minecraft_version}-fabric-api:${rootProject.jei_version}")
+    //modCompileOnlyApi("mezz.jei:jei-${rootProject.jei_minecraft_version}-fabric-api:${rootProject.jei_version}") // mc<=1.21.3
+    compileOnly("mezz.jei:jei-${rootProject.jei_minecraft_version}-common-api:${rootProject.jei_version}") // mc>=1.21.4 (JEI has no Fabric build for 1.21.4)
     // JEI dev runtime: full mod jar where JEI exists for this MC version, otherwise the API jar satisfies the transformer.
     //modRuntimeOnly("mezz.jei:jei-${rootProject.jei_minecraft_version}-fabric:${rootProject.jei_version}") // mc<=1.21.1
-    modRuntimeOnly("mezz.jei:jei-${rootProject.jei_minecraft_version}-fabric-api:${rootProject.jei_version}") // mc>=1.21.2
+    //modRuntimeOnly("mezz.jei:jei-${rootProject.jei_minecraft_version}-fabric-api:${rootProject.jei_version}") // mc>=1.21.2
+    runtimeOnly("mezz.jei:jei-${rootProject.jei_minecraft_version}-common-api:${rootProject.jei_version}") // mc>=1.21.4 (JEI has no Fabric build for 1.21.4)
 
     // Patbox Text Placeholder API - compile-only soft dependency, never bundled.
     // PlaceholderApiBackend is only class-loaded when "placeholder-api" is present.

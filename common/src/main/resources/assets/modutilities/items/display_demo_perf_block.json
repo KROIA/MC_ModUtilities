@@ -1,0 +1,6 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "modutilities:item/display_demo_perf_block"
+  }
+}
