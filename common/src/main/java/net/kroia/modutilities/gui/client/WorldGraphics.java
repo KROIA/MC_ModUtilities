@@ -247,7 +247,8 @@ public class WorldGraphics implements IGraphics {
 
     @Override
     public void mulPose(Quaternionf quaternion) {
-        poseStack.mulPose(quaternion);
+        poseStack.mulPose(quaternion); // mc<=26.2
+        //poseStack.rotate(quaternion); // mc>=26.3
     }
 
     @Override
