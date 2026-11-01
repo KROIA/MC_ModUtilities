@@ -34,6 +34,11 @@ public final class InputCompat {
         return Minecraft.getInstance().hasControlDown(); // mc>=1.21.9
     }
 
+    /** @return the GLFW modifier bits (shift 1, control 2, alt 4) of the keys held right now */
+    public static int currentModifiers() {
+        return (hasShiftDown() ? 1 : 0) | (hasControlDown() ? 2 : 0) | (hasAltDown() ? 4 : 0);
+    }
+
     /** @return {@code true} while either alt key is held */
     public static boolean hasAltDown() {
         //return Screen.hasAltDown(); // mc<=1.21.8

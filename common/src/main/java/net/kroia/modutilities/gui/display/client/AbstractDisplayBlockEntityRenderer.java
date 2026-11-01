@@ -13,7 +13,8 @@ import net.kroia.modutilities.gui.client.ClientGraphics;
 import net.kroia.modutilities.gui.display.AbstractDisplayBlockEntity;
 import net.kroia.modutilities.gui.display.DisplayConfig;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphics; // mc<=1.21.11
+//import net.minecraft.client.gui.GuiGraphicsExtractor; // mc>=26.1
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType; // mc<=1.21.10
 //import net.minecraft.client.renderer.rendertype.RenderType; import net.minecraft.client.renderer.rendertype.RenderTypes; // mc>=1.21.11
@@ -50,7 +51,8 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
 
     private final ClientGraphics clientGraphics;
     private MultiBufferSource.BufferSource offscreenBufferSource;
-    private GuiGraphics cachedGuiGraphics;
+    private GuiGraphics cachedGuiGraphics; // mc<=1.21.11
+    //private GuiGraphicsExtractor cachedGuiGraphics; // mc>=26.1
     private net.kroia.modutilities.gui.client.OffscreenGuiRenderer offscreenGui; // mc>=1.21.6 (deferred GUI rendering into the display texture)
 
     private static class GroupRenderData {
@@ -201,7 +203,8 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
     @Override // mc>=1.21.9
     public void submit(DisplayRenderState state, PoseStack poseStack, // mc>=1.21.9
                        net.minecraft.client.renderer.SubmitNodeCollector collector, // mc>=1.21.9
-                       net.minecraft.client.renderer.state.CameraRenderState camera) { // mc>=1.21.9
+                       net.minecraft.client.renderer.state.CameraRenderState camera) { // mc>=1.21.9 mc<=1.21.11
+                       //net.minecraft.client.renderer.state.level.CameraRenderState camera) { // mc>=26.1
         FaceQuad quad = state.quad; // mc>=1.21.9
         if (quad == null) return; // mc>=1.21.9
         poseStack.pushPose(); // mc>=1.21.9
@@ -388,7 +391,8 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         //guiGraphics.pose().pushPose(); // mc<=1.21.5
         //guiGraphics.pose().translate(0, 0, -11000); // mc<=1.21.5
         if (offscreenGui == null) offscreenGui = new net.kroia.modutilities.gui.client.OffscreenGuiRenderer(offscreenBufferSource); // mc>=1.21.6
-        GuiGraphics guiGraphics = offscreenGui.begin(); // mc>=1.21.6
+        GuiGraphics guiGraphics = offscreenGui.begin(); // mc>=1.21.6 mc<=1.21.11
+        //GuiGraphicsExtractor guiGraphics = offscreenGui.begin(); // mc>=26.1
 
         gui.setGraphicsBackend(clientGraphics);
         gui.setFont(mc.font);
