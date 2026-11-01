@@ -38,7 +38,7 @@ public class DisplayInteractionScreen extends GuiScreen {
     }
 
     public static void open(BlockPos controllerPos) {
-        Minecraft.getInstance().setScreen(new DisplayInteractionScreen(controllerPos));
+        net.kroia.modutilities.gui.client.ClientCompat.setScreen(new DisplayInteractionScreen(controllerPos));
     }
 
     /**

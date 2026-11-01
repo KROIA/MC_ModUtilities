@@ -12,7 +12,7 @@ import net.minecraft.client.gui.Font;
 //import net.minecraft.client.gui.GuiGraphics; // mc>=1.20.1 mc<=1.21.11
 import net.minecraft.client.gui.GuiGraphicsExtractor; // mc>=26.1
 //import com.mojang.blaze3d.vertex.PoseStack; // mc<=1.19.4
-import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.MultiBufferSource; // mc<=26.1
 //import net.minecraft.client.renderer.RenderType; // mc<=1.21.10
 import net.minecraft.client.renderer.rendertype.RenderType; import net.minecraft.client.renderer.rendertype.RenderTypes; // mc>=1.21.11
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
@@ -693,15 +693,16 @@ public class ClientGraphics implements IGraphics {
      * @return the {@link MultiBufferSource.BufferSource} associated with the
      *         active {@link GuiGraphics}, used for batched rendering
      */
-    public MultiBufferSource.BufferSource bufferSource()
-    {
+    // mc>=26.2: removed; Minecraft 26.2 has no buffer sources (GUI and world drawing are recorded and drawn later).
+    public MultiBufferSource.BufferSource bufferSource() // mc<=26.1
+    { // mc<=26.1
         //return Minecraft.getInstance().renderBuffers().bufferSource(); // mc<=1.19.4
         //return graphics.bufferSource(); // unused, superseded by GuiGraphicsAccessor on all versions (was mc>=1.20.1; public getter removed in 1.21.2)
         //return ((GuiGraphicsAccessor) graphics).modutilities$getBufferSource(); // mc<=1.21.5
         // TODO(1.21.6 port): GUI rendering is deferred since 1.21.6 and GuiGraphics owns no buffer source.
         // Vertices written here are NOT part of the GUI pass; use drawVertexBuffer_QUADS/drawLine instead.
-        return net.minecraft.client.Minecraft.getInstance().renderBuffers().bufferSource(); // mc>=1.21.6
-    }
+        return net.minecraft.client.Minecraft.getInstance().renderBuffers().bufferSource(); // mc>=1.21.6 mc<=26.1
+    } // mc<=26.1
 
     /**
      * Flushes the active buffer source so any queued vertices are drawn immediately.
