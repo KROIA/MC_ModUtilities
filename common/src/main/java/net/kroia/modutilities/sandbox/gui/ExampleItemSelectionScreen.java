@@ -1,7 +1,5 @@
 package net.kroia.modutilities.sandbox.gui;
 
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.client.GuiScreen;
@@ -26,7 +24,6 @@ import net.minecraft.world.item.Items;
  *
  * Open via: /modutilities openExample itemSelection
  */
-@Environment(EnvType.CLIENT)
 public class ExampleItemSelectionScreen extends GuiScreen {
 
     private final Label title;
