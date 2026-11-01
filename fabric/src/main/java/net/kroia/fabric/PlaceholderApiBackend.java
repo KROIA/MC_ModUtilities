@@ -24,11 +24,14 @@ final class PlaceholderApiBackend {
         //ResourceLocation id = ResourceLocation.fromNamespaceAndPath(p.namespace(), p.name()); // mc<=1.21.10
         Identifier id = Identifier.fromNamespaceAndPath(p.namespace(), p.name()); // mc>=1.21.11
         if (p.isPlayerPlaceholder()) {
-            Placeholders.register(id, (ctx, arg) -> ctx.hasPlayer()
-                    ? PlaceholderResult.value(p.evaluate(ctx.player()))
+            //Placeholders.register(id, (ctx, arg) -> ctx.hasPlayer() // mc<=1.21.11
+            //        ? PlaceholderResult.value(p.evaluate(ctx.player())) // mc<=1.21.11
+            Placeholders.registerServer(id, (ctx, arg) -> ctx.hasServerPlayer() // mc>=26.1 (Placeholder API 3)
+                    ? PlaceholderResult.value(p.evaluate(ctx.serverPlayer())) // mc>=26.1
                     : PlaceholderResult.invalid("No player!"));
         } else {
-            Placeholders.register(id, (ctx, arg) -> PlaceholderResult.value(p.evaluate(null)));
+            //Placeholders.register(id, (ctx, arg) -> PlaceholderResult.value(p.evaluate(null))); // mc<=1.21.11
+            Placeholders.registerServer(id, (ctx, arg) -> PlaceholderResult.value(p.evaluate(null))); // mc>=26.1
         }
     }
 }

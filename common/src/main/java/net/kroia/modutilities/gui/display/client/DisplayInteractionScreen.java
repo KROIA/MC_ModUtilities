@@ -88,7 +88,8 @@ public class DisplayInteractionScreen extends GuiScreen {
     }
 
     @Override
-    public void render(net.minecraft.client.gui.GuiGraphics guiGraphics,
+    //public void render(net.minecraft.client.gui.GuiGraphics guiGraphics, // mc<=1.21.11
+    public void render(net.minecraft.client.gui.GuiGraphicsExtractor guiGraphics, // mc>=26.1
                        int mouseX, int mouseY, float partialTick) {
         boolean inputDirty = gui != null && gui.hasAnyDirty();
         syncCounter++;

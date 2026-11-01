@@ -9,7 +9,8 @@ import com.mojang.blaze3d.pipeline.RenderPipeline; // mc>=1.21.6
 import com.mojang.blaze3d.vertex.VertexConsumer; // mc>=1.21.6
 import net.minecraft.client.gui.navigation.ScreenRectangle; // mc>=1.21.6
 import net.minecraft.client.gui.render.TextureSetup; // mc>=1.21.6
-import net.minecraft.client.gui.render.state.GuiElementRenderState; // mc>=1.21.6
+//import net.minecraft.client.gui.render.state.GuiElementRenderState; // mc>=1.21.6 mc<=1.21.11
+import net.minecraft.client.renderer.state.gui.GuiElementRenderState; // mc>=26.1
 import net.minecraft.client.renderer.RenderPipelines; // mc>=1.21.6
 import org.joml.Matrix3x2f; // mc>=1.21.6
 
