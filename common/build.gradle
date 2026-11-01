@@ -24,7 +24,7 @@ dependencies {
     // JEI common API — compileOnly so JEI stays a soft dependency. The
     // ModUtilitiesJeiPlugin is only class-loaded when JEI is present
     // (annotation scan on NeoForge, jei_mod_plugin entrypoint on Fabric).
-    compileOnly("mezz.jei:jei-${rootProject.minecraft_version}-common-api:${rootProject.jei_version}")
+    compileOnly("mezz.jei:jei-${rootProject.jei_minecraft_version}-common-api:${rootProject.jei_version}")
 
     // NEZNAMY TAB API - compileOnly soft dependency. TabPlaceholderBackend is only
     // class-loaded when the "tab" mod is present (see ModUtilitiesMod.init).
