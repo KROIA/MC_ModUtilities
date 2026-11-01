@@ -129,13 +129,13 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
         return pSlot != null && pOtherSlot != null && pSlot.container == pOtherSlot.container;
     }
     private boolean isActiveAndMatches(KeyMapping key, int keySym, int scanCode) {
-        if(key.matches(keySym, scanCode)) {
+        if(InputCompat.matchesKey(key, keySym, scanCode)) {
             return key.isDefault();
         }
         return false;
     }
     private boolean isActiveAndMatches(KeyMapping key, int mouseButton) {
-        if(key.matchesMouse(mouseButton)) {
+        if(InputCompat.matchesMouse(key, mouseButton)) {
             return key.isDefault();
         }
         return false;
@@ -322,7 +322,8 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
             //    TextureAtlasSprite textureatlassprite = (TextureAtlasSprite)minecraft.getTextureAtlas((ResourceLocation)pair.getFirst()).apply((ResourceLocation)pair.getSecond()); // mc<=1.21.3
             ResourceLocation noItemIcon = pSlot.getNoItemIcon(); // mc>=1.21.4
             if (noItemIcon != null) { // mc>=1.21.4
-                TextureAtlasSprite textureatlassprite = minecraft.getGuiSprites().getSprite(noItemIcon); // mc>=1.21.4
+                TextureAtlasSprite textureatlassprite = minecraft.getGuiSprites().getSprite(noItemIcon); // mc>=1.21.4 mc<=1.21.8
+                //TextureAtlasSprite textureatlassprite = minecraft.getAtlasManager().getAtlasOrThrow(net.minecraft.data.AtlasIds.GUI).getSprite(noItemIcon); // mc>=1.21.9
                 if(getRoot() != null && getRoot().getGraphics() instanceof net.kroia.modutilities.gui.client.ClientGraphics cg) {
                     cg.blit(i, j, 0, 16, 16, textureatlassprite);
                 }
@@ -420,7 +421,7 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
                         if (isActiveAndMatches(minecraft.options.keyPickItem, pButton)) {
                             this.slotClicked(slot, l, pButton, ClickType.CLONE);
                         } else {
-                            boolean flag2 = l != -999 && (InputConstants.isKeyDown(minecraft.getWindow().getWindow(), 340) || InputConstants.isKeyDown(minecraft.getWindow().getWindow(), 344));
+                            boolean flag2 = l != -999 && (InputCompat.isKeyDown(340) || InputCompat.isKeyDown(344));
                             ClickType clicktype = ClickType.PICKUP;
                             if (flag2) {
                                 this.lastQuickMoved = slot.hasItem() ? slot.getItem().copy() : ItemStack.EMPTY;
@@ -458,13 +459,13 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
 
     private void checkHotbarMouseClicked(int pKeyCode) {
         if (this.hoveredSlot != null && this.menu.getCarried().isEmpty()) {
-            if (minecraft.options.keySwapOffhand.matchesMouse(pKeyCode)) {
+            if (InputCompat.matchesMouse(minecraft.options.keySwapOffhand, pKeyCode)) {
                 this.slotClicked(this.hoveredSlot, this.hoveredSlot.index, 40, ClickType.SWAP);
                 return;
             }
 
             for(int i = 0; i < 9; ++i) {
-                if (minecraft.options.keyHotbarSlots[i].matchesMouse(pKeyCode)) {
+                if (InputCompat.matchesMouse(minecraft.options.keyHotbarSlots[i], pKeyCode)) {
                     this.slotClicked(this.hoveredSlot, this.hoveredSlot.index, i, ClickType.SWAP);
                 }
             }
@@ -537,7 +538,7 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
         Slot slot1;
         Iterator var14;
         if (this.doubleclick && slot != null && pButton == 0 && this.menu.canTakeItemForPickAll(ItemStack.EMPTY, slot)) {
-            if (Screen.hasShiftDown()) {
+            if (InputCompat.hasShiftDown()) {
                 if (!this.lastQuickMoved.isEmpty()) {
                     var14 = this.menu.slots.iterator();
 
@@ -618,7 +619,7 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
                 if (isActiveAndMatches(minecraft.options.keyPickItem,pButton)) {
                     this.slotClicked(slot, k, pButton, ClickType.CLONE);
                 } else {
-                    flag1 = k != -999 && (InputConstants.isKeyDown(minecraft.getWindow().getWindow(), 340) || InputConstants.isKeyDown(minecraft.getWindow().getWindow(), 344));
+                    flag1 = k != -999 && (InputCompat.isKeyDown(340) || InputCompat.isKeyDown(344));
                     if (flag1) {
                         this.lastQuickMoved = slot != null && slot.hasItem() ? slot.getItem().copy() : ItemStack.EMPTY;
                     }
@@ -693,7 +694,7 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
                     this.slotClicked(this.hoveredSlot, this.hoveredSlot.index, 0, ClickType.CLONE);
                     handled = true;
                 } else if (isActiveAndMatches(this.minecraft.options.keyDrop, pKeyCode, pScanCode)) {
-                    this.slotClicked(this.hoveredSlot, this.hoveredSlot.index, Screen.hasControlDown() ? 1 : 0, ClickType.THROW);
+                    this.slotClicked(this.hoveredSlot, this.hoveredSlot.index, InputCompat.hasControlDown() ? 1 : 0, ClickType.THROW);
                     handled = true;
                 }
             } else if (isActiveAndMatches(this.minecraft.options.keyDrop, pKeyCode, pScanCode)) {
