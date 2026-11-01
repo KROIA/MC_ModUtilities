@@ -343,15 +343,23 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
 
         Lighting.setupForFlatItems();
 
-        DisplayRenderProfiler.begin(controllerPos, DisplayRenderProfiler.Category.GUI_RENDER);
-        gui.renderBackground();
-        gui.render();
-        DisplayRenderProfiler.end(controllerPos, DisplayRenderProfiler.Category.GUI_RENDER);
+        // 1.21.2+: GUI RenderTypes bind getMainRenderTarget() on every flush, so the
+        // offscreen target must be installed as the main target while drawing.
+        //((net.kroia.mixin.MinecraftAccessor) mc).modutilities$setMainRenderTarget(data.framebuffer); // mc>=1.21.2
+        try {
+            DisplayRenderProfiler.begin(controllerPos, DisplayRenderProfiler.Category.GUI_RENDER);
+            gui.renderBackground();
+            gui.render();
+            DisplayRenderProfiler.end(controllerPos, DisplayRenderProfiler.Category.GUI_RENDER);
 
-        gui.clearOffscreenScissorMode();
+            gui.clearOffscreenScissorMode();
 
-        guiGraphics.pose().popPose();
-        offscreenBufferSource.endBatch();
+            guiGraphics.pose().popPose();
+            offscreenBufferSource.endBatch();
+        } finally {
+            //((net.kroia.mixin.MinecraftAccessor) mc).modutilities$setMainRenderTarget(prevTarget); // mc>=1.21.2
+        }
+        data.framebuffer.bindWrite(false); // glCopyTexSubImage2D below reads the bound framebuffer
 
         DisplayRenderProfiler.storeTextureSize(controllerPos, texW, texH);
         DisplayRenderProfiler.begin(controllerPos, DisplayRenderProfiler.Category.TEXTURE_TRANSFER);

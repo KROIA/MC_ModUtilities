@@ -408,7 +408,11 @@ public class ClientGraphics implements IGraphics {
     public void enableScissor(int minX, int minY, int maxX, int maxY)
     {
         //Screen.enableScissor(minX, minY, maxX, maxY); // mc<=1.19.4
+        // 1.21.4+: vanilla transforms the rect by the current pose, but callers pass absolute GUI coords
+        //graphics.pose().pushPose(); // mc>=1.21.4
+        //graphics.pose().setIdentity(); // mc>=1.21.4
         graphics.enableScissor(minX, minY, maxX, maxY); // mc>=1.20.1
+        //graphics.pose().popPose(); // mc>=1.21.4
     }
 
     /**
