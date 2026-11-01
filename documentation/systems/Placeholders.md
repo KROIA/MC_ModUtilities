@@ -37,6 +37,12 @@ Backends activate only if the mod is loaded. TAB placeholders are registered on 
 
 ---
 
+## Installation notes (server owners)
+
+- **TAB and Placeholder API are server-side only.** Install them on the server; players join with clients that do not have them. Placeholder values are computed on the server.
+- **Singleplayer:** the integrated server runs on the client, so TAB must be in the client's `mods` folder there.
+- **Known TAB issue (TAB 5.5.0, NeoForge 1.21.1, singleplayer):** TAB re-adds its player-join handling on every integrated-server start. Opening a second singleplayer world in the same game session disconnects the client with `An objective with the name 'TAB-PlayerList' already exists!` (reproduced with only TAB installed). Restart the game between singleplayer worlds. Dedicated servers are not affected.
+
 ## Thread safety
 
 TAB evaluates placeholders **off the server thread**. Placeholder functions must be thread-safe: read immutable or `volatile`/concurrent data, ideally a value cached by the server thread. Do not touch the world, entities, or non-thread-safe collections inside the function.
