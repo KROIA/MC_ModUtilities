@@ -9,8 +9,6 @@ import com.mojang.blaze3d.vertex.ByteBufferBuilder;
 //import com.mojang.blaze3d.vertex.VertexSorting; // mc<=1.21.1
 import com.mojang.blaze3d.ProjectionType; // mc>=1.21.2
 import net.minecraft.client.renderer.FogParameters; // mc>=1.21.2 mc<=1.21.5
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 import net.kroia.modutilities.ItemUtilities;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.minecraft.client.Minecraft;
@@ -32,7 +30,6 @@ import java.util.Map;
  * Must be called from the main client thread (render thread).
  * Typical usage: server command sends S2C packet, client handler calls export method.
  */
-@Environment(EnvType.CLIENT)
 public class RecipeImageExporter {
 
     // Layout constants (logical GUI pixels)
