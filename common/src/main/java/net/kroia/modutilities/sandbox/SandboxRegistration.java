@@ -3,8 +3,6 @@ package net.kroia.modutilities.sandbox;
 import dev.architectury.registry.client.rendering.BlockEntityRendererRegistry;
 import dev.architectury.registry.registries.DeferredRegister;
 import dev.architectury.registry.registries.RegistrySupplier;
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.RegistryCompat;
 import net.kroia.modutilities.gui.display.client.AbstractDisplayBlockEntityRenderer;
@@ -126,7 +124,6 @@ public class SandboxRegistration {
      * Uses {@link RegistrySupplier#listen} to defer the actual renderer binding
      * until after the registry is frozen and the supplier is resolved.
      */
-    @Environment(EnvType.CLIENT)
     public static void registerClient() {
         DISPLAY_DEMO_BLOCK_ENTITY.listen(blockEntityType ->
                 BlockEntityRendererRegistry.register(blockEntityType,

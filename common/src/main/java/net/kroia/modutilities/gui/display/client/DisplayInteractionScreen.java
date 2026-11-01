@@ -1,8 +1,6 @@
 package net.kroia.modutilities.gui.display.client;
 
 import dev.architectury.networking.NetworkManager;
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.GuiStateSync;
 import net.kroia.modutilities.gui.client.GuiScreen;
@@ -24,7 +22,6 @@ import net.minecraft.world.level.block.entity.BlockEntity;
  * to the server via {@link DisplayInputSyncPacket}. Works on both
  * singleplayer and dedicated servers.
  */
-@Environment(EnvType.CLIENT)
 public class DisplayInteractionScreen extends GuiScreen {
 
     private BlockPos controllerPos;

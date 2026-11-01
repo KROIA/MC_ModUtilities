@@ -1,7 +1,5 @@
 package net.kroia.modutilities.gui.client;
 
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.InputConstants;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
@@ -31,9 +29,8 @@ import java.util.List;
  * be controlled with the F3-F6 keys when {@link #setDebugKeysEnabled(boolean)
  * debug keys} are enabled.
  *
- * @apiNote This class is client-only ({@code @Environment(EnvType.CLIENT)}).
+ * @apiNote This class is client-only.
  */
-@Environment(EnvType.CLIENT)
 public abstract class GuiScreen extends Screen {
 
     protected final Gui gui;
