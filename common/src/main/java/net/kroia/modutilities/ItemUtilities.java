@@ -552,7 +552,7 @@ public class ItemUtilities {
         }
 
         String id = tag.getString("id");
-        Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(id));
+        Item item = BuiltInRegistries.ITEM.getOptional(ResourceLocation.parse(id)).orElse(Items.AIR);
         if (item == Items.AIR && !id.equals("minecraft:air")) {
             return ItemStack.EMPTY;
         }

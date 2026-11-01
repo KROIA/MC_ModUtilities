@@ -32,7 +32,7 @@ public class UtilitiesPlatformFabric implements PlatformAbstraction {
         String[] parts = itemID.split(":", 2);
         String namespace = parts[0];
         String path = parts[1];
-        Item item = BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(namespace, path));
+        Item item = BuiltInRegistries.ITEM.getOptional(ResourceLocation.fromNamespaceAndPath(namespace, path)).orElse(null);
         if (item == null) {
             return ItemStack.EMPTY;
         }

@@ -6,7 +6,9 @@ import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.ByteBufferBuilder;
-import com.mojang.blaze3d.vertex.VertexSorting;
+import com.mojang.blaze3d.vertex.VertexSorting; // mc<=1.21.1
+//import com.mojang.blaze3d.ProjectionType; // mc>=1.21.2
+//import net.minecraft.client.renderer.FogParameters; // mc>=1.21.2
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.kroia.modutilities.ItemUtilities;
@@ -80,20 +82,22 @@ public class RecipeImageExporter {
         // --- Save GL state (mirrors AbstractDisplayBlockEntityRenderer lines 253-279) ---
         RenderTarget prevTarget = mc.getMainRenderTarget();
         Matrix4f prevProjection = new Matrix4f(RenderSystem.getProjectionMatrix());
-        VertexSorting prevSorting = RenderSystem.getVertexSorting();
+        VertexSorting prevSorting = RenderSystem.getVertexSorting(); // mc<=1.21.1
+        //ProjectionType prevSorting = RenderSystem.getProjectionType(); // mc>=1.21.2
         int[] prevViewport = new int[4];
         GL11.glGetIntegerv(GL11.GL_VIEWPORT, prevViewport);
         boolean prevDepthTest = GL11.glIsEnabled(GL11.GL_DEPTH_TEST);
         boolean prevBlend = GL11.glIsEnabled(GL11.GL_BLEND);
         boolean prevCull = GL11.glIsEnabled(GL11.GL_CULL_FACE);
         float[] prevShaderColor = RenderSystem.getShaderColor().clone();
-        float[] prevFogColor = new float[4];
-        prevFogColor[0] = RenderSystem.getShaderFogColor()[0];
-        prevFogColor[1] = RenderSystem.getShaderFogColor()[1];
-        prevFogColor[2] = RenderSystem.getShaderFogColor()[2];
-        prevFogColor[3] = RenderSystem.getShaderFogColor()[3];
-        float prevFogStart = RenderSystem.getShaderFogStart();
-        float prevFogEnd = RenderSystem.getShaderFogEnd();
+        float[] prevFogColor = new float[4]; // mc<=1.21.1
+        prevFogColor[0] = RenderSystem.getShaderFogColor()[0]; // mc<=1.21.1
+        prevFogColor[1] = RenderSystem.getShaderFogColor()[1]; // mc<=1.21.1
+        prevFogColor[2] = RenderSystem.getShaderFogColor()[2]; // mc<=1.21.1
+        prevFogColor[3] = RenderSystem.getShaderFogColor()[3]; // mc<=1.21.1
+        float prevFogStart = RenderSystem.getShaderFogStart(); // mc<=1.21.1
+        float prevFogEnd = RenderSystem.getShaderFogEnd(); // mc<=1.21.1
+        //FogParameters prevFog = RenderSystem.getShaderFog(); // mc>=1.21.2
 
         TextureTarget framebuffer = null;
         NativeImage image = null;
@@ -101,7 +105,8 @@ public class RecipeImageExporter {
 
         try {
             // --- Create and bind framebuffer ---
-            framebuffer = new TextureTarget(texW, texH, true, false);
+            framebuffer = new TextureTarget(texW, texH, true, false); // mc<=1.21.1
+            //framebuffer = new TextureTarget(texW, texH, true); // mc>=1.21.2
             framebuffer.bindWrite(false);
             RenderSystem.viewport(0, 0, texW, texH);
 
@@ -109,19 +114,22 @@ public class RecipeImageExporter {
             float bgG = ((BG_COLOR >> 8) & 0xFF) / 255f;
             float bgB = (BG_COLOR & 0xFF) / 255f;
             RenderSystem.clearColor(bgR, bgG, bgB, 1.0f);
-            RenderSystem.clear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT, false);
+            RenderSystem.clear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT, false); // mc<=1.21.1
+            //RenderSystem.clear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT); // mc>=1.21.2
 
             // --- Disable fog ---
-            RenderSystem.setShaderFogColor(0, 0, 0, 0);
-            RenderSystem.setShaderFogStart(Float.MAX_VALUE);
-            RenderSystem.setShaderFogEnd(Float.MAX_VALUE);
+            RenderSystem.setShaderFogColor(0, 0, 0, 0); // mc<=1.21.1
+            RenderSystem.setShaderFogStart(Float.MAX_VALUE); // mc<=1.21.1
+            RenderSystem.setShaderFogEnd(Float.MAX_VALUE); // mc<=1.21.1
+            //RenderSystem.setShaderFog(FogParameters.NO_FOG); // mc>=1.21.2
 
             // --- Set orthographic projection ---
             Matrix4f ortho = new Matrix4f().setOrtho(0, guiW, guiH, 0, 1000, 21000);
-            RenderSystem.setProjectionMatrix(ortho, VertexSorting.ORTHOGRAPHIC_Z);
+            RenderSystem.setProjectionMatrix(ortho, VertexSorting.ORTHOGRAPHIC_Z); // mc<=1.21.1
+            //RenderSystem.setProjectionMatrix(ortho, ProjectionType.ORTHOGRAPHIC); // mc>=1.21.2
             RenderSystem.getModelViewStack().pushMatrix();
             RenderSystem.getModelViewStack().identity();
-            RenderSystem.applyModelViewMatrix();
+            RenderSystem.applyModelViewMatrix(); // mc<=1.21.1
 
             // --- Create GuiGraphics ---
             MultiBufferSource.BufferSource bufferSource = MultiBufferSource.immediate(
@@ -165,15 +173,16 @@ public class RecipeImageExporter {
             // --- Restore GL state (mirrors AbstractDisplayBlockEntityRenderer lines 335-347) ---
             prevTarget.bindWrite(false);
             RenderSystem.getModelViewStack().popMatrix();
-            RenderSystem.applyModelViewMatrix();
+            RenderSystem.applyModelViewMatrix(); // mc<=1.21.1
             RenderSystem.viewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
             RenderSystem.setProjectionMatrix(prevProjection, prevSorting);
             RenderSystem.setShaderColor(prevShaderColor[0], prevShaderColor[1],
                     prevShaderColor[2], prevShaderColor[3]);
-            RenderSystem.setShaderFogColor(prevFogColor[0], prevFogColor[1],
-                    prevFogColor[2], prevFogColor[3]);
-            RenderSystem.setShaderFogStart(prevFogStart);
-            RenderSystem.setShaderFogEnd(prevFogEnd);
+            RenderSystem.setShaderFogColor(prevFogColor[0], prevFogColor[1], // mc<=1.21.1
+                    prevFogColor[2], prevFogColor[3]); // mc<=1.21.1
+            RenderSystem.setShaderFogStart(prevFogStart); // mc<=1.21.1
+            RenderSystem.setShaderFogEnd(prevFogEnd); // mc<=1.21.1
+            //RenderSystem.setShaderFog(prevFog); // mc>=1.21.2
             if (prevDepthTest) RenderSystem.enableDepthTest(); else RenderSystem.disableDepthTest();
             if (prevBlend) RenderSystem.enableBlend(); else RenderSystem.disableBlend();
             if (prevCull) RenderSystem.enableCull(); else RenderSystem.disableCull();

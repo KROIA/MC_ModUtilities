@@ -25,7 +25,8 @@ public class LevelRendererMixin {
     private void modutilities$suppressDisplayBlockOutline(
             PoseStack poseStack, VertexConsumer consumer, Entity entity,
             double camX, double camY, double camZ,
-            BlockPos pos, BlockState state, CallbackInfo ci) {
+            BlockPos pos, BlockState state, CallbackInfo ci) { // mc<=1.21.1
+            //BlockPos pos, BlockState state, int color, CallbackInfo ci) { // mc>=1.21.2
         if (state.getBlock() instanceof AbstractDisplayBlock) {
             ci.cancel();
         }

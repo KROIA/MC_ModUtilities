@@ -157,7 +157,7 @@ public class ItemView extends GuiElement {
             this.itemStack = stack.isEmpty() ? null : stack;
         } else if (tag.contains("item")) {
             // Backward compatibility: old format with just item ID + count
-            var item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(tag.getString("item")));
+            var item = BuiltInRegistries.ITEM.getOptional(ResourceLocation.parse(tag.getString("item"))).orElse(Items.AIR);
             if (item != Items.AIR) {
                 this.itemStack = new ItemStack(item, tag.getInt("count"));
             } else {

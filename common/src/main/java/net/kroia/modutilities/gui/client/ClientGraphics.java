@@ -16,6 +16,8 @@ import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+//import net.minecraft.util.ARGB; // mc>=1.21.2
+import net.kroia.mixin.GuiGraphicsAccessor;
 import net.minecraft.world.item.ItemStack;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
@@ -322,7 +324,8 @@ public class ClientGraphics implements IGraphics {
     {
         //RenderSystem.setShaderTexture(0, atlasLocation);
         //Screen.blit(graphics, x, y, uOffset, vOffset, width, height, width, height); // mc<=1.19.4
-        graphics.blit(atlasLocation, x, y, uOffset, vOffset, width, height);
+        graphics.blit(atlasLocation, x, y, uOffset, vOffset, width, height); // mc<=1.21.1
+        //graphics.blit(RenderType::guiTextured, atlasLocation, x, y, uOffset, vOffset, width, height, 256, 256); // mc>=1.21.2
     }
 
     /**
@@ -344,7 +347,8 @@ public class ClientGraphics implements IGraphics {
     {
         //RenderSystem.setShaderTexture(0, atlasLocation);
         //Screen.blit(graphics, x, y, uOffset, vOffset, width, height, textureWidth, textureHeight); // mc<=1.19.4
-        graphics.blit(atlasLocation, x, y, uOffset, vOffset, width, height, textureWidth, textureHeight); // mc>=1.20.1
+        graphics.blit(atlasLocation, x, y, uOffset, vOffset, width, height, textureWidth, textureHeight); // mc>=1.20.1 mc<=1.21.1
+        //graphics.blit(RenderType::guiTextured, atlasLocation, x, y, uOffset, vOffset, width, height, textureWidth, textureHeight); // mc>=1.21.2
     }
 
     /**
@@ -360,7 +364,11 @@ public class ClientGraphics implements IGraphics {
     public void blit(int x, int y, int blitOffset, int width, int height, TextureAtlasSprite sprite)
     {
         //Screen.blit(graphics, x, y, blitOffset, width, height, sprite); // mc<=1.19.4
-        graphics.blit(x, y, blitOffset, width, height, sprite); // mc>=1.20.1
+        graphics.blit(x, y, blitOffset, width, height, sprite); // mc>=1.20.1 mc<=1.21.1
+        //graphics.pose().pushPose(); // mc>=1.21.2
+        //graphics.pose().translate(0, 0, blitOffset); // mc>=1.21.2
+        //graphics.blitSprite(RenderType::guiTextured, sprite, x, y, width, height); // mc>=1.21.2
+        //graphics.pose().popPose(); // mc>=1.21.2
     }
 
     /**
@@ -380,7 +388,11 @@ public class ClientGraphics implements IGraphics {
     public void blit(int x, int y, int blitOffset, int width, int height, TextureAtlasSprite sprite, float red, float green, float blue, float alpha)
     {
         //Screen.blit(graphics, x, y, blitOffset, width, height, sprite, red, green, blue, alpha); // mc<=1.19.4
-        graphics.blit(x, y, blitOffset, width, height, sprite, red, green, blue, alpha); // mc>=1.20.1
+        graphics.blit(x, y, blitOffset, width, height, sprite, red, green, blue, alpha); // mc>=1.20.1 mc<=1.21.1
+        //graphics.pose().pushPose(); // mc>=1.21.2
+        //graphics.pose().translate(0, 0, blitOffset); // mc>=1.21.2
+        //graphics.blitSprite(RenderType::guiTextured, sprite, x, y, width, height, ARGB.colorFromFloat(alpha, red, green, blue)); // mc>=1.21.2
+        //graphics.pose().popPose(); // mc>=1.21.2
     }
 
     /**
@@ -588,7 +600,8 @@ public class ClientGraphics implements IGraphics {
     public MultiBufferSource.BufferSource bufferSource()
     {
         //return Minecraft.getInstance().renderBuffers().bufferSource(); // mc<=1.19.4
-        return graphics.bufferSource(); // mc>=1.20.1
+        //return graphics.bufferSource(); // mc>=1.20.1 (public getter removed in mc>=1.21.2)
+        return ((GuiGraphicsAccessor) graphics).modutilities$getBufferSource();
     }
 
     /**

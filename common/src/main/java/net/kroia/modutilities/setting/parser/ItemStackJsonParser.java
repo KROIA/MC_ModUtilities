@@ -95,7 +95,7 @@ public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
             throw new JsonParseException("Invalid item resource location: " + obj.get("id").getAsString());
         }
 
-        Item item = BuiltInRegistries.ITEM.get(itemId);
+        Item item = BuiltInRegistries.ITEM.getOptional(itemId).orElse(Items.AIR);
         if (item == Items.AIR && !itemId.toString().equals("minecraft:air")) {
             throw new JsonParseException("Unknown item: " + itemId);
         }

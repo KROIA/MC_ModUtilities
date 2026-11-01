@@ -4,6 +4,8 @@ import com.mojang.blaze3d.pipeline.TextureTarget;
 import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;
+//import com.mojang.blaze3d.ProjectionType; // mc>=1.21.2
+//import net.minecraft.client.renderer.FogParameters; // mc>=1.21.2
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.kroia.modutilities.gui.Gui;
@@ -74,7 +76,7 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
             java.util.SequencedMap<RenderType, com.mojang.blaze3d.vertex.ByteBufferBuilder> fixedBuffers = new java.util.LinkedHashMap<>();
             fixedBuffers.put(RenderType.glint(), new com.mojang.blaze3d.vertex.ByteBufferBuilder(256));
             fixedBuffers.put(RenderType.entityGlint(), new com.mojang.blaze3d.vertex.ByteBufferBuilder(256));
-            fixedBuffers.put(RenderType.entityGlintDirect(), new com.mojang.blaze3d.vertex.ByteBufferBuilder(256));
+            fixedBuffers.put(RenderType.entityGlintDirect(), new com.mojang.blaze3d.vertex.ByteBufferBuilder(256)); // mc<=1.21.1 (removed in 1.21.2)
             fixedBuffers.put(RenderType.armorEntityGlint(), new com.mojang.blaze3d.vertex.ByteBufferBuilder(256));
             offscreenBufferSource = MultiBufferSource.immediateWithBuffers(
                     fixedBuffers, new com.mojang.blaze3d.vertex.ByteBufferBuilder(786432));
@@ -128,7 +130,8 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
                     org.lwjgl.opengl.GL11.GL_TEXTURE_MIN_FILTER, org.lwjgl.opengl.GL11.GL_NEAREST);
             org.lwjgl.opengl.GL11.glTexParameteri(org.lwjgl.opengl.GL11.GL_TEXTURE_2D,
                     org.lwjgl.opengl.GL11.GL_TEXTURE_MAG_FILTER, org.lwjgl.opengl.GL11.GL_NEAREST);
-            data.framebuffer = new TextureTarget(texW, texH, true, false);
+            data.framebuffer = new TextureTarget(texW, texH, true, false); // mc<=1.21.1
+            //data.framebuffer = new TextureTarget(texW, texH, true); // mc>=1.21.2
             data.location = ResourceLocation.fromNamespaceAndPath("modutilities",
                     "dynamic/display_group_" + controllerPos.getX() + "_"
                             + controllerPos.getY() + "_" + controllerPos.getZ());
@@ -276,7 +279,8 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
 
         com.mojang.blaze3d.pipeline.RenderTarget prevTarget = mc.getMainRenderTarget();
         Matrix4f prevProjection = new Matrix4f(RenderSystem.getProjectionMatrix());
-        VertexSorting prevSorting = RenderSystem.getVertexSorting();
+        VertexSorting prevSorting = RenderSystem.getVertexSorting(); // mc<=1.21.1
+        //ProjectionType prevSorting = RenderSystem.getProjectionType(); // mc>=1.21.2
         int[] prevViewport = new int[4];
         org.lwjgl.opengl.GL11.glGetIntegerv(org.lwjgl.opengl.GL11.GL_VIEWPORT, prevViewport);
         boolean prevDepthTest = org.lwjgl.opengl.GL11.glIsEnabled(org.lwjgl.opengl.GL11.GL_DEPTH_TEST);
@@ -286,27 +290,32 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         data.framebuffer.bindWrite(false);
         RenderSystem.viewport(0, 0, texW, texH);
         RenderSystem.clearColor(0.15f, 0.15f, 0.15f, 1.0f);
-        RenderSystem.clear(org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT
-                | org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT, false);
+        RenderSystem.clear(org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT // mc<=1.21.1
+                | org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT, false); // mc<=1.21.1
+        //RenderSystem.clear(org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT // mc>=1.21.2
+        //        | org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT); // mc>=1.21.2
 
         float[] prevShaderColor = RenderSystem.getShaderColor().clone();
 
-        float[] prevFogColor = new float[4];
-        prevFogColor[0] = RenderSystem.getShaderFogColor()[0];
-        prevFogColor[1] = RenderSystem.getShaderFogColor()[1];
-        prevFogColor[2] = RenderSystem.getShaderFogColor()[2];
-        prevFogColor[3] = RenderSystem.getShaderFogColor()[3];
-        float prevFogStart = RenderSystem.getShaderFogStart();
-        float prevFogEnd = RenderSystem.getShaderFogEnd();
-        RenderSystem.setShaderFogColor(0, 0, 0, 0);
-        RenderSystem.setShaderFogStart(Float.MAX_VALUE);
-        RenderSystem.setShaderFogEnd(Float.MAX_VALUE);
+        float[] prevFogColor = new float[4]; // mc<=1.21.1
+        prevFogColor[0] = RenderSystem.getShaderFogColor()[0]; // mc<=1.21.1
+        prevFogColor[1] = RenderSystem.getShaderFogColor()[1]; // mc<=1.21.1
+        prevFogColor[2] = RenderSystem.getShaderFogColor()[2]; // mc<=1.21.1
+        prevFogColor[3] = RenderSystem.getShaderFogColor()[3]; // mc<=1.21.1
+        float prevFogStart = RenderSystem.getShaderFogStart(); // mc<=1.21.1
+        float prevFogEnd = RenderSystem.getShaderFogEnd(); // mc<=1.21.1
+        RenderSystem.setShaderFogColor(0, 0, 0, 0); // mc<=1.21.1
+        RenderSystem.setShaderFogStart(Float.MAX_VALUE); // mc<=1.21.1
+        RenderSystem.setShaderFogEnd(Float.MAX_VALUE); // mc<=1.21.1
+        //FogParameters prevFog = RenderSystem.getShaderFog(); // mc>=1.21.2
+        //RenderSystem.setShaderFog(FogParameters.NO_FOG); // mc>=1.21.2
 
         Matrix4f ortho = new Matrix4f().setOrtho(0, guiW, guiH, 0, 1000, 21000);
-        RenderSystem.setProjectionMatrix(ortho, VertexSorting.ORTHOGRAPHIC_Z);
+        RenderSystem.setProjectionMatrix(ortho, VertexSorting.ORTHOGRAPHIC_Z); // mc<=1.21.1
+        //RenderSystem.setProjectionMatrix(ortho, ProjectionType.ORTHOGRAPHIC); // mc>=1.21.2
         RenderSystem.getModelViewStack().pushMatrix();
         RenderSystem.getModelViewStack().identity();
-        RenderSystem.applyModelViewMatrix();
+        RenderSystem.applyModelViewMatrix(); // mc<=1.21.1
 
         if (cachedGuiGraphics == null) {
             cachedGuiGraphics = new GuiGraphics(mc, offscreenBufferSource);
@@ -358,13 +367,14 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         data.framebuffer.unbindWrite();
         prevTarget.bindWrite(false);
         RenderSystem.getModelViewStack().popMatrix();
-        RenderSystem.applyModelViewMatrix();
+        RenderSystem.applyModelViewMatrix(); // mc<=1.21.1
         RenderSystem.viewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
         RenderSystem.setProjectionMatrix(prevProjection, prevSorting);
         RenderSystem.setShaderColor(prevShaderColor[0], prevShaderColor[1], prevShaderColor[2], prevShaderColor[3]);
-        RenderSystem.setShaderFogColor(prevFogColor[0], prevFogColor[1], prevFogColor[2], prevFogColor[3]);
-        RenderSystem.setShaderFogStart(prevFogStart);
-        RenderSystem.setShaderFogEnd(prevFogEnd);
+        RenderSystem.setShaderFogColor(prevFogColor[0], prevFogColor[1], prevFogColor[2], prevFogColor[3]); // mc<=1.21.1
+        RenderSystem.setShaderFogStart(prevFogStart); // mc<=1.21.1
+        RenderSystem.setShaderFogEnd(prevFogEnd); // mc<=1.21.1
+        //RenderSystem.setShaderFog(prevFog); // mc>=1.21.2
         if (prevDepthTest) RenderSystem.enableDepthTest(); else RenderSystem.disableDepthTest();
         if (prevBlend) RenderSystem.enableBlend(); else RenderSystem.disableBlend();
         if (prevCull) RenderSystem.enableCull(); else RenderSystem.disableCull();

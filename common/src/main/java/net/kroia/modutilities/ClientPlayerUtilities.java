@@ -61,7 +61,7 @@ public class ClientPlayerUtilities {
      */
     public static void printToConsole(String message) {
         if (Minecraft.getInstance().player != null) {
-            Minecraft.getInstance().player.sendSystemMessage(Component.literal(message));
+            Minecraft.getInstance().player.displayClientMessage(Component.literal(message), false);
         } else {
             System.out.println(message);
         }
