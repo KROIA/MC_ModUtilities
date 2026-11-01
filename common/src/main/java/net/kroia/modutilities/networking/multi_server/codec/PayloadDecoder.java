@@ -8,7 +8,8 @@ import net.kroia.modutilities.networking.ExtraCodecUtils;
 import net.kroia.modutilities.networking.multi_server.payload.*;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+//import net.minecraft.resources.Identifier; // mc>=1.21.11
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -60,7 +61,8 @@ public class PayloadDecoder extends ByteToMessageDecoder {
             case PacketIds.MANUAL_DISCONNECT ->  ManualDisconnectionPayload.STREAM_CODEC.decode(in);
             case PacketIds.FORWARD_PACKET -> new ForwardPacketPayload(
                     ExtraCodecUtils.nullable(UUIDUtil.STREAM_CODEC).decode(in),
-                    ResourceLocation.STREAM_CODEC.decode(in),
+                    ResourceLocation.STREAM_CODEC.decode(in), // mc<=1.21.10
+                    //Identifier.STREAM_CODEC.decode(in), // mc>=1.21.11
                     ByteBufCodecs.BYTE_ARRAY.decode(in)
             );
             default -> throw new DecoderException(
