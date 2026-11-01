@@ -11,9 +11,11 @@ import com.mojang.blaze3d.systems.RenderSystem; // mc>=1.21.6
 import net.fabricmc.api.EnvType; // mc>=1.21.6
 import net.fabricmc.api.Environment; // mc>=1.21.6
 import net.minecraft.client.Minecraft; // mc>=1.21.6
-import net.minecraft.client.gui.GuiGraphics; // mc>=1.21.6
+import net.minecraft.client.gui.GuiGraphics; // mc>=1.21.6 mc<=1.21.11
+//import net.minecraft.client.gui.GuiGraphicsExtractor; // mc>=26.1
 import net.minecraft.client.gui.render.GuiRenderer; // mc>=1.21.6
-import net.minecraft.client.gui.render.state.GuiRenderState; // mc>=1.21.6
+import net.minecraft.client.gui.render.state.GuiRenderState; // mc>=1.21.6 mc<=1.21.11
+//import net.minecraft.client.renderer.state.gui.GuiRenderState; // mc>=26.1
 import net.minecraft.client.renderer.MultiBufferSource; // mc>=1.21.6
 import net.minecraft.client.renderer.fog.FogRenderer; // mc>=1.21.6
 
@@ -48,26 +50,32 @@ public final class OffscreenGuiRenderer implements AutoCloseable { // mc>=1.21.6
     public OffscreenGuiRenderer(MultiBufferSource.BufferSource bufferSource) { // mc>=1.21.6
         //renderer = new GuiRenderer(state, bufferSource, List.of()); // mc>=1.21.6 mc<=1.21.8
         Minecraft mc = Minecraft.getInstance(); // mc>=1.21.9
-        featureDispatcher = new net.minecraft.client.renderer.feature.FeatureRenderDispatcher(submitNodes, mc.getBlockRenderer(), bufferSource, // mc>=1.21.9
-                mc.getAtlasManager(), mc.renderBuffers().outlineBufferSource(), mc.renderBuffers().crumblingBufferSource(), mc.font); // mc>=1.21.9
+        featureDispatcher = new net.minecraft.client.renderer.feature.FeatureRenderDispatcher(submitNodes, mc.getBlockRenderer(), bufferSource, // mc>=1.21.9 mc<=1.21.11
+        //featureDispatcher = new net.minecraft.client.renderer.feature.FeatureRenderDispatcher(submitNodes, mc.getModelManager(), bufferSource, // mc>=26.1
+                mc.getAtlasManager(), mc.renderBuffers().outlineBufferSource(), mc.renderBuffers().crumblingBufferSource(), mc.font); // mc>=1.21.9 mc<=1.21.11
+                //mc.getAtlasManager(), mc.renderBuffers().outlineBufferSource(), mc.renderBuffers().crumblingBufferSource(), mc.font, mc.gameRenderer.getGameRenderState()); // mc>=26.1
         renderer = new GuiRenderer(state, bufferSource, submitNodes, featureDispatcher, List.of()); // mc>=1.21.9
     } // mc>=1.21.6
 
     /** Starts a new frame and returns the GuiGraphics that records into it. */
-    public GuiGraphics begin() { // mc>=1.21.6
+    public GuiGraphics begin() { // mc>=1.21.6 mc<=1.21.11
+    //public GuiGraphicsExtractor begin() { // mc>=26.1
         state.reset(); // mc>=1.21.6
         return new GuiGraphics(Minecraft.getInstance(), state); // mc>=1.21.6 mc<=1.21.10
-        //return new GuiGraphics(Minecraft.getInstance(), state, 0, 0); // mc>=1.21.11 (mouse position is unused offscreen)
+        //return new GuiGraphics(Minecraft.getInstance(), state, 0, 0); // mc>=1.21.11 mc<=1.21.11 (mouse position is unused offscreen)
+        //return new GuiGraphicsExtractor(Minecraft.getInstance(), state, 0, 0); // mc>=26.1 (mouse position is unused offscreen)
     } // mc>=1.21.6
 
     /**
      * Renders everything recorded since {@link #begin()} into {@code target}. Does not clear the target.
      * Restores the main render target, projection and fog afterwards.
      */
-    public void render(GuiGraphics graphics, RenderTarget target, int guiScale) { // mc>=1.21.6
+    public void render(GuiGraphics graphics, RenderTarget target, int guiScale) { // mc>=1.21.6 mc<=1.21.11
+    //public void render(GuiGraphicsExtractor graphics, RenderTarget target, int guiScale) { // mc>=26.1
         Minecraft mc = Minecraft.getInstance(); // mc>=1.21.6
         //graphics.renderDeferredTooltip(); // mc>=1.21.6 mc<=1.21.8
-        graphics.renderDeferredElements(); // mc>=1.21.9 (tooltip + deferred outlines)
+        graphics.renderDeferredElements(); // mc>=1.21.9 mc<=1.21.11 (tooltip + deferred outlines)
+        //graphics.extractDeferredElements(0, 0, 0f); // mc>=26.1 (tooltip + deferred outlines)
         RenderTarget prevTarget = mc.getMainRenderTarget(); // mc>=1.21.6
         var prevFog = RenderSystem.getShaderFog(); // mc>=1.21.6
         RenderSystem.backupProjectionMatrix(); // mc>=1.21.6
@@ -75,7 +83,8 @@ public final class OffscreenGuiRenderer implements AutoCloseable { // mc>=1.21.6
         ((net.kroia.mixin.MinecraftAccessor) mc).modutilities$setMainRenderTarget(target); // mc>=1.21.6
         try { // mc>=1.21.6
             renderer.render(fogRenderer.getBuffer(FogRenderer.FogMode.NONE)); // mc>=1.21.6
-            renderer.incrementFrameNumber(); // mc>=1.21.6
+            renderer.incrementFrameNumber(); // mc>=1.21.6 mc<=1.21.11
+            //renderer.endFrame(); // mc>=26.1
         } finally { // mc>=1.21.6
             ((net.kroia.mixin.MinecraftAccessor) mc).modutilities$setMainRenderTarget(prevTarget); // mc>=1.21.6
             activeSize = null; // mc>=1.21.6
