@@ -1,6 +1,7 @@
 package net.kroia.fabric;
 
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.loader.api.FabricLoader;
 
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
@@ -39,5 +40,9 @@ public final class ModUtilitiesFabric implements ModInitializer {
         });*/
 
         ModUtilitiesMod.init();
+
+        // Patbox Text Placeholder API: soft dependency, backend only class-loaded inside this guard.
+        if (FabricLoader.getInstance().isModLoaded("placeholder-api"))
+            PlaceholderApiBackend.attach();
     }
 }

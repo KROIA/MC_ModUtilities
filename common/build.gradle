@@ -8,6 +8,8 @@ repositories {
         name = "Jared's maven"
         url = "https://maven.blamejared.com/"
     }
+    // NEZNAMY TAB API (https://github.com/NEZNAMY/TAB-API)
+    maven { url 'https://jitpack.io' }
 }
 
 dependencies {
@@ -23,4 +25,8 @@ dependencies {
     // ModUtilitiesJeiPlugin is only class-loaded when JEI is present
     // (annotation scan on NeoForge, jei_mod_plugin entrypoint on Fabric).
     compileOnly("mezz.jei:jei-${rootProject.minecraft_version}-common-api:${rootProject.jei_version}")
+
+    // NEZNAMY TAB API - compileOnly soft dependency. TabPlaceholderBackend is only
+    // class-loaded when the "tab" mod is present (see ModUtilitiesMod.init).
+    compileOnly 'com.github.NEZNAMY:TAB-API:5.5.0'
 }

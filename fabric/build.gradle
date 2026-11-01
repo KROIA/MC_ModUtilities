@@ -8,6 +8,8 @@ repositories {
         name = "Jared's maven"
         url = "https://maven.blamejared.com/"
     }
+    // Patbox Text Placeholder API
+    maven { url = "https://maven.nucleoid.xyz/" }
 }
 
 architectury {
@@ -53,6 +55,10 @@ dependencies {
     // time ModUtilitiesJeiPlugin is touched during transform.
     modCompileOnlyApi("mezz.jei:jei-${rootProject.minecraft_version}-fabric-api:${rootProject.jei_version}")
     modRuntimeOnly("mezz.jei:jei-${rootProject.minecraft_version}-fabric:${rootProject.jei_version}")
+
+    // Patbox Text Placeholder API - compile-only soft dependency, never bundled.
+    // PlaceholderApiBackend is only class-loaded when "placeholder-api" is present.
+    modCompileOnly("eu.pb4:placeholder-api:2.4.2+1.21") { transitive = false }
 }
 
 processResources {
