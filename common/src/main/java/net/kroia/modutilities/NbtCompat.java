@@ -12,6 +12,9 @@ import net.minecraft.nbt.Tag;
 
 import java.util.Set;
 import java.util.UUID;
+//import com.mojang.serialization.MapCodec; // mc>=1.21.6
+//import net.minecraft.world.level.storage.ValueInput; // mc>=1.21.6
+//import net.minecraft.world.level.storage.ValueOutput; // mc>=1.21.6
 
 /**
  * Version-agnostic NBT access. MC 1.21.5 changed most {@link CompoundTag}/{@link ListTag} getters
@@ -99,6 +102,22 @@ public final class NbtCompat {
     public static void putUUID(CompoundTag tag, String key, UUID uuid) {
         tag.putIntArray(key, UUIDUtil.uuidToIntArray(uuid));
     }
+
+    // ---- 1.21.6+ ValueInput / ValueOutput bridge ----
+
+    // mc>=1.21.6: BlockEntity.saveAdditional/loadAdditional take ValueOutput/ValueInput instead of a CompoundTag.
+    // These two methods let CompoundTag-based code keep its on-disk format (all keys at the same level).
+    //private static final MapCodec<CompoundTag> WHOLE_COMPOUND = MapCodec.assumeMapUnsafe(CompoundTag.CODEC); // mc>=1.21.6
+
+    /** Reads every key of {@code input} into a new CompoundTag (empty if the input is empty). MC 1.21.6+. */
+    //public static CompoundTag readAll(ValueInput input) { // mc>=1.21.6
+        //return input.read(WHOLE_COMPOUND).orElseGet(CompoundTag::new); // mc>=1.21.6
+    //} // mc>=1.21.6
+
+    /** Writes every key of {@code tag} into {@code output} at the same level. MC 1.21.6+. */
+    //public static void writeAll(ValueOutput output, CompoundTag tag) { // mc>=1.21.6
+        //output.store(WHOLE_COMPOUND, tag); // mc>=1.21.6
+    //} // mc>=1.21.6
 
     // ---- readers with the 1.21.1 defaults ----
 
