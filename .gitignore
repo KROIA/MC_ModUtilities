@@ -26,3 +26,4 @@ forge*changelog.txt
 
 .claude
 CLAUDE.md
+__pycache__/
