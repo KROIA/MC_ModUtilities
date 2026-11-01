@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui.elements;
 
+import net.kroia.modutilities.gui.InputConstants;
 import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Rectangle;
@@ -34,7 +35,7 @@ public class CheckBox extends GuiElement {
     Rectangle hitboxRect;
     final Rectangle checkBoxRect = new Rectangle(0,0,0,0);
     final Rectangle checkBoxCheckedRect = new Rectangle(0,0,0,0);
-    int triggerButton = 0;
+    int triggerButton = InputConstants.MOUSE_BUTTON_LEFT;
     int checkBoxFrameColor = 0xff000000;
     int checkBoxCheckedColor = 0xff000000;
     /**

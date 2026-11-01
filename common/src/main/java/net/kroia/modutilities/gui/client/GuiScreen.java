@@ -15,7 +15,6 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
 
@@ -636,19 +635,19 @@ public abstract class GuiScreen extends Screen {
 
         if(debugKeysEnabled) {
             switch (keyCode) {
-                case GLFW.GLFW_KEY_F3: {
+                case InputConstants.KEY_F3: {
                     enableGizmos = !enableGizmos;
                     return true;
                 }
-                case GLFW.GLFW_KEY_F4: {
+                case InputConstants.KEY_F4: {
                     enableBackground = !enableBackground;
                     return true;
                 }
-                case GLFW.GLFW_KEY_F5: {
+                case InputConstants.KEY_F5: {
                     enableForeground = !enableForeground;
                     return true;
                 }
-                case GLFW.GLFW_KEY_F6: {
+                case InputConstants.KEY_F6: {
                     enableTooltip = !enableTooltip;
                     return true;
                 }
@@ -663,7 +662,7 @@ public abstract class GuiScreen extends Screen {
             //ret = super.keyPressed(new net.minecraft.client.input.KeyEvent(keyCode, scanCode, modifiers)); // mc>=1.21.9
             if(ret)
                 return true;
-            if(keyCode == GLFW.GLFW_KEY_E) {
+            if(keyCode == InputConstants.KEY_E) {
                 onClose();
                 return true;
             }
@@ -704,7 +703,8 @@ public abstract class GuiScreen extends Screen {
 
     //@Override // mc>=1.21.9
     //public boolean keyPressed(net.minecraft.client.input.KeyEvent event) { // mc>=1.21.9
-        //return keyPressed(event.key(), event.scancode(), event.modifiers()); // mc>=1.21.9
+        //return keyPressed(event.key(), event.scancode(), event.modifiers()); // mc>=1.21.9 mc<=26.2
+        //return keyPressed(event.key(), event.keycode(), event.modifiers()); // mc>=26.3
     //} // mc>=1.21.9
 
     //@Override // mc>=1.21.9

@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui.elements;
 
+import net.kroia.modutilities.gui.InputConstants;
 import net.kroia.modutilities.ClientPlayerUtilities;
 import net.kroia.modutilities.ItemUtilities;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
@@ -193,7 +194,7 @@ public class ItemSelectionView extends GuiElement {
         }
         @Override
         public boolean mouseClickedOverElement(int button) {
-            if (button == 0) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT) {
                 onItemSelected.accept(itemStack);
                 return true;
             }
