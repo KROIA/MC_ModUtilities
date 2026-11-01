@@ -74,6 +74,16 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
 
     public String getChannelId() { return "default"; }
 
+    // MC 1.21.5: capture the group state before this block entity is removed; consumed by
+    // AbstractDisplayBlock.affectNeighborsAfterRemoval (replaces the pre-1.21.5 capture in onRemove).
+    //@Override // mc>=1.21.5
+    //public void preRemoveSideEffects(BlockPos pos, BlockState state) { // mc>=1.21.5
+        //super.preRemoveSideEffects(pos, state); // mc>=1.21.5
+        //AbstractDisplayBlockEntity ctrl = getControllerEntity(); // mc>=1.21.5
+        //AbstractDisplayBlock.PENDING_REMOVALS.put(pos.immutable(), new AbstractDisplayBlock.PendingRemoval( // mc>=1.21.5
+                //getChannelId(), ctrl != null ? ctrl.captureTransferState() : null)); // mc>=1.21.5
+    //} // mc>=1.21.5
+
     /**
      * Whether right-clicking the display block opens the built-in synced interaction screen.
      * Override and return {@code false} to disable the default screen — useful for

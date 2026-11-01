@@ -144,37 +144,59 @@ public abstract class AbstractDisplayBlock extends HorizontalDirectionalBlock im
         }
     }
 
-    @Override
-    @SuppressWarnings("deprecation")
-    public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
-        if (!newState.is(state.getBlock())) {
-            Direction facing = state.getValue(FACING);
-            CompoundTag capturedState = null;
-            String channelId = null;
-            if (!level.isClientSide()) {
-                BlockEntity be = level.getBlockEntity(pos);
-                if (be instanceof AbstractDisplayBlockEntity dbe) {
-                    channelId = dbe.getChannelId();
-                    AbstractDisplayBlockEntity ctrl = dbe.getControllerEntity();
-                    if (ctrl != null) {
-                        capturedState = ctrl.captureTransferState();
-                    }
-                }
-            }
-            super.onRemove(state, level, pos, newState, movedByPiston);
-            if (!level.isClientSide()) {
-                try {
-                    if (channelId != null) {
-                        AbstractDisplayBlockEntity.recalculateNeighborGroups(level, pos, facing, channelId, capturedState);
-                    } else {
-                        AbstractDisplayBlockEntity.recalculateNeighborGroups(level, pos, facing);
-                    }
-                } catch (Exception e) {
-                    net.kroia.modutilities.ModUtilitiesMod.LOGGER.warn("Failed to recalculate display groups on removal", e);
-                }
-            }
-        } else {
-            super.onRemove(state, level, pos, newState, movedByPiston);
-        }
-    }
+    @Override // mc<=1.21.4
+    @SuppressWarnings("deprecation") // mc<=1.21.4
+    public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) { // mc<=1.21.4
+        if (!newState.is(state.getBlock())) { // mc<=1.21.4
+            Direction facing = state.getValue(FACING); // mc<=1.21.4
+            CompoundTag capturedState = null; // mc<=1.21.4
+            String channelId = null; // mc<=1.21.4
+            if (!level.isClientSide()) { // mc<=1.21.4
+                BlockEntity be = level.getBlockEntity(pos); // mc<=1.21.4
+                if (be instanceof AbstractDisplayBlockEntity dbe) { // mc<=1.21.4
+                    channelId = dbe.getChannelId(); // mc<=1.21.4
+                    AbstractDisplayBlockEntity ctrl = dbe.getControllerEntity(); // mc<=1.21.4
+                    if (ctrl != null) { // mc<=1.21.4
+                        capturedState = ctrl.captureTransferState(); // mc<=1.21.4
+                    } // mc<=1.21.4
+                } // mc<=1.21.4
+            } // mc<=1.21.4
+            super.onRemove(state, level, pos, newState, movedByPiston); // mc<=1.21.4
+            if (!level.isClientSide()) { // mc<=1.21.4
+                try { // mc<=1.21.4
+                    if (channelId != null) { // mc<=1.21.4
+                        AbstractDisplayBlockEntity.recalculateNeighborGroups(level, pos, facing, channelId, capturedState); // mc<=1.21.4
+                    } else { // mc<=1.21.4
+                        AbstractDisplayBlockEntity.recalculateNeighborGroups(level, pos, facing); // mc<=1.21.4
+                    } // mc<=1.21.4
+                } catch (Exception e) { // mc<=1.21.4
+                    net.kroia.modutilities.ModUtilitiesMod.LOGGER.warn("Failed to recalculate display groups on removal", e); // mc<=1.21.4
+                } // mc<=1.21.4
+            } // mc<=1.21.4
+        } else { // mc<=1.21.4
+            super.onRemove(state, level, pos, newState, movedByPiston); // mc<=1.21.4
+        } // mc<=1.21.4
+    } // mc<=1.21.4
+
+    // MC 1.21.5 split onRemove: the block entity reports its state in preRemoveSideEffects (before it is
+    // removed), then the block recalculates the neighbor groups in affectNeighborsAfterRemoval (server only,
+    // block actually changed). The captured state is handed over through this map, keyed by position.
+    //record PendingRemoval(String channelId, CompoundTag capturedState) {} // mc>=1.21.5
+    //static final java.util.Map<BlockPos, PendingRemoval> PENDING_REMOVALS = new java.util.HashMap<>(); // mc>=1.21.5
+
+    //@Override // mc>=1.21.5
+    //protected void affectNeighborsAfterRemoval(BlockState state, net.minecraft.server.level.ServerLevel level, BlockPos pos, boolean movedByPiston) { // mc>=1.21.5
+        //super.affectNeighborsAfterRemoval(state, level, pos, movedByPiston); // mc>=1.21.5
+        //Direction facing = state.getValue(FACING); // mc>=1.21.5
+        //PendingRemoval pending = PENDING_REMOVALS.remove(pos); // mc>=1.21.5
+        //try { // mc>=1.21.5
+            //if (pending != null && pending.channelId() != null) { // mc>=1.21.5
+                //AbstractDisplayBlockEntity.recalculateNeighborGroups(level, pos, facing, pending.channelId(), pending.capturedState()); // mc>=1.21.5
+            //} else { // mc>=1.21.5
+                //AbstractDisplayBlockEntity.recalculateNeighborGroups(level, pos, facing); // mc>=1.21.5
+            //} // mc>=1.21.5
+        //} catch (Exception e) { // mc>=1.21.5
+            //net.kroia.modutilities.ModUtilitiesMod.LOGGER.warn("Failed to recalculate display groups on removal", e); // mc>=1.21.5
+        //} // mc>=1.21.5
+    //} // mc>=1.21.5
 }
