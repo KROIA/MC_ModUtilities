@@ -4,7 +4,8 @@ import net.kroia.mixin.BlockEntityTypeInvoker; // mc>=1.21.2
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+//import net.minecraft.resources.Identifier; // mc>=1.21.11
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -31,19 +32,22 @@ public final class RegistryCompat {
     }
 
     /** Sets the block registry ID on the properties; MC 1.21.2+ requires it before the block is constructed, 1.21.1 ignores it. */
-    public static BlockBehaviour.Properties blockProperties(BlockBehaviour.Properties props, ResourceLocation id) {
+    public static BlockBehaviour.Properties blockProperties(BlockBehaviour.Properties props, ResourceLocation id) { // mc<=1.21.10
+    //public static BlockBehaviour.Properties blockProperties(BlockBehaviour.Properties props, Identifier id) { // mc>=1.21.11
         //return props; // mc<=1.21.1
         return props.setId(ResourceKey.create(Registries.BLOCK, id)); // mc>=1.21.2
     }
 
     /** Sets the item registry ID on the properties; MC 1.21.2+ requires it before the item is constructed, 1.21.1 ignores it. */
-    public static Item.Properties itemProperties(Item.Properties props, ResourceLocation id) {
+    public static Item.Properties itemProperties(Item.Properties props, ResourceLocation id) { // mc<=1.21.10
+    //public static Item.Properties itemProperties(Item.Properties props, Identifier id) { // mc>=1.21.11
         //return props; // mc<=1.21.1
         return props.setId(ResourceKey.create(Registries.ITEM, id)); // mc>=1.21.2
     }
 
     /** Like {@link #itemProperties}, but for a BlockItem: it keeps the block's translation key, matching the 1.21.1 BlockItem behaviour (MC 1.21.2 registry ID requirement). */
-    public static Item.Properties blockItemProperties(Item.Properties props, ResourceLocation id) {
+    public static Item.Properties blockItemProperties(Item.Properties props, ResourceLocation id) { // mc<=1.21.10
+    //public static Item.Properties blockItemProperties(Item.Properties props, Identifier id) { // mc>=1.21.11
         //return props; // mc<=1.21.1
         return props.useBlockDescriptionPrefix().setId(ResourceKey.create(Registries.ITEM, id)); // mc>=1.21.2
     }

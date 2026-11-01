@@ -1,6 +1,7 @@
 package net.kroia.modutilities.networking.multi_server.payload;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+//import net.minecraft.resources.Identifier; // mc>=1.21.11
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -25,7 +26,8 @@ import java.util.UUID;
  */
 public record ForwardPacketPayload(
         @Nullable UUID senderPlayerUUID,
-        ResourceLocation packetType,
+        ResourceLocation packetType, // mc<=1.21.10
+        //Identifier packetType, // mc>=1.21.11
         byte[] data
 ) implements Payload {
     /**

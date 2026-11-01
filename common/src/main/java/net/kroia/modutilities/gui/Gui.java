@@ -7,7 +7,8 @@ import net.kroia.modutilities.gui.geometry.Rectangle;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+//import net.minecraft.resources.Identifier; // mc>=1.21.11
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.item.ItemStack;
 import org.joml.Quaternionf;
@@ -1241,7 +1242,8 @@ public class Gui {
      * @param width   the rendered width
      * @param height  the rendered height
      */
-    public void drawTexture(ResourceLocation texture, int x, int y,  int uOffset, int vOffset, int width, int height)
+    public void drawTexture(ResourceLocation texture, int x, int y,  int uOffset, int vOffset, int width, int height) // mc<=1.21.10
+    //public void drawTexture(Identifier texture, int x, int y,  int uOffset, int vOffset, int width, int height) // mc>=1.21.11
     {
         graphics.blit(texture, x, y, uOffset, vOffset, width, height);
     }
@@ -1260,7 +1262,8 @@ public class Gui {
      * @param textureWidth  the total texture width
      * @param textureHeight the total texture height
      */
-    public void drawTexture(ResourceLocation atlasLocation, int x, int y, float uOffset, float vOffset, int width, int height, int textureWidth, int textureHeight)
+    public void drawTexture(ResourceLocation atlasLocation, int x, int y, float uOffset, float vOffset, int width, int height, int textureWidth, int textureHeight) // mc<=1.21.10
+    //public void drawTexture(Identifier atlasLocation, int x, int y, float uOffset, float vOffset, int width, int height, int textureWidth, int textureHeight) // mc>=1.21.11
     {
         graphics.blit(atlasLocation, x, y, uOffset, vOffset, width, height, textureWidth, textureHeight);
     }
@@ -1273,9 +1276,11 @@ public class Gui {
      * @param path  the resource path under that namespace
      * @return a resource location for the given namespace and path
      */
-    public static ResourceLocation createResourceLocation(String modID, String path)
+    public static ResourceLocation createResourceLocation(String modID, String path) // mc<=1.21.10
+    //public static Identifier createResourceLocation(String modID, String path) // mc>=1.21.11
     {
-        return ResourceLocation.fromNamespaceAndPath(modID, path);
+        return ResourceLocation.fromNamespaceAndPath(modID, path); // mc<=1.21.10
+        //return Identifier.fromNamespaceAndPath(modID, path); // mc>=1.21.11
     }
 
     /**
