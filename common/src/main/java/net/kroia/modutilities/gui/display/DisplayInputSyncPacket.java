@@ -10,7 +10,8 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+//import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+import net.minecraft.resources.Identifier; // mc>=1.21.11
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
@@ -25,7 +26,8 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 public class DisplayInputSyncPacket extends NetworkPacket {
 
     public static final Type<DisplayInputSyncPacket> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "display_input_sync"));
+            //new Type<>(ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "display_input_sync")); // mc<=1.21.10
+            new Type<>(Identifier.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "display_input_sync")); // mc>=1.21.11
 
     public static final StreamCodec<RegistryFriendlyByteBuf, DisplayInputSyncPacket> STREAM_CODEC =
             StreamCodec.composite(

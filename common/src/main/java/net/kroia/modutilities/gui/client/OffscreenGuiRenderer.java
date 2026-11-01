@@ -56,7 +56,8 @@ public final class OffscreenGuiRenderer implements AutoCloseable { // mc>=1.21.6
     /** Starts a new frame and returns the GuiGraphics that records into it. */
     public GuiGraphics begin() { // mc>=1.21.6
         state.reset(); // mc>=1.21.6
-        return new GuiGraphics(Minecraft.getInstance(), state); // mc>=1.21.6
+        //return new GuiGraphics(Minecraft.getInstance(), state); // mc>=1.21.6 mc<=1.21.10
+        return new GuiGraphics(Minecraft.getInstance(), state, 0, 0); // mc>=1.21.11 (mouse position is unused offscreen)
     } // mc>=1.21.6
 
     /**

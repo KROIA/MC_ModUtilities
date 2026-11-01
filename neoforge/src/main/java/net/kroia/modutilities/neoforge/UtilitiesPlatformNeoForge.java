@@ -4,7 +4,8 @@ import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.PlatformAbstraction;
 import net.kroia.modutilities.UtilitiesPlatform;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+//import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+import net.minecraft.resources.Identifier; // mc>=1.21.11
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -32,7 +33,8 @@ public class UtilitiesPlatformNeoForge implements PlatformAbstraction {
         String[] parts = itemID.split(":", 2);
         String namespace = parts[0];
         String path = parts[1];
-        Item item = BuiltInRegistries.ITEM.getOptional(ResourceLocation.fromNamespaceAndPath(namespace, path)).orElse(null);
+        //Item item = BuiltInRegistries.ITEM.getOptional(ResourceLocation.fromNamespaceAndPath(namespace, path)).orElse(null); // mc<=1.21.10
+        Item item = BuiltInRegistries.ITEM.getOptional(Identifier.fromNamespaceAndPath(namespace, path)).orElse(null); // mc>=1.21.11
         if (item == null) {
             return ItemStack.EMPTY;
         }
@@ -41,7 +43,8 @@ public class UtilitiesPlatformNeoForge implements PlatformAbstraction {
 
     @Override
     public String getItemIDStr(Item item) {
-        ResourceLocation key = BuiltInRegistries.ITEM.getKey(item);
+        //ResourceLocation key = BuiltInRegistries.ITEM.getKey(item); // mc<=1.21.10
+        Identifier key = BuiltInRegistries.ITEM.getKey(item); // mc>=1.21.11
         if (key == null) {
             return "";
         }

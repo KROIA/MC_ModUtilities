@@ -10,9 +10,11 @@ import net.kroia.modutilities.gui.elements.base.VertexBuffer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
+//import net.minecraft.client.renderer.RenderType; // mc<=1.21.10
+import net.minecraft.client.renderer.rendertype.RenderType; import net.minecraft.client.renderer.rendertype.RenderTypes; // mc>=1.21.11
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+//import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+import net.minecraft.resources.Identifier; // mc>=1.21.11
 import net.minecraft.world.item.ItemStack;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
@@ -132,7 +134,8 @@ public class WorldGraphics implements IGraphics {
         int b = color & 0xFF;
 
         Matrix4f matrix = poseStack.last().pose();
-        VertexConsumer consumer = bufferSource.getBuffer(RenderType.debugQuads());
+        //VertexConsumer consumer = bufferSource.getBuffer(RenderType.debugQuads()); // mc<=1.21.10
+        VertexConsumer consumer = bufferSource.getBuffer(RenderTypes.debugQuads()); // mc>=1.21.11
         consumer.addVertex(matrix, x1, y1, drawZ).setColor(r, g, b, a);
         consumer.addVertex(matrix, x1, y2, drawZ).setColor(r, g, b, a);
         consumer.addVertex(matrix, x2, y2, drawZ).setColor(r, g, b, a);
@@ -148,7 +151,8 @@ public class WorldGraphics implements IGraphics {
         int gT = (colorTo >> 8) & 0xFF, bT = colorTo & 0xFF;
 
         Matrix4f matrix = poseStack.last().pose();
-        VertexConsumer consumer = bufferSource.getBuffer(RenderType.debugQuads());
+        //VertexConsumer consumer = bufferSource.getBuffer(RenderType.debugQuads()); // mc<=1.21.10
+        VertexConsumer consumer = bufferSource.getBuffer(RenderTypes.debugQuads()); // mc>=1.21.11
         consumer.addVertex(matrix, x1, y1, drawZ).setColor(rF, gF, bF, aF);
         consumer.addVertex(matrix, x1, y2, drawZ).setColor(rT, gT, bT, aT);
         consumer.addVertex(matrix, x2, y2, drawZ).setColor(rT, gT, bT, aT);
@@ -195,12 +199,14 @@ public class WorldGraphics implements IGraphics {
     // ── Textures (no-op for now) ────────────────────────────────────────────
 
     @Override
-    public void blit(ResourceLocation atlasLocation, int x, int y, int uOffset, int vOffset, int width, int height) {
+    //public void blit(ResourceLocation atlasLocation, int x, int y, int uOffset, int vOffset, int width, int height) { // mc<=1.21.10
+    public void blit(Identifier atlasLocation, int x, int y, int uOffset, int vOffset, int width, int height) { // mc>=1.21.11
         // No-op: texture rendering in world space needs a different approach
     }
 
     @Override
-    public void blit(ResourceLocation atlasLocation, int x, int y, float uOffset, float vOffset, int width, int height, int textureWidth, int textureHeight) {
+    //public void blit(ResourceLocation atlasLocation, int x, int y, float uOffset, float vOffset, int width, int height, int textureWidth, int textureHeight) { // mc<=1.21.10
+    public void blit(Identifier atlasLocation, int x, int y, float uOffset, float vOffset, int width, int height, int textureWidth, int textureHeight) { // mc>=1.21.11
         // No-op: texture rendering in world space needs a different approach
     }
 
@@ -297,7 +303,8 @@ public class WorldGraphics implements IGraphics {
         float p4x = x1 - nx, p4y = y1 - ny;
 
         Matrix4f matrix = poseStack.last().pose();
-        VertexConsumer consumer = bufferSource.getBuffer(RenderType.debugQuads());
+        //VertexConsumer consumer = bufferSource.getBuffer(RenderType.debugQuads()); // mc<=1.21.10
+        VertexConsumer consumer = bufferSource.getBuffer(RenderTypes.debugQuads()); // mc>=1.21.11
         consumer.addVertex(matrix, p1x, p1y, drawZ).setColor(red, green, blue, alpha);
         consumer.addVertex(matrix, p2x, p2y, drawZ).setColor(red, green, blue, alpha);
         consumer.addVertex(matrix, p3x, p3y, drawZ).setColor(red, green, blue, alpha);
@@ -308,7 +315,8 @@ public class WorldGraphics implements IGraphics {
     public void drawVertexBuffer_QUADS(VertexBuffer buffer) {
         drawZ += DRAW_Z_STEP;
         Matrix4f matrix = poseStack.last().pose();
-        VertexConsumer consumer = bufferSource.getBuffer(RenderType.debugQuads());
+        //VertexConsumer consumer = bufferSource.getBuffer(RenderType.debugQuads()); // mc<=1.21.10
+        VertexConsumer consumer = bufferSource.getBuffer(RenderTypes.debugQuads()); // mc>=1.21.11
         for (Vertex vertex : buffer.getVertices()) {
             consumer.addVertex(matrix, vertex.x, vertex.y, drawZ)
                     .setColor(vertex.red, vertex.green, vertex.blue, vertex.alpha);

@@ -9,7 +9,8 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
-import net.minecraft.resources.ResourceLocation;
+//import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+import net.minecraft.resources.Identifier; // mc>=1.21.11
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -44,7 +45,8 @@ public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
         JsonObject json = new JsonObject();
 
         // Item ID
-        ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        //ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()); // mc<=1.21.10
+        Identifier itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()); // mc>=1.21.11
         json.addProperty("id", itemId.toString());
 
         // Count
@@ -91,7 +93,8 @@ public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
         if (!obj.has("id")) {
             throw new JsonParseException("ItemStack JSON missing 'id' field");
         }
-        ResourceLocation itemId = ResourceLocation.tryParse(obj.get("id").getAsString());
+        //ResourceLocation itemId = ResourceLocation.tryParse(obj.get("id").getAsString()); // mc<=1.21.10
+        Identifier itemId = Identifier.tryParse(obj.get("id").getAsString()); // mc>=1.21.11
         if (itemId == null) {
             throw new JsonParseException("Invalid item resource location: " + obj.get("id").getAsString());
         }

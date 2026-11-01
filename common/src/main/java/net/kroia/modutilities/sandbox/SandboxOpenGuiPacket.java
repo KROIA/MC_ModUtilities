@@ -17,13 +17,15 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+//import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+import net.minecraft.resources.Identifier; // mc>=1.21.11
 import net.minecraft.server.level.ServerPlayer;
 
 public class SandboxOpenGuiPacket extends NetworkPacket {
     public static Sandbox.SandboxNetwork network;
 
-    public static final Type<SandboxOpenGuiPacket> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "sandbox_open_packet"));
+    //public static final Type<SandboxOpenGuiPacket> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "sandbox_open_packet")); // mc<=1.21.10
+    public static final Type<SandboxOpenGuiPacket> TYPE = new Type<>(Identifier.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "sandbox_open_packet")); // mc>=1.21.11
 
     public static final StreamCodec<RegistryFriendlyByteBuf, SandboxOpenGuiPacket> STREAM_CODEC = StreamCodec.composite(
             ExtraCodecUtils.enumStreamCodec(GuiType.class), p -> p.guiType,

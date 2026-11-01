@@ -12,7 +12,8 @@ import net.kroia.modutilities.gui.geometry.Rectangle;
 import net.kroia.modutilities.gui.layout.Layout;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+//import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+import net.minecraft.resources.Identifier; // mc>=1.21.11
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.item.ItemStack;
 import org.joml.Quaternionf;
@@ -2136,7 +2137,8 @@ public abstract class GuiElement {
     {
         root.drawTexture(texture.getResourceLocation(), x, y, texture.getUVOffsetX(), texture.getUVOffsetY(), width, height, width, height);
     }
-    public void drawTexture(ResourceLocation atlasLocation, int x, int y, float uOffset, float vOffset, int width, int height, int textureWidth, int textureHeight)
+    //public void drawTexture(ResourceLocation atlasLocation, int x, int y, float uOffset, float vOffset, int width, int height, int textureWidth, int textureHeight) // mc<=1.21.10
+    public void drawTexture(Identifier atlasLocation, int x, int y, float uOffset, float vOffset, int width, int height, int textureWidth, int textureHeight) // mc>=1.21.11
     {
         root.drawTexture(atlasLocation, x, y, uOffset, vOffset, width, height, textureWidth, textureHeight);
     }

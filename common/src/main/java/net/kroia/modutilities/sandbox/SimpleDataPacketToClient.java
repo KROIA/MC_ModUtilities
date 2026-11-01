@@ -7,11 +7,13 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+//import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+import net.minecraft.resources.Identifier; // mc>=1.21.11
 import net.minecraft.server.level.ServerPlayer;
 
 public class SimpleDataPacketToClient extends NetworkPacket {
-    public static final Type<SimpleDataPacketToClient> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "simple_data_packet_to_client"));
+    //public static final Type<SimpleDataPacketToClient> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "simple_data_packet_to_client")); // mc<=1.21.10
+    public static final Type<SimpleDataPacketToClient> TYPE = new Type<>(Identifier.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "simple_data_packet_to_client")); // mc>=1.21.11
     public static final StreamCodec<RegistryFriendlyByteBuf, SimpleDataPacketToClient> STREAM_CODEC = StreamCodec.composite(
             ByteBufCodecs.INT, p -> p.value,
             SimpleDataPacketToClient::new

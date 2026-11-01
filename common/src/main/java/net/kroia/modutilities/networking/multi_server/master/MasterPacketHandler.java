@@ -14,7 +14,8 @@ import net.kroia.modutilities.networking.multi_server.payload.HandshakeResultPay
 import net.kroia.modutilities.networking.multi_server.payload.Payload;
 import net.kroia.modutilities.networking.multi_server.slave.SlaveServerClient;
 import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
+//import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+import net.minecraft.resources.Identifier; // mc>=1.21.11
 import net.minecraft.server.MinecraftServer;
 
 import java.io.IOException;
@@ -132,7 +133,8 @@ public class MasterPacketHandler extends SimpleChannelInboundHandler<Payload> {
                     return;
                 }
 
-                ResourceLocation packetResouceLoc = bb.packetType();
+                //ResourceLocation packetResouceLoc = bb.packetType(); // mc<=1.21.10
+                Identifier packetResouceLoc = bb.packetType(); // mc>=1.21.11
                 ByteBuf buf = ctx.alloc().buffer();
                 buf.writeBytes(bb.data());
                 RegistryFriendlyByteBuf dataBuf = new RegistryFriendlyByteBuf(buf, mcServer.registryAccess());

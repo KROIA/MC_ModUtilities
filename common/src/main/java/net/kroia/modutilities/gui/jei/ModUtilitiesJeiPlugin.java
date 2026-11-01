@@ -5,7 +5,8 @@ import mezz.jei.api.JeiPlugin;
 import mezz.jei.api.registration.IGuiHandlerRegistration;
 import mezz.jei.api.runtime.IJeiRuntime;
 import net.kroia.modutilities.ModUtilitiesMod;
-import net.minecraft.resources.ResourceLocation;
+//import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+import net.minecraft.resources.Identifier; // mc>=1.21.11
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -51,13 +52,16 @@ import java.util.function.Consumer;
 @JeiPlugin
 public class ModUtilitiesJeiPlugin implements IModPlugin {
 
-    private static final ResourceLocation PLUGIN_UID =
-            ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "jei_overlay_control");
+    //private static final ResourceLocation PLUGIN_UID = // mc<=1.21.10
+    private static final Identifier PLUGIN_UID = // mc>=1.21.11
+            //ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "jei_overlay_control"); // mc<=1.21.10
+            Identifier.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "jei_overlay_control"); // mc>=1.21.11
 
     public ModUtilitiesJeiPlugin() {}
 
     @Override
-    public ResourceLocation getPluginUid() {
+    //public ResourceLocation getPluginUid() { // mc<=1.21.10
+    public Identifier getPluginUid() { // mc>=1.21.11
         return PLUGIN_UID;
     }
 

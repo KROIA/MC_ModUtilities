@@ -10,7 +10,8 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+//import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+import net.minecraft.resources.Identifier; // mc>=1.21.11
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.UUID;
@@ -23,7 +24,8 @@ public final class GenericResponsePacket extends NetworkPacket
 {
 
     /** The {@link CustomPacketPayload.Type} identifier for this packet. */
-    public static final Type<GenericResponsePacket> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "generic_response_packet"));
+    //public static final Type<GenericResponsePacket> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "generic_response_packet")); // mc<=1.21.10
+    public static final Type<GenericResponsePacket> TYPE = new Type<>(Identifier.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "generic_response_packet")); // mc>=1.21.11
 
     /** Stream codec used to (de)serialize the packet over the network. */
     public static final StreamCodec<RegistryFriendlyByteBuf, GenericResponsePacket> STREAM_CODEC = StreamCodec.composite(

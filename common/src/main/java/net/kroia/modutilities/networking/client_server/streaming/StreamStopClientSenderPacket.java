@@ -10,7 +10,8 @@ import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+//import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+import net.minecraft.resources.Identifier; // mc>=1.21.11
 
 import java.util.UUID;
 
@@ -19,7 +20,8 @@ import java.util.UUID;
  * The packet is used to stop the stream or to notify the other side that the stream has stopped.
  */
 public class StreamStopClientSenderPacket extends NetworkPacket {
-    public static final Type<StreamStopClientSenderPacket> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "stream_stop_client_sender_packet"));
+    //public static final Type<StreamStopClientSenderPacket> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "stream_stop_client_sender_packet")); // mc<=1.21.10
+    public static final Type<StreamStopClientSenderPacket> TYPE = new Type<>(Identifier.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "stream_stop_client_sender_packet")); // mc>=1.21.11
 
     public static final StreamCodec<RegistryFriendlyByteBuf, StreamStopClientSenderPacket> STREAM_CODEC = StreamCodec.composite(
             UUIDUtil.STREAM_CODEC, p -> p.streamID,

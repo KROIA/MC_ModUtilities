@@ -12,10 +12,12 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics; // mc>=1.20.1
 //import com.mojang.blaze3d.vertex.PoseStack; // mc<=1.19.4
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
+//import net.minecraft.client.renderer.RenderType; // mc<=1.21.10
+import net.minecraft.client.renderer.rendertype.RenderType; import net.minecraft.client.renderer.rendertype.RenderTypes; // mc>=1.21.11
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+//import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+import net.minecraft.resources.Identifier; // mc>=1.21.11
 import net.minecraft.util.ARGB; // mc>=1.21.2
 import net.kroia.mixin.GuiGraphicsAccessor;
 import net.minecraft.world.item.ItemStack;
@@ -344,7 +346,8 @@ public class ClientGraphics implements IGraphics {
      * @param height        the height of the rendered region
      */
     @Override
-    public void blit(ResourceLocation atlasLocation, int x, int y, int uOffset, int vOffset, int width, int height)
+    //public void blit(ResourceLocation atlasLocation, int x, int y, int uOffset, int vOffset, int width, int height) // mc<=1.21.10
+    public void blit(Identifier atlasLocation, int x, int y, int uOffset, int vOffset, int width, int height) // mc>=1.21.11
     {
         //RenderSystem.setShaderTexture(0, atlasLocation);
         //Screen.blit(graphics, x, y, uOffset, vOffset, width, height, width, height); // mc<=1.19.4
@@ -368,7 +371,8 @@ public class ClientGraphics implements IGraphics {
      * @param textureHeight the total texture height
      */
     @Override
-    public void blit(ResourceLocation atlasLocation, int x, int y, float uOffset, float vOffset, int width, int height, int textureWidth, int textureHeight)
+    //public void blit(ResourceLocation atlasLocation, int x, int y, float uOffset, float vOffset, int width, int height, int textureWidth, int textureHeight) // mc<=1.21.10
+    public void blit(Identifier atlasLocation, int x, int y, float uOffset, float vOffset, int width, int height, int textureWidth, int textureHeight) // mc>=1.21.11
     {
         //RenderSystem.setShaderTexture(0, atlasLocation);
         //Screen.blit(graphics, x, y, uOffset, vOffset, width, height, textureWidth, textureHeight); // mc<=1.19.4
