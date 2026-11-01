@@ -1,0 +1,91 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:142.0) Gecko/20100101 Firefox/142.0" version="28.1.1">
+  <diagram name="Seite-1" id="sYKm5Ifd1OKCiulALvvx">
+    <mxGraphModel dx="1188" dy="633" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="gCXiOqbqyDKVwvzZwyxY-1" value="This is a tooltip text" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D0D0D0;fontColor=#333333;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="360" y="360" width="120" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="gCXiOqbqyDKVwvzZwyxY-2" value="" style="shape=image;html=1;verticalAlign=top;verticalLabelPosition=bottom;labelBackgroundColor=#ffffff;imageAspect=0;aspect=fixed;image=https://icons.diagrams.net/icon-cache1/Essentials-2657/Essentials_Mouse_Cursor-573.svg;imageBackground=none;imageBorder=none;" vertex="1" parent="1">
+          <mxGeometry x="411" y="360" width="29" height="29" as="geometry" />
+        </mxCell>
+        <mxCell id="gCXiOqbqyDKVwvzZwyxY-3" value="&lt;div align=&quot;right&quot;&gt;&lt;font style=&quot;font-size: 9px;&quot;&gt;Alignment.CENTER&lt;/font&gt;&lt;/div&gt;" style="text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="190" y="360" width="100" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="gCXiOqbqyDKVwvzZwyxY-4" value="This is a tooltip text" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D0D0D0;fontColor=#333333;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="420" y="420" width="120" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="gCXiOqbqyDKVwvzZwyxY-5" value="" style="shape=image;html=1;verticalAlign=top;verticalLabelPosition=bottom;labelBackgroundColor=#ffffff;imageAspect=0;aspect=fixed;image=https://icons.diagrams.net/icon-cache1/Essentials-2657/Essentials_Mouse_Cursor-573.svg;imageBackground=none;imageBorder=none;" vertex="1" parent="1">
+          <mxGeometry x="411" y="420" width="29" height="29" as="geometry" />
+        </mxCell>
+        <mxCell id="gCXiOqbqyDKVwvzZwyxY-6" value="&lt;div align=&quot;right&quot;&gt;&lt;font style=&quot;font-size: 9px;&quot;&gt;Alignment.LEFT&lt;/font&gt;&lt;/div&gt;" style="text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="190" y="420" width="100" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="gCXiOqbqyDKVwvzZwyxY-7" value="This is a tooltip text" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D0D0D0;fontColor=#333333;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="300" y="480" width="120" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="gCXiOqbqyDKVwvzZwyxY-8" value="" style="shape=image;html=1;verticalAlign=top;verticalLabelPosition=bottom;labelBackgroundColor=#ffffff;imageAspect=0;aspect=fixed;image=https://icons.diagrams.net/icon-cache1/Essentials-2657/Essentials_Mouse_Cursor-573.svg;imageBackground=none;imageBorder=none;" vertex="1" parent="1">
+          <mxGeometry x="411" y="480" width="29" height="29" as="geometry" />
+        </mxCell>
+        <mxCell id="gCXiOqbqyDKVwvzZwyxY-9" value="&lt;div align=&quot;right&quot;&gt;&lt;font style=&quot;font-size: 9px;&quot;&gt;Alignment.RIGHT&lt;/font&gt;&lt;/div&gt;" style="text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="190" y="480" width="100" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="gCXiOqbqyDKVwvzZwyxY-10" value="This is a tooltip text" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D0D0D0;fontColor=#333333;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="360" y="530" width="120" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="gCXiOqbqyDKVwvzZwyxY-11" value="" style="shape=image;html=1;verticalAlign=top;verticalLabelPosition=bottom;labelBackgroundColor=#ffffff;imageAspect=0;aspect=fixed;image=https://icons.diagrams.net/icon-cache1/Essentials-2657/Essentials_Mouse_Cursor-573.svg;imageBackground=none;imageBorder=none;" vertex="1" parent="1">
+          <mxGeometry x="411" y="540" width="29" height="29" as="geometry" />
+        </mxCell>
+        <mxCell id="gCXiOqbqyDKVwvzZwyxY-12" value="&lt;div align=&quot;right&quot;&gt;&lt;font style=&quot;font-size: 9px;&quot;&gt;Alignment.TOP&lt;/font&gt;&lt;/div&gt;" style="text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="190" y="540" width="100" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="gCXiOqbqyDKVwvzZwyxY-13" value="This is a tooltip text" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D0D0D0;fontColor=#333333;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="360" y="609" width="120" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="gCXiOqbqyDKVwvzZwyxY-14" value="" style="shape=image;html=1;verticalAlign=top;verticalLabelPosition=bottom;labelBackgroundColor=#ffffff;imageAspect=0;aspect=fixed;image=https://icons.diagrams.net/icon-cache1/Essentials-2657/Essentials_Mouse_Cursor-573.svg;imageBackground=none;imageBorder=none;" vertex="1" parent="1">
+          <mxGeometry x="411" y="600" width="29" height="29" as="geometry" />
+        </mxCell>
+        <mxCell id="gCXiOqbqyDKVwvzZwyxY-15" value="&lt;div align=&quot;right&quot;&gt;&lt;font style=&quot;font-size: 9px;&quot;&gt;Alignment.BOTTOM&lt;/font&gt;&lt;/div&gt;" style="text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="190" y="600" width="100" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="gCXiOqbqyDKVwvzZwyxY-16" value="This is a tooltip text" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D0D0D0;fontColor=#333333;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="420" y="669" width="120" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="gCXiOqbqyDKVwvzZwyxY-17" value="" style="shape=image;html=1;verticalAlign=top;verticalLabelPosition=bottom;labelBackgroundColor=#ffffff;imageAspect=0;aspect=fixed;image=https://icons.diagrams.net/icon-cache1/Essentials-2657/Essentials_Mouse_Cursor-573.svg;imageBackground=none;imageBorder=none;" vertex="1" parent="1">
+          <mxGeometry x="411" y="660" width="29" height="29" as="geometry" />
+        </mxCell>
+        <mxCell id="gCXiOqbqyDKVwvzZwyxY-18" value="&lt;div align=&quot;right&quot;&gt;&lt;font style=&quot;font-size: 9px;&quot;&gt;Alignment.TOP_LEFT&lt;/font&gt;&lt;/div&gt;" style="text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="190" y="660" width="100" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="gCXiOqbqyDKVwvzZwyxY-19" value="This is a tooltip text" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D0D0D0;fontColor=#333333;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="300" y="729" width="120" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="gCXiOqbqyDKVwvzZwyxY-20" value="" style="shape=image;html=1;verticalAlign=top;verticalLabelPosition=bottom;labelBackgroundColor=#ffffff;imageAspect=0;aspect=fixed;image=https://icons.diagrams.net/icon-cache1/Essentials-2657/Essentials_Mouse_Cursor-573.svg;imageBackground=none;imageBorder=none;" vertex="1" parent="1">
+          <mxGeometry x="411" y="720" width="29" height="29" as="geometry" />
+        </mxCell>
+        <mxCell id="gCXiOqbqyDKVwvzZwyxY-21" value="&lt;div align=&quot;right&quot;&gt;&lt;font style=&quot;font-size: 9px;&quot;&gt;Alignment.TOP_RIGHT&lt;/font&gt;&lt;/div&gt;" style="text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="190" y="720" width="100" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="gCXiOqbqyDKVwvzZwyxY-22" value="This is a tooltip text" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D0D0D0;fontColor=#333333;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="420" y="770" width="120" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="gCXiOqbqyDKVwvzZwyxY-23" value="" style="shape=image;html=1;verticalAlign=top;verticalLabelPosition=bottom;labelBackgroundColor=#ffffff;imageAspect=0;aspect=fixed;image=https://icons.diagrams.net/icon-cache1/Essentials-2657/Essentials_Mouse_Cursor-573.svg;imageBackground=none;imageBorder=none;" vertex="1" parent="1">
+          <mxGeometry x="411" y="780" width="29" height="29" as="geometry" />
+        </mxCell>
+        <mxCell id="gCXiOqbqyDKVwvzZwyxY-24" value="&lt;div align=&quot;right&quot;&gt;&lt;font style=&quot;font-size: 9px;&quot;&gt;Alignment.BOTTOM_LEFT&lt;/font&gt;&lt;/div&gt;" style="text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="160" y="780" width="130" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="gCXiOqbqyDKVwvzZwyxY-25" value="This is a tooltip text" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#D0D0D0;fontColor=#333333;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="300" y="830" width="120" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="gCXiOqbqyDKVwvzZwyxY-26" value="" style="shape=image;html=1;verticalAlign=top;verticalLabelPosition=bottom;labelBackgroundColor=#ffffff;imageAspect=0;aspect=fixed;image=https://icons.diagrams.net/icon-cache1/Essentials-2657/Essentials_Mouse_Cursor-573.svg;imageBackground=none;imageBorder=none;" vertex="1" parent="1">
+          <mxGeometry x="411" y="840" width="29" height="29" as="geometry" />
+        </mxCell>
+        <mxCell id="gCXiOqbqyDKVwvzZwyxY-27" value="&lt;div align=&quot;right&quot;&gt;&lt;font style=&quot;font-size: 9px;&quot;&gt;Alignment.BOTTOM_RIGHT&lt;/font&gt;&lt;/div&gt;" style="text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="190" y="840" width="100" height="20" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -2,28 +2,37 @@ package net.kroia.modutilities.gui.elements;
 
 
 import net.kroia.modutilities.gui.elements.base.GuiElement;
-import net.minecraft.sounds.SoundEvents;
+import net.minecraft.nbt.CompoundTag;
 
-public class Button extends GuiElement {
+import java.util.List;
+
+/**
+ * A standard clickable button rendered with a centered text {@link Label}.
+ * Extends {@link EmptyButton}, inheriting its callback-based input handling
+ * (falling edge = press, rising edge = release, down = held).
+ */
+public class Button extends EmptyButton {
 
     Label label;
-    boolean isPressed = false;
-    int colorIdle = DEFAULT_BACKGROUND_COLOR;
-    int colorHover = DEFAULT_HOVER_BACKGROUND_COLOR;
-    int colorPressed = DEFAULT_FOCUSED_BACKGROUND_COLOR;
 
-    Runnable onFallingEdge = null;
-    Runnable onRisingEdge = null;
-    Runnable onDown = null;
-    boolean isClickable = true;
-    int triggerButton = 0;
-
+    /**
+     * Creates a button with default size and the given label text.
+     * @param text the button label
+     */
     public Button(String text) {
-        super();
+        super(0,0,10,20);
         label = new Label(text);
-        label.setAlignment(Alignment.CENTER);
         addChild(label);
+        label.setAlignment(Alignment.CENTER);
     }
+    /**
+     * Creates a button at the given position and size with the specified label text.
+     * @param x the x-coordinate (relative to the parent)
+     * @param y the y-coordinate (relative to the parent)
+     * @param width the width
+     * @param height the height
+     * @param text the button label
+     */
     public Button(int x, int y, int width, int height, String text) {
         super(x, y, width, height);
         label = new Label(text);
@@ -31,96 +40,94 @@ public class Button extends GuiElement {
         label.setAlignment(Alignment.CENTER);
         addChild(label);
     }
+    /**
+     * Creates a button with default size, a label, and a press callback.
+     * @param text the button label
+     * @param onFallingEdge runnable executed when the button is pressed (mouse-down)
+     */
     public Button(String text, Runnable onFallingEdge) {
-        this(text);
-        this.onFallingEdge = onFallingEdge;
+        super(onFallingEdge);
+        label = new Label(text);
+        label.setAlignment(Alignment.CENTER);
+        addChild(label);
     }
+    /**
+     * Creates a button at the given position/size with a label and a press callback.
+     * @param x the x-coordinate (relative to the parent)
+     * @param y the y-coordinate (relative to the parent)
+     * @param width the width
+     * @param height the height
+     * @param text the button label
+     * @param onFallingEdge runnable executed when the button is pressed (mouse-down)
+     */
     public Button(int x, int y, int width, int height, String text, Runnable onFallingEdge) {
-        this(x, y, width, height, text);
-        this.onFallingEdge = onFallingEdge;
+        super(x, y, width, height, onFallingEdge);
+        label = new Label(text);
+        label.setBounds(0,0,width,height);
+        label.setAlignment(Alignment.CENTER);
+        addChild(label);
+
     }
+    /**
+     * Sets the label text shown on the button.
+     * @param text the new label text
+     */
     public void setLabel(String text)
     {
         label.setText(text);
     }
+    /**
+     * Sets the label text shown on the button.
+     * Equivalent to {@link #setLabel(String)}.
+     * @param text the new label text
+     */
+    public void setText(String text)
+    {
+        label.setText(text);
+    }
+    /**
+     * @return the current label text
+     */
+    public String getText()
+    {
+        return label.getText();
+    }
 
+    /**
+     * Sets the alignment of the label inside the button bounds.
+     * @param layoutType the alignment (e.g. {@link Alignment#CENTER})
+     */
     public void setLayoutType(Alignment layoutType)
     {
         label.setAlignment(layoutType);
     }
+    /**
+     * @return the alignment of the label inside the button bounds
+     */
     public Alignment getLayoutType()
     {
         return label.getAlignment();
     }
 
-    public void setOnFallingEdge(Runnable onFallingEdge)
-    {
-        this.onFallingEdge = onFallingEdge;
-    }
-    public void setOnRisingEdge(Runnable onRisingEdge)
-    {
-        this.onRisingEdge = onRisingEdge;
-    }
-    public void setOnDown(Runnable onDown)
-    {
-        this.onDown = onDown;
-    }
 
-    public void setIdleColor(int color)
-    {
-        this.colorIdle = color;
-    }
-    public void setHoverColor(int color)
-    {
-        this.colorHover = color;
-    }
-    public void setPressedColor(int color)
-    {
-        this.colorPressed = color;
-    }
-    public int getIdleColor()
-    {
-        return this.colorIdle;
-    }
-    public int getHoverColor()
-    {
-        return this.colorHover;
-    }
-    public int getPressedColor()
-    {
-        return this.colorPressed;
-    }
-    public boolean isClickable()
-    {
-        return isClickable;
-    }
-    public void setClickable(boolean clickable)
-    {
-        isClickable = clickable;
-    }
-    public void setTriggerButton(int button)
-    {
-        triggerButton = button;
-    }
-    public int getTriggerButton()
-    {
-        return triggerButton;
-    }
-    public boolean isPressed()
-    {
-        return isPressed;
+    @Override
+    public List<GuiElement> getSerializableChildren() {
+        return List.of();
     }
 
     @Override
-    protected void renderBackground() {
-        int color = colorIdle;
-        if(isPressed)
-            color = colorPressed;
-        else if(isMouseOver())
-            color = colorHover;
-        drawRect(0,0,getWidth(), getHeight(),color);
-        if(enableOutline)
-            renderOutline();
+    public CompoundTag serializeState() {
+        CompoundTag tag = super.serializeState();
+        tag.putString("label", label.getText());
+        return tag;
+    }
+
+    @Override
+    public void deserializeState(CompoundTag tag) {
+        super.deserializeState(tag);
+        if (tag.contains("label")) {
+            label.setText(tag.getString("label"));
+        }
     }
 
     @Override
@@ -134,45 +141,21 @@ public class Button extends GuiElement {
     }
 
     @Override
-    protected boolean mouseClickedOverElement(int button)
-    {
-        if(!isClickable || triggerButton != button)
-            return false;
-
-        if(!isPressed) {
-            playLocalSound(SoundEvents.UI_BUTTON_CLICK.value(),0.5F);
-            if(onFallingEdge != null) {
-                onFallingEdge.run();
-            }
-        }
-        isPressed = true;
-        return true;
+    public void setTextColor(int color) {
+        label.setTextColor(color);
+        super.setTextColor(color);
     }
-
     @Override
-    protected boolean mouseDragged(int button, double deltaX, double deltaY)
-    {
-        if(!isClickable || triggerButton != button)
-            return false;
-        if(isPressed)
-        {
-            if(onDown != null) {
-                onDown.run();
-            }
-            return true;
-        }
-        return false;
+    public int getTextColor() {
+        return label.getTextColor();
     }
-
     @Override
-    protected void mouseReleased(int button)
-    {
-        if(!isClickable || triggerButton != button)
-            return;
-        if(isPressed){
-            if(onRisingEdge != null)
-                onRisingEdge.run();
-        }
-        isPressed = false;
+    public void setTextFontScale(float scale) {
+        label.setTextFontScale(scale);
+        super.setTextFontScale(scale);
+    }
+    @Override
+    public float getTextFontScale() {
+        return label.getTextFontScale();
     }
 }

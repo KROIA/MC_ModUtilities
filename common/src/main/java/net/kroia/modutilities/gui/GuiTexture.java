@@ -6,8 +6,8 @@ public class GuiTexture {
     private final ResourceLocation resourceLocation;
     private final int width;
     private final int height;
-    private int uvOffsetX = 0;
-    private int uvOffsetY = 0;
+    private float uvOffsetX = 0;
+    private float uvOffsetY = 0;
 
     public GuiTexture(String modID, String path, int imageWidth, int imageHeight) {
         this.resourceLocation = Gui.createResourceLocation(modID, path);
@@ -15,14 +15,14 @@ public class GuiTexture {
         this.height = imageHeight;
     }
 
-    public void setUVOffset(int x, int y) {
+    public void setUVOffset(float x, float y) {
         this.uvOffsetX = x;
         this.uvOffsetY = y;
     }
-    public int getUVOffsetX() {
+    public float getUVOffsetX() {
         return uvOffsetX;
     }
-    public int getUVOffsetY() {
+    public float getUVOffsetY() {
         return uvOffsetY;
     }
 

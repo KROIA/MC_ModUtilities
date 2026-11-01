@@ -3,83 +3,236 @@ package net.kroia.modutilities.gui.elements;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Point;
 import net.kroia.modutilities.gui.geometry.Rectangle;
+import net.minecraft.nbt.CompoundTag;
 
+import java.util.Objects;
+
+/**
+ * Single-line/multi-line text display element.
+ * <p>
+ * The text is laid out within the element's bounds according to a configurable
+ * {@link GuiElement.Alignment} and an inner {@linkplain #setPadding(int) padding}.
+ * By default the background and outline are disabled, producing a plain text label;
+ * call {@code setEnableBackground(true)} / {@code setEnableOutline(true)} on the
+ * inherited {@link GuiElement} API if a framed label is desired.
+ *
+ * @apiNote {@code null} text is silently coerced to the empty string; passing
+ *          {@code null} to {@link #setText(String)} or the {@link #Label(String)}
+ *          constructor will not throw.
+ */
 public class Label extends GuiElement {
 
+    /** Default height in pixels used by the parameterless and string constructors. */
     public static final int DEFAULT_HEIGHT = 15;
     private Alignment alignment = Alignment.LEFT;
     private String text;
     private int padding = GuiElement.DEFAULT_PADDING;
-    private int textColor = GuiElement.DEFAULT_TEXT_COLOR;
     private Point textPos = new Point(0,0);
+    private boolean autoScrollEnabled = true;
+    private int currentScrollOffsetX = 0;
+    private int manualScrollOffsetX = 0;
+
+    /**
+     * Creates an empty label with default size and {@link Alignment#LEFT} alignment.
+     */
     public Label()
     {
-        super(0,0,100,DEFAULT_HEIGHT);
-        text = "";
+        this("");
     }
+
+    /**
+     * Creates a label displaying the given text with default size and
+     * {@link Alignment#LEFT} alignment.
+     *
+     * @param text the text to display, or {@code null} for an empty string
+     */
     public Label(String text)
     {
         super(0,0,100,DEFAULT_HEIGHT);
-        this.text = text;
+        this.text = Objects.requireNonNullElse(text, "");
+        setEnableBackground(false);
+        setEnableOutline(false);
     }
 
+    /**
+     * Sets the text displayed by this label and triggers a layout recomputation.
+     *
+     * @param text the new text to display, or {@code null} for an empty string
+     */
     public void setText(String text)
     {
-        this.text = text;
+        String newText = Objects.requireNonNullElse(text, "");
+        if (!this.text.equals(newText)) markDirty();
+        this.text = newText;
         layoutChangedInternal();
     }
+
+    /**
+     * @return the current label text (never {@code null})
+     */
     public String getText(){
         return text;
     }
 
+    /**
+     * Sets how the text is positioned within the label bounds and triggers a
+     * layout recomputation.
+     *
+     * @param alignment the alignment to use for the text
+     */
     public void setAlignment(Alignment alignment)
     {
         this.alignment = alignment;
         layoutChangedInternal();
     }
+
+    /**
+     * @return the current text alignment
+     */
     public Alignment getAlignment()
     {
         return alignment;
     }
+
+    /**
+     * Sets the inner padding (in pixels) reserved on every side of the text.
+     *
+     * @param padding the padding in pixels
+     */
     public void setPadding(int padding)
     {
         this.padding = padding;
     }
+
+    /**
+     * @return the current inner padding in pixels
+     */
     public int getPadding()
     {
         return padding;
     }
-    public void setTextColor(int textColor)
-    {
-        this.textColor = textColor;
-    }
-    public int getTextColor()
-    {
-        return textColor;
-    }
-
 
     @Override
+    public SyncCategory getSyncCategory() { return SyncCategory.DISPLAY; }
+
+    @Override
+    public CompoundTag serializeState() {
+        CompoundTag tag = super.serializeState();
+        tag.putString("text", text);
+        tag.putInt("textColor", getTextColor());
+        return tag;
+    }
+
+    @Override
+    public void deserializeState(CompoundTag tag) {
+        super.deserializeState(tag);
+        if (tag.contains("text")) setText(tag.getString("text"));
+        if (tag.contains("textColor")) setTextColor(tag.getInt("textColor"));
+    }
+
+    /*@Override
     public void renderBackground() {
 
-    }
+    }*/
 
     @Override
     public void render() {
-        drawText(text, textPos, textColor);
+        int innerWidth = getWidth() - padding * 2;
+        int innerHeight = getHeight() - padding * 2;
+        int textWidth = getTextWidth(text);
+        if (textWidth <= innerWidth || innerWidth <= 0) {
+            currentScrollOffsetX = 0;
+            drawText(text, textPos);
+            return;
+        }
+        int overflow = textWidth - innerWidth;
+        int offset;
+        if (!autoScrollEnabled) {
+            offset = Math.max(0, Math.min(overflow, manualScrollOffsetX));
+        } else {
+            long dwellMs = 1000L;
+            long pxPerSec = 30L;
+            long travelMs = Math.max(1L, (long) overflow * 1000L / pxPerSec);
+            long cycleMs = 2L * (dwellMs + travelMs);
+            long t = System.currentTimeMillis() % cycleMs;
+            if (t < dwellMs) {
+                offset = 0;
+            } else if (t < dwellMs + travelMs) {
+                offset = (int) ((t - dwellMs) * overflow / travelMs);
+            } else if (t < 2L * dwellMs + travelMs) {
+                offset = overflow;
+            } else {
+                offset = overflow - (int) ((t - 2L * dwellMs - travelMs) * overflow / travelMs);
+            }
+        }
+        currentScrollOffsetX = offset;
+        enableScissor(padding, padding, innerWidth, innerHeight);
+        drawText(text, padding - offset, textPos.y);
+        disableScissor();
+    }
+
+    /**
+     * Enables or disables the horizontal auto-scroll animation for overflowing text.
+     * When disabled, overflowing text is drawn left-anchored and clipped to the label bounds.
+     */
+    public void setAutoScrollEnabled(boolean enabled) {
+        this.autoScrollEnabled = enabled;
+        if (!enabled) currentScrollOffsetX = 0;
+    }
+
+    public boolean isAutoScrollEnabled() {
+        return autoScrollEnabled;
+    }
+
+    /**
+     * @return the current horizontal scroll offset in pixels applied to the text on the last render pass.
+     *         Zero when the text fits or auto-scroll is disabled.
+     */
+    public int getCurrentScrollOffsetX() {
+        return currentScrollOffsetX;
+    }
+
+    /**
+     * Sets the manual horizontal scroll offset in pixels, used only when
+     * {@link #isAutoScrollEnabled()} is {@code false}. Clamped at render time to the
+     * valid overflow range.
+     */
+    public void setManualScrollOffsetX(int x) {
+        this.manualScrollOffsetX = x;
+    }
+
+    public int getManualScrollOffsetX() {
+        return manualScrollOffsetX;
+    }
+    @Override
+    protected void renderGizmos()
+    {
+        super.renderGizmos();
+        if(isMouseOver() && !text.isEmpty())
+        {
+            int textHeight = getTextHeight();
+            int textWidth = getTextWidth(text);
+            //drawCross(textPos.x, textPos.y, 3, 0xFFFF0000);
+            //drawCross(textWidth+textPos.x, textHeight+textPos.y, 3, 0xFFFF0000);
+            int cornerSize = 3;
+            int cornerColor = 0xFFFF0000;
+            drawCornerTL(textPos.x, textPos.y, cornerSize, cornerColor);
+            drawCornerTR(textPos.x + textWidth, textPos.y, cornerSize, cornerColor);
+            drawCornerBL(textPos.x, textPos.y + textHeight, cornerSize, cornerColor);
+            drawCornerBR(textPos.x + textWidth, textPos.y + textHeight, cornerSize, cornerColor);
+        }
     }
 
     @Override
     public void layoutChanged() {
-        int textHeight = getFont().lineHeight;
-        int textWidth = getFont().width(text);
+        int textHeight = getTextHeight();
+        int textWidth = getTextWidth(text);
         int x = padding;
         int y = padding;
         int width = getWidth() - padding*2;
         int height = getHeight()-padding*2;
 
-        Rectangle bounds = new Rectangle(0,0, textWidth, textHeight);
-        bounds = getAlignedBounds(bounds, alignment, x, y, width, height);
+        Rectangle bounds = getAlignedBounds(0,0, textWidth, textHeight, alignment, x, y, width, height);
 
         textPos.x = bounds.x;
         textPos.y = bounds.y;

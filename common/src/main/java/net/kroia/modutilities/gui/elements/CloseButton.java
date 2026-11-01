@@ -3,20 +3,28 @@ package net.kroia.modutilities.gui.elements;
 import net.kroia.modutilities.gui.elements.base.Vertex;
 import net.kroia.modutilities.gui.elements.base.VertexBuffer;
 
+/**
+ * A pre-styled close button that renders a red square with an "X" cross.
+ * Commonly used as the close affordance on dialogs and windows.
+ * <p>
+ * Comes with default size 20x20 and red color theme; clicking triggers the
+ * runnable supplied at construction time.
+ */
 public class CloseButton extends Button{
 
-    //private final VertexBuffer line1;
-    //private final VertexBuffer line2;
-    private final Label xLabel;
+    private final VertexBuffer line1;
+    private final VertexBuffer line2;
 
+    /**
+     * Creates a close button with the default red color theme.
+     * @param onFallingEdge runnable executed when the close button is pressed (mouse-down)
+     */
     public CloseButton(Runnable onFallingEdge) {
         super(0,0,10,10,"", onFallingEdge);
-        //line1 = new VertexBuffer();
-        //line2 = new VertexBuffer();
-        xLabel = new Label("x");
-        xLabel.setAlignment(Alignment.CENTER);
+        line1 = new VertexBuffer();
+        line2 = new VertexBuffer();
 
-        super.setIdleColor(0xFFf55a42);
+        super.setBackgroundColor(0xFFf55a42);
         super.setHoverColor(0xFFe03d24);
         super.setPressedColor(0xFFde2b10);
         super.setOutlineColor(0xFFde2510);
@@ -26,28 +34,27 @@ public class CloseButton extends Button{
     @Override
     public void render(){
         // Draw cross
-        //drawVertexBuffer_QUADS(line1);
-        //drawVertexBuffer_QUADS(line2);
+        drawVertexBuffer_QUADS(line1);
+        drawVertexBuffer_QUADS(line2);
     }
 
     @Override
     protected void layoutChanged() {
         super.layoutChanged();
-        xLabel.setBounds(0,0,getWidth(),getHeight());
-        //updateShape();
+        updateShape();
     }
 
     @Override
     public void setOutlineColor(int color) {
         super.setOutlineColor(color);
-        xLabel.setTextColor(color);
-        /*for(Vertex vertex : line1.getVertices())
+        if (line1 == null || line2 == null) return;
+        for(Vertex vertex : line1.getVertices())
             vertex.setColor(color);
         for(Vertex vertex : line2.getVertices())
-            vertex.setColor(color);*/
+            vertex.setColor(color);
     }
 
-    /*private void updateShape()
+    private void updateShape()
     {
 
         line1.clear();
@@ -78,5 +85,5 @@ public class CloseButton extends Button{
         line2.addVertex(0, getHeight(), color);
         line2.addVertex(outlineThickness, getHeight(), color);
         line2.addVertex(getWidth(), outlineThickness, color);
-    }*/
+    }
 }

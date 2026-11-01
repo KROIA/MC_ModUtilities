@@ -9,8 +9,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
-import java.util.HashMap;
-import java.util.Objects;
+import java.util.ArrayList;
 
 public class UtilitiesPlatformFabric implements PlatformAbstraction {
 
@@ -30,33 +29,38 @@ public class UtilitiesPlatformFabric implements PlatformAbstraction {
         if(itemID.indexOf(":") == -1) {
             itemID = "minecraft:"+itemID;
         }
-        String namespace = itemID.split(":")[0];
-        String path = itemID.split(":")[1];
-        ResourceLocation resourceLocation = ResourceLocation.fromNamespaceAndPath(namespace, path);
-        return new ItemStack(Objects.requireNonNull(BuiltInRegistries.ITEM.get(resourceLocation).orElse(null)));
+        String[] parts = itemID.split(":", 2);
+        String namespace = parts[0];
+        String path = parts[1];
+        Item item = BuiltInRegistries.ITEM.getOptional(ResourceLocation.fromNamespaceAndPath(namespace, path)).orElse(null);
+        if (item == null) {
+            return ItemStack.EMPTY;
+        }
+        return new ItemStack(item);
     }
 
     @Override
-    public String getItemID(Item item) {
-        return BuiltInRegistries.ITEM.getKey(item).toString();
+    public String getItemIDStr(Item item) {
+        ResourceLocation key = BuiltInRegistries.ITEM.getKey(item);
+        if (key == null) {
+            return "";
+        }
+        return key.toString();
     }
 
     @Override
-    public HashMap<String, ItemStack> getAllItems() {
-        HashMap<String, ItemStack> itemsMap = new HashMap<>();
+    public ArrayList<ItemStack> getAllItems() {
+        ArrayList<ItemStack> items = new ArrayList<>();
 
         for (Item item : BuiltInRegistries.ITEM) {
-            itemsMap.put(getItemID(item), new ItemStack(item));
+            items.add(new ItemStack(item));
         }
 
-        return itemsMap;
+        return items;
     }
 
     @Override
     public MinecraftServer getServer() {
-        if (minecraftServer == null) {
-            throw new IllegalStateException(ModUtilitiesMod.MOD_ID+" MinecraftServer is not yet initialized.");
-        }
         return minecraftServer;
     }
 

@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "modutilities:block/display_back_panel" },
+    "facing=south": { "model": "modutilities:block/display_back_panel", "y": 180 },
+    "facing=west": { "model": "modutilities:block/display_back_panel", "y": 270 },
+    "facing=east": { "model": "modutilities:block/display_back_panel", "y": 90 }
+  }
+}
