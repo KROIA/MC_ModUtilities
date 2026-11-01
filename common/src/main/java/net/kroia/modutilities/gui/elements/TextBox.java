@@ -527,7 +527,7 @@ public class TextBox extends GuiElement {
 
 
 
-        switch(keyCode)
+        switch(InputConstants.shortcutKey(keyCode, scanCode))
         {
             case InputConstants.KEY_A:
             {

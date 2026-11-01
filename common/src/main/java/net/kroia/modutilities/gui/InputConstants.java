@@ -48,4 +48,21 @@ public final class InputConstants {
     public static final int KEY_LEFT_CONTROL  = com.mojang.blaze3d.platform.InputConstants.KEY_LCONTROL;
     public static final int KEY_LEFT_ALT      = com.mojang.blaze3d.platform.InputConstants.KEY_LALT;
     public static final int KEY_SPACE         = com.mojang.blaze3d.platform.InputConstants.KEY_SPACE;
+
+    /**
+     * Maps a key press to the key that Ctrl shortcuts (select all, copy, cut, paste) should test, following the
+     * printed letter of the user's keyboard layout like vanilla's EditBox. Switch on the result and compare with
+     * {@link #KEY_A}, {@link #KEY_C}, {@link #KEY_V} and {@link #KEY_X}.
+     * <p>
+     * Up to 26.2 the GLFW key code is already layout-aware, so it is returned unchanged. 26.3 (SDL3) delivers the
+     * physical key as {@code keyCode} and the layout key code as {@code scanCode}.
+     *
+     * @param keyCode  the key code received in {@code keyPressed}
+     * @param scanCode the scan code received in {@code keyPressed} (26.3+: the layout key code)
+     * @return the key to test shortcuts against; {@code -1} if the physical A/C/V/X position carries another letter
+     */
+    public static int shortcutKey(int keyCode, int scanCode) {
+        return keyCode; // mc<=26.2
+        //return switch (scanCode) { case 'a' -> KEY_A; case 'c' -> KEY_C; case 'v' -> KEY_V; case 'x' -> KEY_X; default -> keyCode == KEY_A || keyCode == KEY_C || keyCode == KEY_V || keyCode == KEY_X ? -1 : keyCode; }; // mc>=26.3
+    }
 }

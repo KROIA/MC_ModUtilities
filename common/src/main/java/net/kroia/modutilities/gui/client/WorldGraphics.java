@@ -2,8 +2,6 @@ package net.kroia.modutilities.gui.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 import net.kroia.modutilities.gui.IGraphics;
 import net.kroia.modutilities.gui.elements.base.Vertex;
 import net.kroia.modutilities.gui.elements.base.VertexBuffer;
@@ -38,10 +36,9 @@ import java.util.List;
  * Call {@link #setup(PoseStack, MultiBufferSource)} each frame from the
  * block entity renderer before rendering through the GUI element tree.
  *
- * @apiNote This class is client-only ({@code @Environment(EnvType.CLIENT)}).
+ * @apiNote This class is client-only.
  * @see ClientGraphics
  */
-@Environment(EnvType.CLIENT)
 public class WorldGraphics implements IGraphics {
 
     /**
