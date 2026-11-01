@@ -22,6 +22,7 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -40,6 +41,13 @@ public class TestRunner {
      */
     private final StringBuffer log = new StringBuffer();
 
+    /**
+     * Results of every suite run by this runner, keyed by {@code category/SuiteClass}.
+     * A setup or teardown failure is recorded as an ERROR entry named {@code <setup>} / {@code <teardown>}.
+     * Used for machine-readable reports (see {@code testing.autotest.AutoTest}).
+     */
+    private final Map<String, List<TestResult>> results = new LinkedHashMap<>();
+
     /** Live log4j appender while a run is in progress, {@code null} otherwise. */
     private @Nullable Appender captureAppender;
 
@@ -50,7 +58,17 @@ public class TestRunner {
         this.server = server;
     }
 
-    public void runAll(ServerPlayer player) {
+    /** @return per-suite results of every suite this runner has run so far. */
+    public Map<String, List<TestResult>> getResults() {
+        return results;
+    }
+
+    /**
+     * Runs every suite of this runner's mod that may run on this server type.
+     *
+     * @param player receives the chat report; {@code null} runs headless (log file only).
+     */
+    public void runAll(@Nullable ServerPlayer player) {
         beginLog("all categories");
         List<TestSuite> suites = TestRegistry.getTestSuites(modId);
         int totalPassed = 0;
@@ -73,10 +91,10 @@ public class TestRunner {
         sendSummary(player, totalPassed, totalFailed, totalError, totalSkipped);
     }
 
-    public void runCategory(ServerPlayer player, String categoryName) {
+    public void runCategory(@Nullable ServerPlayer player, String categoryName) {
         TestCategory category = TestCategory.fromName(categoryName);
         if (category == null) {
-            player.sendSystemMessage(Component.literal(prefix)
+            send(player, Component.literal(prefix)
                     .withStyle(ChatFormatting.GOLD)
                     .append(Component.literal("Unknown category: ").withStyle(ChatFormatting.RED))
                     .append(Component.literal(categoryName).withStyle(ChatFormatting.YELLOW)));
@@ -84,7 +102,7 @@ public class TestRunner {
         }
 
         if (!category.canRunOn(isSlave)) {
-            player.sendSystemMessage(Component.literal(prefix)
+            send(player, Component.literal(prefix)
                     .withStyle(ChatFormatting.GOLD)
                     .append(Component.literal("Category ").withStyle(ChatFormatting.RED))
                     .append(Component.literal(categoryName).withStyle(ChatFormatting.AQUA))
@@ -110,7 +128,7 @@ public class TestRunner {
         }
 
         if (!found) {
-            player.sendSystemMessage(Component.literal(prefix)
+            send(player, Component.literal(prefix)
                     .withStyle(ChatFormatting.GOLD)
                     .append(Component.literal("No test suites registered for category: ").withStyle(ChatFormatting.YELLOW))
                     .append(Component.literal(categoryName).withStyle(ChatFormatting.AQUA)));
@@ -123,7 +141,7 @@ public class TestRunner {
     }
 
     public void listCategories(ServerPlayer player) {
-        player.sendSystemMessage(Component.literal(prefix)
+        send(player, Component.literal(prefix)
                 .withStyle(ChatFormatting.GOLD)
                 .append(Component.literal("Available test categories:").withStyle(ChatFormatting.WHITE)));
 
@@ -160,11 +178,11 @@ public class TestRunner {
                 line.append(Component.literal(" [" + reason + "]").withStyle(ChatFormatting.DARK_RED));
             }
 
-            player.sendSystemMessage(line);
+            send(player, line);
         }
     }
 
-    private int[] runSuite(TestSuite suite, ServerPlayer player) {
+    private int[] runSuite(TestSuite suite, @Nullable ServerPlayer player) {
         if (suite.getTestCount() == 0) {
             suite.registerTests();
         }
@@ -174,7 +192,7 @@ public class TestRunner {
         TestCategory category = suite.getCategory();
         int testCount = suite.getTestCount();
 
-        player.sendSystemMessage(Component.literal(prefix)
+        send(player, Component.literal(prefix)
                 .withStyle(ChatFormatting.GOLD)
                 .append(Component.literal("Running: ").withStyle(ChatFormatting.WHITE))
                 .append(Component.literal(category.getName()).withStyle(ChatFormatting.AQUA))
@@ -188,6 +206,7 @@ public class TestRunner {
         int error = 0;
 
         List<TestResult> results = new ArrayList<>();
+        this.results.put(category.getName() + "/" + suite.getClass().getSimpleName(), results);
 
         // Everything from setup() onwards runs inside a try/finally so that teardown()
         // always gets a chance to release real world state (accounts, markets, registry
@@ -199,7 +218,8 @@ public class TestRunner {
             } catch (Throwable t) {
                 logThrowable("Setup failed in " + category.getName(), t);
                 log.append("SETUP FAILED: ").append(describe(t)).append('\n');
-                player.sendSystemMessage(Component.literal("  ")
+                results.add(TestResult.error("<setup>", describe(t)));
+                send(player, Component.literal("  ")
                         .append(Component.literal("Setup failed: " + describe(t)).withStyle(ChatFormatting.RED)));
                 // Returning here still runs the finally block below, so a partially
                 // completed setup gets cleaned up.
@@ -239,7 +259,8 @@ public class TestRunner {
                 // mask a test result or abort the remaining suites.
                 logThrowable("Teardown failed in " + category.getName(), t);
                 log.append("TEARDOWN FAILED: ").append(describe(t)).append('\n');
-                player.sendSystemMessage(Component.literal("  ")
+                results.add(TestResult.error("<teardown>", describe(t)));
+                send(player, Component.literal("  ")
                         .append(Component.literal("Teardown failed: " + describe(t)).withStyle(ChatFormatting.RED)));
             }
         }
@@ -262,46 +283,53 @@ public class TestRunner {
             summaryLine.append(Component.literal(String.valueOf(error)).withStyle(ChatFormatting.YELLOW));
             summaryLine.append(Component.literal(" errors").withStyle(ChatFormatting.WHITE));
         }
-        player.sendSystemMessage(summaryLine);
+        send(player, summaryLine);
 
         return new int[]{passed, failed, error};
     }
 
-    private void reportTestResult(ServerPlayer player, TestResult result) {
+    /** Chat output is optional: headless runs (no player) only write the log file. */
+    private static void send(@Nullable ServerPlayer player, Component message) {
+        if (player != null) {
+            player.sendSystemMessage(message);
+        }
+    }
+
+    private void reportTestResult(@Nullable ServerPlayer player, TestResult result) {
         switch (result.getStatus()) {
             case PASS -> {
-                player.sendSystemMessage(Component.literal("  ")
+                send(player, Component.literal("  ")
                         .append(Component.literal("✓ " + result.getTestName()).withStyle(ChatFormatting.GREEN)));
             }
             case FAIL -> {
-                player.sendSystemMessage(Component.literal("  ")
+                send(player, Component.literal("  ")
                         .append(Component.literal("✗ " + result.getTestName()).withStyle(ChatFormatting.RED)));
                 if (result.getExpected() != null && result.getActual() != null) {
-                    player.sendSystemMessage(Component.literal("    Expected: ")
+                    send(player, Component.literal("    Expected: ")
                             .withStyle(ChatFormatting.RED)
                             .append(Component.literal(result.getExpected()).withStyle(ChatFormatting.YELLOW))
                             .append(Component.literal(" Got: ").withStyle(ChatFormatting.RED))
                             .append(Component.literal(result.getActual()).withStyle(ChatFormatting.YELLOW)));
                 } else if (result.getMessage() != null) {
-                    player.sendSystemMessage(Component.literal("    " + result.getMessage()).withStyle(ChatFormatting.RED));
+                    send(player, Component.literal("    " + result.getMessage()).withStyle(ChatFormatting.RED));
                 }
             }
             case ERROR -> {
-                player.sendSystemMessage(Component.literal("  ")
+                send(player, Component.literal("  ")
                         .append(Component.literal("! " + result.getTestName()).withStyle(ChatFormatting.YELLOW)));
                 if (result.getMessage() != null) {
-                    player.sendSystemMessage(Component.literal("    " + result.getMessage()).withStyle(ChatFormatting.YELLOW));
+                    send(player, Component.literal("    " + result.getMessage()).withStyle(ChatFormatting.YELLOW));
                 }
             }
         }
     }
 
-    private void sendSummary(ServerPlayer player, int passed, int failed, int error, int skipped) {
-        player.sendSystemMessage(Component.literal(""));
+    private void sendSummary(@Nullable ServerPlayer player, int passed, int failed, int error, int skipped) {
+        send(player, Component.literal(""));
         MutableComponent summary = Component.literal(prefix)
                 .withStyle(ChatFormatting.GOLD)
                 .append(Component.literal("=== Summary === ").withStyle(ChatFormatting.WHITE));
-        player.sendSystemMessage(summary);
+        send(player, summary);
 
         MutableComponent counts = Component.literal(prefix)
                 .withStyle(ChatFormatting.GOLD);
@@ -322,11 +350,11 @@ public class TestRunner {
             counts.append(Component.literal(String.valueOf(skipped)).withStyle(ChatFormatting.DARK_GRAY));
             counts.append(Component.literal(" skipped").withStyle(ChatFormatting.WHITE));
         }
-        player.sendSystemMessage(counts);
+        send(player, counts);
 
         int total = passed + failed + error;
         if (total > 0 && failed == 0 && error == 0) {
-            player.sendSystemMessage(Component.literal(prefix)
+            send(player, Component.literal(prefix)
                     .withStyle(ChatFormatting.GOLD)
                     .append(Component.literal("All tests passed!").withStyle(ChatFormatting.GREEN)));
         }

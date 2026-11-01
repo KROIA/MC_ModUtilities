@@ -1,0 +1,359 @@
+#!/usr/bin/env python3
+"""Runs the in-game unit tests of a mod project in every server configuration and on every loader.
+
+Stdlib only. See README.md in this folder. Short version:
+
+    python tools/autotest/run_matrix.py E:/.../mc_1.21.1_MC_ModUtilities
+    python tools/autotest/run_matrix.py --root E:/.../StockMarket --versions 1.21.1 26.3 --configs sp mp
+
+Per project it runs Gradle once (runClient/runServer with a capture agent, see build.gradle
+`autotest_agent`) to record Loom's exact launch commands, then starts every game instance directly,
+so master, slave and client of one project run side by side without fighting over Gradle locks.
+The project must be a dev build (enable_dev_features=true) for the tests and the autotest hook to exist.
+"""
+import argparse
+import glob
+import json
+import os
+import shutil
+import subprocess
+import sys
+import time
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+CONFIGS = ('sp', 'mp', 'slave', 'spslave')
+LOADERS = ('fabric', 'neoforge')
+MASTER_PORT, SLAVE_PORT, LINK_PORT = 25611, 25612, 25690
+SECRET = 'autotest-secret'
+
+
+# ---------------------------------------------------------------- launch capture
+
+def build_agent(out_dir):
+    """Compiles CaptureAgent.java into capture.jar (javac + jar from the JDK on PATH)."""
+    cls = os.path.join(out_dir, 'agent-classes')
+    jar = os.path.join(out_dir, 'capture.jar')
+    os.makedirs(cls, exist_ok=True)
+    subprocess.run(['javac', '--release', '21', '-d', cls, os.path.join(HERE, 'CaptureAgent.java')], check=True)
+    manifest = os.path.join(out_dir, 'agent-manifest.txt')
+    with open(manifest, 'w') as f:
+        f.write('Premain-Class: CaptureAgent\n')
+    subprocess.run(['jar', 'cfm', jar, manifest, '-C', cls, '.'], check=True)
+    return jar
+
+
+def capture(project, loaders, agent, out_dir, offline, log):
+    """Gradle starts every run task with the agent, which writes <loader>-<task>.json and exits.
+
+    One Gradle invocation per task: on Gradle 9 runClient and runServer in one build fail validation
+    (runServer reads the run dir that runClient's downloadAssets writes, without a declared dependency).
+    """
+    cap = os.path.join(out_dir, 'launch')
+    shutil.rmtree(cap, ignore_errors=True)
+    os.makedirs(cap)
+    rc = 0
+    with open(log, 'w', encoding='utf-8', errors='replace') as f:
+        for task in [f':{l}:{t}' for l in loaders for t in ('runClient', 'runServer')]:
+            cmd = [os.path.join(project, 'gradlew.bat' if os.name == 'nt' else 'gradlew'), task,
+                   f'-Pautotest_agent={agent}={cap}',
+                   '-Penable_dev_features=true'] + (['--offline'] if offline else [])  # tests only exist in dev builds
+            f.write(f'>>> {" ".join(cmd)}\n')
+            f.flush()
+            rc = subprocess.run(cmd, cwd=project, stdout=f, stderr=subprocess.STDOUT, timeout=3600).returncode or rc
+    specs = {}
+    for l in loaders:
+        for t in ('runClient', 'runServer'):
+            p = os.path.join(cap, f'{l}-{t}.json')
+            if os.path.exists(p):
+                with open(p, encoding='utf-8') as f:
+                    specs[(l, t)] = json.load(f)
+    return rc, specs
+
+
+# ---------------------------------------------------------------- instances
+
+def argfile_quote(a):
+    return '"' + a.replace('\\', '\\\\').replace('"', '\\"') + '"'
+
+
+class Instance:
+    def __init__(self, name, spec, run_dir, props):
+        self.name, self.dir, self.proc = name, run_dir, None
+        self.results = os.path.join(run_dir, 'results.json')
+        self.console = os.path.join(run_dir, 'console.log')
+        self.spec, self.props = spec, {'modutilities.autotest': name, 'modutilities.autotest.results': self.results, **props}
+
+    def start(self):
+        # Long classpaths/module paths exceed the Windows command line limit: use a JVM @argfile.
+        args = list(self.spec['jvmArgs']) + [f'-D{k}={v}' for k, v in self.props.items()]
+        args += ['-cp', self.spec['classpath']] + self.spec['command'].split(' ')
+        argfile = os.path.join(self.dir, 'jvm.args')
+        with open(argfile, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(argfile_quote(a) for a in args))
+        java = os.path.join(self.spec['javaHome'], 'bin', 'java')
+        self.log = open(self.console, 'w', encoding='utf-8', errors='replace')
+        flags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0
+        self.proc = subprocess.Popen([java, '@' + argfile], cwd=self.dir, env=self.spec['env'], stdin=subprocess.PIPE,
+                                     stdout=self.log, stderr=subprocess.STDOUT, creationflags=flags)
+
+    def alive(self):
+        return self.proc is not None and self.proc.poll() is None
+
+    def log_has(self, text):
+        try:
+            with open(self.console, encoding='utf-8', errors='replace') as f:
+                return text in f.read()
+        except OSError:
+            return False
+
+    def stop(self, grace):
+        """Asks a dedicated server to stop via its console, then kills the process tree."""
+        if not self.alive():
+            return
+        try:
+            self.proc.stdin.write(b'stop\n')
+            self.proc.stdin.flush()
+        except OSError:
+            pass
+        self.wait(grace)
+        self.kill()
+
+    def wait(self, timeout):
+        try:
+            self.proc.wait(timeout=max(1, timeout))
+        except subprocess.TimeoutExpired:
+            pass
+
+    def kill(self):
+        if self.alive():
+            if os.name == 'nt':
+                subprocess.run(['taskkill', '/T', '/F', '/PID', str(self.proc.pid)], capture_output=True)
+            else:
+                self.proc.kill()
+            self.wait(10)
+        self.log.close()
+
+
+def write(path, text):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(text)
+
+
+def prepare(run_dir, multiserver, server_port=None):
+    """Fresh run directory with the multi-server config, and for dedicated servers eula/server.properties."""
+    if os.path.exists(run_dir):
+        shutil.rmtree(run_dir)  # fails loudly if a leftover game process still holds files
+    os.makedirs(run_dir)
+    write(os.path.join(run_dir, 'config', 'modutilities', 'MultiServerConfig.json'), json.dumps(multiserver, indent=2))
+    if server_port is None:
+        # Client: no accessibility onboarding, no pause when unfocused (that would pause singleplayer), quiet.
+        write(os.path.join(run_dir, 'options.txt'), '\n'.join([
+            'onboardAccessibility:false', 'pauseOnLostFocus:false', 'tutorialStep:none', 'joinedFirstServer:true',
+            'skipMultiplayerWarning:true', 'renderDistance:2', 'simulationDistance:5', 'soundCategory_master:0.0',
+            'narrator:0', 'fullscreen:false', '']))
+    else:
+        write(os.path.join(run_dir, 'eula.txt'), 'eula=true\n')
+        write(os.path.join(run_dir, 'server.properties'), '\n'.join([
+            f'server-port={server_port}', 'online-mode=false', 'enforce-secure-profile=false', 'level-seed=20240101',
+            'level-type=minecraft\\:flat', 'generate-structures=false', 'difficulty=peaceful', 'spawn-protection=0',
+            'max-tick-time=-1', 'view-distance=4', 'simulation-distance=4', 'enable-rcon=false', 'motd=autotest', '']))
+
+
+def ms_off():
+    return {'enable': False}
+
+
+def ms_master():
+    return {'enable': True, 'isMaster': True, 'masterTcpPort': LINK_PORT, 'sharedSecret': SECRET}
+
+
+def ms_slave(slave_id):
+    return {'enable': True, 'isMaster': False, 'slaveID': slave_id, 'masterHost': '127.0.0.1',
+            'masterTcpPort': LINK_PORT, 'sharedSecret': SECRET}
+
+
+def wait_until(cond, timeout, *must_live):
+    end = time.time() + timeout
+    while time.time() < end:
+        if cond():
+            return True
+        if any(not i.alive() for i in must_live):
+            return False
+        time.sleep(1)
+    return False
+
+
+# ---------------------------------------------------------------- one matrix cell
+
+def run_cell(specs, loader, config, cell_dir, timeout, mods):
+    """Starts the instances of one configuration, waits for them, stops everything.
+    Returns (instances, notes); every instance in `tested` is expected to have written results.json."""
+    client_spec, server_spec = specs.get((loader, 'runClient')), specs.get((loader, 'runServer'))
+    if not client_spec or not server_spec:
+        return [], [], ['launch spec missing (see gradle-capture.log)']
+    common = {'modutilities.autotest.timeout': timeout}
+    if mods:
+        common['modutilities.autotest.mods'] = mods
+    d = lambda n: os.path.join(cell_dir, n)
+    notes, servers, tested = [], [], []
+
+    def server(name, port, ms, **props):
+        prepare(d(name), ms, port)
+        inst = Instance(name, server_spec, d(name), {**common, **{f'modutilities.autotest.{k}': v for k, v in props.items()}})
+        inst.start()
+        servers.append(inst)
+        return inst
+
+    def client(ms, **props):
+        prepare(d('client'), ms)
+        inst = Instance('client', client_spec, d('client'), {**common, **{f'modutilities.autotest.{k}': v for k, v in props.items()}})
+        inst.start()
+        return inst
+
+    def ready(inst):
+        if not wait_until(lambda: inst.log_has('Done ('), 600, inst):
+            notes.append(f'{inst.name} did not start')
+            return False
+        return True
+
+    cl = None
+    try:
+        if config == 'sp':
+            cl = client(ms_off(), world='new')
+            tested = [cl]
+        elif config == 'mp':
+            master = server('master', MASTER_PORT, ms_master(), waitPlayer='true', stop='true')
+            tested = [master]
+            if ready(master):
+                cl = client(ms_off(), connect=f'127.0.0.1:{MASTER_PORT}')
+        elif config == 'slave':
+            master = server('master', MASTER_PORT, ms_master(), waitPlayer='false', waitSlaves=1, stop='false')
+            tested = [master]
+            if ready(master):
+                slave = server('slave', SLAVE_PORT, ms_slave('autotest_slave'), waitPlayer='true', stop='true',
+                               after=master.results)
+                tested.append(slave)
+                if ready(slave):
+                    cl = client(ms_off(), connect=f'127.0.0.1:{SLAVE_PORT}')
+        elif config == 'spslave':
+            master = server('master', MASTER_PORT, ms_master(), waitPlayer='false', waitSlaves=1, stop='false')
+            tested = [master]
+            if ready(master):
+                cl = client(ms_slave('autotest_sp_slave'), world='new', after=master.results)
+                tested.append(cl)
+        # The client quits on its own once its world/server is done; its watchdog bounds this.
+        if cl:
+            cl.wait(timeout + 60)
+            if cl.alive():
+                notes.append('client hung, killed')
+        # Servers that stop themselves after their run get time to finish writing.
+        for s in servers:
+            if s.props.get('modutilities.autotest.stop') == 'true':
+                wait_until(lambda: not s.alive() or os.path.exists(s.results), 120)
+    finally:
+        for s in servers:
+            s.stop(60)
+        if cl:
+            cl.kill()
+    return [i for i in [*servers, cl] if i], tested, notes
+
+
+def read_json(path):
+    try:
+        with open(path, encoding='utf-8') as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
+
+
+def summarize(insts, tested, notes):
+    """passed/failed/errors over every instance that should have run tests, plus a status string."""
+    row = {'passed': 0, 'failed': 0, 'errors': 0, 'status': []}
+    for i in tested:
+        r = read_json(i.results)
+        if r is None:
+            row['status'].append(f'{i.name}:no-results')
+            row['errors'] += 1
+            continue
+        for k in ('passed', 'failed', 'errors'):
+            row[k] += r.get(k, 0)
+        row['status'].append(f"{i.name}:{r.get('status')}/{r.get('role')}")
+    for i in insts:
+        if i.name == 'client':
+            c = read_json(i.results + '.client.json')
+            row['status'].append('client:' + (c['status'] if c else 'no-status'))
+    row['status'] = ' '.join(row['status'] + notes)
+    row['ok'] = bool(tested) and row['failed'] == 0 and row['errors'] == 0 and all(
+        (read_json(i.results) or {}).get('status') == 'completed' for i in tested)
+    return row
+
+
+# ---------------------------------------------------------------- main
+
+def resolve_projects(args):
+    projects = [os.path.abspath(p) for p in args.projects]
+    for v in args.versions or []:
+        hits = [p for p in glob.glob(os.path.join(args.root, '*')) if os.path.basename(p).lower().startswith(f'mc_{v}_')]
+        if not hits:
+            sys.exit(f'no project folder for version {v} under {args.root}')
+        projects += hits
+    if not projects:
+        sys.exit('give project folders, or --root with --versions')
+    return projects
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
+    ap.add_argument('projects', nargs='*', help='MC version project folders (e.g. .../mc_1.21.1_MC_ModUtilities)')
+    ap.add_argument('--root', help='folder holding mc_<version>_* project folders (with --versions)')
+    ap.add_argument('--versions', nargs='*', help='versions to pick from --root')
+    ap.add_argument('--loaders', nargs='*', default=list(LOADERS), choices=LOADERS)
+    ap.add_argument('--configs', nargs='*', default=list(CONFIGS), choices=CONFIGS)
+    ap.add_argument('--timeout', type=int, default=900, help='per-instance watchdog, seconds')
+    ap.add_argument('--mods', help='comma separated mod ids to test (default: every mod with registered suites)')
+    ap.add_argument('--out', default=os.path.join(os.getcwd(), 'autotest-out'), help='output folder')
+    ap.add_argument('--offline', action='store_true', help='pass --offline to Gradle')
+    args = ap.parse_args()
+
+    out = os.path.abspath(args.out)
+    os.makedirs(out, exist_ok=True)
+    agent = build_agent(out)
+    rows = []
+    for project in resolve_projects(args):
+        name = os.path.basename(project)
+        pdir = os.path.join(out, name)
+        os.makedirs(pdir, exist_ok=True)
+        glog = os.path.join(pdir, 'gradle-capture.log')
+        print(f'[{name}] capturing launch commands (gradle) ...', flush=True)
+        rc, specs = capture(project, args.loaders, agent, pdir, args.offline, glog)
+        if rc != 0:
+            print(f'[{name}] gradle exited with {rc}, see {glog}', flush=True)
+        for loader in args.loaders:
+            for config in args.configs:
+                cell = os.path.join(pdir, loader, config)
+                print(f'[{name}] {loader} {config} ...', flush=True)
+                t0 = time.time()
+                insts, tested, notes = run_cell(specs, loader, config, cell, args.timeout, args.mods)
+                row = summarize(insts, tested, notes)
+                row.update(project=name, loader=loader, config=config, seconds=int(time.time() - t0), dir=cell)
+                rows.append(row)
+                print(f"    {'PASS' if row['ok'] else 'FAIL'} {row['passed']} passed, {row['failed']} failed, "
+                      f"{row['errors']} errors  [{row['status']}]", flush=True)
+
+    with open(os.path.join(out, 'summary.json'), 'w', encoding='utf-8') as f:
+        json.dump(rows, f, indent=2)
+    print()
+    hdr = f"{'project':34} {'loader':9} {'config':8} {'result':6} {'pass':>5} {'fail':>5} {'err':>4} {'sec':>5}  status"
+    print(hdr)
+    print('-' * len(hdr))
+    for r in rows:
+        print(f"{r['project'][:34]:34} {r['loader']:9} {r['config']:8} {'OK' if r['ok'] else 'FAIL':6} "
+              f"{r['passed']:>5} {r['failed']:>5} {r['errors']:>4} {r['seconds']:>5}  {r['status']}")
+    print(f'\nlogs and reports: {out}  (per cell: <project>/<loader>/<config>/<instance>/console.log, results.json,'
+          f' logs/UnitTests/<mod>.log)')
+    sys.exit(0 if rows and all(r['ok'] for r in rows) else 1)
+
+
+if __name__ == '__main__':
+    main()
