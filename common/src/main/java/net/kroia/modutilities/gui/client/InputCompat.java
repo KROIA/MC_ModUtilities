@@ -34,6 +34,12 @@ public final class InputCompat {
         return Minecraft.getInstance().hasControlDown(); // mc>=1.21.9
     }
 
+    /** @return whether touchscreen mode is on (26.2 removed the option; always false there) */
+    public static boolean touchscreen() {
+        return Minecraft.getInstance().options.touchscreen().get(); // mc<=26.1
+        //return false; // mc>=26.2
+    }
+
     /** @return the GLFW modifier bits (shift 1, control 2, alt 4) of the keys held right now */
     public static int currentModifiers() {
         return (hasShiftDown() ? 1 : 0) | (hasControlDown() ? 2 : 0) | (hasAltDown() ? 4 : 0);
