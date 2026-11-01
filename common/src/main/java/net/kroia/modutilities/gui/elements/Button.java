@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui.elements;
 
+import net.kroia.modutilities.NbtCompat;
 
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.minecraft.nbt.CompoundTag;
@@ -126,7 +127,7 @@ public class Button extends EmptyButton {
     public void deserializeState(CompoundTag tag) {
         super.deserializeState(tag);
         if (tag.contains("label")) {
-            label.setText(tag.getString("label"));
+            label.setText(NbtCompat.getString(tag, "label"));
         }
     }
 

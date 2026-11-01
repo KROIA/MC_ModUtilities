@@ -191,12 +191,12 @@ public class TimerMillis implements ServerSaveable {
         if (!tag.contains("startTime") || !tag.contains("duration") || !tag.contains("autoRestart")) {
             return false; // Invalid tag
         }
-        this.startTime = tag.getLong("startTime");
-        this.duration = tag.getLong("duration");
-        this.autoRestart = tag.getBoolean("autoRestart");
+        this.startTime = NbtCompat.getLong(tag, "startTime");
+        this.duration = NbtCompat.getLong(tag, "duration");
+        this.autoRestart = NbtCompat.getBoolean(tag, "autoRestart");
         // Backward compat: derive from startTime if key is missing (older saves)
         if (tag.contains("isRunning")) {
-            this.isRunning = tag.getBoolean("isRunning");
+            this.isRunning = NbtCompat.getBoolean(tag, "isRunning");
         } else {
             this.isRunning = this.startTime > 0;
         }

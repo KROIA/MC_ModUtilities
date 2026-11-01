@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui.elements;
 
+import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.elements.base.ListView;
@@ -275,7 +276,7 @@ public class DropDownMenu extends GuiElement {
     public void deserializeState(CompoundTag tag) {
         super.deserializeState(tag);
         if (tag.contains("selectedIndex")) {
-            setSelectedIndex(tag.getInt("selectedIndex"));
+            setSelectedIndex(NbtCompat.getInt(tag, "selectedIndex"));
         }
     }
 

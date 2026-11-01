@@ -110,28 +110,31 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         }
 
         if (data == null) {
-            int prevTexture = org.lwjgl.opengl.GL11.glGetInteger(org.lwjgl.opengl.GL11.GL_TEXTURE_BINDING_2D);
-            int[] prevViewport = new int[4];
-            org.lwjgl.opengl.GL11.glGetIntegerv(org.lwjgl.opengl.GL11.GL_VIEWPORT, prevViewport);
-            com.mojang.blaze3d.pipeline.RenderTarget prevTarget = Minecraft.getInstance().getMainRenderTarget();
+            //int prevTexture = org.lwjgl.opengl.GL11.glGetInteger(org.lwjgl.opengl.GL11.GL_TEXTURE_BINDING_2D); // mc<=1.21.4
+            //int[] prevViewport = new int[4]; // mc<=1.21.4
+            //org.lwjgl.opengl.GL11.glGetIntegerv(org.lwjgl.opengl.GL11.GL_VIEWPORT, prevViewport); // mc<=1.21.4
+            //com.mojang.blaze3d.pipeline.RenderTarget prevTarget = Minecraft.getInstance().getMainRenderTarget(); // mc<=1.21.4
 
             data = new GroupRenderData();
             data.groupWidth = gw;
             data.groupHeight = gh;
             data.texWidth = texW;
             data.texHeight = texH;
-            data.texture = new DynamicTexture(texW, texH, false);
-            RenderSystem.bindTexture(data.texture.getId());
-            org.lwjgl.opengl.GL11.glTexImage2D(org.lwjgl.opengl.GL11.GL_TEXTURE_2D, 0,
-                    org.lwjgl.opengl.GL11.GL_RGBA, texW, texH, 0,
-                    org.lwjgl.opengl.GL11.GL_RGBA, org.lwjgl.opengl.GL11.GL_UNSIGNED_BYTE,
-                    (java.nio.ByteBuffer) null);
-            org.lwjgl.opengl.GL11.glTexParameteri(org.lwjgl.opengl.GL11.GL_TEXTURE_2D,
-                    org.lwjgl.opengl.GL11.GL_TEXTURE_MIN_FILTER, org.lwjgl.opengl.GL11.GL_NEAREST);
-            org.lwjgl.opengl.GL11.glTexParameteri(org.lwjgl.opengl.GL11.GL_TEXTURE_2D,
-                    org.lwjgl.opengl.GL11.GL_TEXTURE_MAG_FILTER, org.lwjgl.opengl.GL11.GL_NEAREST);
+            //data.texture = new DynamicTexture(texW, texH, false); // mc<=1.21.4
+            //RenderSystem.bindTexture(data.texture.getId()); // mc<=1.21.4
+            //org.lwjgl.opengl.GL11.glTexImage2D(org.lwjgl.opengl.GL11.GL_TEXTURE_2D, 0, // mc<=1.21.4
+            //        org.lwjgl.opengl.GL11.GL_RGBA, texW, texH, 0, // mc<=1.21.4
+            //        org.lwjgl.opengl.GL11.GL_RGBA, org.lwjgl.opengl.GL11.GL_UNSIGNED_BYTE, // mc<=1.21.4
+            //        (java.nio.ByteBuffer) null); // mc<=1.21.4
+            //org.lwjgl.opengl.GL11.glTexParameteri(org.lwjgl.opengl.GL11.GL_TEXTURE_2D, // mc<=1.21.4
+            //        org.lwjgl.opengl.GL11.GL_TEXTURE_MIN_FILTER, org.lwjgl.opengl.GL11.GL_NEAREST); // mc<=1.21.4
+            //org.lwjgl.opengl.GL11.glTexParameteri(org.lwjgl.opengl.GL11.GL_TEXTURE_2D, // mc<=1.21.4
+            //        org.lwjgl.opengl.GL11.GL_TEXTURE_MAG_FILTER, org.lwjgl.opengl.GL11.GL_NEAREST); // mc<=1.21.4
+            data.texture = new DynamicTexture(() -> "modutilities display " + controllerPos.toShortString(), texW, texH, false); // mc>=1.21.5
+            data.texture.setFilter(false, false); // mc>=1.21.5 (nearest, no mipmaps)
             //data.framebuffer = new TextureTarget(texW, texH, true, false); // mc<=1.21.1
-            data.framebuffer = new TextureTarget(texW, texH, true); // mc>=1.21.2
+            //data.framebuffer = new TextureTarget(texW, texH, true); // mc>=1.21.2 mc<=1.21.4
+            data.framebuffer = new TextureTarget("modutilities display framebuffer", texW, texH, true); // mc>=1.21.5
             data.location = ResourceLocation.fromNamespaceAndPath("modutilities",
                     "dynamic/display_group_" + controllerPos.getX() + "_"
                             + controllerPos.getY() + "_" + controllerPos.getZ());
@@ -139,17 +142,19 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
             data.layoutInitialized = false;
             groupData.put(controllerPos, data);
 
-            prevTarget.bindWrite(false);
-            RenderSystem.viewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
-            RenderSystem.bindTexture(prevTexture);
+            //prevTarget.bindWrite(false); // mc<=1.21.4
+            //RenderSystem.viewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]); // mc<=1.21.4
+            //RenderSystem.bindTexture(prevTexture); // mc<=1.21.4
         }
 
         return data;
     }
 
     @Override
-    public void render(T blockEntity, float partialTick, PoseStack poseStack,
-                       MultiBufferSource bufferSource, int packedLight, int packedOverlay) {
+    //public void render(T blockEntity, float partialTick, PoseStack poseStack, // mc<=1.21.4
+    //                   MultiBufferSource bufferSource, int packedLight, int packedOverlay) { // mc<=1.21.4
+    public void render(T blockEntity, float partialTick, PoseStack poseStack, // mc>=1.21.5
+                       MultiBufferSource bufferSource, int packedLight, int packedOverlay, net.minecraft.world.phys.Vec3 cameraPos) { // mc>=1.21.5
 
         if (!blockEntity.isActive()) return;
 
@@ -281,19 +286,22 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         Matrix4f prevProjection = new Matrix4f(RenderSystem.getProjectionMatrix());
         //VertexSorting prevSorting = RenderSystem.getVertexSorting(); // mc<=1.21.1
         ProjectionType prevSorting = RenderSystem.getProjectionType(); // mc>=1.21.2
-        int[] prevViewport = new int[4];
-        org.lwjgl.opengl.GL11.glGetIntegerv(org.lwjgl.opengl.GL11.GL_VIEWPORT, prevViewport);
-        boolean prevDepthTest = org.lwjgl.opengl.GL11.glIsEnabled(org.lwjgl.opengl.GL11.GL_DEPTH_TEST);
-        boolean prevBlend = org.lwjgl.opengl.GL11.glIsEnabled(org.lwjgl.opengl.GL11.GL_BLEND);
-        boolean prevCull = org.lwjgl.opengl.GL11.glIsEnabled(org.lwjgl.opengl.GL11.GL_CULL_FACE);
+        //int[] prevViewport = new int[4]; // mc<=1.21.4
+        //org.lwjgl.opengl.GL11.glGetIntegerv(org.lwjgl.opengl.GL11.GL_VIEWPORT, prevViewport); // mc<=1.21.4
+        //boolean prevDepthTest = org.lwjgl.opengl.GL11.glIsEnabled(org.lwjgl.opengl.GL11.GL_DEPTH_TEST); // mc<=1.21.4
+        //boolean prevBlend = org.lwjgl.opengl.GL11.glIsEnabled(org.lwjgl.opengl.GL11.GL_BLEND); // mc<=1.21.4
+        //boolean prevCull = org.lwjgl.opengl.GL11.glIsEnabled(org.lwjgl.opengl.GL11.GL_CULL_FACE); // mc<=1.21.4
 
-        data.framebuffer.bindWrite(false);
-        RenderSystem.viewport(0, 0, texW, texH);
-        RenderSystem.clearColor(0.15f, 0.15f, 0.15f, 1.0f);
+        //data.framebuffer.bindWrite(false); // mc<=1.21.4
+        //RenderSystem.viewport(0, 0, texW, texH); // mc<=1.21.4
+        //RenderSystem.clearColor(0.15f, 0.15f, 0.15f, 1.0f); // mc<=1.21.4
         //RenderSystem.clear(org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT // mc<=1.21.1
         //        | org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT, false); // mc<=1.21.1
-        RenderSystem.clear(org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT // mc>=1.21.2
-                | org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT); // mc>=1.21.2
+        //RenderSystem.clear(org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT // mc>=1.21.2 mc<=1.21.4
+        //        | org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT); // mc>=1.21.2 mc<=1.21.4
+        ((net.kroia.mixin.MinecraftAccessor) mc).modutilities$setMainRenderTarget(data.framebuffer); // mc>=1.21.5 (draws go to the main target)
+        RenderSystem.getDevice().createCommandEncoder().clearColorAndDepthTextures( // mc>=1.21.5
+                data.framebuffer.getColorTexture(), 0xFF262626, data.framebuffer.getDepthTexture(), 1.0); // mc>=1.21.5 (0.15 gray)
 
         float[] prevShaderColor = RenderSystem.getShaderColor().clone();
 
@@ -355,29 +363,32 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
 
         DisplayRenderProfiler.storeTextureSize(controllerPos, texW, texH);
         DisplayRenderProfiler.begin(controllerPos, DisplayRenderProfiler.Category.TEXTURE_TRANSFER);
-        data.framebuffer.bindRead();
-        int prevTexture = org.lwjgl.opengl.GL11.glGetInteger(org.lwjgl.opengl.GL11.GL_TEXTURE_BINDING_2D);
-        RenderSystem.bindTexture(data.texture.getId());
-        org.lwjgl.opengl.GL11.glCopyTexSubImage2D(
-                org.lwjgl.opengl.GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, texW, texH);
-        RenderSystem.bindTexture(prevTexture);
-        data.framebuffer.unbindRead();
+        //data.framebuffer.bindRead(); // mc<=1.21.4
+        //int prevTexture = org.lwjgl.opengl.GL11.glGetInteger(org.lwjgl.opengl.GL11.GL_TEXTURE_BINDING_2D); // mc<=1.21.4
+        //RenderSystem.bindTexture(data.texture.getId()); // mc<=1.21.4
+        //org.lwjgl.opengl.GL11.glCopyTexSubImage2D( // mc<=1.21.4
+        //        org.lwjgl.opengl.GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, texW, texH); // mc<=1.21.4
+        //RenderSystem.bindTexture(prevTexture); // mc<=1.21.4
+        //data.framebuffer.unbindRead(); // mc<=1.21.4
+        RenderSystem.getDevice().createCommandEncoder().copyTextureToTexture( // mc>=1.21.5
+                data.framebuffer.getColorTexture(), data.texture.getTexture(), 0, 0, 0, 0, 0, texW, texH); // mc>=1.21.5
         DisplayRenderProfiler.end(controllerPos, DisplayRenderProfiler.Category.TEXTURE_TRANSFER);
 
-        data.framebuffer.unbindWrite();
-        prevTarget.bindWrite(false);
+        //data.framebuffer.unbindWrite(); // mc<=1.21.4
+        //prevTarget.bindWrite(false); // mc<=1.21.4
+        ((net.kroia.mixin.MinecraftAccessor) mc).modutilities$setMainRenderTarget(prevTarget); // mc>=1.21.5
         RenderSystem.getModelViewStack().popMatrix();
         //RenderSystem.applyModelViewMatrix(); // mc<=1.21.1
-        RenderSystem.viewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
+        //RenderSystem.viewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]); // mc<=1.21.4
         RenderSystem.setProjectionMatrix(prevProjection, prevSorting);
         RenderSystem.setShaderColor(prevShaderColor[0], prevShaderColor[1], prevShaderColor[2], prevShaderColor[3]);
         //RenderSystem.setShaderFogColor(prevFogColor[0], prevFogColor[1], prevFogColor[2], prevFogColor[3]); // mc<=1.21.1
         //RenderSystem.setShaderFogStart(prevFogStart); // mc<=1.21.1
         //RenderSystem.setShaderFogEnd(prevFogEnd); // mc<=1.21.1
         RenderSystem.setShaderFog(prevFog); // mc>=1.21.2
-        if (prevDepthTest) RenderSystem.enableDepthTest(); else RenderSystem.disableDepthTest();
-        if (prevBlend) RenderSystem.enableBlend(); else RenderSystem.disableBlend();
-        if (prevCull) RenderSystem.enableCull(); else RenderSystem.disableCull();
+        //if (prevDepthTest) RenderSystem.enableDepthTest(); else RenderSystem.disableDepthTest(); // mc<=1.21.4
+        //if (prevBlend) RenderSystem.enableBlend(); else RenderSystem.disableBlend(); // mc<=1.21.4
+        //if (prevCull) RenderSystem.enableCull(); else RenderSystem.disableCull(); // mc<=1.21.4
         Lighting.setupLevel();
     }
 

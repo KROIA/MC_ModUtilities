@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui.display;
 
+import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.display.client.DisplayClientHooks;
 import net.minecraft.core.BlockPos;
@@ -72,6 +73,16 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
     protected void loadCustomData(CompoundTag tag, HolderLookup.Provider registries) {}
 
     public String getChannelId() { return "default"; }
+
+    // MC 1.21.5: capture the group state before this block entity is removed; consumed by
+    // AbstractDisplayBlock.affectNeighborsAfterRemoval (replaces the pre-1.21.5 capture in onRemove).
+    @Override // mc>=1.21.5
+    public void preRemoveSideEffects(BlockPos pos, BlockState state) { // mc>=1.21.5
+        super.preRemoveSideEffects(pos, state); // mc>=1.21.5
+        AbstractDisplayBlockEntity ctrl = getControllerEntity(); // mc>=1.21.5
+        AbstractDisplayBlock.PENDING_REMOVALS.put(pos.immutable(), new AbstractDisplayBlock.PendingRemoval( // mc>=1.21.5
+                getChannelId(), ctrl != null ? ctrl.captureTransferState() : null)); // mc>=1.21.5
+    } // mc>=1.21.5
 
     /**
      * Whether right-clicking the display block opens the built-in synced interaction screen.
@@ -299,12 +310,12 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
         if (tag.contains("ctrlX")) {
-            controllerPos = new BlockPos(tag.getInt("ctrlX"), tag.getInt("ctrlY"), tag.getInt("ctrlZ"));
+            controllerPos = new BlockPos(NbtCompat.getInt(tag, "ctrlX"), NbtCompat.getInt(tag, "ctrlY"), NbtCompat.getInt(tag, "ctrlZ"));
         }
-        groupWidth = tag.getInt("gw");
-        groupHeight = tag.getInt("gh");
-        gridX = tag.getInt("gx");
-        gridY = tag.getInt("gy");
+        groupWidth = NbtCompat.getInt(tag, "gw");
+        groupHeight = NbtCompat.getInt(tag, "gh");
+        gridX = NbtCompat.getInt(tag, "gx");
+        gridY = NbtCompat.getInt(tag, "gy");
         loadCustomData(tag, registries);
 
         if (isActive() && isController()) {
@@ -316,12 +327,12 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
                 guiBuiltWidth = neededW;
                 guiBuiltHeight = neededH;
             }
-            if (tag.contains("guiTree") && tag.getCompound("guiTree").getInt("structureVersion") > 0) {
-                gui.deserializeTree(tag.getCompound("guiTree"));
+            if (tag.contains("guiTree") && NbtCompat.getInt(NbtCompat.getCompound(tag, "guiTree"), "structureVersion") > 0) {
+                gui.deserializeTree(NbtCompat.getCompound(tag, "guiTree"));
                 gui.init();
             }
             if (tag.contains("guiInput")) {
-                GuiInputSerializer.applyInput(tag.getCompound("guiInput"), gui);
+                GuiInputSerializer.applyInput(NbtCompat.getCompound(tag, "guiInput"), gui);
             }
         } else {
             gui = null;

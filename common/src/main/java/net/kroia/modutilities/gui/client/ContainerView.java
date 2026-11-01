@@ -155,7 +155,7 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
     public void render() {
         int i = 0;
         int j = 0;
-        RenderSystem.disableDepthTest();
+        //RenderSystem.disableDepthTest(); // mc<=1.21.4 (1.21.5: depth state belongs to the RenderPipeline)
         this.hoveredSlot = null;
         int pMouseX = getMouseX();
         int pMouseY = getMouseY();
@@ -209,7 +209,7 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
             int k1 = this.snapbackStartY + (int)((float)k2 * f);
             this.renderFloatingItem(this.snapbackItem, j1, k1);
         }
-        RenderSystem.enableDepthTest();
+        //RenderSystem.enableDepthTest(); // mc<=1.21.4
         renderTooltip(pMouseX, pMouseY);
     }
 

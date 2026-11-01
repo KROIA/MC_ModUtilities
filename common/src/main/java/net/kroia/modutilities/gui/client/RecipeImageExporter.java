@@ -84,11 +84,11 @@ public class RecipeImageExporter {
         Matrix4f prevProjection = new Matrix4f(RenderSystem.getProjectionMatrix());
         //VertexSorting prevSorting = RenderSystem.getVertexSorting(); // mc<=1.21.1
         ProjectionType prevSorting = RenderSystem.getProjectionType(); // mc>=1.21.2
-        int[] prevViewport = new int[4];
-        GL11.glGetIntegerv(GL11.GL_VIEWPORT, prevViewport);
-        boolean prevDepthTest = GL11.glIsEnabled(GL11.GL_DEPTH_TEST);
-        boolean prevBlend = GL11.glIsEnabled(GL11.GL_BLEND);
-        boolean prevCull = GL11.glIsEnabled(GL11.GL_CULL_FACE);
+        //int[] prevViewport = new int[4]; // mc<=1.21.4
+        //GL11.glGetIntegerv(GL11.GL_VIEWPORT, prevViewport); // mc<=1.21.4
+        //boolean prevDepthTest = GL11.glIsEnabled(GL11.GL_DEPTH_TEST); // mc<=1.21.4
+        //boolean prevBlend = GL11.glIsEnabled(GL11.GL_BLEND); // mc<=1.21.4
+        //boolean prevCull = GL11.glIsEnabled(GL11.GL_CULL_FACE); // mc<=1.21.4
         float[] prevShaderColor = RenderSystem.getShaderColor().clone();
         //float[] prevFogColor = new float[4]; // mc<=1.21.1
         //prevFogColor[0] = RenderSystem.getShaderFogColor()[0]; // mc<=1.21.1
@@ -106,16 +106,20 @@ public class RecipeImageExporter {
         try {
             // --- Create and bind framebuffer ---
             //framebuffer = new TextureTarget(texW, texH, true, false); // mc<=1.21.1
-            framebuffer = new TextureTarget(texW, texH, true); // mc>=1.21.2
-            framebuffer.bindWrite(false);
-            RenderSystem.viewport(0, 0, texW, texH);
+            //framebuffer = new TextureTarget(texW, texH, true); // mc>=1.21.2 mc<=1.21.4
+            framebuffer = new TextureTarget("modutilities recipe export", texW, texH, true); // mc>=1.21.5
+            //framebuffer.bindWrite(false); // mc<=1.21.4
+            //RenderSystem.viewport(0, 0, texW, texH); // mc<=1.21.4
+            ((net.kroia.mixin.MinecraftAccessor) mc).modutilities$setMainRenderTarget(framebuffer); // mc>=1.21.5 (draws go to the main target)
 
             float bgR = ((BG_COLOR >> 16) & 0xFF) / 255f;
             float bgG = ((BG_COLOR >> 8) & 0xFF) / 255f;
             float bgB = (BG_COLOR & 0xFF) / 255f;
-            RenderSystem.clearColor(bgR, bgG, bgB, 1.0f);
+            //RenderSystem.clearColor(bgR, bgG, bgB, 1.0f); // mc<=1.21.4
             //RenderSystem.clear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT, false); // mc<=1.21.1
-            RenderSystem.clear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT); // mc>=1.21.2
+            //RenderSystem.clear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT); // mc>=1.21.2 mc<=1.21.4
+            RenderSystem.getDevice().createCommandEncoder().clearColorAndDepthTextures( // mc>=1.21.5
+                    framebuffer.getColorTexture(), 0xFF000000 | (BG_COLOR & 0xFFFFFF), framebuffer.getDepthTexture(), 1.0); // mc>=1.21.5
 
             // --- Disable fog ---
             //RenderSystem.setShaderFogColor(0, 0, 0, 0); // mc<=1.21.1
@@ -147,18 +151,33 @@ public class RecipeImageExporter {
             bufferSource.endBatch();
 
             // --- Read pixels from framebuffer ---
-            image = new NativeImage(texW, texH, false);
-            RenderSystem.bindTexture(framebuffer.getColorTextureId());
-            image.downloadTexture(0, false);
-            image.flipY();
+            //image = new NativeImage(texW, texH, false); // mc<=1.21.4
+            //RenderSystem.bindTexture(framebuffer.getColorTextureId()); // mc<=1.21.4
+            //image.downloadTexture(0, false); // mc<=1.21.4
+            //image.flipY(); // mc<=1.21.4
 
             // --- Save PNG ---
-            Path parent = outputPath.getParent();
-            if (parent != null) {
-                Files.createDirectories(parent);
-            }
-            image.writeToFile(outputPath);
-            ModUtilitiesMod.LOGGER.info("Recipe image exported to: {}", outputPath);
+            //Path parent = outputPath.getParent(); // mc<=1.21.4
+            //if (parent != null) { // mc<=1.21.4
+            //    Files.createDirectories(parent); // mc<=1.21.4
+            //} // mc<=1.21.4
+            //image.writeToFile(outputPath); // mc<=1.21.4
+            //ModUtilitiesMod.LOGGER.info("Recipe image exported to: {}", outputPath); // mc<=1.21.4
+            // mc>=1.21.5: GPU readback is asynchronous; the PNG is written (and the target freed) in the callback.
+            final TextureTarget target = framebuffer; // mc>=1.21.5
+            framebuffer = null; // mc>=1.21.5
+            net.minecraft.client.Screenshot.takeScreenshot(target, img -> { // mc>=1.21.5
+                try (img) { // mc>=1.21.5
+                    Path parent = outputPath.getParent(); // mc>=1.21.5
+                    if (parent != null) Files.createDirectories(parent); // mc>=1.21.5
+                    img.writeToFile(outputPath); // mc>=1.21.5
+                    ModUtilitiesMod.LOGGER.info("Recipe image exported to: {}", outputPath); // mc>=1.21.5
+                } catch (Exception e) { // mc>=1.21.5
+                    ModUtilitiesMod.LOGGER.error("Failed to export recipe image to: {}", outputPath, e); // mc>=1.21.5
+                } finally { // mc>=1.21.5
+                    target.destroyBuffers(); // mc>=1.21.5
+                } // mc>=1.21.5
+            }); // mc>=1.21.5
             success = true;
 
         } catch (Exception e) {
@@ -166,15 +185,16 @@ public class RecipeImageExporter {
         } finally {
             if (image != null) image.close();
             if (framebuffer != null) {
-                framebuffer.unbindWrite();
+                //framebuffer.unbindWrite(); // mc<=1.21.4
                 framebuffer.destroyBuffers();
             }
 
             // --- Restore GL state (mirrors AbstractDisplayBlockEntityRenderer lines 335-347) ---
-            prevTarget.bindWrite(false);
+            //prevTarget.bindWrite(false); // mc<=1.21.4
+            ((net.kroia.mixin.MinecraftAccessor) mc).modutilities$setMainRenderTarget(prevTarget); // mc>=1.21.5
             RenderSystem.getModelViewStack().popMatrix();
             //RenderSystem.applyModelViewMatrix(); // mc<=1.21.1
-            RenderSystem.viewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
+            //RenderSystem.viewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]); // mc<=1.21.4
             RenderSystem.setProjectionMatrix(prevProjection, prevSorting);
             RenderSystem.setShaderColor(prevShaderColor[0], prevShaderColor[1],
                     prevShaderColor[2], prevShaderColor[3]);
@@ -183,9 +203,9 @@ public class RecipeImageExporter {
             //RenderSystem.setShaderFogStart(prevFogStart); // mc<=1.21.1
             //RenderSystem.setShaderFogEnd(prevFogEnd); // mc<=1.21.1
             RenderSystem.setShaderFog(prevFog); // mc>=1.21.2
-            if (prevDepthTest) RenderSystem.enableDepthTest(); else RenderSystem.disableDepthTest();
-            if (prevBlend) RenderSystem.enableBlend(); else RenderSystem.disableBlend();
-            if (prevCull) RenderSystem.enableCull(); else RenderSystem.disableCull();
+            //if (prevDepthTest) RenderSystem.enableDepthTest(); else RenderSystem.disableDepthTest(); // mc<=1.21.4
+            //if (prevBlend) RenderSystem.enableBlend(); else RenderSystem.disableBlend(); // mc<=1.21.4
+            //if (prevCull) RenderSystem.enableCull(); else RenderSystem.disableCull(); // mc<=1.21.4
             Lighting.setupLevel();
         }
 
