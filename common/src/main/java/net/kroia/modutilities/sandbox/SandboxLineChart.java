@@ -201,7 +201,7 @@ public class SandboxLineChart extends GuiElement {
 
     @Override
     protected boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == 32) { // SPACE
+        if (keyCode == InputConstants.KEY_SPACE) {
             autoCenterView();
             markDirty();
             return true;
