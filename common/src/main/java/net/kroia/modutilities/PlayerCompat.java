@@ -1,6 +1,8 @@
 package net.kroia.modutilities;
 
 import com.mojang.authlib.GameProfile;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Player;
 
 import java.util.UUID;
 
@@ -22,5 +24,11 @@ public final class PlayerCompat {
     public static UUID profileId(GameProfile profile) {
         return profile.getId(); // mc<=1.21.8
         //return profile.id(); // mc>=1.21.9
+    }
+
+    /** Shows a message to the player: in the chat, or above the hotbar if {@code actionBar}. */
+    public static void sendMessage(Player player, Component message, boolean actionBar) {
+        player.displayClientMessage(message, actionBar); // mc<=1.21.11
+        //if (actionBar) player.sendOverlayMessage(message); else player.sendSystemMessage(message); // mc>=26.1
     }
 }
