@@ -371,7 +371,7 @@ public class Sandbox {
         net.kroia.modutilities.placeholder.PlaceholderRegistry.registerServer(ModUtilitiesMod.MOD_ID, "sandbox_time", 1000,
                 () -> String.valueOf(System.currentTimeMillis() / 1000));
         net.kroia.modutilities.placeholder.PlaceholderRegistry.registerPlayer(ModUtilitiesMod.MOD_ID, "sandbox_player", 1000,
-                player -> player.getGameProfile().getName());
+                player -> net.kroia.modutilities.PlayerCompat.profileName(player.getGameProfile()));
         net.kroia.modutilities.gui.GuiElementRegistry.register(
                 "sandbox_line_chart", SandboxLineChart.class, SandboxLineChart::new);
 
