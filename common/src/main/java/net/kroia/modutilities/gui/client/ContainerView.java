@@ -316,9 +316,12 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
         graphicsPushPose();
         graphicsTranslate(0.0F, 0.0F, 100.0F);
         if (itemstack.isEmpty() && pSlot.isActive()) {
-            Pair<ResourceLocation, ResourceLocation> pair = pSlot.getNoItemIcon();
-            if (pair != null) {
-                TextureAtlasSprite textureatlassprite = (TextureAtlasSprite)minecraft.getTextureAtlas((ResourceLocation)pair.getFirst()).apply((ResourceLocation)pair.getSecond());
+            Pair<ResourceLocation, ResourceLocation> pair = pSlot.getNoItemIcon(); // mc<=1.21.3
+            if (pair != null) { // mc<=1.21.3
+                TextureAtlasSprite textureatlassprite = (TextureAtlasSprite)minecraft.getTextureAtlas((ResourceLocation)pair.getFirst()).apply((ResourceLocation)pair.getSecond()); // mc<=1.21.3
+            //ResourceLocation noItemIcon = pSlot.getNoItemIcon(); // mc>=1.21.4
+            //if (noItemIcon != null) { // mc>=1.21.4
+                //TextureAtlasSprite textureatlassprite = minecraft.getGuiSprites().getSprite(noItemIcon); // mc>=1.21.4
                 if(getRoot() != null && getRoot().getGraphics() instanceof net.kroia.modutilities.gui.client.ClientGraphics cg) {
                     cg.blit(i, j, 0, 16, 16, textureatlassprite);
                 }
