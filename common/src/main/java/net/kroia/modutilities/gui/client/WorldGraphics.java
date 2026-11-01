@@ -9,7 +9,8 @@ import net.kroia.modutilities.gui.elements.base.Vertex;
 import net.kroia.modutilities.gui.elements.base.VertexBuffer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.renderer.MultiBufferSource;
+//import net.minecraft.client.renderer.MultiBufferSource; // mc<=26.1
+import net.minecraft.client.renderer.SubmitNodeCollector; // mc>=26.2
 //import net.minecraft.client.renderer.RenderType; // mc<=1.21.10
 import net.minecraft.client.renderer.rendertype.RenderType; import net.minecraft.client.renderer.rendertype.RenderTypes; // mc>=1.21.11
 import net.minecraft.network.chat.Component;
@@ -53,7 +54,8 @@ public class WorldGraphics implements IGraphics {
     private static final float DRAW_Z_STEP = 0.01f;
 
     private PoseStack poseStack;
-    private MultiBufferSource bufferSource;
+    //private MultiBufferSource bufferSource; // mc<=26.1
+    private SubmitNodeCollector collector; // (26.2: no buffer sources; drawing is recorded and drawn later in the frame) // mc>=26.2
     private Font font;
 
     /**
@@ -71,9 +73,11 @@ public class WorldGraphics implements IGraphics {
      * @param poseStack    the pose stack from the BER render call
      * @param bufferSource the buffer source from the BER render call
      */
-    public void setup(PoseStack poseStack, MultiBufferSource bufferSource) {
+    //public void setup(PoseStack poseStack, MultiBufferSource bufferSource) { // mc<=26.1
+    public void setup(PoseStack poseStack, SubmitNodeCollector collector) { // (the collector from BlockEntityRenderer.submit) // mc>=26.2
         this.poseStack = poseStack;
-        this.bufferSource = bufferSource;
+        //this.bufferSource = bufferSource; // mc<=26.1
+        this.collector = collector; // mc>=26.2
         this.drawZ = 0;
     }
 
@@ -101,11 +105,12 @@ public class WorldGraphics implements IGraphics {
         drawZ += DRAW_Z_STEP;
         poseStack.pushPose();
         poseStack.translate(x, y, drawZ);
-        MultiBufferSource.BufferSource immediate = Minecraft.getInstance().renderBuffers().bufferSource();
-        font.drawInBatch(text, 0, 0, color, false,
-                poseStack.last().pose(), immediate,
-                Font.DisplayMode.NORMAL, 0, 0xF000F0);
-        immediate.endBatch();
+        //MultiBufferSource.BufferSource immediate = Minecraft.getInstance().renderBuffers().bufferSource(); // mc<=26.1
+        //font.drawInBatch(text, 0, 0, color, false, // mc<=26.1
+                //poseStack.last().pose(), immediate, // mc<=26.1
+                //Font.DisplayMode.NORMAL, 0, 0xF000F0); // mc<=26.1
+        //immediate.endBatch(); // mc<=26.1
+        collector.submitText(poseStack, 0, 0, Component.literal(text).getVisualOrderText(), false, Font.DisplayMode.NORMAL, 0xF000F0, color, 0, 0); // mc>=26.2
         poseStack.popPose();
     }
 
@@ -115,11 +120,12 @@ public class WorldGraphics implements IGraphics {
         drawZ += DRAW_Z_STEP;
         poseStack.pushPose();
         poseStack.translate(x, y, drawZ);
-        MultiBufferSource.BufferSource immediate = Minecraft.getInstance().renderBuffers().bufferSource();
-        font.drawInBatch(text, 0, 0, color, dropShadow,
-                poseStack.last().pose(), immediate,
-                Font.DisplayMode.NORMAL, 0, 0xF000F0);
-        immediate.endBatch();
+        //MultiBufferSource.BufferSource immediate = Minecraft.getInstance().renderBuffers().bufferSource(); // mc<=26.1
+        //font.drawInBatch(text, 0, 0, color, dropShadow, // mc<=26.1
+                //poseStack.last().pose(), immediate, // mc<=26.1
+                //Font.DisplayMode.NORMAL, 0, 0xF000F0); // mc<=26.1
+        //immediate.endBatch(); // mc<=26.1
+        collector.submitText(poseStack, 0, 0, Component.literal(text).getVisualOrderText(), dropShadow, Font.DisplayMode.NORMAL, 0xF000F0, color, 0, 0); // mc>=26.2
         poseStack.popPose();
     }
 
@@ -133,13 +139,13 @@ public class WorldGraphics implements IGraphics {
         int g = (color >> 8) & 0xFF;
         int b = color & 0xFF;
 
-        Matrix4f matrix = poseStack.last().pose();
-        //VertexConsumer consumer = bufferSource.getBuffer(RenderType.debugQuads()); // mc<=1.21.10
-        VertexConsumer consumer = bufferSource.getBuffer(RenderTypes.debugQuads()); // mc>=1.21.11
-        consumer.addVertex(matrix, x1, y1, drawZ).setColor(r, g, b, a);
-        consumer.addVertex(matrix, x1, y2, drawZ).setColor(r, g, b, a);
-        consumer.addVertex(matrix, x2, y2, drawZ).setColor(r, g, b, a);
-        consumer.addVertex(matrix, x2, y1, drawZ).setColor(r, g, b, a);
+        float z = drawZ; // captured: on 26.2 the vertices are written later in the frame
+        quads((matrix, consumer) -> {
+            consumer.addVertex(matrix, x1, y1, z).setColor(r, g, b, a);
+            consumer.addVertex(matrix, x1, y2, z).setColor(r, g, b, a);
+            consumer.addVertex(matrix, x2, y2, z).setColor(r, g, b, a);
+            consumer.addVertex(matrix, x2, y1, z).setColor(r, g, b, a);
+        });
     }
 
     @Override
@@ -150,13 +156,13 @@ public class WorldGraphics implements IGraphics {
         int aT = (colorTo >> 24) & 0xFF, rT = (colorTo >> 16) & 0xFF;
         int gT = (colorTo >> 8) & 0xFF, bT = colorTo & 0xFF;
 
-        Matrix4f matrix = poseStack.last().pose();
-        //VertexConsumer consumer = bufferSource.getBuffer(RenderType.debugQuads()); // mc<=1.21.10
-        VertexConsumer consumer = bufferSource.getBuffer(RenderTypes.debugQuads()); // mc>=1.21.11
-        consumer.addVertex(matrix, x1, y1, drawZ).setColor(rF, gF, bF, aF);
-        consumer.addVertex(matrix, x1, y2, drawZ).setColor(rT, gT, bT, aT);
-        consumer.addVertex(matrix, x2, y2, drawZ).setColor(rT, gT, bT, aT);
-        consumer.addVertex(matrix, x2, y1, drawZ).setColor(rF, gF, bF, aF);
+        float z = drawZ; // captured: on 26.2 the vertices are written later in the frame
+        quads((matrix, consumer) -> {
+            consumer.addVertex(matrix, x1, y1, z).setColor(rF, gF, bF, aF);
+            consumer.addVertex(matrix, x1, y2, z).setColor(rT, gT, bT, aT);
+            consumer.addVertex(matrix, x2, y2, z).setColor(rT, gT, bT, aT);
+            consumer.addVertex(matrix, x2, y1, z).setColor(rF, gF, bF, aF);
+        });
     }
 
     @Override
@@ -302,28 +308,40 @@ public class WorldGraphics implements IGraphics {
         float p3x = x2 - nx, p3y = y2 - ny;
         float p4x = x1 - nx, p4y = y1 - ny;
 
-        Matrix4f matrix = poseStack.last().pose();
-        //VertexConsumer consumer = bufferSource.getBuffer(RenderType.debugQuads()); // mc<=1.21.10
-        VertexConsumer consumer = bufferSource.getBuffer(RenderTypes.debugQuads()); // mc>=1.21.11
-        consumer.addVertex(matrix, p1x, p1y, drawZ).setColor(red, green, blue, alpha);
-        consumer.addVertex(matrix, p2x, p2y, drawZ).setColor(red, green, blue, alpha);
-        consumer.addVertex(matrix, p3x, p3y, drawZ).setColor(red, green, blue, alpha);
-        consumer.addVertex(matrix, p4x, p4y, drawZ).setColor(red, green, blue, alpha);
+        float z = drawZ; // captured: on 26.2 the vertices are written later in the frame
+        quads((matrix, consumer) -> {
+            consumer.addVertex(matrix, p1x, p1y, z).setColor(red, green, blue, alpha);
+            consumer.addVertex(matrix, p2x, p2y, z).setColor(red, green, blue, alpha);
+            consumer.addVertex(matrix, p3x, p3y, z).setColor(red, green, blue, alpha);
+            consumer.addVertex(matrix, p4x, p4y, z).setColor(red, green, blue, alpha);
+        });
     }
 
     @Override
     public void drawVertexBuffer_QUADS(VertexBuffer buffer) {
         drawZ += DRAW_Z_STEP;
-        Matrix4f matrix = poseStack.last().pose();
-        //VertexConsumer consumer = bufferSource.getBuffer(RenderType.debugQuads()); // mc<=1.21.10
-        VertexConsumer consumer = bufferSource.getBuffer(RenderTypes.debugQuads()); // mc>=1.21.11
-        for (Vertex vertex : buffer.getVertices()) {
-            consumer.addVertex(matrix, vertex.x, vertex.y, drawZ)
-                    .setColor(vertex.red, vertex.green, vertex.blue, vertex.alpha);
-        }
+        float z = drawZ; // captured: on 26.2 the vertices are written later in the frame
+        quads((matrix, consumer) -> {
+            for (Vertex vertex : buffer.getVertices()) {
+                consumer.addVertex(matrix, vertex.x, vertex.y, z)
+                        .setColor(vertex.red, vertex.green, vertex.blue, vertex.alpha);
+            }
+        });
     }
 
     // ── Query ───────────────────────────────────────────────────────────────
+
+    /** Writes debug-quad vertices with the current pose. */
+    private void quads(QuadWriter writer) {
+        //writer.write(poseStack.last().pose(), bufferSource.getBuffer(RenderType.debugQuads())); // mc<=1.21.10
+        //writer.write(poseStack.last().pose(), bufferSource.getBuffer(RenderTypes.debugQuads())); // mc>=1.21.11 mc<=26.1
+        collector.submitCustomGeometry(poseStack, RenderTypes.debugQuads(), (pose, consumer) -> writer.write(pose.pose(), consumer)); // mc>=26.2
+    }
+
+    @FunctionalInterface
+    private interface QuadWriter {
+        void write(Matrix4f matrix, VertexConsumer consumer);
+    }
 
     @Override
     public Matrix4f getLastPoseMatrix() {
@@ -332,6 +350,7 @@ public class WorldGraphics implements IGraphics {
 
     @Override
     public void flush() {
-        Minecraft.getInstance().renderBuffers().bufferSource().endBatch();
+        //Minecraft.getInstance().renderBuffers().bufferSource().endBatch(); // mc<=26.1
+         // 26.2+: nothing to flush; submitted geometry is drawn by the level renderer.
     }
 }

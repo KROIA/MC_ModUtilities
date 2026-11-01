@@ -409,13 +409,13 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
                 l = -999;
             }
 
-            if (minecraft.options.touchscreen().get() && flag1 && this.menu.getCarried().isEmpty()) {
+            if (InputCompat.touchscreen() && flag1 && this.menu.getCarried().isEmpty()) {
                 this.onClose();
                 return true;
             }
 
             if (l != -1) {
-                if (minecraft.options.touchscreen().get()) {
+                if (InputCompat.touchscreen()) {
                     if (slot != null && slot.hasItem()) {
                         this.clickedSlot = slot;
                         this.draggingItem = ItemStack.EMPTY;
@@ -497,7 +497,7 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
         int pMouseY = getMouseY();
         Slot slot = this.findSlot(pMouseX, pMouseY);
         ItemStack itemstack = this.menu.getCarried();
-        if (this.clickedSlot != null && (Boolean)minecraft.options.touchscreen().get()) {
+        if (this.clickedSlot != null && InputCompat.touchscreen()) {
             if (pButton == 0 || pButton == 1) {
                 if (this.draggingItem.isEmpty()) {
                     if (slot != this.clickedSlot && !this.clickedSlot.getItem().isEmpty()) {
@@ -593,7 +593,7 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
             }
 
             boolean flag1;
-            if (this.clickedSlot != null && minecraft.options.touchscreen().get()) {
+            if (this.clickedSlot != null && InputCompat.touchscreen()) {
                 if (pButton == 0 || pButton == 1) {
                     if (this.draggingItem.isEmpty() && slot != this.clickedSlot) {
                         this.draggingItem = this.clickedSlot.getItem();

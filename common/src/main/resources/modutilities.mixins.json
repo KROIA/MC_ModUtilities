@@ -6,7 +6,7 @@
   "client": [
     "LevelRendererMixin",
     "GuiGraphicsAccessor",
-    "MinecraftAccessor",
+    "GameRendererAccessor",
     "GuiRendererWindowMixin"
   ],
   "mixins": [

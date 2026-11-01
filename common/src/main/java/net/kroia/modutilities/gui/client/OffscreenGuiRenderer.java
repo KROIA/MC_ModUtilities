@@ -16,8 +16,8 @@ import net.minecraft.client.gui.GuiGraphicsExtractor; // mc>=26.1
 import net.minecraft.client.gui.render.GuiRenderer; // mc>=1.21.6
 //import net.minecraft.client.gui.render.state.GuiRenderState; // mc>=1.21.6 mc<=1.21.11
 import net.minecraft.client.renderer.state.gui.GuiRenderState; // mc>=26.1
-import net.minecraft.client.renderer.MultiBufferSource; // mc>=1.21.6
-import net.minecraft.client.renderer.fog.FogRenderer; // mc>=1.21.6
+//import net.minecraft.client.renderer.MultiBufferSource; // mc>=1.21.6 mc<=26.1
+//import net.minecraft.client.renderer.fog.FogRenderer; // mc>=1.21.6 mc<=26.1
 
 import java.util.List; // mc>=1.21.6
 
@@ -40,21 +40,26 @@ public final class OffscreenGuiRenderer implements AutoCloseable { // mc>=1.21.6
 
     private final GuiRenderState state = new GuiRenderState(); // mc>=1.21.6
     private final GuiRenderer renderer; // mc>=1.21.6
-    private final FogRenderer fogRenderer = new FogRenderer(); // mc>=1.21.6
+    //private final FogRenderer fogRenderer = new FogRenderer(); // mc>=1.21.6 mc<=26.1
     // mc>=1.21.9: GUI item rendering goes through a submit-node collector + feature dispatcher. Own instances,
     // so an offscreen render during world rendering never flushes the level's submitted nodes.
-    private final net.minecraft.client.renderer.SubmitNodeStorage submitNodes = new net.minecraft.client.renderer.SubmitNodeStorage(); // mc>=1.21.9
+    //private final net.minecraft.client.renderer.SubmitNodeStorage submitNodes = new net.minecraft.client.renderer.SubmitNodeStorage(); // mc>=1.21.9 mc<=26.1
     private final net.minecraft.client.renderer.feature.FeatureRenderDispatcher featureDispatcher; // mc>=1.21.9
 
     /** @param bufferSource buffer source used for item rendering into the item atlas */
-    public OffscreenGuiRenderer(MultiBufferSource.BufferSource bufferSource) { // mc>=1.21.6
+    //public OffscreenGuiRenderer(MultiBufferSource.BufferSource bufferSource) { // mc>=1.21.6 mc<=26.1
+    public OffscreenGuiRenderer() { // (26.2: no buffer sources; items render through the feature dispatcher) // mc>=26.2
         //renderer = new GuiRenderer(state, bufferSource, List.of()); // mc>=1.21.6 mc<=1.21.8
         Minecraft mc = Minecraft.getInstance(); // mc>=1.21.9
         //featureDispatcher = new net.minecraft.client.renderer.feature.FeatureRenderDispatcher(submitNodes, mc.getBlockRenderer(), bufferSource, // mc>=1.21.9 mc<=1.21.11
-        featureDispatcher = new net.minecraft.client.renderer.feature.FeatureRenderDispatcher(submitNodes, mc.getModelManager(), bufferSource, // mc>=26.1
+        //featureDispatcher = new net.minecraft.client.renderer.feature.FeatureRenderDispatcher(submitNodes, mc.getModelManager(), bufferSource, // mc>=26.1 mc<=26.1
                 //mc.getAtlasManager(), mc.renderBuffers().outlineBufferSource(), mc.renderBuffers().crumblingBufferSource(), mc.font); // mc>=1.21.9 mc<=1.21.11
-                mc.getAtlasManager(), mc.renderBuffers().outlineBufferSource(), mc.renderBuffers().crumblingBufferSource(), mc.font, mc.gameRenderer.getGameRenderState()); // mc>=26.1
-        renderer = new GuiRenderer(state, bufferSource, submitNodes, featureDispatcher, List.of()); // mc>=1.21.9
+                //mc.getAtlasManager(), mc.renderBuffers().outlineBufferSource(), mc.renderBuffers().crumblingBufferSource(), mc.font, mc.gameRenderer.getGameRenderState()); // mc>=26.1 mc<=26.1
+        //renderer = new GuiRenderer(state, bufferSource, submitNodes, featureDispatcher, List.of()); // mc>=1.21.9 mc<=26.1
+         // 26.2+: own dispatcher (own prepared frame) on the vanilla buffers; vanilla recycles the staged buffer each frame.
+        featureDispatcher = new net.minecraft.client.renderer.feature.FeatureRenderDispatcher(mc.gameRenderer.renderBuffers(), // mc>=26.2
+                mc.getModelManager(), mc.getAtlasManager(), mc.font, mc.gameRenderer.gameRenderState()); // mc>=26.2
+        renderer = new GuiRenderer(state, featureDispatcher, List.of()); // mc>=26.2
     } // mc>=1.21.6
 
     /** Starts a new frame and returns the GuiGraphics that records into it. */
@@ -76,17 +81,18 @@ public final class OffscreenGuiRenderer implements AutoCloseable { // mc>=1.21.6
         //graphics.renderDeferredTooltip(); // mc>=1.21.6 mc<=1.21.8
         //graphics.renderDeferredElements(); // mc>=1.21.9 mc<=1.21.11 (tooltip + deferred outlines)
         graphics.extractDeferredElements(0, 0, 0f); // mc>=26.1 (tooltip + deferred outlines)
-        RenderTarget prevTarget = mc.getMainRenderTarget(); // mc>=1.21.6
+        RenderTarget prevTarget = ClientCompat.mainRenderTarget(); // mc>=1.21.6
         var prevFog = RenderSystem.getShaderFog(); // mc>=1.21.6
         RenderSystem.backupProjectionMatrix(); // mc>=1.21.6
         activeSize = new Size(target.width, target.height, Math.max(1, guiScale)); // mc>=1.21.6
-        ((net.kroia.mixin.MinecraftAccessor) mc).modutilities$setMainRenderTarget(target); // mc>=1.21.6
+        ClientCompat.setMainRenderTarget(target); // mc>=1.21.6
         try { // mc>=1.21.6
-            renderer.render(fogRenderer.getBuffer(FogRenderer.FogMode.NONE)); // mc>=1.21.6
+            //renderer.render(fogRenderer.getBuffer(FogRenderer.FogMode.NONE)); // mc>=1.21.6 mc<=26.1
+            renderer.render(); // (GUI pass sets up its own fog) // mc>=26.2
             //renderer.incrementFrameNumber(); // mc>=1.21.6 mc<=1.21.11
             renderer.endFrame(); // mc>=26.1
         } finally { // mc>=1.21.6
-            ((net.kroia.mixin.MinecraftAccessor) mc).modutilities$setMainRenderTarget(prevTarget); // mc>=1.21.6
+            ClientCompat.setMainRenderTarget(prevTarget); // mc>=1.21.6
             activeSize = null; // mc>=1.21.6
             RenderSystem.restoreProjectionMatrix(); // mc>=1.21.6
             if (prevFog != null) RenderSystem.setShaderFog(prevFog); // mc>=1.21.6
@@ -96,7 +102,7 @@ public final class OffscreenGuiRenderer implements AutoCloseable { // mc>=1.21.6
     @Override // mc>=1.21.6
     public void close() { // mc>=1.21.6
         renderer.close(); // mc>=1.21.6
-        fogRenderer.close(); // mc>=1.21.6
+        //fogRenderer.close(); // mc>=1.21.6 mc<=26.1
         featureDispatcher.close(); // mc>=1.21.9
     } // mc>=1.21.6
 } // mc>=1.21.6
