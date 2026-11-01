@@ -109,8 +109,9 @@ public class RecipeImageExporter {
             //framebuffer = new TextureTarget(texW, texH, true); // mc>=1.21.2 mc<=1.21.4
             framebuffer = new TextureTarget("modutilities recipe export", texW, texH, true); // mc>=1.21.5
             //framebuffer.bindWrite(false); // mc<=1.21.4
+            // 1.21.2+: GUI RenderTypes bind getMainRenderTarget() on every flush
+            ((net.kroia.mixin.MinecraftAccessor) mc).modutilities$setMainRenderTarget(framebuffer); // mc>=1.21.2
             //RenderSystem.viewport(0, 0, texW, texH); // mc<=1.21.4
-            ((net.kroia.mixin.MinecraftAccessor) mc).modutilities$setMainRenderTarget(framebuffer); // mc>=1.21.5 (draws go to the main target)
 
             float bgR = ((BG_COLOR >> 16) & 0xFF) / 255f;
             float bgG = ((BG_COLOR >> 8) & 0xFF) / 255f;
@@ -183,6 +184,7 @@ public class RecipeImageExporter {
         } catch (Exception e) {
             ModUtilitiesMod.LOGGER.error("Failed to export recipe image to: {}", outputPath, e);
         } finally {
+            ((net.kroia.mixin.MinecraftAccessor) mc).modutilities$setMainRenderTarget(prevTarget); // mc>=1.21.2
             if (image != null) image.close();
             if (framebuffer != null) {
                 //framebuffer.unbindWrite(); // mc<=1.21.4
@@ -191,7 +193,6 @@ public class RecipeImageExporter {
 
             // --- Restore GL state (mirrors AbstractDisplayBlockEntityRenderer lines 335-347) ---
             //prevTarget.bindWrite(false); // mc<=1.21.4
-            ((net.kroia.mixin.MinecraftAccessor) mc).modutilities$setMainRenderTarget(prevTarget); // mc>=1.21.5
             RenderSystem.getModelViewStack().popMatrix();
             //RenderSystem.applyModelViewMatrix(); // mc<=1.21.1
             //RenderSystem.viewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]); // mc<=1.21.4

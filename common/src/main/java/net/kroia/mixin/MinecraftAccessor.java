@@ -7,11 +7,11 @@ import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
 /**
- * Lets offscreen renderers temporarily replace the main render target. Since MC 1.21.5 all
- * GUI/RenderType draws go to {@link Minecraft#getMainRenderTarget()} (there is no
- * {@code RenderTarget.bindWrite} any more), so swapping it is how ModUtilities renders a GUI into
- * its own texture. Always restore the previous target afterwards. The field exists on all
- * supported versions.
+ * Lets offscreen GUI rendering temporarily swap Minecraft's main render target.
+ * Since mc 1.21.2 the MAIN_TARGET output state of every GUI RenderType binds
+ * {@code getMainRenderTarget()} on each batch flush, so draws into a custom
+ * TextureTarget only stay there while it is installed as the main target.
+ * The field exists in 1.21.1 too, so this accessor compiles on all versions.
  */
 @Mixin(Minecraft.class)
 public interface MinecraftAccessor {

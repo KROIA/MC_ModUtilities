@@ -299,7 +299,6 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         //        | org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT, false); // mc<=1.21.1
         //RenderSystem.clear(org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT // mc>=1.21.2 mc<=1.21.4
         //        | org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT); // mc>=1.21.2 mc<=1.21.4
-        ((net.kroia.mixin.MinecraftAccessor) mc).modutilities$setMainRenderTarget(data.framebuffer); // mc>=1.21.5 (draws go to the main target)
         RenderSystem.getDevice().createCommandEncoder().clearColorAndDepthTextures( // mc>=1.21.5
                 data.framebuffer.getColorTexture(), 0xFF262626, data.framebuffer.getDepthTexture(), 1.0); // mc>=1.21.5 (0.15 gray)
 
@@ -351,15 +350,23 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
 
         Lighting.setupForFlatItems();
 
-        DisplayRenderProfiler.begin(controllerPos, DisplayRenderProfiler.Category.GUI_RENDER);
-        gui.renderBackground();
-        gui.render();
-        DisplayRenderProfiler.end(controllerPos, DisplayRenderProfiler.Category.GUI_RENDER);
+        // 1.21.2+: GUI RenderTypes bind getMainRenderTarget() on every flush, so the
+        // offscreen target must be installed as the main target while drawing.
+        ((net.kroia.mixin.MinecraftAccessor) mc).modutilities$setMainRenderTarget(data.framebuffer); // mc>=1.21.2
+        try {
+            DisplayRenderProfiler.begin(controllerPos, DisplayRenderProfiler.Category.GUI_RENDER);
+            gui.renderBackground();
+            gui.render();
+            DisplayRenderProfiler.end(controllerPos, DisplayRenderProfiler.Category.GUI_RENDER);
 
-        gui.clearOffscreenScissorMode();
+            gui.clearOffscreenScissorMode();
 
-        guiGraphics.pose().popPose();
-        offscreenBufferSource.endBatch();
+            guiGraphics.pose().popPose();
+            offscreenBufferSource.endBatch();
+        } finally {
+            ((net.kroia.mixin.MinecraftAccessor) mc).modutilities$setMainRenderTarget(prevTarget); // mc>=1.21.2
+        }
+        //data.framebuffer.bindWrite(false); // mc<=1.21.4 (glCopyTexSubImage2D below reads the bound framebuffer)
 
         DisplayRenderProfiler.storeTextureSize(controllerPos, texW, texH);
         DisplayRenderProfiler.begin(controllerPos, DisplayRenderProfiler.Category.TEXTURE_TRANSFER);
@@ -376,7 +383,6 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
 
         //data.framebuffer.unbindWrite(); // mc<=1.21.4
         //prevTarget.bindWrite(false); // mc<=1.21.4
-        ((net.kroia.mixin.MinecraftAccessor) mc).modutilities$setMainRenderTarget(prevTarget); // mc>=1.21.5
         RenderSystem.getModelViewStack().popMatrix();
         //RenderSystem.applyModelViewMatrix(); // mc<=1.21.1
         //RenderSystem.viewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]); // mc<=1.21.4

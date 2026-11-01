@@ -1,20 +1,100 @@
 package net.kroia.modutilities;
 
+import net.minecraft.core.UUIDUtil;
+import net.minecraft.nbt.ByteArrayTag;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.IntArrayTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NumericTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * Version-agnostic NBT access. MC 1.21.5 changed most {@link CompoundTag}/{@link ListTag} getters
- * to return {@code Optional} and renamed the numeric tag accessors; these helpers keep the pre-1.21.5
- * semantics (missing or wrong-typed key returns 0 / false / "" / an empty tag) on every version.
+ * to return {@code Optional}, renamed the numeric tag accessors and removed the UUID helpers; these
+ * methods behave the same on every supported version. A missing (or wrong-typed) key returns the
+ * 1.21.1 defaults: 0 / false / "" / an empty compound, list or array — or the explicit default of the
+ * overloads that take one. {@code CompoundTag.contains(String)} exists on all versions and needs no wrapper.
  */
 public final class NbtCompat {
     private NbtCompat() {}
+
+    // ---- explicit-default readers (version-agnostic) ----
+
+    /** Byte value of {@code key}, or {@code def} if missing or not numeric. */
+    public static byte getByte(CompoundTag tag, String key, byte def) {
+        return tag.get(key) instanceof NumericTag n ? asByte(n) : def;
+    }
+
+    /** Short value of {@code key}, or {@code def} if missing or not numeric. */
+    public static short getShort(CompoundTag tag, String key, short def) {
+        return tag.get(key) instanceof NumericTag n ? asShort(n) : def;
+    }
+
+    /** Int value of {@code key}, or {@code def} if missing or not numeric. */
+    public static int getInt(CompoundTag tag, String key, int def) {
+        return tag.get(key) instanceof NumericTag n ? asInt(n) : def;
+    }
+
+    /** Long value of {@code key}, or {@code def} if missing or not numeric. */
+    public static long getLong(CompoundTag tag, String key, long def) {
+        return tag.get(key) instanceof NumericTag n ? asLong(n) : def;
+    }
+
+    /** Float value of {@code key}, or {@code def} if missing or not numeric. */
+    public static float getFloat(CompoundTag tag, String key, float def) {
+        return tag.get(key) instanceof NumericTag n ? asFloat(n) : def;
+    }
+
+    /** Double value of {@code key}, or {@code def} if missing or not numeric. */
+    public static double getDouble(CompoundTag tag, String key, double def) {
+        return tag.get(key) instanceof NumericTag n ? asDouble(n) : def;
+    }
+
+    /** Boolean value of {@code key} (numeric != 0), or {@code def} if missing or not numeric. */
+    public static boolean getBoolean(CompoundTag tag, String key, boolean def) {
+        return tag.get(key) instanceof NumericTag n ? asByte(n) != 0 : def;
+    }
+
+    /** String value of {@code key}, or {@code def} if missing or not a string. */
+    public static String getString(CompoundTag tag, String key, String def) {
+        return tag.get(key) instanceof StringTag s ? asString(s) : def;
+    }
+
+    // ---- arrays, list elements, UUIDs (version-agnostic) ----
+
+    /** Byte array at {@code key}, or an empty array if missing or not a byte array. */
+    public static byte[] getByteArray(CompoundTag tag, String key) {
+        return tag.get(key) instanceof ByteArrayTag b ? b.getAsByteArray() : new byte[0];
+    }
+
+    /** String at {@code index}, or "" if out of range or not a string (MC 1.21.5 returns Optional). */
+    public static String getString(ListTag list, int index) {
+        return index >= 0 && index < list.size() && list.get(index) instanceof StringTag s ? asString(s) : "";
+    }
+
+    /** True if {@code key} holds a UUID in the 1.21.1 format (int array of length 4). MC 1.21.5 removed {@code hasUUID}. */
+    public static boolean hasUUID(CompoundTag tag, String key) {
+        return tag.get(key) instanceof IntArrayTag a && a.getAsIntArray().length == 4;
+    }
+
+    /**
+     * UUID stored at {@code key} (1.21.1 int-array format), or {@code null} if missing or invalid.
+     * Unlike 1.21.1's {@code CompoundTag.getUUID}, which threw on a missing key, this never throws.
+     */
+    public static UUID getUUID(CompoundTag tag, String key) {
+        return hasUUID(tag, key) ? UUIDUtil.uuidFromIntArray(((IntArrayTag) tag.get(key)).getAsIntArray()) : null;
+    }
+
+    /** Stores {@code uuid} at {@code key} as a 4-int array, the on-disk format of 1.21.1's {@code putUUID}. */
+    public static void putUUID(CompoundTag tag, String key, UUID uuid) {
+        tag.putIntArray(key, UUIDUtil.uuidToIntArray(uuid));
+    }
+
+    // ---- readers with the 1.21.1 defaults ----
 
     /** Byte value of {@code key}, or 0 if missing (MC 1.21.5 Optional getters). */
     public static byte getByte(CompoundTag tag, String key) {
