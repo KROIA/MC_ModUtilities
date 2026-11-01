@@ -40,9 +40,21 @@ public final class InputCompat {
         //return false; // mc>=26.2
     }
 
-    /** @return the GLFW modifier bits (shift 1, control 2, alt 4) of the keys held right now */
+    /**
+     * @param button a mouse button as delivered by Minecraft ({@code InputConstants.MOUSE_BUTTON_*})
+     * @return the legacy container click index (0 left, 1 right, others unchanged) that
+     *         {@code AbstractContainerMenu} and the click packet expect. 26.3 (SDL3) numbers the
+     *         buttons 1 left, 2 middle, 3 right.
+     */
+    public static int containerClickButton(int button) {
+        return button; // mc<=26.2
+        //return button == InputConstants.MOUSE_BUTTON_LEFT ? 0 : button == InputConstants.MOUSE_BUTTON_RIGHT ? 1 : button; // mc>=26.3
+    }
+
+    /** @return the modifier bits ({@code InputConstants.MOD_*}) of the keys held right now */
     public static int currentModifiers() {
-        return (hasShiftDown() ? 1 : 0) | (hasControlDown() ? 2 : 0) | (hasAltDown() ? 4 : 0);
+        return (hasShiftDown() ? 1 : 0) | (hasControlDown() ? 2 : 0) | (hasAltDown() ? 4 : 0); // mc<=26.2
+        //return (hasShiftDown() ? InputConstants.MOD_SHIFT : 0) | (hasControlDown() ? InputConstants.MOD_CONTROL : 0) | (hasAltDown() ? InputConstants.MOD_ALT : 0); // mc>=26.3
     }
 
     /** @return {@code true} while either alt key is held */
@@ -51,19 +63,35 @@ public final class InputCompat {
         //return Minecraft.getInstance().hasAltDown(); // mc>=1.21.9
     }
 
-    /** @return the GLFW handle of the game window */
+    /** @return the native handle of the game window (GLFW, or SDL3 from 26.3) */
     public static long windowHandle() {
         return Minecraft.getInstance().getWindow().getWindow(); // mc<=1.21.8
         //return Minecraft.getInstance().getWindow().handle(); // mc>=1.21.9
     }
 
     /**
-     * @param key a GLFW key code
+     * @param key a key code ({@code InputConstants.KEY_*})
      * @return {@code true} while the key is held
      */
     public static boolean isKeyDown(int key) {
         return InputConstants.isKeyDown(windowHandle(), key); // mc<=1.21.8
-        //return InputConstants.isKeyDown(Minecraft.getInstance().getWindow(), key); // mc>=1.21.9
+        //return InputConstants.isKeyDown(Minecraft.getInstance().getWindow(), key); // mc>=1.21.9 mc<=26.2
+        //return InputConstants.isKeyDown(key); // mc>=26.3
+    }
+
+    /**
+     * @param button a mouse button ({@code InputConstants.MOUSE_BUTTON_*})
+     * @return {@code true} while the button is held
+     */
+    public static boolean isMouseButtonDown(int button) {
+        return org.lwjgl.glfw.GLFW.glfwGetMouseButton(windowHandle(), button) == org.lwjgl.glfw.GLFW.GLFW_PRESS; // mc<=26.2
+        //return (org.lwjgl.sdl.SDLMouse.SDL_GetMouseState((java.nio.FloatBuffer) null, null) & (1 << (button - 1))) != 0; // mc>=26.3
+    }
+
+    /** Moves the mouse cursor to the given window position (in window coordinates). */
+    public static void setCursorPos(double x, double y) {
+        org.lwjgl.glfw.GLFW.glfwSetCursorPos(windowHandle(), x, y); // mc<=26.2
+        //org.lwjgl.sdl.SDLMouse.SDL_WarpMouseInWindow(windowHandle(), (float) x, (float) y); // mc>=26.3
     }
 
     /**
