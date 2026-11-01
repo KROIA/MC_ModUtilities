@@ -7,7 +7,8 @@ import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Point;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+//import net.minecraft.resources.Identifier; // mc>=1.21.11
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
@@ -158,7 +159,8 @@ public class ItemView extends GuiElement {
             this.itemStack = stack.isEmpty() ? null : stack;
         } else if (tag.contains("item")) {
             // Backward compatibility: old format with just item ID + count
-            var item = BuiltInRegistries.ITEM.getOptional(ResourceLocation.parse(NbtCompat.getString(tag, "item"))).orElse(Items.AIR);
+            var item = BuiltInRegistries.ITEM.getOptional(ResourceLocation.parse(NbtCompat.getString(tag, "item"))).orElse(Items.AIR); // mc<=1.21.10
+            //var item = BuiltInRegistries.ITEM.getOptional(Identifier.parse(NbtCompat.getString(tag, "item"))).orElse(Items.AIR); // mc>=1.21.11
             if (item != Items.AIR) {
                 this.itemStack = new ItemStack(item, NbtCompat.getInt(tag, "count"));
             } else {
