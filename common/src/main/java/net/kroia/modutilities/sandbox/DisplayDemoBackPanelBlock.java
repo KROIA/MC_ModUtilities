@@ -18,10 +18,8 @@ public class DisplayDemoBackPanelBlock extends AbstractDisplayBlock {
     }
 
     public DisplayDemoBackPanelBlock() {
-        super(BlockBehaviour.Properties.of().strength(1.0f).noOcclusion()); // mc<=1.21.1
-        //super(BlockBehaviour.Properties.of().strength(1.0f).noOcclusion() // mc>=1.21.2
-        //        .setId(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.BLOCK, // mc>=1.21.2
-        //                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(net.kroia.modutilities.ModUtilitiesMod.MOD_ID, "display_demo_back_panel_block")))); // mc>=1.21.2
+        super(net.kroia.modutilities.RegistryCompat.blockProperties(
+                BlockBehaviour.Properties.of().strength(1.0f).noOcclusion(), SandboxRegistration.id("display_demo_back_panel_block")));
     }
 
     @Override
