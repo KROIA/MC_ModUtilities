@@ -9,7 +9,8 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.RegistryOps;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+//import net.minecraft.resources.Identifier; // mc>=1.21.11
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -361,8 +362,10 @@ public class ItemUtilities {
         }
         for(String tag : tags)
         {
-            tagMap.put(modTag+tag, TagKey.create(Registries.ITEM, ResourceLocation.parse(modTag+tag)));
-            tagMap.put("minecraft:"+tag, TagKey.create(Registries.ITEM, ResourceLocation.parse("minecraft:"+tag)));
+            tagMap.put(modTag+tag, TagKey.create(Registries.ITEM, ResourceLocation.parse(modTag+tag))); // mc<=1.21.10
+            //tagMap.put(modTag+tag, TagKey.create(Registries.ITEM, Identifier.parse(modTag+tag))); // mc>=1.21.11
+            tagMap.put("minecraft:"+tag, TagKey.create(Registries.ITEM, ResourceLocation.parse("minecraft:"+tag))); // mc<=1.21.10
+            //tagMap.put("minecraft:"+tag, TagKey.create(Registries.ITEM, Identifier.parse("minecraft:"+tag))); // mc>=1.21.11
         }
         for(ItemStack stack : itemTable)
         {
@@ -408,8 +411,10 @@ public class ItemUtilities {
         }
         for(String tag : tags)
         {
-            tagMap.put(modTag+tag, TagKey.create(Registries.ITEM, ResourceLocation.parse(modTag+tag)));
-            tagMap.put("minecraft:"+tag, TagKey.create(Registries.ITEM, ResourceLocation.parse("minecraft:"+tag)));
+            tagMap.put(modTag+tag, TagKey.create(Registries.ITEM, ResourceLocation.parse(modTag+tag))); // mc<=1.21.10
+            //tagMap.put(modTag+tag, TagKey.create(Registries.ITEM, Identifier.parse(modTag+tag))); // mc>=1.21.11
+            tagMap.put("minecraft:"+tag, TagKey.create(Registries.ITEM, ResourceLocation.parse("minecraft:"+tag))); // mc<=1.21.10
+            //tagMap.put("minecraft:"+tag, TagKey.create(Registries.ITEM, Identifier.parse("minecraft:"+tag))); // mc>=1.21.11
         }
         for(ItemStack stack : itemTable)
         {
@@ -425,7 +430,8 @@ public class ItemUtilities {
     }
 
     private static boolean isInTag(Item item, String tagId) {
-        TagKey<Item> tag = TagKey.create(Registries.ITEM, ResourceLocation.parse(tagId));
+        TagKey<Item> tag = TagKey.create(Registries.ITEM, ResourceLocation.parse(tagId)); // mc<=1.21.10
+        //TagKey<Item> tag = TagKey.create(Registries.ITEM, Identifier.parse(tagId)); // mc>=1.21.11
         return item.builtInRegistryHolder().is(tag);
     }
 
@@ -552,7 +558,8 @@ public class ItemUtilities {
         }
 
         String id = NbtCompat.getString(tag, "id");
-        Item item = BuiltInRegistries.ITEM.getOptional(ResourceLocation.parse(id)).orElse(Items.AIR);
+        Item item = BuiltInRegistries.ITEM.getOptional(ResourceLocation.parse(id)).orElse(Items.AIR); // mc<=1.21.10
+        //Item item = BuiltInRegistries.ITEM.getOptional(Identifier.parse(id)).orElse(Items.AIR); // mc>=1.21.11
         if (item == Items.AIR && !id.equals("minecraft:air")) {
             return ItemStack.EMPTY;
         }
