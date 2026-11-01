@@ -1,5 +1,6 @@
 plugins {
-    id 'dev.architectury.loom' version '1.7-SNAPSHOT' apply false
+    id 'dev.architectury.loom' version '1.7-SNAPSHOT' apply false // mc<=1.21.4
+    //id 'dev.architectury.loom' version '1.10-SNAPSHOT' apply false // mc>=1.21.5 (1.21.5 dependencies are built with Loom 1.10)
     id 'architectury-plugin' version '3.4-SNAPSHOT'
     id 'com.github.johnrengelman.shadow' version '8.1.1' apply false
 }
@@ -42,12 +43,16 @@ subprojects {
         minecraft "net.minecraft:minecraft:$rootProject.minecraft_version"
         //mappings "net.fabricmc:yarn:$rootProject.yarn_mappings:v2"
 
-        //mappings loom.officialMojangMappings()
+        //mappings loom.officialMojangMappings() // mc>=1.21.2 mc<=1.21.2 (no parchment release for 1.21.2)
 
-        mappings loom.layered() {
-            officialMojangMappings()
-            parchment("org.parchmentmc.data:parchment-${rootProject.minecraft_version}:${rootProject.mapping_version}")
-        }
+        //mappings loom.layered() { // mc<=1.21.1
+        //    officialMojangMappings() // mc<=1.21.1
+        //    parchment("org.parchmentmc.data:parchment-${rootProject.minecraft_version}:${rootProject.mapping_version}") // mc<=1.21.1
+        //} // mc<=1.21.1
+        mappings loom.layered() { // mc>=1.21.3
+            officialMojangMappings() // mc>=1.21.3
+            parchment("org.parchmentmc.data:parchment-${rootProject.minecraft_version}:${rootProject.mapping_version}") // mc>=1.21.3
+        } // mc>=1.21.3
     }
 
     java {
