@@ -108,6 +108,8 @@ public class RecipeImageExporter {
             //framebuffer = new TextureTarget(texW, texH, true, false); // mc<=1.21.1
             framebuffer = new TextureTarget(texW, texH, true); // mc>=1.21.2
             framebuffer.bindWrite(false);
+            // 1.21.2+: GUI RenderTypes bind getMainRenderTarget() on every flush
+            ((net.kroia.mixin.MinecraftAccessor) mc).modutilities$setMainRenderTarget(framebuffer); // mc>=1.21.2
             RenderSystem.viewport(0, 0, texW, texH);
 
             float bgR = ((BG_COLOR >> 16) & 0xFF) / 255f;
@@ -164,6 +166,7 @@ public class RecipeImageExporter {
         } catch (Exception e) {
             ModUtilitiesMod.LOGGER.error("Failed to export recipe image to: {}", outputPath, e);
         } finally {
+            ((net.kroia.mixin.MinecraftAccessor) mc).modutilities$setMainRenderTarget(prevTarget); // mc>=1.21.2
             if (image != null) image.close();
             if (framebuffer != null) {
                 framebuffer.unbindWrite();
