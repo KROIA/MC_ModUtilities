@@ -4,13 +4,12 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.kroia.modutilities.gui.IInputProvider;
 import net.minecraft.client.Minecraft;
-import org.lwjgl.glfw.GLFW;
 
 /**
- * Client-side {@link IInputProvider} backed by GLFW and the Minecraft keyboard handler.
+ * Client-side {@link IInputProvider} backed by {@link InputCompat} and the Minecraft keyboard handler.
  * <p>
  * Created by the hosting screen and injected into the {@link net.kroia.modutilities.gui.Gui}
- * so that common GUI element code can query input state without depending on GLFW directly.
+ * so that common GUI element code can query input state without depending on the windowing library (GLFW, or SDL3 from 26.3) directly.
  */
 @Environment(EnvType.CLIENT)
 public class ClientInputProvider implements IInputProvider {
@@ -18,9 +17,9 @@ public class ClientInputProvider implements IInputProvider {
     private final long windowHandle;
 
     /**
-     * Creates a new provider bound to the given GLFW window.
+     * Creates a new provider bound to the given game window.
      *
-     * @param windowHandle the GLFW window handle (typically from
+     * @param windowHandle the window handle (typically from
      *                     {@code Minecraft.getInstance().getWindow().getWindow()})
      */
     public ClientInputProvider(long windowHandle) {
@@ -29,12 +28,12 @@ public class ClientInputProvider implements IInputProvider {
 
     @Override
     public boolean isKeyDown(int keyCode) {
-        return GLFW.glfwGetKey(windowHandle, keyCode) == GLFW.GLFW_PRESS;
+        return InputCompat.isKeyDown(keyCode);
     }
 
     @Override
     public boolean isMouseButtonDown(int button) {
-        return GLFW.glfwGetMouseButton(windowHandle, button) == GLFW.GLFW_PRESS;
+        return InputCompat.isMouseButtonDown(button);
     }
 
     @Override
@@ -49,6 +48,6 @@ public class ClientInputProvider implements IInputProvider {
 
     @Override
     public void setCursorPos(double x, double y) {
-        GLFW.glfwSetCursorPos(windowHandle, x, y);
+        InputCompat.setCursorPos(x, y);
     }
 }

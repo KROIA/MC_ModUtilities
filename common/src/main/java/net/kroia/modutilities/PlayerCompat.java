@@ -31,4 +31,15 @@ public final class PlayerCompat {
         //player.displayClientMessage(message, actionBar); // mc<=1.21.11
         if (actionBar) player.sendOverlayMessage(message); else player.sendSystemMessage(message); // mc>=26.1
     }
+
+    /** Puts the stack into the player's inventory, or drops it at the player's feet if the inventory is full. */
+    public static void giveOrDrop(Player player, net.minecraft.world.item.ItemStack stack) {
+        if (!player.getInventory().add(stack)) drop(player, stack);
+    }
+
+    /** Drops the stack in front of the player, like pressing the drop key (26.3 added a {@code Prediction} argument). */
+    public static void drop(Player player, net.minecraft.world.item.ItemStack stack) {
+        player.drop(stack, false); // mc<=26.2
+        //player.drop(stack, false, net.minecraft.util.Prediction.SERVER_ONLY); // mc>=26.3
+    }
 }

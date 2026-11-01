@@ -1,5 +1,6 @@
 package net.kroia.modutilities.sandbox;
 
+import net.kroia.modutilities.PlayerCompat;
 import com.google.gson.JsonElement;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.context.CommandContext;
@@ -156,9 +157,7 @@ public class Sandbox {
                                     .executes(context -> {
                                         ServerPlayer player = context.getSource().getPlayerOrException();
                                         ItemStack displayBlock = new ItemStack(SandboxRegistration.DISPLAY_DEMO_BLOCK.get());
-                                        if (!player.getInventory().add(displayBlock)) {
-                                            player.drop(displayBlock, false);
-                                        }
+                                        PlayerCompat.giveOrDrop(player, displayBlock);
                                         player.sendSystemMessage(Component.literal("Gave DisplayBlock demo block"));
                                         return 1;
                                     }))
@@ -166,9 +165,7 @@ public class Sandbox {
                                     .executes(context -> {
                                         ServerPlayer player = context.getSource().getPlayerOrException();
                                         ItemStack perfBlock = new ItemStack(SandboxRegistration.DISPLAY_DEMO_PERF_BLOCK.get());
-                                        if (!player.getInventory().add(perfBlock)) {
-                                            player.drop(perfBlock, false);
-                                        }
+                                        PlayerCompat.giveOrDrop(player, perfBlock);
                                         player.sendSystemMessage(Component.literal("Gave DisplayBlock (Perf) demo block"));
                                         return 1;
                                     }))
@@ -176,9 +173,7 @@ public class Sandbox {
                                     .executes(context -> {
                                         ServerPlayer player = context.getSource().getPlayerOrException();
                                         ItemStack displayPanel = new ItemStack(SandboxRegistration.DISPLAY_DEMO_PANEL_BLOCK.get());
-                                        if (!player.getInventory().add(displayPanel)) {
-                                            player.drop(displayPanel, false);
-                                        }
+                                        PlayerCompat.giveOrDrop(player, displayPanel);
                                         player.sendSystemMessage(Component.literal("Gave DisplayPanel demo block"));
                                         return 1;
                                     }))
@@ -186,9 +181,7 @@ public class Sandbox {
                                     .executes(context -> {
                                         ServerPlayer player = context.getSource().getPlayerOrException();
                                         ItemStack backPanel = new ItemStack(SandboxRegistration.DISPLAY_DEMO_BACK_PANEL_BLOCK.get());
-                                        if (!player.getInventory().add(backPanel)) {
-                                            player.drop(backPanel, false);
-                                        }
+                                        PlayerCompat.giveOrDrop(player, backPanel);
                                         player.sendSystemMessage(Component.literal("Gave BackPanel demo block"));
                                         return 1;
                                     }))
@@ -196,9 +189,7 @@ public class Sandbox {
                                     .executes(context -> {
                                         ServerPlayer player = context.getSource().getPlayerOrException();
                                         ItemStack chartBlock = new ItemStack(SandboxRegistration.CHART_DEMO_BLOCK.get());
-                                        if (!player.getInventory().add(chartBlock)) {
-                                            player.drop(chartBlock, false);
-                                        }
+                                        PlayerCompat.giveOrDrop(player, chartBlock);
                                         player.sendSystemMessage(Component.literal("Gave ChartDemo block"));
                                         return 1;
                                     }))
