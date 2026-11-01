@@ -1,9 +1,11 @@
 package net.kroia.modutilities.gui;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+//import net.minecraft.resources.Identifier; // mc>=1.21.11
 
 public class GuiTexture {
-    private final ResourceLocation resourceLocation;
+    private final ResourceLocation resourceLocation; // mc<=1.21.10
+    //private final Identifier resourceLocation; // mc>=1.21.11
     private final int width;
     private final int height;
     private float uvOffsetX = 0;
@@ -26,7 +28,8 @@ public class GuiTexture {
         return uvOffsetY;
     }
 
-    public ResourceLocation getResourceLocation() {
+    public ResourceLocation getResourceLocation() { // mc<=1.21.10
+    //public Identifier getResourceLocation() { // mc>=1.21.11
         return resourceLocation;
     }
     public int getWidth() {

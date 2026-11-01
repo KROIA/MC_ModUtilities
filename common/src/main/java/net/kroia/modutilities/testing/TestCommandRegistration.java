@@ -4,6 +4,7 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
+import net.kroia.modutilities.PermissionCompat;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.server.level.ServerPlayer;
@@ -19,7 +20,7 @@ public class TestCommandRegistration {
         dispatcher.register(
             Commands.literal(commandRoot)
                 .then(Commands.literal("test")
-                    .requires(source -> source.hasPermission(2))
+                    .requires(source -> PermissionCompat.hasPermission(source, 2))
                     .executes(context -> {
                         ServerPlayer player = context.getSource().getPlayerOrException();
                         new TestRunner(modName, modId, isSlave, player.level().getServer())

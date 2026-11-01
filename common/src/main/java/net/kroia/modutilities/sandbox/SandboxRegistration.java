@@ -9,7 +9,8 @@ import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.RegistryCompat;
 import net.kroia.modutilities.gui.display.client.AbstractDisplayBlockEntityRenderer;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+//import net.minecraft.resources.Identifier; // mc>=1.21.11
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
@@ -102,8 +103,10 @@ public class SandboxRegistration {
                     RegistryCompat.createBlockEntityType(ChartDemoBlockEntity::new, CHART_DEMO_BLOCK.get()));
 
     /** Sandbox registry ID in the modutilities namespace. */
-    static ResourceLocation id(String path) {
-        return ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, path);
+    static ResourceLocation id(String path) { // mc<=1.21.10
+    //static Identifier id(String path) { // mc>=1.21.11
+        return ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, path); // mc<=1.21.10
+        //return Identifier.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, path); // mc>=1.21.11
     }
 
     /**
