@@ -1,5 +1,6 @@
 package net.kroia.modutilities.setting.parser;
 
+import net.kroia.modutilities.NbtCompat;
 import com.google.gson.*;
 import net.minecraft.nbt.*;
 import net.minecraft.world.item.ItemStack;
@@ -24,7 +25,7 @@ public class NBTJsonParser implements CustomJsonParser<Tag>{
     public JsonElement toJson(Tag tag) {
         if (tag instanceof CompoundTag compound) {
             JsonObject obj = new JsonObject();
-            Set<String> keys = compound.getAllKeys();
+            Set<String> keys = NbtCompat.keys(compound);
             for (String key : keys) {
                 obj.add(key, toJson(compound.get(key)));
             }
@@ -36,10 +37,10 @@ public class NBTJsonParser implements CustomJsonParser<Tag>{
             }
             return arr;
         } else if (tag instanceof StringTag str) {
-            return new JsonPrimitive(str.getAsString());
+            return new JsonPrimitive(NbtCompat.asString(str));
         } else if (tag instanceof NumericTag num) {
             // NumericTag covers ByteTag, ShortTag, IntTag, LongTag, FloatTag, DoubleTag
-            return new JsonPrimitive(num.getAsNumber());
+            return new JsonPrimitive(NbtCompat.asNumber(num));
         } else if (tag instanceof ByteArrayTag arr) {
             JsonArray jsonArray = new JsonArray();
             for (byte b : arr.getAsByteArray()) {

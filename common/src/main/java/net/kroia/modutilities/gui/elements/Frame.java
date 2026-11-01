@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui.elements;
 
+import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.minecraft.nbt.CompoundTag;
 
@@ -59,10 +60,10 @@ public class Frame extends GuiElement {
     @Override
     public void deserializeState(CompoundTag tag) {
         super.deserializeState(tag);
-        if (tag.contains("bgColor")) setBackgroundColor(tag.getInt("bgColor"));
-        if (tag.contains("outColor")) setOutlineColor(tag.getInt("outColor"));
-        if (tag.contains("bgOn")) setEnableBackground(tag.getBoolean("bgOn"));
-        if (tag.contains("outOn")) setEnableOutline(tag.getBoolean("outOn"));
+        if (tag.contains("bgColor")) setBackgroundColor(NbtCompat.getInt(tag, "bgColor"));
+        if (tag.contains("outColor")) setOutlineColor(NbtCompat.getInt(tag, "outColor"));
+        if (tag.contains("bgOn")) setEnableBackground(NbtCompat.getBoolean(tag, "bgOn"));
+        if (tag.contains("outOn")) setEnableOutline(NbtCompat.getBoolean(tag, "outOn"));
     }
 
     @Override

@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui;
 
+import net.kroia.modutilities.NbtCompat;
 import net.minecraft.nbt.CompoundTag;
 
 /**
@@ -37,10 +38,10 @@ public class GuiStructuralChange {
     }
 
     public static GuiStructuralChange deserialize(CompoundTag tag) {
-        Type type = Type.valueOf(tag.getString("type"));
-        String parentId = tag.contains("parentId") ? tag.getString("parentId") : null;
-        int index = tag.getInt("index");
-        CompoundTag data = tag.contains("data") ? tag.getCompound("data") : null;
+        Type type = Type.valueOf(NbtCompat.getString(tag, "type"));
+        String parentId = tag.contains("parentId") ? NbtCompat.getString(tag, "parentId") : null;
+        int index = NbtCompat.getInt(tag, "index");
+        CompoundTag data = tag.contains("data") ? NbtCompat.getCompound(tag, "data") : null;
         return new GuiStructuralChange(type, parentId, index, data);
     }
 }

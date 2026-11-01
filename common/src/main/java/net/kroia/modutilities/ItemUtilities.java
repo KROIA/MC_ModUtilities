@@ -551,13 +551,13 @@ public class ItemUtilities {
             return ItemStack.EMPTY;
         }
 
-        String id = tag.getString("id");
+        String id = NbtCompat.getString(tag, "id");
         Item item = BuiltInRegistries.ITEM.getOptional(ResourceLocation.parse(id)).orElse(Items.AIR);
         if (item == Items.AIR && !id.equals("minecraft:air")) {
             return ItemStack.EMPTY;
         }
 
-        int count = tag.contains("count") ? tag.getInt("count") : 1;
+        int count = tag.contains("count") ? NbtCompat.getInt(tag, "count") : 1;
         ItemStack stack = new ItemStack(item, count);
 
         if (tag.contains("components")) {

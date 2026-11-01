@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui.elements.base;
 
+import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.ClientPlayerUtilities;
 import net.kroia.modutilities.TimerMillis;
 import net.kroia.modutilities.gui.IGraphics;
@@ -291,7 +292,7 @@ public abstract class GuiElement {
 
     public void deserializeState(CompoundTag tag) {
         if (tag.contains("enabled")) {
-            setEnabled(tag.getBoolean("enabled"));
+            setEnabled(NbtCompat.getBoolean(tag, "enabled"));
         }
     }
 

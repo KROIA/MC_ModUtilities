@@ -1,5 +1,6 @@
 package net.kroia.modutilities.sandbox;
 
+import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.display.AbstractDisplayBlockEntity;
 import net.kroia.modutilities.gui.display.ContentBuilder;
@@ -104,10 +105,10 @@ public class DisplayDemoPanelBlockEntity extends AbstractDisplayBlockEntity {
 
     @Override
     protected void loadCustomData(CompoundTag tag, HolderLookup.Provider registries) {
-        clickCount = tag.getInt("clickCount");
-        notificationsEnabled = tag.getBoolean("notificationsEnabled");
+        clickCount = NbtCompat.getInt(tag, "clickCount");
+        notificationsEnabled = NbtCompat.getBoolean(tag, "notificationsEnabled");
         if (tag.contains("statusMessage")) {
-            statusMessage = tag.getString("statusMessage");
+            statusMessage = NbtCompat.getString(tag, "statusMessage");
         }
         syncStateToGui();
     }
