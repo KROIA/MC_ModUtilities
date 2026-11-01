@@ -39,8 +39,8 @@ import java.util.function.Consumer;
  * {@link net.kroia.modutilities.gui.elements.base.ListView} expose their
  * children).
  *
- * @apiNote The {@code gui/} package is client-only
- *          ({@code @Environment(EnvType.CLIENT)}); expandable panels must only be
+ * @apiNote The {@code gui/} package is client-only;
+ *          expandable panels must only be
  *          used on the client.
  */
 public class ExpandablePanel extends GuiElement {
