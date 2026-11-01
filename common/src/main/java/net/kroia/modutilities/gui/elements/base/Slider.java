@@ -20,8 +20,8 @@ import java.util.function.Supplier;
  * {@link #sliderMovedToPos(int, int)} to translate handle motion into a value
  * update and to lay the handle out within the slider's bounds.
  *
- * @apiNote The {@code gui/} package is client-only
- *          ({@code @Environment(EnvType.CLIENT)}); slider widgets must only be
+ * @apiNote The {@code gui/} package is client-only;
+ *          slider widgets must only be
  *          used on the client.
  */
 public abstract class Slider extends GuiElement {

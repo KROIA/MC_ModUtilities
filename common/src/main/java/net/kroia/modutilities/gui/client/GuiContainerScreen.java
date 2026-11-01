@@ -34,7 +34,7 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
  * {@link #setDebugKeysEnabled(boolean) debug keys} are enabled.
  *
  * @param <T> the {@link AbstractContainerMenu} subtype this screen is bound to
- * @apiNote This class is client-only ({@code @Environment(EnvType.CLIENT)}).
+ * @apiNote This class is client-only.
  */
 public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extends AbstractContainerScreen<T> {
 
