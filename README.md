@@ -6,7 +6,7 @@ This mod is only needed for the Quilt platform since it does not include the jar
 Fabric and NeoForge both include this mod, so you don't need it as a separate dependency.
 
 **Current Version**: v2.0.3  
-**Minecraft Version**: 1.21.2  
+**Minecraft Version**: 1.21.3  
 **Supported Platforms**: Fabric, NeoForge, Quilt
 
 ## Features
@@ -28,8 +28,8 @@ Fabric and NeoForge both include this mod, so you don't need it as a separate de
 ## Dependencies
 - [Architectury API](https://www.curseforge.com/minecraft/mc-mods/architectury-api) v14.0.4
 - [Fabric Loader](https://fabricmc.net/use/) v0.16.9
-- [Fabric API](https://www.curseforge.com/minecraft/mc-mods/fabric-api) v0.106.1+1.21.2
-- [NeoForge](https://neoforged.net/) v21.2.1-beta
+- [Fabric API](https://www.curseforge.com/minecraft/mc-mods/fabric-api) v0.114.1+1.21.3
+- [NeoForge](https://neoforged.net/) v21.3.100
 
 ## Documentation
 
@@ -47,7 +47,7 @@ Fabric and NeoForge both include this mod, so you don't need it as a separate de
 ### Current Development Version
 | Minecraft | Version | Platform |
 |-----------|---------|----------|
-| ![Minecraft Version](https://img.shields.io/badge/Minecraft-1.21.2-green) | ![Version](https://img.shields.io/badge/v2.0.3-orange) | Fabric, NeoForge, Quilt |
+| ![Minecraft Version](https://img.shields.io/badge/Minecraft-1.21.3-green) | ![Version](https://img.shields.io/badge/v2.0.3-orange) | Fabric, NeoForge, Quilt |
 
 ### Legacy Versions
 | Minecraft | Quilt |

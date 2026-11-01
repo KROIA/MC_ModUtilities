@@ -16,14 +16,14 @@ Utilities for modding
 [[dependencies.modutilities]]
 modId = "neoforge"
 type = "required"
-versionRange = "[21.2,)"
+versionRange = "[21.3,)"
 ordering = "NONE"
 side = "BOTH"
 
 [[dependencies.modutilities]]
 modId = "minecraft"
 type = "required"
-versionRange = "[1.21.2,)"
+versionRange = "[1.21.3,)"
 ordering = "NONE"
 side = "BOTH"
 
