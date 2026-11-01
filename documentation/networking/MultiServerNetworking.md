@@ -95,7 +95,7 @@ All slave-to-slave communication flows through the master server.
 
 ### 2. MultiServerConfig
 
-Configuration loaded from `config/MultiServerConfig.json`:
+Configuration loaded from `config/modutilities/MultiServerConfig.json`:
 
 **Master Configuration**:
 ```json
@@ -199,7 +199,7 @@ Context information provided when handling forwarded packets:
 
 ### Step 1: Configure Master Server
 
-Create `config/MultiServerConfig.json` on the master server:
+Create `config/modutilities/MultiServerConfig.json` on the master server:
 
 ```json
 {
@@ -212,7 +212,7 @@ Create `config/MultiServerConfig.json` on the master server:
 
 ### Step 2: Configure Slave Servers
 
-Create `config/MultiServerConfig.json` on each slave server:
+Create `config/modutilities/MultiServerConfig.json` on each slave server:
 
 **Slave A**:
 ```json
