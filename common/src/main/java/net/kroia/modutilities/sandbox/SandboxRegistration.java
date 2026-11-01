@@ -6,12 +6,10 @@ import dev.architectury.registry.registries.RegistrySupplier;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.kroia.modutilities.ModUtilitiesMod;
+import net.kroia.modutilities.RegistryCompat;
 import net.kroia.modutilities.gui.display.client.AbstractDisplayBlockEntityRenderer;
 import net.minecraft.core.registries.Registries;
-import net.kroia.mixin.BlockEntityTypeInvoker; // mc>=1.21.2
-import net.minecraft.resources.ResourceKey; // mc>=1.21.2
-import net.minecraft.resources.ResourceLocation; // mc>=1.21.2
-import java.util.Set; // mc>=1.21.2
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
@@ -39,17 +37,13 @@ public class SandboxRegistration {
 
     public static final RegistrySupplier<Item> DISPLAY_DEMO_BLOCK_ITEM =
             ITEMS.register("display_demo_block", () ->
-                    //new BlockItem(DISPLAY_DEMO_BLOCK.get(), new Item.Properties())); // mc<=1.21.1
-                    new BlockItem(DISPLAY_DEMO_BLOCK.get(), new Item.Properties().useBlockDescriptionPrefix() // mc>=1.21.2
-                            .setId(ResourceKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "display_demo_block"))))); // mc>=1.21.2
+                    new BlockItem(DISPLAY_DEMO_BLOCK.get(), RegistryCompat.blockItemProperties(new Item.Properties(), id("display_demo_block"))));
 
     @SuppressWarnings("unchecked")
     public static final RegistrySupplier<BlockEntityType<DisplayDemoBlockEntity>> DISPLAY_DEMO_BLOCK_ENTITY =
             (RegistrySupplier<BlockEntityType<DisplayDemoBlockEntity>>) (RegistrySupplier<?>)
             BLOCK_ENTITIES.register("display_demo_block_entity", () ->
-                    //BlockEntityType.Builder.of(DisplayDemoBlockEntity::new, DISPLAY_DEMO_BLOCK.get()) // mc<=1.21.1
-                    //        .build(null)); // mc<=1.21.1
-                    BlockEntityTypeInvoker.modutilities$create(DisplayDemoBlockEntity::new, Set.of(DISPLAY_DEMO_BLOCK.get()))); // mc>=1.21.2
+                    RegistryCompat.createBlockEntityType(DisplayDemoBlockEntity::new, DISPLAY_DEMO_BLOCK.get()));
 
     // --- DisplayDemoPerfBlock (Task #94 A/B: renderInterval + maxRenderDistance) ---
     public static final RegistrySupplier<Block> DISPLAY_DEMO_PERF_BLOCK =
@@ -57,17 +51,13 @@ public class SandboxRegistration {
 
     public static final RegistrySupplier<Item> DISPLAY_DEMO_PERF_BLOCK_ITEM =
             ITEMS.register("display_demo_perf_block", () ->
-                    //new BlockItem(DISPLAY_DEMO_PERF_BLOCK.get(), new Item.Properties())); // mc<=1.21.1
-                    new BlockItem(DISPLAY_DEMO_PERF_BLOCK.get(), new Item.Properties().useBlockDescriptionPrefix() // mc>=1.21.2
-                            .setId(ResourceKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "display_demo_perf_block"))))); // mc>=1.21.2
+                    new BlockItem(DISPLAY_DEMO_PERF_BLOCK.get(), RegistryCompat.blockItemProperties(new Item.Properties(), id("display_demo_perf_block"))));
 
     @SuppressWarnings("unchecked")
     public static final RegistrySupplier<BlockEntityType<DisplayDemoPerfBlockEntity>> DISPLAY_DEMO_PERF_BLOCK_ENTITY =
             (RegistrySupplier<BlockEntityType<DisplayDemoPerfBlockEntity>>) (RegistrySupplier<?>)
             BLOCK_ENTITIES.register("display_demo_perf_block_entity", () ->
-                    //BlockEntityType.Builder.of(DisplayDemoPerfBlockEntity::new, DISPLAY_DEMO_PERF_BLOCK.get()) // mc<=1.21.1
-                    //        .build(null)); // mc<=1.21.1
-                    BlockEntityTypeInvoker.modutilities$create(DisplayDemoPerfBlockEntity::new, Set.of(DISPLAY_DEMO_PERF_BLOCK.get()))); // mc>=1.21.2
+                    RegistryCompat.createBlockEntityType(DisplayDemoPerfBlockEntity::new, DISPLAY_DEMO_PERF_BLOCK.get()));
 
     // --- DisplayDemoPanelBlock ---
     public static final RegistrySupplier<Block> DISPLAY_DEMO_PANEL_BLOCK =
@@ -75,17 +65,13 @@ public class SandboxRegistration {
 
     public static final RegistrySupplier<Item> DISPLAY_DEMO_PANEL_BLOCK_ITEM =
             ITEMS.register("display_demo_panel_block", () ->
-                    //new BlockItem(DISPLAY_DEMO_PANEL_BLOCK.get(), new Item.Properties())); // mc<=1.21.1
-                    new BlockItem(DISPLAY_DEMO_PANEL_BLOCK.get(), new Item.Properties().useBlockDescriptionPrefix() // mc>=1.21.2
-                            .setId(ResourceKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "display_demo_panel_block"))))); // mc>=1.21.2
+                    new BlockItem(DISPLAY_DEMO_PANEL_BLOCK.get(), RegistryCompat.blockItemProperties(new Item.Properties(), id("display_demo_panel_block"))));
 
     @SuppressWarnings("unchecked")
     public static final RegistrySupplier<BlockEntityType<DisplayDemoPanelBlockEntity>> DISPLAY_DEMO_PANEL_BLOCK_ENTITY =
             (RegistrySupplier<BlockEntityType<DisplayDemoPanelBlockEntity>>) (RegistrySupplier<?>)
             BLOCK_ENTITIES.register("display_demo_panel_block_entity", () ->
-                    //BlockEntityType.Builder.of(DisplayDemoPanelBlockEntity::new, DISPLAY_DEMO_PANEL_BLOCK.get()) // mc<=1.21.1
-                    //        .build(null)); // mc<=1.21.1
-                    BlockEntityTypeInvoker.modutilities$create(DisplayDemoPanelBlockEntity::new, Set.of(DISPLAY_DEMO_PANEL_BLOCK.get()))); // mc>=1.21.2
+                    RegistryCompat.createBlockEntityType(DisplayDemoPanelBlockEntity::new, DISPLAY_DEMO_PANEL_BLOCK.get()));
 
     // --- DisplayDemoBackPanelBlock ---
     public static final RegistrySupplier<Block> DISPLAY_DEMO_BACK_PANEL_BLOCK =
@@ -93,17 +79,13 @@ public class SandboxRegistration {
 
     public static final RegistrySupplier<Item> DISPLAY_DEMO_BACK_PANEL_BLOCK_ITEM =
             ITEMS.register("display_demo_back_panel_block", () ->
-                    //new BlockItem(DISPLAY_DEMO_BACK_PANEL_BLOCK.get(), new Item.Properties())); // mc<=1.21.1
-                    new BlockItem(DISPLAY_DEMO_BACK_PANEL_BLOCK.get(), new Item.Properties().useBlockDescriptionPrefix() // mc>=1.21.2
-                            .setId(ResourceKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "display_demo_back_panel_block"))))); // mc>=1.21.2
+                    new BlockItem(DISPLAY_DEMO_BACK_PANEL_BLOCK.get(), RegistryCompat.blockItemProperties(new Item.Properties(), id("display_demo_back_panel_block"))));
 
     @SuppressWarnings("unchecked")
     public static final RegistrySupplier<BlockEntityType<DisplayDemoBackPanelBlockEntity>> DISPLAY_DEMO_BACK_PANEL_BLOCK_ENTITY =
             (RegistrySupplier<BlockEntityType<DisplayDemoBackPanelBlockEntity>>) (RegistrySupplier<?>)
             BLOCK_ENTITIES.register("display_demo_back_panel_block_entity", () ->
-                    //BlockEntityType.Builder.of(DisplayDemoBackPanelBlockEntity::new, DISPLAY_DEMO_BACK_PANEL_BLOCK.get()) // mc<=1.21.1
-                    //        .build(null)); // mc<=1.21.1
-                    BlockEntityTypeInvoker.modutilities$create(DisplayDemoBackPanelBlockEntity::new, Set.of(DISPLAY_DEMO_BACK_PANEL_BLOCK.get()))); // mc>=1.21.2
+                    RegistryCompat.createBlockEntityType(DisplayDemoBackPanelBlockEntity::new, DISPLAY_DEMO_BACK_PANEL_BLOCK.get()));
 
     // --- ChartDemoBlock ---
     public static final RegistrySupplier<Block> CHART_DEMO_BLOCK =
@@ -111,17 +93,18 @@ public class SandboxRegistration {
 
     public static final RegistrySupplier<Item> CHART_DEMO_BLOCK_ITEM =
             ITEMS.register("chart_demo_block", () ->
-                    //new BlockItem(CHART_DEMO_BLOCK.get(), new Item.Properties())); // mc<=1.21.1
-                    new BlockItem(CHART_DEMO_BLOCK.get(), new Item.Properties().useBlockDescriptionPrefix() // mc>=1.21.2
-                            .setId(ResourceKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "chart_demo_block"))))); // mc>=1.21.2
+                    new BlockItem(CHART_DEMO_BLOCK.get(), RegistryCompat.blockItemProperties(new Item.Properties(), id("chart_demo_block"))));
 
     @SuppressWarnings("unchecked")
     public static final RegistrySupplier<BlockEntityType<ChartDemoBlockEntity>> CHART_DEMO_BLOCK_ENTITY =
             (RegistrySupplier<BlockEntityType<ChartDemoBlockEntity>>) (RegistrySupplier<?>)
             BLOCK_ENTITIES.register("chart_demo_block_entity", () ->
-                    //BlockEntityType.Builder.of(ChartDemoBlockEntity::new, CHART_DEMO_BLOCK.get()) // mc<=1.21.1
-                    //        .build(null)); // mc<=1.21.1
-                    BlockEntityTypeInvoker.modutilities$create(ChartDemoBlockEntity::new, Set.of(CHART_DEMO_BLOCK.get()))); // mc>=1.21.2
+                    RegistryCompat.createBlockEntityType(ChartDemoBlockEntity::new, CHART_DEMO_BLOCK.get()));
+
+    /** Sandbox registry ID in the modutilities namespace. */
+    static ResourceLocation id(String path) {
+        return ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, path);
+    }
 
     /**
      * Registers all deferred registries. Must be called during mod initialization
