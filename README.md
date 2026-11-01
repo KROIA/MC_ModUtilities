@@ -6,7 +6,7 @@ This mod is only needed for the Quilt platform since it does not include the jar
 Fabric and NeoForge both include this mod, so you don't need it as a separate dependency.
 
 **Current Version**: v2.0.3  
-**Minecraft Version**: 1.21.5  
+**Minecraft Version**: 1.21.6  
 **Supported Platforms**: Fabric, NeoForge, Quilt
 
 ## Features
@@ -26,10 +26,10 @@ Fabric and NeoForge both include this mod, so you don't need it as a separate de
 - **GUI Layout System**: Flexible layout managers for GUI components
 
 ## Dependencies
-- [Architectury API](https://www.curseforge.com/minecraft/mc-mods/architectury-api) v16.1.4
+- [Architectury API](https://www.curseforge.com/minecraft/mc-mods/architectury-api) v17.0.6
 - [Fabric Loader](https://fabricmc.net/use/) v0.16.14
-- [Fabric API](https://www.curseforge.com/minecraft/mc-mods/fabric-api) v0.128.2+1.21.5
-- [NeoForge](https://neoforged.net/) v21.5.101
+- [Fabric API](https://www.curseforge.com/minecraft/mc-mods/fabric-api) v0.128.2+1.21.6
+- [NeoForge](https://neoforged.net/) v21.6.20-beta
 
 ## Documentation
 
@@ -47,7 +47,7 @@ Fabric and NeoForge both include this mod, so you don't need it as a separate de
 ### Current Development Version
 | Minecraft | Version | Platform |
 |-----------|---------|----------|
-| ![Minecraft Version](https://img.shields.io/badge/Minecraft-1.21.5-green) | ![Version](https://img.shields.io/badge/v2.0.3-orange) | Fabric, NeoForge, Quilt |
+| ![Minecraft Version](https://img.shields.io/badge/Minecraft-1.21.6-green) | ![Version](https://img.shields.io/badge/v2.0.3-orange) | Fabric, NeoForge, Quilt |
 
 ### Legacy Versions
 | Minecraft | Quilt |

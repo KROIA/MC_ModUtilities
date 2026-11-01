@@ -285,9 +285,32 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
     // NBT save/load + client sync
     // -------------------------------------------------------------------------
 
-    @Override
-    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.saveAdditional(tag, registries);
+    //@Override // mc<=1.21.5
+    //protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) { // mc<=1.21.5
+    //    super.saveAdditional(tag, registries); // mc<=1.21.5
+    //    writeState(tag, registries); // mc<=1.21.5
+    //} // mc<=1.21.5
+    @Override // mc>=1.21.6
+    protected void saveAdditional(net.minecraft.world.level.storage.ValueOutput output) { // mc>=1.21.6 (ValueOutput replaces CompoundTag)
+        super.saveAdditional(output); // mc>=1.21.6
+        CompoundTag tag = new CompoundTag(); // mc>=1.21.6
+        writeState(tag, level != null ? level.registryAccess() : net.kroia.modutilities.UtilitiesPlatform.getRegistryAccess()); // mc>=1.21.6
+        NbtCompat.writeAll(output, tag); // mc>=1.21.6 (same keys at the same level as before)
+    } // mc>=1.21.6
+
+    //@Override // mc<=1.21.5
+    //protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) { // mc<=1.21.5
+    //    super.loadAdditional(tag, registries); // mc<=1.21.5
+    //    readState(tag, registries); // mc<=1.21.5
+    //} // mc<=1.21.5
+    @Override // mc>=1.21.6
+    protected void loadAdditional(net.minecraft.world.level.storage.ValueInput input) { // mc>=1.21.6 (ValueInput replaces CompoundTag)
+        super.loadAdditional(input); // mc>=1.21.6
+        readState(NbtCompat.readAll(input), input.lookup()); // mc>=1.21.6
+    } // mc>=1.21.6
+
+    /** Writes this display block's state; shared by save and the client update tag. */
+    private void writeState(CompoundTag tag, HolderLookup.Provider registries) {
         if (controllerPos != null) {
             tag.putInt("ctrlX", controllerPos.getX());
             tag.putInt("ctrlY", controllerPos.getY());
@@ -306,9 +329,8 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
         saveCustomData(tag, registries);
     }
 
-    @Override
-    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.loadAdditional(tag, registries);
+    /** Reads this display block's state; shared by load and the client update tag. */
+    private void readState(CompoundTag tag, HolderLookup.Provider registries) {
         if (tag.contains("ctrlX")) {
             controllerPos = new BlockPos(NbtCompat.getInt(tag, "ctrlX"), NbtCompat.getInt(tag, "ctrlY"), NbtCompat.getInt(tag, "ctrlZ"));
         }
@@ -344,7 +366,7 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
     @Override
     public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
         CompoundTag tag = super.getUpdateTag(registries);
-        saveAdditional(tag, registries);
+        writeState(tag, registries);
         return tag;
     }
 

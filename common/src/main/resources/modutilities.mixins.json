@@ -6,7 +6,8 @@
   "client": [
     "LevelRendererMixin",
     "GuiGraphicsAccessor",
-    "MinecraftAccessor"
+    "MinecraftAccessor",
+    "GuiRendererWindowMixin"
   ],
   "mixins": [
     "BlockEntityTypeInvoker"
