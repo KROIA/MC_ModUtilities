@@ -250,7 +250,8 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
      */
     public void renderSlotHighlight(int x, int y, int blitOffset, int color) {
         if(getRoot() != null && getRoot().getGraphics() instanceof net.kroia.modutilities.gui.client.ClientGraphics cg) {
-            cg.fillGradient(RenderType.guiOverlay(), x, y, x + 16, y + 16, color, color, blitOffset);
+            cg.fillGradient(RenderType.guiOverlay(), x, y, x + 16, y + 16, color, color, blitOffset); // mc<=1.21.5
+        //cg.fillGradient(x, y, x + 16, y + 16, color, color); // mc>=1.21.6 (no overlay RenderType/z; drawn after the item, so on top)
         }
     }
 
