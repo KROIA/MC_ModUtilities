@@ -1,5 +1,6 @@
 package net.kroia.modutilities.testing.tests;
 
+import net.kroia.modutilities.NbtCompat;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
@@ -70,7 +71,7 @@ public class ParserTests extends TestSuite {
             return fail("Issue #49: byte should round-trip as ByteTag, got "
                     + (tag != null ? tag.getClass().getSimpleName() : "null"));
         }
-        return assertEquals("Byte value should be 5", (byte) 5, ((ByteTag) tag).getAsByte());
+        return assertEquals("Byte value should be 5", (byte) 5, NbtCompat.asByte((ByteTag) tag));
     }
 
     private TestResult testShortRoundtrip() {
@@ -86,7 +87,7 @@ public class ParserTests extends TestSuite {
             return fail("Issue #49: short should round-trip as ShortTag, got "
                     + (tag != null ? tag.getClass().getSimpleName() : "null"));
         }
-        return assertEquals("Short value should be 300", (short) 300, ((ShortTag) tag).getAsShort());
+        return assertEquals("Short value should be 300", (short) 300, NbtCompat.asShort((ShortTag) tag));
     }
 
     private TestResult testIntRoundtrip() {
@@ -102,7 +103,7 @@ public class ParserTests extends TestSuite {
             return fail("Issue #49: int should round-trip as IntTag, got "
                     + (tag != null ? tag.getClass().getSimpleName() : "null"));
         }
-        return assertEquals("Int value should be 100000", 100000, ((IntTag) tag).getAsInt());
+        return assertEquals("Int value should be 100000", 100000, NbtCompat.asInt((IntTag) tag));
     }
 
     private TestResult testLongRoundtrip() {
@@ -118,7 +119,7 @@ public class ParserTests extends TestSuite {
             return fail("Issue #49: long should round-trip as LongTag, got "
                     + (tag != null ? tag.getClass().getSimpleName() : "null"));
         }
-        return assertEquals("Long value should be 5000000000", 5000000000L, ((LongTag) tag).getAsLong());
+        return assertEquals("Long value should be 5000000000", 5000000000L, NbtCompat.asLong((LongTag) tag));
     }
 
     private TestResult testFloatRoundtrip() {
@@ -135,7 +136,7 @@ public class ParserTests extends TestSuite {
                     + (tag != null ? tag.getClass().getSimpleName() : "null"));
         }
         return assertTrue("Float value should be approximately 1.5",
-                Math.abs(((FloatTag) tag).getAsFloat() - 1.5f) < 0.0001f);
+                Math.abs(NbtCompat.asFloat((FloatTag) tag) - 1.5f) < 0.0001f);
     }
 
     private TestResult testDoubleRoundtrip() {
@@ -152,7 +153,7 @@ public class ParserTests extends TestSuite {
                     + (tag != null ? tag.getClass().getSimpleName() : "null"));
         }
         return assertTrue("Double value should be approximately pi",
-                Math.abs(((DoubleTag) tag).getAsDouble() - 3.141592653589793) < 0.000000001);
+                Math.abs(NbtCompat.asDouble((DoubleTag) tag) - 3.141592653589793) < 0.000000001);
     }
 
     // ========================================================================
@@ -197,10 +198,10 @@ public class ParserTests extends TestSuite {
             return fail("double should be DoubleTag, got " + (dTag != null ? dTag.getClass().getSimpleName() : "null"));
         }
 
-        if (((ByteTag) bTag).getAsByte() != 3) return fail("byte value mismatch");
-        if (((ShortTag) sTag).getAsShort() != 1000) return fail("short value mismatch");
-        if (((IntTag) iTag).getAsInt() != 50000) return fail("int value mismatch");
-        if (((LongTag) lTag).getAsLong() != 9999999999L) return fail("long value mismatch");
+        if (NbtCompat.asByte((ByteTag) bTag) != 3) return fail("byte value mismatch");
+        if (NbtCompat.asShort((ShortTag) sTag) != 1000) return fail("short value mismatch");
+        if (NbtCompat.asInt((IntTag) iTag) != 50000) return fail("int value mismatch");
+        if (NbtCompat.asLong((LongTag) lTag) != 9999999999L) return fail("long value mismatch");
 
         return pass("All six numeric types preserved through round-trip");
     }
@@ -224,7 +225,7 @@ public class ParserTests extends TestSuite {
             return fail("Legacy plain integer should deserialize as IntTag (existing behavior), got "
                     + (tag != null ? tag.getClass().getSimpleName() : "null"));
         }
-        return assertEquals("Legacy int value should be 42", 42, ((IntTag) tag).getAsInt());
+        return assertEquals("Legacy int value should be 42", 42, NbtCompat.asInt((IntTag) tag));
     }
 
     private TestResult testLegacyPlainDoubleCompat() {
@@ -240,7 +241,7 @@ public class ParserTests extends TestSuite {
             return fail("Legacy large whole number should deserialize as LongTag, got "
                     + (tag != null ? tag.getClass().getSimpleName() : "null"));
         }
-        return assertEquals("Long value should be 5000000000", 5000000000L, ((LongTag) tag).getAsLong());
+        return assertEquals("Long value should be 5000000000", 5000000000L, NbtCompat.asLong((LongTag) tag));
     }
 
     private TestResult testLegacyPlainFractionalCompat() {
@@ -257,7 +258,7 @@ public class ParserTests extends TestSuite {
                     + (tag != null ? tag.getClass().getSimpleName() : "null"));
         }
         return assertTrue("Legacy double value should be approximately 3.14",
-                Math.abs(((DoubleTag) tag).getAsDouble() - 3.14) < 0.001);
+                Math.abs(NbtCompat.asDouble((DoubleTag) tag) - 3.14) < 0.001);
     }
 
     // ========================================================================
@@ -277,7 +278,7 @@ public class ParserTests extends TestSuite {
             return fail("String should remain StringTag, got "
                     + (tag != null ? tag.getClass().getSimpleName() : "null"));
         }
-        return assertEquals("String value should be preserved", "diamond_sword", ((StringTag) tag).getAsString());
+        return assertEquals("String value should be preserved", "diamond_sword", NbtCompat.asString((StringTag) tag));
     }
 
     private TestResult testNestedCompoundRoundtrip() {
@@ -295,7 +296,7 @@ public class ParserTests extends TestSuite {
         CompoundTag restored = parser.jsonToNbt(json);
 
         // Check outer string
-        if (!"sharpness".equals(restored.getString("enchantment"))) {
+        if (!"sharpness".equals(NbtCompat.getString(restored, "enchantment"))) {
             return fail("Outer string lost");
         }
 
@@ -367,7 +368,7 @@ public class ParserTests extends TestSuite {
             return fail("Byte zero should round-trip as ByteTag, got "
                     + (tag != null ? tag.getClass().getSimpleName() : "null"));
         }
-        return assertEquals("Byte value should be 0", (byte) 0, ((ByteTag) tag).getAsByte());
+        return assertEquals("Byte value should be 0", (byte) 0, NbtCompat.asByte((ByteTag) tag));
     }
 
     private TestResult testNegativeValuesRoundtrip() {
@@ -383,17 +384,17 @@ public class ParserTests extends TestSuite {
         JsonObject json = parser.nbtToJson(original);
         CompoundTag restored = parser.jsonToNbt(json);
 
-        if (!(restored.get("nb") instanceof ByteTag bt) || bt.getAsByte() != -1)
+        if (!(restored.get("nb") instanceof ByteTag bt) || NbtCompat.asByte(bt) != -1)
             return fail("Negative byte round-trip failed");
-        if (!(restored.get("ns") instanceof ShortTag st) || st.getAsShort() != -500)
+        if (!(restored.get("ns") instanceof ShortTag st) || NbtCompat.asShort(st) != -500)
             return fail("Negative short round-trip failed");
-        if (!(restored.get("ni") instanceof IntTag it) || it.getAsInt() != -100000)
+        if (!(restored.get("ni") instanceof IntTag it) || NbtCompat.asInt(it) != -100000)
             return fail("Negative int round-trip failed");
-        if (!(restored.get("nl") instanceof LongTag lt) || lt.getAsLong() != -9999999999L)
+        if (!(restored.get("nl") instanceof LongTag lt) || NbtCompat.asLong(lt) != -9999999999L)
             return fail("Negative long round-trip failed");
-        if (!(restored.get("nf") instanceof FloatTag ft) || Math.abs(ft.getAsFloat() - (-2.5f)) > 0.0001f)
+        if (!(restored.get("nf") instanceof FloatTag ft) || Math.abs(NbtCompat.asFloat(ft) - (-2.5f)) > 0.0001f)
             return fail("Negative float round-trip failed");
-        if (!(restored.get("nd") instanceof DoubleTag dt) || Math.abs(dt.getAsDouble() - (-1.23456789)) > 0.000001)
+        if (!(restored.get("nd") instanceof DoubleTag dt) || Math.abs(NbtCompat.asDouble(dt) - (-1.23456789)) > 0.000001)
             return fail("Negative double round-trip failed");
 
         return pass("All negative numeric values survive round-trip");
@@ -414,21 +415,21 @@ public class ParserTests extends TestSuite {
         JsonObject json = parser.nbtToJson(original);
         CompoundTag restored = parser.jsonToNbt(json);
 
-        if (!(restored.get("bmax") instanceof ByteTag bt1) || bt1.getAsByte() != Byte.MAX_VALUE)
+        if (!(restored.get("bmax") instanceof ByteTag bt1) || NbtCompat.asByte(bt1) != Byte.MAX_VALUE)
             return fail("Byte MAX_VALUE round-trip failed");
-        if (!(restored.get("bmin") instanceof ByteTag bt2) || bt2.getAsByte() != Byte.MIN_VALUE)
+        if (!(restored.get("bmin") instanceof ByteTag bt2) || NbtCompat.asByte(bt2) != Byte.MIN_VALUE)
             return fail("Byte MIN_VALUE round-trip failed");
-        if (!(restored.get("smax") instanceof ShortTag st1) || st1.getAsShort() != Short.MAX_VALUE)
+        if (!(restored.get("smax") instanceof ShortTag st1) || NbtCompat.asShort(st1) != Short.MAX_VALUE)
             return fail("Short MAX_VALUE round-trip failed");
-        if (!(restored.get("smin") instanceof ShortTag st2) || st2.getAsShort() != Short.MIN_VALUE)
+        if (!(restored.get("smin") instanceof ShortTag st2) || NbtCompat.asShort(st2) != Short.MIN_VALUE)
             return fail("Short MIN_VALUE round-trip failed");
-        if (!(restored.get("imax") instanceof IntTag it1) || it1.getAsInt() != Integer.MAX_VALUE)
+        if (!(restored.get("imax") instanceof IntTag it1) || NbtCompat.asInt(it1) != Integer.MAX_VALUE)
             return fail("Int MAX_VALUE round-trip failed");
-        if (!(restored.get("imin") instanceof IntTag it2) || it2.getAsInt() != Integer.MIN_VALUE)
+        if (!(restored.get("imin") instanceof IntTag it2) || NbtCompat.asInt(it2) != Integer.MIN_VALUE)
             return fail("Int MIN_VALUE round-trip failed");
-        if (!(restored.get("lmax") instanceof LongTag lt1) || lt1.getAsLong() != Long.MAX_VALUE)
+        if (!(restored.get("lmax") instanceof LongTag lt1) || NbtCompat.asLong(lt1) != Long.MAX_VALUE)
             return fail("Long MAX_VALUE round-trip failed");
-        if (!(restored.get("lmin") instanceof LongTag lt2) || lt2.getAsLong() != Long.MIN_VALUE)
+        if (!(restored.get("lmin") instanceof LongTag lt2) || NbtCompat.asLong(lt2) != Long.MIN_VALUE)
             return fail("Long MIN_VALUE round-trip failed");
 
         return pass("All boundary values survive round-trip");
@@ -455,7 +456,7 @@ public class ParserTests extends TestSuite {
                     + (tag != null ? tag.getClass().getSimpleName() : "null"));
         }
         return assertEquals("Issue #60: LongTag value should be 3000000000",
-                3000000000L, ((LongTag) tag).getAsLong());
+                3000000000L, NbtCompat.asLong((LongTag) tag));
     }
 
     /**
@@ -475,7 +476,7 @@ public class ParserTests extends TestSuite {
                     + (tag != null ? tag.getClass().getSimpleName() : "null"));
         }
         return assertEquals("Issue #60: IntTag value should be 42",
-                42, ((IntTag) tag).getAsInt());
+                42, NbtCompat.asInt((IntTag) tag));
     }
 
     /**
@@ -495,6 +496,6 @@ public class ParserTests extends TestSuite {
                     + (tag != null ? tag.getClass().getSimpleName() : "null"));
         }
         return assertEquals("Issue #60: LongTag value should be -3000000000",
-                -3000000000L, ((LongTag) tag).getAsLong());
+                -3000000000L, NbtCompat.asLong((LongTag) tag));
     }
 }

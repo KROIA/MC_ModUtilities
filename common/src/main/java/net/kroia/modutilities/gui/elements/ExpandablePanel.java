@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui.elements;
 
+import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.layout.Layout;
@@ -440,7 +441,7 @@ public class ExpandablePanel extends GuiElement {
     public void deserializeState(CompoundTag tag) {
         super.deserializeState(tag);
         if (tag.contains("expanded")) {
-            setExpanded(tag.getBoolean("expanded"));
+            setExpanded(NbtCompat.getBoolean(tag, "expanded"));
         }
     }
 

@@ -1,5 +1,6 @@
 package net.kroia.modutilities.testing.tests;
 
+import net.kroia.modutilities.NbtCompat;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.kroia.modutilities.setting.Setting;
@@ -294,14 +295,14 @@ public class SettingsTests extends TestSuite {
         if (!(restored instanceof CompoundTag compound)) {
             return fail("Restored tag should be CompoundTag, got " + restored.getClass().getSimpleName());
         }
-        if (compound.getInt("health") != 20) {
-            return fail("health should be 20, got " + compound.getInt("health"));
+        if (NbtCompat.getInt(compound, "health") != 20) {
+            return fail("health should be 20, got " + NbtCompat.getInt(compound, "health"));
         }
-        if (!compound.getString("name").equals("Steve")) {
-            return fail("name should be Steve, got " + compound.getString("name"));
+        if (!NbtCompat.getString(compound, "name").equals("Steve")) {
+            return fail("name should be Steve, got " + NbtCompat.getString(compound, "name"));
         }
         return assertTrue("speed should be approximately 0.7",
-                Math.abs(compound.getDouble("speed") - 0.7) < 0.0001);
+                Math.abs(NbtCompat.getDouble(compound, "speed") - 0.7) < 0.0001);
     }
 
     private TestResult testNbtNumericTypeInference() {
@@ -366,15 +367,15 @@ public class SettingsTests extends TestSuite {
         if (!(aliveTag instanceof ByteTag)) {
             return fail("Boolean true should become ByteTag, got " + (aliveTag != null ? aliveTag.getClass().getSimpleName() : "null"));
         }
-        if (((ByteTag) aliveTag).getAsByte() != 1) {
-            return fail("Boolean true should map to byte 1, got " + ((ByteTag) aliveTag).getAsByte());
+        if (NbtCompat.asByte((ByteTag) aliveTag) != 1) {
+            return fail("Boolean true should map to byte 1, got " + NbtCompat.asByte((ByteTag) aliveTag));
         }
 
         Tag invTag = compound.get("invulnerable");
         if (!(invTag instanceof ByteTag)) {
             return fail("Boolean false should become ByteTag");
         }
-        return assertEquals("Boolean false should map to byte 0", (byte) 0, ((ByteTag) invTag).getAsByte());
+        return assertEquals("Boolean false should map to byte 0", (byte) 0, NbtCompat.asByte((ByteTag) invTag));
     }
 
     private TestResult testNbtNestedTags() {
@@ -394,7 +395,7 @@ public class SettingsTests extends TestSuite {
         if (!(restored instanceof CompoundTag outerRestored)) {
             return fail("Outer tag should be CompoundTag");
         }
-        if (!outerRestored.getString("type").equals("sword")) {
+        if (!NbtCompat.getString(outerRestored, "type").equals("sword")) {
             return fail("Outer string should be 'sword'");
         }
 
@@ -402,10 +403,10 @@ public class SettingsTests extends TestSuite {
         if (!(propsTag instanceof CompoundTag innerRestored)) {
             return fail("Nested tag should be CompoundTag, got " + (propsTag != null ? propsTag.getClass().getSimpleName() : "null"));
         }
-        if (!innerRestored.getString("material").equals("diamond")) {
-            return fail("Nested string should be 'diamond', got " + innerRestored.getString("material"));
+        if (!NbtCompat.getString(innerRestored, "material").equals("diamond")) {
+            return fail("Nested string should be 'diamond', got " + NbtCompat.getString(innerRestored, "material"));
         }
-        return assertEquals("Nested int should be preserved", 1561, innerRestored.getInt("durability"));
+        return assertEquals("Nested int should be preserved", 1561, NbtCompat.getInt(innerRestored, "durability"));
     }
 
     private TestResult testNbtListTags() {
@@ -436,7 +437,7 @@ public class SettingsTests extends TestSuite {
         int sum = 0;
         for (Tag t : restoredList) {
             if (t instanceof NumericTag num) {
-                sum += num.getAsInt();
+                sum += NbtCompat.asInt(num);
             }
         }
         return assertEquals("Sum of list elements should be 60", 60, sum);
@@ -458,6 +459,6 @@ public class SettingsTests extends TestSuite {
         if (!(greetTag instanceof StringTag)) {
             return fail("String value should restore as StringTag, got " + (greetTag != null ? greetTag.getClass().getSimpleName() : "null"));
         }
-        return assertEquals("String content should match", "Hello, World!", ((StringTag) greetTag).getAsString());
+        return assertEquals("String content should match", "Hello, World!", NbtCompat.asString((StringTag) greetTag));
     }
 }

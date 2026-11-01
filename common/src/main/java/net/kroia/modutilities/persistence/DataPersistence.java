@@ -1,5 +1,6 @@
 package net.kroia.modutilities.persistence;
 
+import net.kroia.modutilities.NbtCompat;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
@@ -539,7 +540,7 @@ public class DataPersistence {
             ListTag chunkList = new ListTag();
             if(firstChunk)
             {
-                byte dataType = dataList.getElementType();
+                byte dataType = NbtCompat.elementType(dataList);
                 chunk.putByte("elementType", dataType);
                 firstChunk = false;
             }
@@ -638,14 +639,14 @@ public class DataPersistence {
             for (Path chunkFile : chunkFiles) {
                 CompoundTag chunkData = readDataCompound(chunkFile);
                 if(firstChunk) {
-                    if(chunkData != null && chunkData.contains("elementType", Tag.TAG_BYTE))
+                    if(chunkData != null && NbtCompat.contains(chunkData, "elementType", Tag.TAG_BYTE))
                     {
-                        elementType = chunkData.getByte("elementType");
+                        elementType = NbtCompat.getByte(chunkData, "elementType");
                         firstChunk = false;
                     }
                 }
-                if (chunkData != null && chunkData.contains("data", Tag.TAG_LIST)) {
-                    dataOut.addAll(chunkData.getList("data", elementType));
+                if (chunkData != null && NbtCompat.contains(chunkData, "data", Tag.TAG_LIST)) {
+                    dataOut.addAll(NbtCompat.getList(chunkData, "data", elementType));
                 } else {
                     error("No valid 'data' list found in chunk file: " + chunkFile);
                 }

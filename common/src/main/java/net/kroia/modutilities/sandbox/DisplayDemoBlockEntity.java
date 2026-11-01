@@ -1,5 +1,6 @@
 package net.kroia.modutilities.sandbox;
 
+import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.display.AbstractDisplayBlockEntity;
 import net.kroia.modutilities.gui.display.ContentBuilder;
@@ -157,10 +158,10 @@ public class DisplayDemoBlockEntity extends AbstractDisplayBlockEntity {
 
     @Override
     protected void loadCustomData(CompoundTag tag, HolderLookup.Provider registries) {
-        paused = tag.getBoolean("paused");
-        speed = tag.getDouble("speed");
+        paused = NbtCompat.getBoolean(tag, "paused");
+        speed = NbtCompat.getDouble(tag, "speed");
         if (tag.contains("titleText")) {
-            titleText = tag.getString("titleText");
+            titleText = NbtCompat.getString(tag, "titleText");
         }
         syncStateToGui();
     }
