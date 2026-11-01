@@ -5,6 +5,7 @@ import net.minecraft.nbt.ByteArrayTag;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.IntArrayTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.LongArrayTag;
 import net.minecraft.nbt.NumericTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
@@ -69,6 +70,11 @@ public final class NbtCompat {
     /** Byte array at {@code key}, or an empty array if missing or not a byte array. */
     public static byte[] getByteArray(CompoundTag tag, String key) {
         return tag.get(key) instanceof ByteArrayTag b ? b.getAsByteArray() : new byte[0];
+    }
+
+    /** Long array at {@code key}, or an empty array if missing or not a long array. */
+    public static long[] getLongArray(CompoundTag tag, String key) {
+        return tag.get(key) instanceof LongArrayTag t ? t.getAsLongArray() : new long[0];
     }
 
     /** String at {@code index}, or "" if out of range or not a string (MC 1.21.5 returns Optional). */
