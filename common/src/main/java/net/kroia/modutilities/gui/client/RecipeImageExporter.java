@@ -16,7 +16,7 @@ import net.kroia.modutilities.ModUtilitiesMod;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics; // mc<=1.21.11
 //import net.minecraft.client.gui.GuiGraphicsExtractor; // mc>=26.1
-import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.MultiBufferSource; // mc<=26.1
 import net.minecraft.world.item.ItemStack;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
@@ -81,7 +81,7 @@ public class RecipeImageExporter {
         Minecraft mc = Minecraft.getInstance();
 
         // --- Save GL state (mirrors AbstractDisplayBlockEntityRenderer lines 253-279) ---
-        RenderTarget prevTarget = mc.getMainRenderTarget();
+        RenderTarget prevTarget = ClientCompat.mainRenderTarget();
         Matrix4f prevProjection = new Matrix4f(RenderSystem.getProjectionMatrix()); // mc<=1.21.5
         //VertexSorting prevSorting = RenderSystem.getVertexSorting(); // mc<=1.21.1
         ProjectionType prevSorting = RenderSystem.getProjectionType(); // mc>=1.21.2 mc<=1.21.5
@@ -108,7 +108,8 @@ public class RecipeImageExporter {
             // --- Create and bind framebuffer ---
             //framebuffer = new TextureTarget(texW, texH, true, false); // mc<=1.21.1
             //framebuffer = new TextureTarget(texW, texH, true); // mc>=1.21.2 mc<=1.21.4
-            framebuffer = new TextureTarget("modutilities recipe export", texW, texH, true); // mc>=1.21.5
+            framebuffer = new TextureTarget("modutilities recipe export", texW, texH, true); // mc>=1.21.5 mc<=26.1
+            //framebuffer = new TextureTarget("modutilities recipe export", texW, texH, true, com.mojang.blaze3d.GpuFormat.RGBA8_UNORM); // mc>=26.2
             //framebuffer.bindWrite(false); // mc<=1.21.4
             // 1.21.2+: GUI RenderTypes bind getMainRenderTarget() on every flush
             ((net.kroia.mixin.MinecraftAccessor) mc).modutilities$setMainRenderTarget(framebuffer); // mc>=1.21.2 mc<=1.21.5
@@ -121,7 +122,8 @@ public class RecipeImageExporter {
             //RenderSystem.clear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT, false); // mc<=1.21.1
             //RenderSystem.clear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT); // mc>=1.21.2 mc<=1.21.4
             RenderSystem.getDevice().createCommandEncoder().clearColorAndDepthTextures( // mc>=1.21.5
-                    framebuffer.getColorTexture(), 0xFF000000 | (BG_COLOR & 0xFFFFFF), framebuffer.getDepthTexture(), 1.0); // mc>=1.21.5
+                    framebuffer.getColorTexture(), 0xFF000000 | (BG_COLOR & 0xFFFFFF), framebuffer.getDepthTexture(), 1.0); // mc>=1.21.5 mc<=26.1
+                    //framebuffer.getColorTexture(), net.minecraft.util.ARGB.vector4fFromARGB32(0xFF000000 | (BG_COLOR & 0xFFFFFF)), framebuffer.getDepthTexture(), 1.0); // mc>=26.2
 
             // --- Disable fog ---
             //RenderSystem.setShaderFogColor(0, 0, 0, 0); // mc<=1.21.1
@@ -138,12 +140,13 @@ public class RecipeImageExporter {
             //RenderSystem.applyModelViewMatrix(); // mc<=1.21.1
 
             // --- Create GuiGraphics ---
-            MultiBufferSource.BufferSource bufferSource = MultiBufferSource.immediate(
-                    new ByteBufferBuilder(786432));
+            MultiBufferSource.BufferSource bufferSource = MultiBufferSource.immediate( // mc<=26.1
+                    new ByteBufferBuilder(786432)); // mc<=26.1
             GuiGraphics guiGraphics = new GuiGraphics(mc, bufferSource); // mc<=1.21.5
             guiGraphics.pose().pushPose(); // mc<=1.21.5
             guiGraphics.pose().translate(0, 0, -11000); // mc<=1.21.5
-            //net.kroia.modutilities.gui.client.OffscreenGuiRenderer offscreen = new net.kroia.modutilities.gui.client.OffscreenGuiRenderer(bufferSource); // mc>=1.21.6
+            //net.kroia.modutilities.gui.client.OffscreenGuiRenderer offscreen = new net.kroia.modutilities.gui.client.OffscreenGuiRenderer(bufferSource); // mc>=1.21.6 mc<=26.1
+            //net.kroia.modutilities.gui.client.OffscreenGuiRenderer offscreen = new net.kroia.modutilities.gui.client.OffscreenGuiRenderer(); // mc>=26.2
             //GuiGraphics guiGraphics = offscreen.begin(); // mc>=1.21.6 mc<=1.21.11
             //GuiGraphicsExtractor guiGraphics = offscreen.begin(); // mc>=26.1
 
@@ -153,7 +156,7 @@ public class RecipeImageExporter {
             renderRecipe(guiGraphics, mc, grid, result, guiW, guiH);
 
             guiGraphics.pose().popPose(); // mc<=1.21.5
-            bufferSource.endBatch();
+            bufferSource.endBatch(); // mc<=26.1
             //try { // mc>=1.21.6 (recorded GUI -> framebuffer)
                 //offscreen.render(guiGraphics, framebuffer, scale); // mc>=1.21.6
             //} finally { // mc>=1.21.6

@@ -15,7 +15,7 @@ import net.kroia.modutilities.gui.display.DisplayConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics; // mc<=1.21.11
 //import net.minecraft.client.gui.GuiGraphicsExtractor; // mc>=26.1
-import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.MultiBufferSource; // mc<=26.1
 import net.minecraft.client.renderer.RenderType; // mc<=1.21.10
 //import net.minecraft.client.renderer.rendertype.RenderType; import net.minecraft.client.renderer.rendertype.RenderTypes; // mc>=1.21.11
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -50,7 +50,7 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
     //} // mc>=1.21.9
 
     private final ClientGraphics clientGraphics;
-    private MultiBufferSource.BufferSource offscreenBufferSource;
+    private MultiBufferSource.BufferSource offscreenBufferSource; // mc<=26.1
     private GuiGraphics cachedGuiGraphics; // mc<=1.21.11
     //private GuiGraphicsExtractor cachedGuiGraphics; // mc>=26.1
     //private net.kroia.modutilities.gui.client.OffscreenGuiRenderer offscreenGui; // mc>=1.21.6 (deferred GUI rendering into the display texture)
@@ -88,22 +88,22 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         return true;
     }
 
-    private void ensureBufferSource() {
-        if (offscreenBufferSource == null) {
+    private void ensureBufferSource() { // mc<=26.1
+        if (offscreenBufferSource == null) { // mc<=26.1
             // Fixed buffers for glint render types so enchanted items can render
             // without the glint buffer flushing the base item buffer
-            java.util.SequencedMap<RenderType, com.mojang.blaze3d.vertex.ByteBufferBuilder> fixedBuffers = new java.util.LinkedHashMap<>();
+            java.util.SequencedMap<RenderType, com.mojang.blaze3d.vertex.ByteBufferBuilder> fixedBuffers = new java.util.LinkedHashMap<>(); // mc<=26.1
             fixedBuffers.put(RenderType.glint(), new com.mojang.blaze3d.vertex.ByteBufferBuilder(256)); // mc<=1.21.10
-            //fixedBuffers.put(RenderTypes.glint(), new com.mojang.blaze3d.vertex.ByteBufferBuilder(256)); // mc>=1.21.11
+            //fixedBuffers.put(RenderTypes.glint(), new com.mojang.blaze3d.vertex.ByteBufferBuilder(256)); // mc>=1.21.11 mc<=26.1
             fixedBuffers.put(RenderType.entityGlint(), new com.mojang.blaze3d.vertex.ByteBufferBuilder(256)); // mc<=1.21.10
-            //fixedBuffers.put(RenderTypes.entityGlint(), new com.mojang.blaze3d.vertex.ByteBufferBuilder(256)); // mc>=1.21.11
+            //fixedBuffers.put(RenderTypes.entityGlint(), new com.mojang.blaze3d.vertex.ByteBufferBuilder(256)); // mc>=1.21.11 mc<=26.1
             //fixedBuffers.put(RenderType.entityGlintDirect(), new com.mojang.blaze3d.vertex.ByteBufferBuilder(256)); // mc<=1.21.1 (removed in 1.21.2)
             fixedBuffers.put(RenderType.armorEntityGlint(), new com.mojang.blaze3d.vertex.ByteBufferBuilder(256)); // mc<=1.21.10
-            //fixedBuffers.put(RenderTypes.armorEntityGlint(), new com.mojang.blaze3d.vertex.ByteBufferBuilder(256)); // mc>=1.21.11
-            offscreenBufferSource = MultiBufferSource.immediateWithBuffers(
-                    fixedBuffers, new com.mojang.blaze3d.vertex.ByteBufferBuilder(786432));
-        }
-    }
+            //fixedBuffers.put(RenderTypes.armorEntityGlint(), new com.mojang.blaze3d.vertex.ByteBufferBuilder(256)); // mc>=1.21.11 mc<=26.1
+            offscreenBufferSource = MultiBufferSource.immediateWithBuffers( // mc<=26.1
+                    fixedBuffers, new com.mojang.blaze3d.vertex.ByteBufferBuilder(786432)); // mc<=26.1
+        } // mc<=26.1
+    } // mc<=26.1
 
     private static int effectiveRenderScale(int gw, int gh, DisplayConfig config) {
         int scale = config.renderScale();
@@ -156,7 +156,8 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
             data.texture.setFilter(false, false); // mc>=1.21.5 mc<=1.21.10 (nearest, no mipmaps; 1.21.11 DynamicTexture already samples NEAREST)
             //data.framebuffer = new TextureTarget(texW, texH, true, false); // mc<=1.21.1
             //data.framebuffer = new TextureTarget(texW, texH, true); // mc>=1.21.2 mc<=1.21.4
-            data.framebuffer = new TextureTarget("modutilities display framebuffer", texW, texH, true); // mc>=1.21.5
+            data.framebuffer = new TextureTarget("modutilities display framebuffer", texW, texH, true); // mc>=1.21.5 mc<=26.1
+            //data.framebuffer = new TextureTarget("modutilities display framebuffer", texW, texH, true, com.mojang.blaze3d.GpuFormat.RGBA8_UNORM); // mc>=26.2
             data.location = ResourceLocation.fromNamespaceAndPath("modutilities", // mc<=1.21.10
             //data.location = Identifier.fromNamespaceAndPath("modutilities", // mc>=1.21.11
                     "dynamic/display_group_" + controllerPos.getX() + "_"
@@ -340,9 +341,9 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         int guiW = data.groupWidth * config.virtualWidth();
         int guiH = data.groupHeight * config.virtualHeight();
 
-        ensureBufferSource();
+        ensureBufferSource(); // mc<=26.1
 
-        com.mojang.blaze3d.pipeline.RenderTarget prevTarget = mc.getMainRenderTarget();
+        com.mojang.blaze3d.pipeline.RenderTarget prevTarget = net.kroia.modutilities.gui.client.ClientCompat.mainRenderTarget();
         Matrix4f prevProjection = new Matrix4f(RenderSystem.getProjectionMatrix()); // mc<=1.21.5
         //VertexSorting prevSorting = RenderSystem.getVertexSorting(); // mc<=1.21.1
         ProjectionType prevSorting = RenderSystem.getProjectionType(); // mc>=1.21.2 mc<=1.21.5
@@ -360,7 +361,8 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         //RenderSystem.clear(org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT // mc>=1.21.2 mc<=1.21.4
         //        | org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT); // mc>=1.21.2 mc<=1.21.4
         RenderSystem.getDevice().createCommandEncoder().clearColorAndDepthTextures( // mc>=1.21.5
-                data.framebuffer.getColorTexture(), 0xFF262626, data.framebuffer.getDepthTexture(), 1.0); // mc>=1.21.5 (0.15 gray)
+                data.framebuffer.getColorTexture(), 0xFF262626, data.framebuffer.getDepthTexture(), 1.0); // mc>=1.21.5 mc<=26.1 (0.15 gray)
+                //data.framebuffer.getColorTexture(), net.minecraft.util.ARGB.vector4fFromARGB32(0xFF262626), data.framebuffer.getDepthTexture(), 1.0); // (0.15 gray) // mc>=26.2
 
         float[] prevShaderColor = RenderSystem.getShaderColor().clone(); // mc<=1.21.5
 
@@ -390,7 +392,8 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         GuiGraphics guiGraphics = cachedGuiGraphics; // mc<=1.21.5
         guiGraphics.pose().pushPose(); // mc<=1.21.5
         guiGraphics.pose().translate(0, 0, -11000); // mc<=1.21.5
-        //if (offscreenGui == null) offscreenGui = new net.kroia.modutilities.gui.client.OffscreenGuiRenderer(offscreenBufferSource); // mc>=1.21.6
+        //if (offscreenGui == null) offscreenGui = new net.kroia.modutilities.gui.client.OffscreenGuiRenderer(offscreenBufferSource); // mc>=1.21.6 mc<=26.1
+        //if (offscreenGui == null) offscreenGui = new net.kroia.modutilities.gui.client.OffscreenGuiRenderer(); // mc>=26.2
         //GuiGraphics guiGraphics = offscreenGui.begin(); // mc>=1.21.6 mc<=1.21.11
         //GuiGraphicsExtractor guiGraphics = offscreenGui.begin(); // mc>=26.1
 
@@ -425,7 +428,7 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
             gui.clearOffscreenScissorMode();
 
             guiGraphics.pose().popPose(); // mc<=1.21.5
-            offscreenBufferSource.endBatch();
+            offscreenBufferSource.endBatch(); // mc<=26.1
         } finally {
             ((net.kroia.mixin.MinecraftAccessor) mc).modutilities$setMainRenderTarget(prevTarget); // mc>=1.21.2 mc<=1.21.5
         }
