@@ -117,9 +117,9 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     public static void setScreen(Screen screen)
     {
         Minecraft mc = Minecraft.getInstance();
-        if(mc.screen != screen)
+        if(ClientCompat.screen() != screen)
         {
-            mc.setScreen(screen);
+            ClientCompat.setScreen(screen);
         }
     }
 
@@ -388,7 +388,7 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
         if(this.minecraft != null) {
             int mousePosX = getMouseX();
             int mousePosY = getMouseY();
-            this.minecraft.setScreen(parent);
+            ClientCompat.setScreen(parent);
             setMousePos(mousePosX, mousePosY);
         }
     }

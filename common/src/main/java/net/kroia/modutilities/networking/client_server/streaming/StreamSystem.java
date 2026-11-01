@@ -5,7 +5,7 @@ import net.kroia.modutilities.networking.NetworkPacketManager;
 import net.kroia.modutilities.networking.multi_server.MultiServerManager;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.util.Tuple;
+import net.kroia.modutilities.Tuple;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
