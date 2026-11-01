@@ -454,8 +454,10 @@ public abstract class GuiScreen extends Screen {
         clientGraphics.setGraphics(pGuiGraphics);
         gui.storeMousePos(pMouseX,pMouseY);
         gui.setPartialTick(pPartialTick);
-        if(enableBackground)
-            this.renderBackground(pGuiGraphics, pMouseX, pMouseY, pPartialTick);
+        if(enableBackground) // mc<=1.21.5
+            this.renderBackground(pGuiGraphics, pMouseX, pMouseY, pPartialTick); // mc<=1.21.5
+        // mc>=1.21.6: Screen.renderWithTooltipAndSubtitles already calls renderBackground before render;
+        // calling it again would blur twice ("Can only blur once per frame" crash).
         if(enableForeground)
             gui.render();
         if(enableTooltip)
