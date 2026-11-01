@@ -1,7 +1,8 @@
 package net.kroia.modutilities.gui;
 
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+//import net.minecraft.resources.Identifier; // mc>=1.21.11
 import net.minecraft.world.item.ItemStack;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
@@ -154,7 +155,8 @@ public interface IGraphics {
      * @param width         rendered width
      * @param height        rendered height
      */
-    default void blit(ResourceLocation atlasLocation, int x, int y, int uOffset, int vOffset, int width, int height) {}
+    default void blit(ResourceLocation atlasLocation, int x, int y, int uOffset, int vOffset, int width, int height) {} // mc<=1.21.10
+    //default void blit(Identifier atlasLocation, int x, int y, int uOffset, int vOffset, int width, int height) {} // mc>=1.21.11
 
     /**
      * Draws a sub-region of a texture (float UV offsets, explicit texture dims).
@@ -169,7 +171,8 @@ public interface IGraphics {
      * @param textureWidth  total texture width
      * @param textureHeight total texture height
      */
-    default void blit(ResourceLocation atlasLocation, int x, int y, float uOffset, float vOffset, int width, int height, int textureWidth, int textureHeight) {}
+    default void blit(ResourceLocation atlasLocation, int x, int y, float uOffset, float vOffset, int width, int height, int textureWidth, int textureHeight) {} // mc<=1.21.10
+    //default void blit(Identifier atlasLocation, int x, int y, float uOffset, float vOffset, int width, int height, int textureWidth, int textureHeight) {} // mc>=1.21.11
 
     // ── Scissor ─────────────────────────────────────────────────────────────
 

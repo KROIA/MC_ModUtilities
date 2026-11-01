@@ -15,14 +15,16 @@ import net.kroia.modutilities.gui.display.DisplayConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.RenderType; // mc<=1.21.10
+//import net.minecraft.client.renderer.rendertype.RenderType; import net.minecraft.client.renderer.rendertype.RenderTypes; // mc>=1.21.11
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+//import net.minecraft.resources.Identifier; // mc>=1.21.11
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
@@ -37,7 +39,8 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         implements BlockEntityRenderer<T, AbstractDisplayBlockEntityRenderer.DisplayRenderState> { // mc>=1.21.9
 
     /** The slice of a group texture one display block shows on its front face. */
-    private record FaceQuad(BlockPos controllerPos, ResourceLocation texture, Direction facing,
+    private record FaceQuad(BlockPos controllerPos, ResourceLocation texture, Direction facing, // mc<=1.21.10
+    //private record FaceQuad(BlockPos controllerPos, Identifier texture, Direction facing, // mc>=1.21.11
                             float u0, float v0, float u1, float v1, float offset) {}
 
     /** Per-frame render state: filled during extraction, drawn in {@code submit}. */
@@ -52,7 +55,8 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
 
     private static class GroupRenderData {
         DynamicTexture texture;
-        ResourceLocation location;
+        ResourceLocation location; // mc<=1.21.10
+        //Identifier location; // mc>=1.21.11
         TextureTarget framebuffer;
         boolean layoutInitialized;
         int groupWidth;
@@ -87,10 +91,13 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
             // Fixed buffers for glint render types so enchanted items can render
             // without the glint buffer flushing the base item buffer
             java.util.SequencedMap<RenderType, com.mojang.blaze3d.vertex.ByteBufferBuilder> fixedBuffers = new java.util.LinkedHashMap<>();
-            fixedBuffers.put(RenderType.glint(), new com.mojang.blaze3d.vertex.ByteBufferBuilder(256));
-            fixedBuffers.put(RenderType.entityGlint(), new com.mojang.blaze3d.vertex.ByteBufferBuilder(256));
+            fixedBuffers.put(RenderType.glint(), new com.mojang.blaze3d.vertex.ByteBufferBuilder(256)); // mc<=1.21.10
+            //fixedBuffers.put(RenderTypes.glint(), new com.mojang.blaze3d.vertex.ByteBufferBuilder(256)); // mc>=1.21.11
+            fixedBuffers.put(RenderType.entityGlint(), new com.mojang.blaze3d.vertex.ByteBufferBuilder(256)); // mc<=1.21.10
+            //fixedBuffers.put(RenderTypes.entityGlint(), new com.mojang.blaze3d.vertex.ByteBufferBuilder(256)); // mc>=1.21.11
             //fixedBuffers.put(RenderType.entityGlintDirect(), new com.mojang.blaze3d.vertex.ByteBufferBuilder(256)); // mc<=1.21.1 (removed in 1.21.2)
-            fixedBuffers.put(RenderType.armorEntityGlint(), new com.mojang.blaze3d.vertex.ByteBufferBuilder(256));
+            fixedBuffers.put(RenderType.armorEntityGlint(), new com.mojang.blaze3d.vertex.ByteBufferBuilder(256)); // mc<=1.21.10
+            //fixedBuffers.put(RenderTypes.armorEntityGlint(), new com.mojang.blaze3d.vertex.ByteBufferBuilder(256)); // mc>=1.21.11
             offscreenBufferSource = MultiBufferSource.immediateWithBuffers(
                     fixedBuffers, new com.mojang.blaze3d.vertex.ByteBufferBuilder(786432));
         }
@@ -144,11 +151,12 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
             //org.lwjgl.opengl.GL11.glTexParameteri(org.lwjgl.opengl.GL11.GL_TEXTURE_2D, // mc<=1.21.4
             //        org.lwjgl.opengl.GL11.GL_TEXTURE_MAG_FILTER, org.lwjgl.opengl.GL11.GL_NEAREST); // mc<=1.21.4
             data.texture = new DynamicTexture(() -> "modutilities display " + controllerPos.toShortString(), texW, texH, false); // mc>=1.21.5
-            data.texture.setFilter(false, false); // mc>=1.21.5 (nearest, no mipmaps)
+            data.texture.setFilter(false, false); // mc>=1.21.5 mc<=1.21.10 (nearest, no mipmaps; 1.21.11 DynamicTexture already samples NEAREST)
             //data.framebuffer = new TextureTarget(texW, texH, true, false); // mc<=1.21.1
             //data.framebuffer = new TextureTarget(texW, texH, true); // mc>=1.21.2 mc<=1.21.4
             data.framebuffer = new TextureTarget("modutilities display framebuffer", texW, texH, true); // mc>=1.21.5
-            data.location = ResourceLocation.fromNamespaceAndPath("modutilities",
+            data.location = ResourceLocation.fromNamespaceAndPath("modutilities", // mc<=1.21.10
+            //data.location = Identifier.fromNamespaceAndPath("modutilities", // mc>=1.21.11
                     "dynamic/display_group_" + controllerPos.getX() + "_"
                             + controllerPos.getY() + "_" + controllerPos.getZ());
             Minecraft.getInstance().getTextureManager().register(data.location, data.texture);
@@ -198,7 +206,8 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         if (quad == null) return; // mc>=1.21.9
         poseStack.pushPose(); // mc>=1.21.9
         applyFaceTransform(poseStack, quad); // mc>=1.21.9
-        collector.submitCustomGeometry(poseStack, RenderType.text(quad.texture()), // mc>=1.21.9
+        collector.submitCustomGeometry(poseStack, RenderType.text(quad.texture()), // mc>=1.21.9 mc<=1.21.10
+        //collector.submitCustomGeometry(poseStack, RenderTypes.text(quad.texture()), // mc>=1.21.11
                 (pose, consumer) -> emitQuad(pose.pose(), consumer, quad)); // mc>=1.21.9
         poseStack.popPose(); // mc>=1.21.9
     } // mc>=1.21.9
