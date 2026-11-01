@@ -5,7 +5,7 @@ import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import net.minecraft.nbt.*;
-import net.minecraft.util.Tuple;
+import net.kroia.modutilities.Tuple;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
