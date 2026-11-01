@@ -600,7 +600,7 @@ public class ClientGraphics implements IGraphics {
     public MultiBufferSource.BufferSource bufferSource()
     {
         //return Minecraft.getInstance().renderBuffers().bufferSource(); // mc<=1.19.4
-        //return graphics.bufferSource(); // mc>=1.20.1 (public getter removed in mc>=1.21.2)
+        //return graphics.bufferSource(); // unused, superseded by GuiGraphicsAccessor on all versions (was mc>=1.20.1; public getter removed in 1.21.2)
         return ((GuiGraphicsAccessor) graphics).modutilities$getBufferSource();
     }
 
