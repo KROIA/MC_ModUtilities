@@ -14,7 +14,8 @@ import net.fabricmc.api.Environment;
 import net.kroia.modutilities.ItemUtilities;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphics; // mc<=1.21.11
+//import net.minecraft.client.gui.GuiGraphicsExtractor; // mc>=26.1
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.world.item.ItemStack;
 import org.joml.Matrix4f;
@@ -143,7 +144,8 @@ public class RecipeImageExporter {
             guiGraphics.pose().pushPose(); // mc<=1.21.5
             guiGraphics.pose().translate(0, 0, -11000); // mc<=1.21.5
             //net.kroia.modutilities.gui.client.OffscreenGuiRenderer offscreen = new net.kroia.modutilities.gui.client.OffscreenGuiRenderer(bufferSource); // mc>=1.21.6
-            //GuiGraphics guiGraphics = offscreen.begin(); // mc>=1.21.6
+            //GuiGraphics guiGraphics = offscreen.begin(); // mc>=1.21.6 mc<=1.21.11
+            //GuiGraphicsExtractor guiGraphics = offscreen.begin(); // mc>=26.1
 
             Lighting.setupForFlatItems(); // mc<=1.21.5
 
@@ -291,7 +293,8 @@ public class RecipeImageExporter {
 
     // --- Private rendering ---
 
-    private static void renderRecipe(GuiGraphics g, Minecraft mc,
+    private static void renderRecipe(GuiGraphics g, Minecraft mc, // mc<=1.21.11
+    //private static void renderRecipe(GuiGraphicsExtractor g, Minecraft mc, // mc>=26.1
                                      ItemStack[][] grid, ItemStack result,
                                      int guiW, int guiH) {
         int gridW = 3 * SLOT_SIZE + 2 * SLOT_GAP;
@@ -309,7 +312,8 @@ public class RecipeImageExporter {
 
                 ItemStack stack = getGridItem(grid, row, col);
                 if (stack != null && !stack.isEmpty()) {
-                    g.renderItem(stack, sx + ITEM_INSET, sy + ITEM_INSET);
+                    g.renderItem(stack, sx + ITEM_INSET, sy + ITEM_INSET); // mc<=1.21.11
+                    //g.item(stack, sx + ITEM_INSET, sy + ITEM_INSET); // mc>=26.1
                 }
             }
         }
@@ -324,14 +328,17 @@ public class RecipeImageExporter {
         int resultY = PADDING + gridH / 2 - SLOT_SIZE / 2;
         renderSlot(g, resultX, resultY);
         if (!result.isEmpty()) {
-            g.renderItem(result, resultX + ITEM_INSET, resultY + ITEM_INSET);
+            g.renderItem(result, resultX + ITEM_INSET, resultY + ITEM_INSET); // mc<=1.21.11
+            //g.item(result, resultX + ITEM_INSET, resultY + ITEM_INSET); // mc>=26.1
             if (result.getCount() > 1) {
-                g.renderItemDecorations(mc.font, result, resultX + ITEM_INSET, resultY + ITEM_INSET);
+                g.renderItemDecorations(mc.font, result, resultX + ITEM_INSET, resultY + ITEM_INSET); // mc<=1.21.11
+                //g.itemDecorations(mc.font, result, resultX + ITEM_INSET, resultY + ITEM_INSET); // mc>=26.1
             }
         }
     }
 
-    private static void renderSlot(GuiGraphics g, int x, int y) {
+    private static void renderSlot(GuiGraphics g, int x, int y) { // mc<=1.21.11
+    //private static void renderSlot(GuiGraphicsExtractor g, int x, int y) { // mc>=26.1
         g.fill(x, y, x + SLOT_SIZE, y + SLOT_SIZE, SLOT_BG);
         // Dark border: top + left (inset effect)
         g.fill(x, y, x + SLOT_SIZE, y + 1, SLOT_DARK);
@@ -341,7 +348,8 @@ public class RecipeImageExporter {
         g.fill(x + SLOT_SIZE - 1, y, x + SLOT_SIZE, y + SLOT_SIZE, SLOT_LIGHT);
     }
 
-    private static void renderArrow(GuiGraphics g, int x, int centerY) {
+    private static void renderArrow(GuiGraphics g, int x, int centerY) { // mc<=1.21.11
+    //private static void renderArrow(GuiGraphicsExtractor g, int x, int centerY) { // mc>=26.1
         int shaftH = 1;
         int shaftW = ARROW_WIDTH - 8;
         // Shaft
