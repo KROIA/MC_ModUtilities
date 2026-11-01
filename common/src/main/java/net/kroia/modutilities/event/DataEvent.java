@@ -38,21 +38,34 @@ public class DataEvent<T> {
 
     /**
      * Registers a listener with no call-count limit.
+     * Adding an instance that is already registered (identity check) is ignored.
+     * <p>
+     * A lambda or method reference written inside a method that runs repeatedly (e.g. per
+     * server start) usually creates a new instance on each run, so it is not deduplicated.
+     * Keep the instance and remove it with {@link #removeListener(Consumer)}.
      *
      * @param listener The consumer to invoke whenever this event fires.
      */
     public void addListener(Consumer<T> listener) {
-        listeners.add(new ListenerEntry<>(listener, -1)); // -1 means no limit on calls
+        addListener(listener, -1); // -1 means no limit on calls
     }
 
     /**
      * Registers a listener with a maximum number of invocations.
      * The listener is automatically removed once the count reaches zero.
+     * Adding an instance that is already registered (identity check) is ignored, and the
+     * existing call count is kept; use {@link #setListenerRemainingCallCount} to change it.
+     * See {@link #addListener(Consumer)} about lambdas created per call.
      *
      * @param listener The consumer to invoke whenever this event fires.
      * @param maxCalls Maximum number of times this listener will fire; {@code -1} for unlimited.
      */
-    public void addListener(Consumer<T> listener, int maxCalls) {
+    public synchronized void addListener(Consumer<T> listener, int maxCalls) {
+        // synchronized: makes the check-then-add atomic across threads (dispatch stays lock-free)
+        for (ListenerEntry<T> entry : listeners) {
+            if (entry.listener == listener)
+                return;
+        }
         listeners.add(new ListenerEntry<>(listener, maxCalls));
     }
 
