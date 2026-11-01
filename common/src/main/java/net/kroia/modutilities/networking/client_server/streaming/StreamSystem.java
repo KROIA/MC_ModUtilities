@@ -45,6 +45,16 @@ public class StreamSystem {
      * @param networkManager The NetworkManager to use for packet handling.
      */
     public static void setup(@NotNull NetworkPacketManager networkManager) {
+        if (STREAM_MANAGER != null) {
+            // Old streams are dropped, not migrated: setup() runs at mod init (no streams yet) or on an
+            // integrated-server restart, where the old server and its players are gone. Their holders
+            // reference the old NetworkPacketManager, so moving them to the new manager would be wrong.
+            int active = STREAM_MANAGER.getActiveServerSenderStreams().size()
+                    + STREAM_MANAGER.getActiveClientReceiverStreams().size();
+            if (active > 0)
+                ModUtilitiesMod.LOGGER.warn("[StreamSystem] setup() replaced a StreamManager with {} active stream(s); they are dropped.", active);
+            STREAM_MANAGER.shutdown();
+        }
         STREAM_MANAGER = new StreamManager(networkManager);
 
         Map<String, StreamRegistry.RegistryData<?,?>> requests = REGISTRY.getRegistry();

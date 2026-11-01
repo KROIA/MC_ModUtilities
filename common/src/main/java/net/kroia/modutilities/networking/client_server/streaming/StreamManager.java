@@ -58,6 +58,17 @@ public class StreamManager {
     private boolean isInServerTickUpdate = false;
     //private boolean isInClientTickUpdate = false; // Only Streams from server to client are supported
 
+    /**
+     * The server tick listener registered by this manager. Kept as a field so the exact same
+     * instance can be unregistered in {@link #shutdown()} (a fresh method reference would not match).
+     */
+    private final TickEvent.Server tickListener = this::onServerTickUpdate;
+
+    /**
+     * True once {@link #shutdown()} has run, so repeated calls are no-ops.
+     */
+    private boolean isShutdown = false;
+
 
 
     /**
@@ -80,7 +91,19 @@ public class StreamManager {
         //activeServerReceiverStreams = new java.util.concurrent.ConcurrentHashMap<>(); // Only Streams from server to client are supported
         activeClientReceiverStreams = new java.util.concurrent.ConcurrentHashMap<>();
         // TickEvent.PLAYER_POST.register(this::onClientTickUpdate); // Only Streams from server to client are supported
-        TickEvent.SERVER_POST.register(this::onServerTickUpdate);
+        TickEvent.SERVER_POST.register(tickListener);
+    }
+
+    /**
+     * Unregisters this manager's server tick listener. Call this when the manager is replaced or
+     * no longer used, otherwise it keeps ticking forever. Idempotent: later calls do nothing.
+     * Active streams are not stopped; the maps are simply no longer driven.
+     */
+    public void shutdown() {
+        if (isShutdown)
+            return;
+        isShutdown = true;
+        TickEvent.SERVER_POST.unregister(tickListener);
     }
 
 

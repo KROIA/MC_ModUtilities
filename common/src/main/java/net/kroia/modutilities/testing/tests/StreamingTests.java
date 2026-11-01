@@ -75,11 +75,15 @@ public class StreamingTests extends TestSuite {
     private TestResult testGenericStreamSetGetManager() {
         GenericStream<String, String> stream = createDummyStream("manager_test");
         StreamManager manager = new StreamManager(createStubNetworkManager());
-        stream.setManager(manager);
-        if (stream.getManager() != manager) {
-            return fail("setManager/getManager should return the same instance");
+        try {
+            stream.setManager(manager);
+            if (stream.getManager() != manager) {
+                return fail("setManager/getManager should return the same instance");
+            }
+            return pass("setManager/getManager round-trips correctly");
+        } finally {
+            manager.shutdown();
         }
-        return pass("setManager/getManager round-trips correctly");
     }
 
     // ========================================================================

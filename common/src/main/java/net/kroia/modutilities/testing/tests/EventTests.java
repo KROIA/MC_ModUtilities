@@ -40,6 +40,32 @@ public class EventTests extends TestSuite {
 
         // N12 regression: listeners with limited calls and many listeners
         addTest("Signal_manyListeners_withLimitedCalls", this::testSignalManyListenersWithLimitedCalls);
+
+        // Same listener instance added twice must only fire once
+        addTest("Signal_duplicateListener_firesOnce", this::testSignalDuplicateListenerFiresOnce);
+        addTest("DataEvent_duplicateListener_firesOnce", this::testDataEventDuplicateListenerFiresOnce);
+    }
+
+    private TestResult testSignalDuplicateListenerFiresOnce() {
+        Signal signal = new Signal();
+        int[] count = {0};
+        Runnable listener = () -> count[0]++;
+        signal.addListener(listener);
+        signal.addListener(listener);
+        signal.addListener(listener, 5);
+        signal.notifyListeners();
+        return assertEquals("Duplicate listener instance should fire once", 1, count[0]);
+    }
+
+    private TestResult testDataEventDuplicateListenerFiresOnce() {
+        DataEvent<Integer> event = new DataEvent<>();
+        int[] count = {0};
+        java.util.function.Consumer<Integer> listener = data -> count[0]++;
+        event.addListener(listener);
+        event.addListener(listener);
+        event.addListener(listener, 5);
+        event.notifyListeners(1);
+        return assertEquals("Duplicate listener instance should fire once", 1, count[0]);
     }
 
     private TestResult testSignalFires() {
