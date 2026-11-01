@@ -239,7 +239,10 @@ public class ClientGraphics implements IGraphics {
     public void renderOutline(int x1, int y1, int width, int height, int color)
     {
         //Screen.renderOutline(graphics, x1, y1, width, height, color); // mc<=1.19.4
-        graphics.renderOutline(x1, y1, width, height, color); // mc>=1.20.1
+        graphics.fill(x1, y1, x1 + width, y1 + 1, color); // mc>=1.20.1 (1.21.9 renamed renderOutline to the deferred submitOutline)
+        graphics.fill(x1, y1 + height - 1, x1 + width, y1 + height, color); // mc>=1.20.1
+        graphics.fill(x1, y1 + 1, x1 + 1, y1 + height - 1, color); // mc>=1.20.1
+        graphics.fill(x1 + width - 1, y1 + 1, x1 + width, y1 + height - 1, color); // mc>=1.20.1
     }
 
     /**
