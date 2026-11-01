@@ -20,8 +20,8 @@ import java.util.List;
  * {@link #updateElementPositions()}, {@link #setScrollBarBounds()}, and the
  * scissor/scrollbar interaction hooks.
  *
- * @apiNote The {@code gui/} package is client-only
- *          ({@code @Environment(EnvType.CLIENT)}); list views must only be used
+ * @apiNote The {@code gui/} package is client-only;
+ *          list views must only be used
  *          on the client.
  */
 public abstract class ListView extends GuiElement{

@@ -8,8 +8,6 @@ package net.kroia.modutilities.gui.client;
 
 import com.mojang.blaze3d.pipeline.RenderTarget; // mc>=1.21.6
 import com.mojang.blaze3d.systems.RenderSystem; // mc>=1.21.6
-import net.fabricmc.api.EnvType; // mc>=1.21.6
-import net.fabricmc.api.Environment; // mc>=1.21.6
 import net.minecraft.client.Minecraft; // mc>=1.21.6
 import net.minecraft.client.gui.GuiGraphics; // mc>=1.21.6 mc<=1.21.11
 //import net.minecraft.client.gui.GuiGraphicsExtractor; // mc>=26.1
@@ -26,7 +24,6 @@ import java.util.List; // mc>=1.21.6
  * {@code GuiGraphics g = begin();} draw into {@code g}, then {@code render(g, target, scale)}.
  * {@code scale} is pixels per GUI unit; the GUI area is {@code target.width / scale} x {@code target.height / scale}.
  */
-@Environment(EnvType.CLIENT) // mc>=1.21.6
 public final class OffscreenGuiRenderer implements AutoCloseable { // mc>=1.21.6
 
     /** Window metrics GuiRendererWindowMixin reports while an offscreen render is running, or null. */
