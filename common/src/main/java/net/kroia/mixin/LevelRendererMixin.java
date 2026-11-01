@@ -23,10 +23,15 @@ public class LevelRendererMixin {
 
     @Inject(method = "renderHitOutline", at = @At("HEAD"), cancellable = true)
     private void modutilities$suppressDisplayBlockOutline(
-            PoseStack poseStack, VertexConsumer consumer, Entity entity,
+            //PoseStack poseStack, VertexConsumer consumer, Entity entity, // mc<=1.21.8
+            PoseStack poseStack, VertexConsumer consumer, // mc>=1.21.9
             double camX, double camY, double camZ,
             //BlockPos pos, BlockState state, CallbackInfo ci) { // mc<=1.21.1
-            BlockPos pos, BlockState state, int color, CallbackInfo ci) { // mc>=1.21.2
+            //BlockPos pos, BlockState state, int color, CallbackInfo ci) { // mc>=1.21.2 mc<=1.21.8
+            net.minecraft.client.renderer.state.BlockOutlineRenderState outline, int color, CallbackInfo ci) { // mc>=1.21.9
+        net.minecraft.client.multiplayer.ClientLevel level = net.minecraft.client.Minecraft.getInstance().level; // mc>=1.21.9
+        if (level == null) return; // mc>=1.21.9
+        BlockState state = level.getBlockState(outline.pos()); // mc>=1.21.9
         if (state.getBlock() instanceof AbstractDisplayBlock) {
             ci.cancel();
         }

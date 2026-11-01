@@ -33,7 +33,17 @@ import java.util.Map;
 
 @Environment(EnvType.CLIENT)
 public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEntity>
-        implements BlockEntityRenderer<T> {
+        //implements BlockEntityRenderer<T> { // mc<=1.21.8
+        implements BlockEntityRenderer<T, AbstractDisplayBlockEntityRenderer.DisplayRenderState> { // mc>=1.21.9
+
+    /** The slice of a group texture one display block shows on its front face. */
+    private record FaceQuad(BlockPos controllerPos, ResourceLocation texture, Direction facing,
+                            float u0, float v0, float u1, float v1, float offset) {}
+
+    /** Per-frame render state: filled during extraction, drawn in {@code submit}. */
+    public static class DisplayRenderState extends net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState { // mc>=1.21.9
+        FaceQuad quad; // mc>=1.21.9
+    } // mc>=1.21.9
 
     private final ClientGraphics clientGraphics;
     private MultiBufferSource.BufferSource offscreenBufferSource;
@@ -153,16 +163,55 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         return data;
     }
 
-    @Override
+    //@Override // mc<=1.21.8
     //public void render(T blockEntity, float partialTick, PoseStack poseStack, // mc<=1.21.4
     //                   MultiBufferSource bufferSource, int packedLight, int packedOverlay) { // mc<=1.21.4
-    public void render(T blockEntity, float partialTick, PoseStack poseStack, // mc>=1.21.5
-                       MultiBufferSource bufferSource, int packedLight, int packedOverlay, net.minecraft.world.phys.Vec3 cameraPos) { // mc>=1.21.5
+    //public void render(T blockEntity, float partialTick, PoseStack poseStack, // mc>=1.21.5 mc<=1.21.8
+    //                   MultiBufferSource bufferSource, int packedLight, int packedOverlay, net.minecraft.world.phys.Vec3 cameraPos) { // mc>=1.21.5 mc<=1.21.8
+    //    FaceQuad quad = prepareQuad(blockEntity, partialTick); // mc<=1.21.8
+    //    if (quad == null) return; // mc<=1.21.8
+    //    poseStack.pushPose(); // mc<=1.21.8
+    //    applyFaceTransform(poseStack, quad); // mc<=1.21.8
+    //    emitQuad(poseStack.last().pose(), bufferSource.getBuffer(RenderType.text(quad.texture())), quad); // mc<=1.21.8
+    //    poseStack.popPose(); // mc<=1.21.8
+    //} // mc<=1.21.8
 
-        if (!blockEntity.isActive()) return;
+    // mc>=1.21.9: block entity rendering is split into extract (game state -> render state) and submit.
+    @Override // mc>=1.21.9
+    public DisplayRenderState createRenderState() { // mc>=1.21.9
+        return new DisplayRenderState(); // mc>=1.21.9
+    } // mc>=1.21.9
+
+    @Override // mc>=1.21.9
+    public void extractRenderState(T blockEntity, DisplayRenderState state, float partialTick, // mc>=1.21.9
+                                   net.minecraft.world.phys.Vec3 cameraPos, // mc>=1.21.9
+                                   net.minecraft.client.renderer.feature.ModelFeatureRenderer.CrumblingOverlay crumbling) { // mc>=1.21.9
+        BlockEntityRenderer.super.extractRenderState(blockEntity, state, partialTick, cameraPos, crumbling); // mc>=1.21.9
+        state.quad = prepareQuad(blockEntity, partialTick); // mc>=1.21.9 (also refreshes the group texture)
+    } // mc>=1.21.9
+
+    @Override // mc>=1.21.9
+    public void submit(DisplayRenderState state, PoseStack poseStack, // mc>=1.21.9
+                       net.minecraft.client.renderer.SubmitNodeCollector collector, // mc>=1.21.9
+                       net.minecraft.client.renderer.state.CameraRenderState camera) { // mc>=1.21.9
+        FaceQuad quad = state.quad; // mc>=1.21.9
+        if (quad == null) return; // mc>=1.21.9
+        poseStack.pushPose(); // mc>=1.21.9
+        applyFaceTransform(poseStack, quad); // mc>=1.21.9
+        collector.submitCustomGeometry(poseStack, RenderType.text(quad.texture()), // mc>=1.21.9
+                (pose, consumer) -> emitQuad(pose.pose(), consumer, quad)); // mc>=1.21.9
+        poseStack.popPose(); // mc>=1.21.9
+    } // mc>=1.21.9
+
+    /**
+     * Resolves the group controller, re-renders the group texture when needed and returns the
+     * slice of it this block shows, or {@code null} if nothing should be drawn.
+     */
+    private FaceQuad prepareQuad(T blockEntity, float partialTick) {
+        if (!blockEntity.isActive()) return null;
 
         BlockPos controllerPos = blockEntity.getControllerPos();
-        if (controllerPos == null) return;
+        if (controllerPos == null) return null;
 
         DisplayRenderProfiler.begin(controllerPos, DisplayRenderProfiler.Category.TOTAL);
 
@@ -180,7 +229,7 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         }
         if (controller == null) {
             DisplayRenderProfiler.end(controllerPos, DisplayRenderProfiler.Category.TOTAL);
-            return;
+            return null;
         }
 
         DisplayConfig config = controller.getDisplayConfig();
@@ -243,12 +292,8 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         float v0 = 1.0f - (float) (gy + 1) / gh;
         float v1 = 1.0f - (float) gy / gh;
 
-        DisplayRenderProfiler.begin(controllerPos, DisplayRenderProfiler.Category.QUAD_RENDER);
-        renderQuadOnFace(poseStack, bufferSource, facing, data.location,
-                u0, v0, u1, v1, config.faceOffset());
-        DisplayRenderProfiler.end(controllerPos, DisplayRenderProfiler.Category.QUAD_RENDER);
-
         DisplayRenderProfiler.end(controllerPos, DisplayRenderProfiler.Category.TOTAL);
+        return new FaceQuad(controllerPos, data.location, facing, u0, v0, u1, v1, config.faceOffset());
     }
 
     private void updateClientMousePos(Gui gui, BlockPos controllerPos, DisplayConfig config) {
@@ -404,12 +449,10 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         //Lighting.setupLevel(); // mc<=1.21.5
     }
 
-    private void renderQuadOnFace(PoseStack poseStack, MultiBufferSource bufferSource,
-                                   Direction facing, ResourceLocation texture,
-                                   float u0, float v0, float u1, float v1, float offset) {
-        poseStack.pushPose();
-
-        switch (facing) {
+    /** Moves the pose onto the block's front face, in a 1x1 space with y pointing down. */
+    private static void applyFaceTransform(PoseStack poseStack, FaceQuad quad) {
+        float offset = quad.offset();
+        switch (quad.facing()) {
             case NORTH -> {
                 poseStack.translate(1, 1, -offset);
                 poseStack.mulPose(com.mojang.math.Axis.YP.rotationDegrees(180));
@@ -426,12 +469,12 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         }
 
         poseStack.scale(1.0f, -1.0f, 1.0f);
+    }
 
-        Matrix4f matrix = poseStack.last().pose();
-
-        VertexConsumer consumer = bufferSource.getBuffer(
-                RenderType.text(texture));
-
+    /** Emits the full-bright textured quad for {@code quad} in the face space set up by {@link #applyFaceTransform}. */
+    private static void emitQuad(Matrix4f matrix, VertexConsumer consumer, FaceQuad quad) {
+        DisplayRenderProfiler.begin(quad.controllerPos(), DisplayRenderProfiler.Category.QUAD_RENDER);
+        float u0 = quad.u0(), v0 = quad.v0(), u1 = quad.u1(), v1 = quad.v1();
         int light = 0xF000F0;
         consumer.addVertex(matrix, 0, 0, 0).setColor(255, 255, 255, 255)
                 .setUv(u0, v1).setLight(light);
@@ -441,7 +484,6 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
                 .setUv(u1, v0).setLight(light);
         consumer.addVertex(matrix, 1, 0, 0).setColor(255, 255, 255, 255)
                 .setUv(u1, v1).setLight(light);
-
-        poseStack.popPose();
+        DisplayRenderProfiler.end(quad.controllerPos(), DisplayRenderProfiler.Category.QUAD_RENDER);
     }
 }

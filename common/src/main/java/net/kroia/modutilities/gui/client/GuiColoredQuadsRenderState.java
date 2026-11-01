@@ -18,9 +18,11 @@ record GuiColoredQuadsRenderState(Matrix3x2f pose, float[] xy, int[] colors, // 
                                   ScreenRectangle scissorArea, ScreenRectangle bounds) // mc>=1.21.6
         implements GuiElementRenderState { // mc>=1.21.6
     @Override // mc>=1.21.6
-    public void buildVertices(VertexConsumer consumer, float z) { // mc>=1.21.6
+    //public void buildVertices(VertexConsumer consumer, float z) { // mc>=1.21.6 mc<=1.21.8
+    public void buildVertices(VertexConsumer consumer) { // mc>=1.21.9 (GUI depth is implicit in submission order)
         for (int i = 0; i < colors.length; i++) { // mc>=1.21.6
-            consumer.addVertexWith2DPose(pose, xy[i * 2], xy[i * 2 + 1], z).setColor(colors[i]); // mc>=1.21.6
+            //consumer.addVertexWith2DPose(pose, xy[i * 2], xy[i * 2 + 1], z).setColor(colors[i]); // mc>=1.21.6 mc<=1.21.8
+            consumer.addVertexWith2DPose(pose, xy[i * 2], xy[i * 2 + 1]).setColor(colors[i]); // mc>=1.21.9
         } // mc>=1.21.6
     } // mc>=1.21.6
 

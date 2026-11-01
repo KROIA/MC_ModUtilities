@@ -39,10 +39,18 @@ public final class OffscreenGuiRenderer implements AutoCloseable { // mc>=1.21.6
     private final GuiRenderState state = new GuiRenderState(); // mc>=1.21.6
     private final GuiRenderer renderer; // mc>=1.21.6
     private final FogRenderer fogRenderer = new FogRenderer(); // mc>=1.21.6
+    // mc>=1.21.9: GUI item rendering goes through a submit-node collector + feature dispatcher. Own instances,
+    // so an offscreen render during world rendering never flushes the level's submitted nodes.
+    private final net.minecraft.client.renderer.SubmitNodeStorage submitNodes = new net.minecraft.client.renderer.SubmitNodeStorage(); // mc>=1.21.9
+    private final net.minecraft.client.renderer.feature.FeatureRenderDispatcher featureDispatcher; // mc>=1.21.9
 
     /** @param bufferSource buffer source used for item rendering into the item atlas */
     public OffscreenGuiRenderer(MultiBufferSource.BufferSource bufferSource) { // mc>=1.21.6
-        renderer = new GuiRenderer(state, bufferSource, List.of()); // mc>=1.21.6
+        //renderer = new GuiRenderer(state, bufferSource, List.of()); // mc>=1.21.6 mc<=1.21.8
+        Minecraft mc = Minecraft.getInstance(); // mc>=1.21.9
+        featureDispatcher = new net.minecraft.client.renderer.feature.FeatureRenderDispatcher(submitNodes, mc.getBlockRenderer(), bufferSource, // mc>=1.21.9
+                mc.getAtlasManager(), mc.renderBuffers().outlineBufferSource(), mc.renderBuffers().crumblingBufferSource(), mc.font); // mc>=1.21.9
+        renderer = new GuiRenderer(state, bufferSource, submitNodes, featureDispatcher, List.of()); // mc>=1.21.9
     } // mc>=1.21.6
 
     /** Starts a new frame and returns the GuiGraphics that records into it. */
@@ -57,7 +65,8 @@ public final class OffscreenGuiRenderer implements AutoCloseable { // mc>=1.21.6
      */
     public void render(GuiGraphics graphics, RenderTarget target, int guiScale) { // mc>=1.21.6
         Minecraft mc = Minecraft.getInstance(); // mc>=1.21.6
-        graphics.renderDeferredTooltip(); // mc>=1.21.6
+        //graphics.renderDeferredTooltip(); // mc>=1.21.6 mc<=1.21.8
+        graphics.renderDeferredElements(); // mc>=1.21.9 (tooltip + deferred outlines)
         RenderTarget prevTarget = mc.getMainRenderTarget(); // mc>=1.21.6
         var prevFog = RenderSystem.getShaderFog(); // mc>=1.21.6
         RenderSystem.backupProjectionMatrix(); // mc>=1.21.6
@@ -78,5 +87,6 @@ public final class OffscreenGuiRenderer implements AutoCloseable { // mc>=1.21.6
     public void close() { // mc>=1.21.6
         renderer.close(); // mc>=1.21.6
         fogRenderer.close(); // mc>=1.21.6
+        featureDispatcher.close(); // mc>=1.21.9
     } // mc>=1.21.6
 } // mc>=1.21.6

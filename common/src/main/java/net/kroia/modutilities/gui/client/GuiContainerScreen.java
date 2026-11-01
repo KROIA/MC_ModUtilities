@@ -91,7 +91,7 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
      */
     private void injectClientDependencies() {
         gui.setGraphicsBackend(clientGraphics);
-        gui.setInputProvider(new ClientInputProvider(Minecraft.getInstance().getWindow().getWindow()));
+        gui.setInputProvider(new ClientInputProvider(InputCompat.windowHandle()));
         gui.setFont(Minecraft.getInstance().font);
         gui.setDisplayScaleFactor(Minecraft.getInstance().getWindow().getGuiScale());
         gui.setSoundPlayer((sound, volume, pitch) -> playLocalSound(sound, volume, pitch));
@@ -464,18 +464,18 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     }
     */
 
-    @Override
+    // Overrides Screen up to mc 1.21.8; called through the event bridges below on mc 1.21.9+.
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if(!gui.mouseClicked(mouseX, mouseY, button))
             return false; //return super.mouseClicked(mouseX, mouseY, button);
         return true;
     }
-    @Override
+    // Overrides Screen up to mc 1.21.8; called through the event bridges below on mc 1.21.9+.
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         return gui.mouseReleased(mouseX, mouseY, button);
     }
 
-    @Override
+    // Overrides Screen up to mc 1.21.8; called through the event bridges below on mc 1.21.9+.
     public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
         return gui.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
     }
@@ -572,7 +572,7 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
         GuiScreen.playLocalSound(sound, volume, pitch);
     }
 
-    @Override
+    // Overrides Screen up to mc 1.21.8; called through the event bridges below on mc 1.21.9+.
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if(debugKeysEnabled) {
             switch (keyCode) {
@@ -599,16 +599,53 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
         if(ret)
             return true;
         if(gui.getFocusedElement() == null)
-            return super.keyPressed(keyCode, scanCode, modifiers);
+            //return super.keyPressed(keyCode, scanCode, modifiers); // mc<=1.21.8
+            return super.keyPressed(new net.minecraft.client.input.KeyEvent(keyCode, scanCode, modifiers)); // mc>=1.21.9
         return true;
     }
 
-    @Override
+    // Overrides Screen up to mc 1.21.8; called through the event bridges below on mc 1.21.9+.
     public boolean charTyped(char codePoint, int modifiers) {
         if(!gui.charTyped(codePoint, modifiers))
-            return super.charTyped(codePoint, modifiers);
+            //return super.charTyped(codePoint, modifiers); // mc<=1.21.8
+            return super.charTyped(new net.minecraft.client.input.CharacterEvent(codePoint, modifiers)); // mc>=1.21.9
         return true;
     }
+
+    // mc>=1.21.9: vanilla input moved to event records. These bridges forward to the int-based
+    // methods above, which stay the extension points for subclasses on every Minecraft version.
+    private int lastMouseModifiers; // mc>=1.21.9
+    private boolean lastDoubleClick; // mc>=1.21.9
+
+    @Override // mc>=1.21.9
+    public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event, boolean doubleClick) { // mc>=1.21.9
+        lastMouseModifiers = event.modifiers(); // mc>=1.21.9
+        lastDoubleClick = doubleClick; // mc>=1.21.9
+        return mouseClicked(event.x(), event.y(), event.button()); // mc>=1.21.9
+    } // mc>=1.21.9
+
+    @Override // mc>=1.21.9
+    public boolean mouseReleased(net.minecraft.client.input.MouseButtonEvent event) { // mc>=1.21.9
+        return mouseReleased(event.x(), event.y(), event.button()); // mc>=1.21.9
+    } // mc>=1.21.9
+
+    @Override // mc>=1.21.9
+    public boolean mouseDragged(net.minecraft.client.input.MouseButtonEvent event, double deltaX, double deltaY) { // mc>=1.21.9
+        return mouseDragged(event.x(), event.y(), event.button(), deltaX, deltaY); // mc>=1.21.9
+    } // mc>=1.21.9
+
+    @Override // mc>=1.21.9
+    public boolean keyPressed(net.minecraft.client.input.KeyEvent event) { // mc>=1.21.9
+        return keyPressed(event.key(), event.scancode(), event.modifiers()); // mc>=1.21.9
+    } // mc>=1.21.9
+
+    @Override // mc>=1.21.9
+    public boolean charTyped(net.minecraft.client.input.CharacterEvent event) { // mc>=1.21.9
+        boolean handled = false; // mc>=1.21.9
+        for (char c : Character.toChars(event.codepoint())) // mc>=1.21.9
+            handled |= charTyped(c, event.modifiers()); // mc>=1.21.9
+        return handled; // mc>=1.21.9
+    } // mc>=1.21.9
 
 
 }
