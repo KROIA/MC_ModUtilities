@@ -10,7 +10,7 @@ import java.util.ArrayList;
  * such as {@link net.kroia.modutilities.gui.Gui#drawVertexBuffer_QUADS(VertexBuffer)}
  * to render all contained vertices in a single batch.
  *
- * @apiNote The GUI package is client-only ({@code @Environment(EnvType.CLIENT)});
+ * @apiNote The GUI package is client-only;
  *          this buffer is intended for use only on the client.
  */
 public class VertexBuffer {

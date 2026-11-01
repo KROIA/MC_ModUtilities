@@ -1,7 +1,5 @@
 package net.kroia.modutilities.gui.client;
 
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 import net.kroia.modutilities.gui.IInputProvider;
 import net.minecraft.client.Minecraft;
 
@@ -11,7 +9,6 @@ import net.minecraft.client.Minecraft;
  * Created by the hosting screen and injected into the {@link net.kroia.modutilities.gui.Gui}
  * so that common GUI element code can query input state without depending on the windowing library (GLFW, or SDL3 from 26.3) directly.
  */
-@Environment(EnvType.CLIENT)
 public class ClientInputProvider implements IInputProvider {
 
     private final long windowHandle;

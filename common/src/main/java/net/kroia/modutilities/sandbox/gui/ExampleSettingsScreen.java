@@ -1,7 +1,5 @@
 package net.kroia.modutilities.sandbox.gui;
 
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.client.GuiScreen;
@@ -25,7 +23,6 @@ import net.minecraft.network.chat.Component;
  *
  * Open via: /modutilities openExample settings
  */
-@Environment(EnvType.CLIENT)
 public class ExampleSettingsScreen extends GuiScreen {
 
     private static final String[] DIFFICULTY_OPTIONS = {"Peaceful", "Easy", "Normal", "Hard"};
