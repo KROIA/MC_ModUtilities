@@ -43,12 +43,16 @@ subprojects {
         minecraft "net.minecraft:minecraft:$rootProject.minecraft_version"
         //mappings "net.fabricmc:yarn:$rootProject.yarn_mappings:v2"
 
-        //mappings loom.officialMojangMappings()
+        //mappings loom.officialMojangMappings() // mc>=1.21.2 mc<=1.21.2 (no parchment release for 1.21.2)
 
-        mappings loom.layered() {
-            officialMojangMappings()
-            parchment("org.parchmentmc.data:parchment-${rootProject.minecraft_version}:${rootProject.mapping_version}")
-        }
+        //mappings loom.layered() { // mc<=1.21.1
+        //    officialMojangMappings() // mc<=1.21.1
+        //    parchment("org.parchmentmc.data:parchment-${rootProject.minecraft_version}:${rootProject.mapping_version}") // mc<=1.21.1
+        //} // mc<=1.21.1
+        mappings loom.layered() { // mc>=1.21.3
+            officialMojangMappings() // mc>=1.21.3
+            parchment("org.parchmentmc.data:parchment-${rootProject.minecraft_version}:${rootProject.mapping_version}") // mc>=1.21.3
+        } // mc>=1.21.3
     }
 
     java {
