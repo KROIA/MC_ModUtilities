@@ -781,7 +781,7 @@ public class MultiLineTextBox extends GuiElement {
         cursorVisible = true;
         cursorBlinkCounter = 0;
 
-        switch (keyCode) {
+        switch (InputConstants.shortcutKey(keyCode, scanCode)) {
             case InputConstants.KEY_ESCAPE:
                 removeFocus();
                 return true;
