@@ -1,7 +1,5 @@
 package net.kroia.modutilities.sandbox.gui;
 
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.client.GuiScreen;
 import net.kroia.modutilities.gui.elements.Button;
@@ -30,7 +28,6 @@ import java.util.List;
  *
  * Open via: /modutilities openExample playerBrowser
  */
-@Environment(EnvType.CLIENT)
 public class ExamplePlayerBrowserScreen extends GuiScreen {
 
     private final Label title;

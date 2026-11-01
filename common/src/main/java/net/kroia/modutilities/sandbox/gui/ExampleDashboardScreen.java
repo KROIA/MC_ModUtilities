@@ -1,7 +1,5 @@
 package net.kroia.modutilities.sandbox.gui;
 
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.client.GuiScreen;
 import net.kroia.modutilities.gui.elements.Button;
@@ -28,7 +26,6 @@ import net.minecraft.network.chat.Component;
  *
  * Open via: /modutilities openExample dashboard
  */
-@Environment(EnvType.CLIENT)
 public class ExampleDashboardScreen extends GuiScreen {
 
     private static final int SAMPLE_COUNT = 100;

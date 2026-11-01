@@ -1,8 +1,6 @@
 package net.kroia.modutilities.gui.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen; // mc<=1.21.8
@@ -18,7 +16,6 @@ import net.minecraft.client.gui.screens.Screen; // mc<=1.21.8
  * and made {@link InputConstants} take the {@code Window} instead of its raw GLFW handle.
  * Code that goes through this class compiles unchanged on every supported Minecraft version.
  */
-@Environment(EnvType.CLIENT)
 public final class InputCompat {
     private InputCompat() {}
 

@@ -1,7 +1,5 @@
 package net.kroia.modutilities.sandbox.gui;
 
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 import net.kroia.modutilities.ItemUtilities;
 import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.client.GuiScreen;
@@ -28,7 +26,6 @@ import java.util.List;
  *
  * Open via: /modutilities openItemPerfScreen
  */
-@Environment(EnvType.CLIENT)
 public class ItemPerfTestScreen extends GuiScreen {
 
     /** Lowpass smoothing factor for the running averages: avg = avg*FILTER + sample*(1-FILTER). */
