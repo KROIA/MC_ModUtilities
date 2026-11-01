@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui;
 
+import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.elements.base.VertexBuffer;
 import net.kroia.modutilities.gui.geometry.Rectangle;
@@ -522,15 +523,15 @@ public class Gui {
 
         if (!tag.contains("elements")) {
             if (tag.contains("structureVersion")) {
-                structureVersion = tag.getInt("structureVersion");
+                structureVersion = NbtCompat.getInt(tag, "structureVersion");
             }
             trackStructuralChanges = wasTracking;
             return;
         }
 
-        ListTag elementsTag = tag.getList("elements", 10);
+        ListTag elementsTag = NbtCompat.getList(tag, "elements", 10);
         for (int i = 0; i < elementsTag.size(); i++) {
-            GuiElement element = deserializeElement(elementsTag.getCompound(i));
+            GuiElement element = deserializeElement(NbtCompat.getCompound(elementsTag, i));
             if (element != null) {
                 element.setRoot(this);
                 elements.add(element);
@@ -538,7 +539,7 @@ public class Gui {
         }
 
         if (tag.contains("structureVersion")) {
-            structureVersion = tag.getInt("structureVersion");
+            structureVersion = NbtCompat.getInt(tag, "structureVersion");
         }
         trackStructuralChanges = wasTracking;
     }
@@ -572,23 +573,23 @@ public class Gui {
     }
 
     private static GuiElement deserializeElement(CompoundTag tag) {
-        String typeKey = tag.getString("type");
+        String typeKey = NbtCompat.getString(tag, "type");
         GuiElement element = GuiElementRegistry.create(typeKey);
         if (element == null) return null;
 
-        if (tag.contains("id")) element.setId(tag.getString("id"));
+        if (tag.contains("id")) element.setId(NbtCompat.getString(tag, "id"));
 
-        element.setPosition(tag.getInt("x"), tag.getInt("y"));
-        element.setSize(tag.getInt("w"), tag.getInt("h"));
+        element.setPosition(NbtCompat.getInt(tag, "x"), NbtCompat.getInt(tag, "y"));
+        element.setSize(NbtCompat.getInt(tag, "w"), NbtCompat.getInt(tag, "h"));
 
         if (tag.contains("state")) {
-            element.deserializeState(tag.getCompound("state"));
+            element.deserializeState(NbtCompat.getCompound(tag, "state"));
         }
 
         if (tag.contains("children")) {
-            ListTag childrenTag = tag.getList("children", 10);
+            ListTag childrenTag = NbtCompat.getList(tag, "children", 10);
             for (int i = 0; i < childrenTag.size(); i++) {
-                GuiElement child = deserializeElement(childrenTag.getCompound(i));
+                GuiElement child = deserializeElement(NbtCompat.getCompound(childrenTag, i));
                 if (child != null) element.addChild(child);
             }
         }

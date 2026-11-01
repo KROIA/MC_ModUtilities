@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui.elements;
 
+import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.ItemUtilities;
 import net.kroia.modutilities.gui.IGraphics;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
@@ -153,13 +154,13 @@ public class ItemView extends GuiElement {
     public void deserializeState(CompoundTag tag) {
         super.deserializeState(tag);
         if (tag.contains("itemStack")) {
-            ItemStack stack = ItemUtilities.deserializeItemStack(tag.getCompound("itemStack"));
+            ItemStack stack = ItemUtilities.deserializeItemStack(NbtCompat.getCompound(tag, "itemStack"));
             this.itemStack = stack.isEmpty() ? null : stack;
         } else if (tag.contains("item")) {
             // Backward compatibility: old format with just item ID + count
-            var item = BuiltInRegistries.ITEM.getOptional(ResourceLocation.parse(tag.getString("item"))).orElse(Items.AIR);
+            var item = BuiltInRegistries.ITEM.getOptional(ResourceLocation.parse(NbtCompat.getString(tag, "item"))).orElse(Items.AIR);
             if (item != Items.AIR) {
-                this.itemStack = new ItemStack(item, tag.getInt("count"));
+                this.itemStack = new ItemStack(item, NbtCompat.getInt(tag, "count"));
             } else {
                 this.itemStack = null;
             }

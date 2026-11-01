@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui.elements;
 
+import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.ColorUtilities;
 import net.kroia.modutilities.gui.InputConstants;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
@@ -338,7 +339,7 @@ public class TextBox extends GuiElement {
     public void deserializeState(CompoundTag tag) {
         super.deserializeState(tag);
         if(tag.contains("text"))
-            setText(tag.getString("text"));
+            setText(NbtCompat.getString(tag, "text"));
     }
     /**
      * Sets the text to the string representation of the given double value.

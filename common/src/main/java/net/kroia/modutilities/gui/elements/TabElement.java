@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui.elements;
 
+import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.ColorUtilities;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Rectangle;
@@ -466,7 +467,7 @@ public class TabElement extends GuiElement {
     public void deserializeState(CompoundTag tag) {
         super.deserializeState(tag);
         if (tag.contains("selectedTab")) {
-            selectTab(tag.getInt("selectedTab"));
+            selectTab(NbtCompat.getInt(tag, "selectedTab"));
         }
     }
 

@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui.elements.base;
 
+import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.gui.InputConstants;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Point;
@@ -127,7 +128,7 @@ public abstract class Slider extends GuiElement {
     public void deserializeState(CompoundTag tag) {
         super.deserializeState(tag);
         if(tag.contains("value"))
-            setSliderValue(tag.getDouble("value"));
+            setSliderValue(NbtCompat.getDouble(tag, "value"));
     }
 
     /**

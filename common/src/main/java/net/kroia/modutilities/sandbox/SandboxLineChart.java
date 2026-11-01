@@ -1,5 +1,6 @@
 package net.kroia.modutilities.sandbox;
 
+import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.ColorUtilities;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Rectangle;
@@ -229,10 +230,10 @@ public class SandboxLineChart extends GuiElement {
     public void deserializeState(CompoundTag tag) {
         super.deserializeState(tag);
         if (tag.contains("vx")) {
-            viewX = tag.getFloat("vx");
-            viewY = tag.getFloat("vy");
-            viewWidth = tag.getFloat("vw");
-            viewHeight = tag.getFloat("vh");
+            viewX = NbtCompat.getFloat(tag, "vx");
+            viewY = NbtCompat.getFloat(tag, "vy");
+            viewWidth = NbtCompat.getFloat(tag, "vw");
+            viewHeight = NbtCompat.getFloat(tag, "vh");
         }
         markDirty();
     }
