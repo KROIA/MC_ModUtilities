@@ -35,21 +35,34 @@ public class Signal {
 
     /**
      * Registers a listener with no call-count limit.
+     * Adding an instance that is already registered (identity check) is ignored.
+     * <p>
+     * A lambda or method reference written inside a method that runs repeatedly (e.g. per
+     * server start) usually creates a new instance on each run, so it is not deduplicated.
+     * Keep the instance and remove it with {@link #removeListener(Runnable)}.
      *
      * @param listener The runnable to invoke whenever this signal fires.
      */
     public void addListener(Runnable listener) {
-        listeners.add(new ListenerEntry(listener, -1)); // -1 means no limit on calls
+        addListener(listener, -1); // -1 means no limit on calls
     }
 
     /**
      * Registers a listener with a maximum number of invocations.
      * The listener is automatically removed once the count reaches zero.
+     * Adding an instance that is already registered (identity check) is ignored, and the
+     * existing call count is kept; use {@link #setListenerRemainingCallCount} to change it.
+     * See {@link #addListener(Runnable)} about lambdas created per call.
      *
      * @param listener The runnable to invoke whenever this signal fires.
      * @param maxCalls Maximum number of times this listener will fire; {@code -1} for unlimited.
      */
-    public void addListener(Runnable listener, int maxCalls) {
+    public synchronized void addListener(Runnable listener, int maxCalls) {
+        // synchronized: makes the check-then-add atomic across threads (dispatch stays lock-free)
+        for (ListenerEntry entry : listeners) {
+            if (entry.listener == listener)
+                return;
+        }
         listeners.add(new ListenerEntry(listener, maxCalls));
     }
 
