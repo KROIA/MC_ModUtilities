@@ -410,6 +410,7 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     // mc>=1.20.1
     @Override
     public void renderBackground(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        //if (!enableBackground) return; // mc>=1.21.6 (vanilla calls renderBackground itself now)
         clientGraphics.setGraphics(guiGraphics);
         super.renderBackground(guiGraphics, mouseX, mouseY, partialTick);
         //gui.storeMousePos((int)((float)pMouseX*invGuiScale), (int)((float)pMouseY*invGuiScale));
@@ -426,8 +427,9 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     public void render(GuiGraphics pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) {
         clientGraphics.setGraphics(pGuiGraphics);
         gui.storeMousePos(pMouseX, pMouseY);
-        if(enableBackground)
-            renderBackground(pGuiGraphics, pMouseX, pMouseY, pPartialTick);
+        if(enableBackground) // mc<=1.21.5
+            renderBackground(pGuiGraphics, pMouseX, pMouseY, pPartialTick); // mc<=1.21.5
+        // mc>=1.21.6: Screen.renderWithTooltipAndSubtitles already called renderBackground (blur only once per frame)
         gui.setPartialTick(pPartialTick);
         if(enableForeground)
             gui.render();

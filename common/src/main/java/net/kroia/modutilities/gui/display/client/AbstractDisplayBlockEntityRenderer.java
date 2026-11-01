@@ -5,7 +5,7 @@ import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;
 import com.mojang.blaze3d.ProjectionType; // mc>=1.21.2
-import net.minecraft.client.renderer.FogParameters; // mc>=1.21.2
+import net.minecraft.client.renderer.FogParameters; // mc>=1.21.2 mc<=1.21.5
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.kroia.modutilities.gui.Gui;
@@ -38,6 +38,7 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
     private final ClientGraphics clientGraphics;
     private MultiBufferSource.BufferSource offscreenBufferSource;
     private GuiGraphics cachedGuiGraphics;
+    //private net.kroia.modutilities.gui.client.OffscreenGuiRenderer offscreenGui; // mc>=1.21.6 (deferred GUI rendering into the display texture)
 
     private static class GroupRenderData {
         DynamicTexture texture;
@@ -64,8 +65,10 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         Gui.setFallbackGraphics(clientGraphics);
     }
 
-    @Override
-    public boolean shouldRenderOffScreen(T blockEntity) {
+    @Override // mc<=1.21.5
+    public boolean shouldRenderOffScreen(T blockEntity) { // mc<=1.21.5
+    //@Override // mc>=1.21.6
+    //public boolean shouldRenderOffScreen() { // mc>=1.21.6 (no block entity parameter any more)
         return true;
     }
 
@@ -283,9 +286,9 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         ensureBufferSource();
 
         com.mojang.blaze3d.pipeline.RenderTarget prevTarget = mc.getMainRenderTarget();
-        Matrix4f prevProjection = new Matrix4f(RenderSystem.getProjectionMatrix());
+        Matrix4f prevProjection = new Matrix4f(RenderSystem.getProjectionMatrix()); // mc<=1.21.5
         //VertexSorting prevSorting = RenderSystem.getVertexSorting(); // mc<=1.21.1
-        ProjectionType prevSorting = RenderSystem.getProjectionType(); // mc>=1.21.2
+        ProjectionType prevSorting = RenderSystem.getProjectionType(); // mc>=1.21.2 mc<=1.21.5
         //int[] prevViewport = new int[4]; // mc<=1.21.4
         //org.lwjgl.opengl.GL11.glGetIntegerv(org.lwjgl.opengl.GL11.GL_VIEWPORT, prevViewport); // mc<=1.21.4
         //boolean prevDepthTest = org.lwjgl.opengl.GL11.glIsEnabled(org.lwjgl.opengl.GL11.GL_DEPTH_TEST); // mc<=1.21.4
@@ -302,7 +305,7 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         RenderSystem.getDevice().createCommandEncoder().clearColorAndDepthTextures( // mc>=1.21.5
                 data.framebuffer.getColorTexture(), 0xFF262626, data.framebuffer.getDepthTexture(), 1.0); // mc>=1.21.5 (0.15 gray)
 
-        float[] prevShaderColor = RenderSystem.getShaderColor().clone();
+        float[] prevShaderColor = RenderSystem.getShaderColor().clone(); // mc<=1.21.5
 
         //float[] prevFogColor = new float[4]; // mc<=1.21.1
         //prevFogColor[0] = RenderSystem.getShaderFogColor()[0]; // mc<=1.21.1
@@ -314,22 +317,24 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         //RenderSystem.setShaderFogColor(0, 0, 0, 0); // mc<=1.21.1
         //RenderSystem.setShaderFogStart(Float.MAX_VALUE); // mc<=1.21.1
         //RenderSystem.setShaderFogEnd(Float.MAX_VALUE); // mc<=1.21.1
-        FogParameters prevFog = RenderSystem.getShaderFog(); // mc>=1.21.2
-        RenderSystem.setShaderFog(FogParameters.NO_FOG); // mc>=1.21.2
+        FogParameters prevFog = RenderSystem.getShaderFog(); // mc>=1.21.2 mc<=1.21.5
+        RenderSystem.setShaderFog(FogParameters.NO_FOG); // mc>=1.21.2 mc<=1.21.5
 
         Matrix4f ortho = new Matrix4f().setOrtho(0, guiW, guiH, 0, 1000, 21000);
         //RenderSystem.setProjectionMatrix(ortho, VertexSorting.ORTHOGRAPHIC_Z); // mc<=1.21.1
-        RenderSystem.setProjectionMatrix(ortho, ProjectionType.ORTHOGRAPHIC); // mc>=1.21.2
+        RenderSystem.setProjectionMatrix(ortho, ProjectionType.ORTHOGRAPHIC); // mc>=1.21.2 mc<=1.21.5
         RenderSystem.getModelViewStack().pushMatrix();
         RenderSystem.getModelViewStack().identity();
         //RenderSystem.applyModelViewMatrix(); // mc<=1.21.1
 
-        if (cachedGuiGraphics == null) {
-            cachedGuiGraphics = new GuiGraphics(mc, offscreenBufferSource);
-        }
-        GuiGraphics guiGraphics = cachedGuiGraphics;
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(0, 0, -11000);
+        if (cachedGuiGraphics == null) { // mc<=1.21.5
+            cachedGuiGraphics = new GuiGraphics(mc, offscreenBufferSource); // mc<=1.21.5
+        } // mc<=1.21.5
+        GuiGraphics guiGraphics = cachedGuiGraphics; // mc<=1.21.5
+        guiGraphics.pose().pushPose(); // mc<=1.21.5
+        guiGraphics.pose().translate(0, 0, -11000); // mc<=1.21.5
+        //if (offscreenGui == null) offscreenGui = new net.kroia.modutilities.gui.client.OffscreenGuiRenderer(offscreenBufferSource); // mc>=1.21.6
+        //GuiGraphics guiGraphics = offscreenGui.begin(); // mc>=1.21.6
 
         gui.setGraphicsBackend(clientGraphics);
         gui.setFont(mc.font);
@@ -346,13 +351,13 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         }
 
         int scale = texW / guiW;
-        gui.setOffscreenScissorMode(scale, texH);
+        gui.setOffscreenScissorMode(scale, texH); // mc<=1.21.5 (1.21.6: the GUI renderer scissors in target pixels itself)
 
-        Lighting.setupForFlatItems();
+        Lighting.setupForFlatItems(); // mc<=1.21.5
 
         // 1.21.2+: GUI RenderTypes bind getMainRenderTarget() on every flush, so the
         // offscreen target must be installed as the main target while drawing.
-        ((net.kroia.mixin.MinecraftAccessor) mc).modutilities$setMainRenderTarget(data.framebuffer); // mc>=1.21.2
+        ((net.kroia.mixin.MinecraftAccessor) mc).modutilities$setMainRenderTarget(data.framebuffer); // mc>=1.21.2 mc<=1.21.5
         try {
             DisplayRenderProfiler.begin(controllerPos, DisplayRenderProfiler.Category.GUI_RENDER);
             gui.renderBackground();
@@ -361,11 +366,12 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
 
             gui.clearOffscreenScissorMode();
 
-            guiGraphics.pose().popPose();
+            guiGraphics.pose().popPose(); // mc<=1.21.5
             offscreenBufferSource.endBatch();
         } finally {
-            ((net.kroia.mixin.MinecraftAccessor) mc).modutilities$setMainRenderTarget(prevTarget); // mc>=1.21.2
+            ((net.kroia.mixin.MinecraftAccessor) mc).modutilities$setMainRenderTarget(prevTarget); // mc>=1.21.2 mc<=1.21.5
         }
+        //offscreenGui.render(guiGraphics, data.framebuffer, scale); // mc>=1.21.6 (recorded GUI -> framebuffer)
         //data.framebuffer.bindWrite(false); // mc<=1.21.4 (glCopyTexSubImage2D below reads the bound framebuffer)
 
         DisplayRenderProfiler.storeTextureSize(controllerPos, texW, texH);
@@ -386,16 +392,16 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         RenderSystem.getModelViewStack().popMatrix();
         //RenderSystem.applyModelViewMatrix(); // mc<=1.21.1
         //RenderSystem.viewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]); // mc<=1.21.4
-        RenderSystem.setProjectionMatrix(prevProjection, prevSorting);
-        RenderSystem.setShaderColor(prevShaderColor[0], prevShaderColor[1], prevShaderColor[2], prevShaderColor[3]);
+        RenderSystem.setProjectionMatrix(prevProjection, prevSorting); // mc<=1.21.5
+        RenderSystem.setShaderColor(prevShaderColor[0], prevShaderColor[1], prevShaderColor[2], prevShaderColor[3]); // mc<=1.21.5
         //RenderSystem.setShaderFogColor(prevFogColor[0], prevFogColor[1], prevFogColor[2], prevFogColor[3]); // mc<=1.21.1
         //RenderSystem.setShaderFogStart(prevFogStart); // mc<=1.21.1
         //RenderSystem.setShaderFogEnd(prevFogEnd); // mc<=1.21.1
-        RenderSystem.setShaderFog(prevFog); // mc>=1.21.2
+        RenderSystem.setShaderFog(prevFog); // mc>=1.21.2 mc<=1.21.5
         //if (prevDepthTest) RenderSystem.enableDepthTest(); else RenderSystem.disableDepthTest(); // mc<=1.21.4
         //if (prevBlend) RenderSystem.enableBlend(); else RenderSystem.disableBlend(); // mc<=1.21.4
         //if (prevCull) RenderSystem.enableCull(); else RenderSystem.disableCull(); // mc<=1.21.4
-        Lighting.setupLevel();
+        Lighting.setupLevel(); // mc<=1.21.5
     }
 
     private void renderQuadOnFace(PoseStack poseStack, MultiBufferSource bufferSource,
