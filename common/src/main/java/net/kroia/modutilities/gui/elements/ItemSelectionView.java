@@ -7,7 +7,6 @@ import net.kroia.modutilities.gui.elements.base.ListView;
 import net.kroia.modutilities.gui.layout.LayoutGrid;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
@@ -89,10 +88,6 @@ public class ItemSelectionView extends GuiElement {
                 Item item1 = stack1.getItem();
                 Item item2 = stack2.getItem();
 
-                // Get the registry keys for both items
-                ResourceKey<Item> key1 = BuiltInRegistries.ITEM.getResourceKey(item1).orElseThrow();
-                ResourceKey<Item> key2 = BuiltInRegistries.ITEM.getResourceKey(item2).orElseThrow();
-
                 // Get all tags for both items
                 Set<TagKey<Item>> tags1 = item1.builtInRegistryHolder().tags().collect(Collectors.toSet());
                 Set<TagKey<Item>> tags2 = item2.builtInRegistryHolder().tags().collect(Collectors.toSet());
@@ -159,7 +154,6 @@ public class ItemSelectionView extends GuiElement {
 
             // Check tags
             Item item = stack.getItem();
-            ResourceKey<Item> key = BuiltInRegistries.ITEM.getResourceKey(item).orElseThrow();
             Set<TagKey<Item>> tags = item.builtInRegistryHolder().tags().collect(Collectors.toSet());
             for(TagKey<Item> tag : tags)
             {
