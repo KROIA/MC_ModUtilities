@@ -382,16 +382,17 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
     }
 
     @Override
-    public boolean mouseClickedOverElement(int pButton) {
+    public boolean mouseClickedOverElement(int rawButton) {
+        int pButton = InputCompat.containerClickButton(rawButton);
         int pMouseX = getMouseX();
         int pMouseY = getMouseY();
-        boolean flag = isActiveAndMatches(minecraft.options.keyPickItem, pButton);
+        boolean flag = isActiveAndMatches(minecraft.options.keyPickItem, rawButton);
         Slot slot = this.findSlot(pMouseX, pMouseY);
         long i = Util.getMillis();
         this.doubleclick = this.lastClickSlot == slot && i - this.lastClickTime < 250L && this.lastClickButton == pButton;
         this.skipNextRelease = false;
         if (pButton != 0 && pButton != 1 && !flag) {
-            this.checkHotbarMouseClicked(pButton);
+            this.checkHotbarMouseClicked(rawButton);
         } else {
             int j = 0;
             int k = 0;
@@ -425,11 +426,11 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
                     }
                 } else if (!this.isQuickCrafting) {
                     if (this.menu.getCarried().isEmpty()) {
-                        if (isActiveAndMatches(minecraft.options.keyPickItem, pButton)) {
+                        if (isActiveAndMatches(minecraft.options.keyPickItem, rawButton)) {
                             this.slotClicked(slot, l, pButton, ClickType.CLONE); // mc<=1.21.11
                             //this.slotClicked(slot, l, pButton, ContainerInput.CLONE); // mc>=26.1
                         } else {
-                            boolean flag2 = l != -999 && (InputCompat.isKeyDown(340) || InputCompat.isKeyDown(344));
+                            boolean flag2 = l != -999 && (InputCompat.isKeyDown(InputConstants.KEY_LSHIFT) || InputCompat.isKeyDown(InputConstants.KEY_RSHIFT));
                             ClickType clicktype = ClickType.PICKUP; // mc<=1.21.11
                             //ContainerInput clicktype = ContainerInput.PICKUP; // mc>=26.1
                             if (flag2) {
@@ -453,7 +454,7 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
                             this.quickCraftingType = 0;
                         } else if (pButton == 1) {
                             this.quickCraftingType = 1;
-                        } else if (isActiveAndMatches(minecraft.options.keyPickItem, pButton)) {
+                        } else if (isActiveAndMatches(minecraft.options.keyPickItem, rawButton)) {
                             this.quickCraftingType = 2;
                         }
                     }
@@ -492,7 +493,8 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
 
 
     @Override
-    public boolean mouseDragged(int pButton, double pDragX, double pDragY) {
+    public boolean mouseDragged(int rawButton, double pDragX, double pDragY) {
+        int pButton = InputCompat.containerClickButton(rawButton);
         int pMouseX = getMouseX();
         int pMouseY = getMouseY();
         Slot slot = this.findSlot(pMouseX, pMouseY);
@@ -531,7 +533,8 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
     }
 
     @Override
-    public void mouseReleased(int pButton) {
+    public void mouseReleased(int rawButton) {
+        int pButton = InputCompat.containerClickButton(rawButton);
         int pMouseX = getMouseX();
         int pMouseY = getMouseY();
         Slot slot = this.findSlot(pMouseX, pMouseY);
@@ -640,11 +643,11 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
                 this.slotClicked(null, -999, AbstractContainerMenu.getQuickcraftMask(2, this.quickCraftingType), ClickType.QUICK_CRAFT); // mc<=1.21.11
                 //this.slotClicked(null, -999, AbstractContainerMenu.getQuickcraftMask(2, this.quickCraftingType), ContainerInput.QUICK_CRAFT); // mc>=26.1
             } else if (!this.menu.getCarried().isEmpty()) {
-                if (isActiveAndMatches(minecraft.options.keyPickItem,pButton)) {
+                if (isActiveAndMatches(minecraft.options.keyPickItem,rawButton)) {
                     this.slotClicked(slot, k, pButton, ClickType.CLONE); // mc<=1.21.11
                     //this.slotClicked(slot, k, pButton, ContainerInput.CLONE); // mc>=26.1
                 } else {
-                    flag1 = k != -999 && (InputCompat.isKeyDown(340) || InputCompat.isKeyDown(344));
+                    flag1 = k != -999 && (InputCompat.isKeyDown(InputConstants.KEY_LSHIFT) || InputCompat.isKeyDown(InputConstants.KEY_RSHIFT));
                     if (flag1) {
                         this.lastQuickMoved = slot != null && slot.hasItem() ? slot.getItem().copy() : ItemStack.EMPTY;
                     }
@@ -702,8 +705,8 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
      * focus, picks/clones items via the configured pick key, throws items via
      * the drop key, and forwards hotbar swap keys to the menu.
      *
-     * @param pKeyCode   the GLFW key code
-     * @param pScanCode  the GLFW scan code
+     * @param pKeyCode   the key code
+     * @param pScanCode  the scan code (26.3+: the layout key code)
      * @param pModifiers active key modifiers bitmask
      * @return {@code true} if the key was consumed
      */

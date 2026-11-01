@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui.elements;
 
+import net.kroia.modutilities.gui.InputConstants;
 import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.ColorUtilities;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
@@ -560,7 +561,7 @@ public class TabElement extends GuiElement {
     @Override
     protected boolean mouseClickedOverElement(int button)
     {
-        if(button == 0 && mouseOverTitleIndex > -1)
+        if(button == InputConstants.MOUSE_BUTTON_LEFT && mouseOverTitleIndex > -1)
         {
             selectTab(mouseOverTitleIndex);
         }
