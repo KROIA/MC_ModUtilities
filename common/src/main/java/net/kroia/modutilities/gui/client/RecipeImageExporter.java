@@ -109,7 +109,8 @@ public class RecipeImageExporter {
             framebuffer = new TextureTarget(texW, texH, true, false); // mc<=1.21.1
             //framebuffer = new TextureTarget(texW, texH, true); // mc>=1.21.2 mc<=1.21.4
             //framebuffer = new TextureTarget("modutilities recipe export", texW, texH, true); // mc>=1.21.5 mc<=26.1
-            //framebuffer = new TextureTarget("modutilities recipe export", texW, texH, true, com.mojang.blaze3d.GpuFormat.RGBA8_UNORM); // mc>=26.2
+            //framebuffer = new TextureTarget("modutilities recipe export", texW, texH, true, com.mojang.blaze3d.GpuFormat.RGBA8_UNORM); // mc>=26.2 mc<=26.2
+            //framebuffer = new TextureTarget("modutilities recipe export", texW, texH, com.mojang.renderpearl.api.GpuFormat.RGBA8_UNORM, com.mojang.renderpearl.api.GpuFormat.D32_FLOAT); // mc>=26.3
             framebuffer.bindWrite(false); // mc<=1.21.4
             // 1.21.2+: GUI RenderTypes bind getMainRenderTarget() on every flush
             //((net.kroia.mixin.MinecraftAccessor) mc).modutilities$setMainRenderTarget(framebuffer); // mc>=1.21.2 mc<=1.21.5

@@ -157,7 +157,8 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
             data.framebuffer = new TextureTarget(texW, texH, true, false); // mc<=1.21.1
             //data.framebuffer = new TextureTarget(texW, texH, true); // mc>=1.21.2 mc<=1.21.4
             //data.framebuffer = new TextureTarget("modutilities display framebuffer", texW, texH, true); // mc>=1.21.5 mc<=26.1
-            //data.framebuffer = new TextureTarget("modutilities display framebuffer", texW, texH, true, com.mojang.blaze3d.GpuFormat.RGBA8_UNORM); // mc>=26.2
+            //data.framebuffer = new TextureTarget("modutilities display framebuffer", texW, texH, true, com.mojang.blaze3d.GpuFormat.RGBA8_UNORM); // mc>=26.2 mc<=26.2
+            //data.framebuffer = new TextureTarget("modutilities display framebuffer", texW, texH, com.mojang.renderpearl.api.GpuFormat.RGBA8_UNORM, com.mojang.renderpearl.api.GpuFormat.D32_FLOAT); // mc>=26.3
             data.location = ResourceLocation.fromNamespaceAndPath("modutilities", // mc<=1.21.10
             //data.location = Identifier.fromNamespaceAndPath("modutilities", // mc>=1.21.11
                     "dynamic/display_group_" + controllerPos.getX() + "_"
@@ -471,16 +472,19 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         switch (quad.facing()) {
             case NORTH -> {
                 poseStack.translate(1, 1, -offset);
-                poseStack.mulPose(com.mojang.math.Axis.YP.rotationDegrees(180));
+                poseStack.mulPose(com.mojang.math.Axis.YP.rotationDegrees(180)); // mc<=26.2
+                //poseStack.rotate(com.mojang.math.Axis.YP.rotationDegrees(180)); // mc>=26.3
             }
             case SOUTH -> poseStack.translate(0, 1, 1 + offset);
             case EAST -> {
                 poseStack.translate(1 + offset, 1, 1);
-                poseStack.mulPose(com.mojang.math.Axis.YP.rotationDegrees(90));
+                poseStack.mulPose(com.mojang.math.Axis.YP.rotationDegrees(90)); // mc<=26.2
+                //poseStack.rotate(com.mojang.math.Axis.YP.rotationDegrees(90)); // mc>=26.3
             }
             case WEST -> {
                 poseStack.translate(-offset, 1, 0);
-                poseStack.mulPose(com.mojang.math.Axis.YP.rotationDegrees(-90));
+                poseStack.mulPose(com.mojang.math.Axis.YP.rotationDegrees(-90)); // mc<=26.2
+                //poseStack.rotate(com.mojang.math.Axis.YP.rotationDegrees(-90)); // mc>=26.3
             }
         }
 
