@@ -52,7 +52,7 @@ dependencies {
     // soft dependency of the shipped mod — this line only affects dev.
     // JEI dev runtime: full mod jar where JEI exists for this MC version, otherwise the API jar satisfies the transformer.
     //modRuntimeOnly("mezz.jei:jei-${rootProject.jei_minecraft_version}-neoforge:${rootProject.jei_version}") // mc<=1.21.1
-    modRuntimeOnly("mezz.jei:jei-${rootProject.jei_minecraft_version}-neoforge-api:${rootProject.jei_version}") // mc>=1.21.2
+    modRuntimeOnly("mezz.jei:jei-${rootProject.jei_minecraft_version}-neoforge-api:${rootProject.jei_version}") // mc>=1.21.2 mc<=1.21.3
 }
 
 processResources {
