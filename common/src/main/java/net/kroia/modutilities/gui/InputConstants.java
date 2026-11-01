@@ -1,49 +1,51 @@
 package net.kroia.modutilities.gui;
 
 /**
- * GLFW-free key and mouse button constants for use by common (server + client) GUI code.
+ * Key and mouse button constants for use by common (server + client) GUI code.
  * <p>
- * Every value matches the corresponding {@code GLFW_*} constant so that key codes
- * received from Minecraft's input pipeline can be compared directly. This class
- * exists solely to avoid importing {@code org.lwjgl.glfw.GLFW} in common element
- * classes.
+ * Every value is an alias of Minecraft's own {@code com.mojang.blaze3d.platform.InputConstants}
+ * so that key codes received from Minecraft's input pipeline can be compared directly.
+ * The values are compile-time constants (inlined by javac), so common code that uses them
+ * never loads the client-only class at runtime. 26.3 switched from GLFW to SDL3, which
+ * changed every value; compare against these names, never against raw numbers.
  */
 public final class InputConstants {
     private InputConstants() {}
 
-    // --- Mouse buttons (values match GLFW) ---
-    public static final int MOUSE_BUTTON_LEFT   = 0;
-    public static final int MOUSE_BUTTON_RIGHT  = 1;
-    public static final int MOUSE_BUTTON_MIDDLE = 2;
+    // --- Mouse buttons (values match Minecraft) ---
+    public static final int MOUSE_BUTTON_LEFT   = com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT;
+    public static final int MOUSE_BUTTON_RIGHT  = com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_RIGHT;
+    public static final int MOUSE_BUTTON_MIDDLE = com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_MIDDLE;
 
-    // --- Key codes (values match GLFW) ---
-    public static final int KEY_A             = 65;
-    public static final int KEY_C             = 67;
-    public static final int KEY_E             = 69;
-    public static final int KEY_V             = 86;
-    public static final int KEY_X             = 88;
+    // --- Key codes (values match Minecraft) ---
+    public static final int KEY_A             = com.mojang.blaze3d.platform.InputConstants.KEY_A;
+    public static final int KEY_C             = com.mojang.blaze3d.platform.InputConstants.KEY_C;
+    public static final int KEY_E             = com.mojang.blaze3d.platform.InputConstants.KEY_E;
+    public static final int KEY_V             = com.mojang.blaze3d.platform.InputConstants.KEY_V;
+    public static final int KEY_X             = com.mojang.blaze3d.platform.InputConstants.KEY_X;
 
-    public static final int KEY_ESCAPE        = 256;
-    public static final int KEY_ENTER         = 257;
-    public static final int KEY_BACKSPACE     = 259;
-    public static final int KEY_DELETE        = 261;
-    public static final int KEY_RIGHT         = 262;
-    public static final int KEY_LEFT          = 263;
-    public static final int KEY_DOWN          = 264;
-    public static final int KEY_UP            = 265;
-    public static final int KEY_PAGE_UP       = 266;
-    public static final int KEY_PAGE_DOWN     = 267;
-    public static final int KEY_HOME          = 268;
-    public static final int KEY_END           = 269;
+    public static final int KEY_ESCAPE        = com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE;
+    public static final int KEY_ENTER         = com.mojang.blaze3d.platform.InputConstants.KEY_RETURN;
+    public static final int KEY_BACKSPACE     = com.mojang.blaze3d.platform.InputConstants.KEY_BACKSPACE;
+    public static final int KEY_DELETE        = com.mojang.blaze3d.platform.InputConstants.KEY_DELETE;
+    public static final int KEY_RIGHT         = com.mojang.blaze3d.platform.InputConstants.KEY_RIGHT;
+    public static final int KEY_LEFT          = com.mojang.blaze3d.platform.InputConstants.KEY_LEFT;
+    public static final int KEY_DOWN          = com.mojang.blaze3d.platform.InputConstants.KEY_DOWN;
+    public static final int KEY_UP            = com.mojang.blaze3d.platform.InputConstants.KEY_UP;
+    public static final int KEY_PAGE_UP       = com.mojang.blaze3d.platform.InputConstants.KEY_PAGEUP;
+    public static final int KEY_PAGE_DOWN     = com.mojang.blaze3d.platform.InputConstants.KEY_PAGEDOWN;
+    public static final int KEY_HOME          = com.mojang.blaze3d.platform.InputConstants.KEY_HOME;
+    public static final int KEY_END           = com.mojang.blaze3d.platform.InputConstants.KEY_END;
 
-    public static final int KEY_F3            = 292;
-    public static final int KEY_F4            = 293;
-    public static final int KEY_F5            = 294;
-    public static final int KEY_F6            = 295;
+    public static final int KEY_F3            = com.mojang.blaze3d.platform.InputConstants.KEY_F3;
+    public static final int KEY_F4            = com.mojang.blaze3d.platform.InputConstants.KEY_F4;
+    public static final int KEY_F5            = com.mojang.blaze3d.platform.InputConstants.KEY_F5;
+    public static final int KEY_F6            = com.mojang.blaze3d.platform.InputConstants.KEY_F6;
 
-    public static final int KEY_KP_ENTER      = 335;
+    public static final int KEY_KP_ENTER      = com.mojang.blaze3d.platform.InputConstants.KEY_NUMPADENTER;
 
-    public static final int KEY_LEFT_SHIFT    = 340;
-    public static final int KEY_LEFT_CONTROL  = 341;
-    public static final int KEY_LEFT_ALT      = 342;
+    public static final int KEY_LEFT_SHIFT    = com.mojang.blaze3d.platform.InputConstants.KEY_LSHIFT;
+    public static final int KEY_LEFT_CONTROL  = com.mojang.blaze3d.platform.InputConstants.KEY_LCONTROL;
+    public static final int KEY_LEFT_ALT      = com.mojang.blaze3d.platform.InputConstants.KEY_LALT;
+    public static final int KEY_SPACE         = com.mojang.blaze3d.platform.InputConstants.KEY_SPACE;
 }
