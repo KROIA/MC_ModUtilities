@@ -8,15 +8,18 @@ import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.GuiTexture;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.minecraft.ChatFormatting;
-import net.minecraft.Util;
+import net.minecraft.Util; // mc<=1.21.10
+//import net.minecraft.util.Util; // mc>=1.21.11
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.MenuAccess;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.RenderType; // mc<=1.21.10
+//import net.minecraft.client.renderer.rendertype.RenderType; import net.minecraft.client.renderer.rendertype.RenderTypes; // mc>=1.21.11
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+//import net.minecraft.resources.Identifier; // mc>=1.21.11
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -320,7 +323,8 @@ public class ContainerView<T extends AbstractContainerMenu> extends GuiElement i
             Pair<ResourceLocation, ResourceLocation> pair = pSlot.getNoItemIcon(); // mc<=1.21.3
             if (pair != null) { // mc<=1.21.3
                 TextureAtlasSprite textureatlassprite = (TextureAtlasSprite)minecraft.getTextureAtlas((ResourceLocation)pair.getFirst()).apply((ResourceLocation)pair.getSecond()); // mc<=1.21.3
-            //ResourceLocation noItemIcon = pSlot.getNoItemIcon(); // mc>=1.21.4
+            //ResourceLocation noItemIcon = pSlot.getNoItemIcon(); // mc>=1.21.4 mc<=1.21.10
+            //Identifier noItemIcon = pSlot.getNoItemIcon(); // mc>=1.21.11
             //if (noItemIcon != null) { // mc>=1.21.4
                 //TextureAtlasSprite textureatlassprite = minecraft.getGuiSprites().getSprite(noItemIcon); // mc>=1.21.4 mc<=1.21.8
                 //TextureAtlasSprite textureatlassprite = minecraft.getAtlasManager().getAtlasOrThrow(net.minecraft.data.AtlasIds.GUI).getSprite(noItemIcon); // mc>=1.21.9
