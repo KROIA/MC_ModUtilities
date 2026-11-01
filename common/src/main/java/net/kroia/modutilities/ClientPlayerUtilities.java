@@ -1,7 +1,5 @@
 package net.kroia.modutilities;
 
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -16,12 +14,11 @@ import net.minecraft.client.Minecraft;
 /**
  * Client-side helpers for working with the local player.
  * <p>
- * This class is annotated with {@link Environment @Environment(EnvType.CLIENT)} and must only
+ * This class is client-only and must only
  * be referenced from client code; loading it on a dedicated server will fail.
  *
  * @apiNote Use {@link ServerPlayerUtilities} for the server-side counterpart.
  */
-@Environment(EnvType.CLIENT)
 public class ClientPlayerUtilities {
 
 
