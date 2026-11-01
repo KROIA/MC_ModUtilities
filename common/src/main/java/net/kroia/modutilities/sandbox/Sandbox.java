@@ -7,6 +7,7 @@ import dev.architectury.event.events.common.CommandRegistrationEvent;
 import net.kroia.modutilities.gui.display.client.DisplayRenderProfiler;
 import net.kroia.modutilities.JsonUtilities;
 import net.kroia.modutilities.ModUtilitiesMod;
+import net.kroia.modutilities.PermissionCompat;
 import net.kroia.modutilities.ServerPlayerUtilities;
 import net.kroia.modutilities.UtilitiesPlatform;
 import net.kroia.modutilities.networking.NetworkPacketManager;
@@ -76,7 +77,7 @@ public class Sandbox {
         public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
             dispatcher.register(
                     Commands.literal("modutilities")
-                            .requires(source -> source.hasPermission(2)) // Requires OP permission level
+                            .requires(source -> PermissionCompat.hasPermission(source, 2)) // Requires OP permission level
                             .then(Commands.literal("openTestScreen")
                                     .executes(context -> {
                                         ServerPlayer player = context.getSource().getPlayerOrException();

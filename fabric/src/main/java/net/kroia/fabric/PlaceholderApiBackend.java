@@ -4,7 +4,8 @@ import eu.pb4.placeholders.api.PlaceholderResult;
 import eu.pb4.placeholders.api.Placeholders;
 import net.kroia.modutilities.placeholder.Placeholder;
 import net.kroia.modutilities.placeholder.PlaceholderRegistry;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+//import net.minecraft.resources.Identifier; // mc>=1.21.11
 
 /**
  * Patbox Text Placeholder API bridge (Fabric only). Only class-loaded when "placeholder-api" is present
@@ -20,7 +21,8 @@ final class PlaceholderApiBackend {
     }
 
     private static void register(Placeholder p) {
-        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(p.namespace(), p.name());
+        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(p.namespace(), p.name()); // mc<=1.21.10
+        //Identifier id = Identifier.fromNamespaceAndPath(p.namespace(), p.name()); // mc>=1.21.11
         if (p.isPlayerPlaceholder()) {
             Placeholders.register(id, (ctx, arg) -> ctx.hasPlayer()
                     ? PlaceholderResult.value(p.evaluate(ctx.player()))
