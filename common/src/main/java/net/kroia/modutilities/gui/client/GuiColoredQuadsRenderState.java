@@ -5,7 +5,8 @@ package net.kroia.modutilities.gui.client;
 // which replaces the immediate RenderType.debugQuads() drawing used up to 1.21.5.
 // The whole file only exists on 1.21.6+; on older versions every line is commented out.
 
-import com.mojang.blaze3d.pipeline.RenderPipeline; // mc>=1.21.6
+//import com.mojang.blaze3d.pipeline.RenderPipeline; // mc>=1.21.6 mc<=26.2
+import com.mojang.renderpearl.api.pipeline.RenderPipeline; // mc>=26.3
 import com.mojang.blaze3d.vertex.VertexConsumer; // mc>=1.21.6
 import net.minecraft.client.gui.navigation.ScreenRectangle; // mc>=1.21.6
 import net.minecraft.client.gui.render.TextureSetup; // mc>=1.21.6

@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui.display;
 
+import net.kroia.modutilities.gui.InputConstants;
 import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.display.client.DisplayClientHooks;
@@ -152,7 +153,7 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
         if (gui != null) {
             if (!mouseDown.contains(playerId)) {
                 mouseDown.add(playerId);
-                gui.mouseClicked(guiX, guiY, 0);
+                gui.mouseClicked(guiX, guiY, InputConstants.MOUSE_BUTTON_LEFT);
                 lastMousePos.put(playerId, new double[]{guiX, guiY});
                 syncToClient();
             } else {
@@ -163,7 +164,7 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
 
     public void handleMouseRelease(Player player, double guiX, double guiY) {
         if (gui != null && interactingPlayers.contains(player.getUUID())) {
-            gui.mouseReleased(guiX, guiY, 0);
+            gui.mouseReleased(guiX, guiY, InputConstants.MOUSE_BUTTON_LEFT);
             syncToClient();
         }
     }
@@ -172,7 +173,7 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
         interactingPlayers.remove(playerId);
         double[] last = lastMousePos.remove(playerId);
         if (gui != null && last != null) {
-            gui.mouseReleased(last[0], last[1], 0);
+            gui.mouseReleased(last[0], last[1], InputConstants.MOUSE_BUTTON_LEFT);
         }
     }
 
@@ -627,7 +628,7 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
                 if (lastUse != null && now - lastUse > RELEASE_TIMEOUT_MS) {
                     double[] last = lastMousePos.get(playerId);
                     if (gui != null && last != null) {
-                        gui.mouseReleased(last[0], last[1], 0);
+                        gui.mouseReleased(last[0], last[1], InputConstants.MOUSE_BUTTON_LEFT);
                         syncToClient();
                     }
                     mouseDown.remove(playerId);
@@ -657,7 +658,7 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
         it.remove();
         double[] last = lastMousePos.remove(playerId);
         if (gui != null && last != null) {
-            gui.mouseReleased(last[0], last[1], 0);
+            gui.mouseReleased(last[0], last[1], InputConstants.MOUSE_BUTTON_LEFT);
             syncToClient();
         }
         mouseDown.remove(playerId);

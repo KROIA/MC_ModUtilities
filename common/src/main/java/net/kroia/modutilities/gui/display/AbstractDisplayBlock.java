@@ -38,8 +38,13 @@ public abstract class AbstractDisplayBlock extends HorizontalDirectionalBlock im
                 .setValue(FACING, Direction.NORTH));
     }
 
-    @Override
+    //@Override // mc<=26.2
     protected abstract MapCodec<? extends HorizontalDirectionalBlock> codec();
+
+    // 26.3+: Minecraft removed block codecs. codec() stays so subclasses compile unchanged; it is never called.
+    protected static <B extends Block> MapCodec<B> simpleCodec(java.util.function.Function<Properties, B> factory) { // mc>=26.3
+        return MapCodec.unit(() -> { throw new UnsupportedOperationException("Block codecs were removed in Minecraft 26.3"); }); // mc>=26.3
+    } // mc>=26.3
 
     @Override
     public abstract BlockEntity newBlockEntity(BlockPos pos, BlockState state);

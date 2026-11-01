@@ -16,21 +16,21 @@ Utilities for modding
 [[dependencies.modutilities]]
 modId = "neoforge"
 type = "required"
-versionRange = "[26.2,)"
+versionRange = "[26.3,)"
 ordering = "NONE"
 side = "BOTH"
 
 [[dependencies.modutilities]]
 modId = "minecraft"
 type = "required"
-versionRange = "[26.2,)"
+versionRange = "[26.3,)"
 ordering = "NONE"
 side = "BOTH"
 
 [[dependencies.modutilities]]
 modId = "architectury"
 type = "required"
-versionRange = "[21.1.12,)"
+versionRange = "[22.0.5,)"
 ordering = "AFTER"
 side = "BOTH"
 

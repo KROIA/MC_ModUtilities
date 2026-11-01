@@ -17,7 +17,6 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import org.lwjgl.glfw.GLFW;
 
 
 /**
@@ -591,19 +590,19 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if(debugKeysEnabled) {
             switch (keyCode) {
-                case GLFW.GLFW_KEY_F3: {
+                case InputConstants.KEY_F3: {
                     enableGizmos = !enableGizmos;
                     return true;
                 }
-                case GLFW.GLFW_KEY_F4: {
+                case InputConstants.KEY_F4: {
                     enableBackground = !enableBackground;
                     return true;
                 }
-                case GLFW.GLFW_KEY_F5: {
+                case InputConstants.KEY_F5: {
                     enableForeground = !enableForeground;
                     return true;
                 }
-                case GLFW.GLFW_KEY_F6: {
+                case InputConstants.KEY_F6: {
                     enableTooltip = !enableTooltip;
                     return true;
                 }
@@ -652,7 +651,8 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
 
     @Override // mc>=1.21.9
     public boolean keyPressed(net.minecraft.client.input.KeyEvent event) { // mc>=1.21.9
-        return keyPressed(event.key(), event.scancode(), event.modifiers()); // mc>=1.21.9
+        //return keyPressed(event.key(), event.scancode(), event.modifiers()); // mc>=1.21.9 mc<=26.2
+        return keyPressed(event.key(), event.keycode(), event.modifiers()); // mc>=26.3
     } // mc>=1.21.9
 
     @Override // mc>=1.21.9
