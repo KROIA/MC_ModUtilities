@@ -1,12 +1,12 @@
 package net.kroia.modutilities.networking.client_server;
 
-import dev.architectury.networking.NetworkManager;
-import dev.architectury.networking.simple.BaseC2SMessage;
-import dev.architectury.utils.Env;
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.server.level.ServerPlayer;
+import dev.architectury.networking.NetworkManager; // mc<=1.21.8 (Architectury 18 removed dev.architectury.networking.simple)
+import dev.architectury.networking.simple.BaseC2SMessage; // mc<=1.21.8 (Architectury 18 removed dev.architectury.networking.simple)
+import dev.architectury.utils.Env; // mc<=1.21.8 (Architectury 18 removed dev.architectury.networking.simple)
+import net.minecraft.network.RegistryFriendlyByteBuf; // mc<=1.21.8 (Architectury 18 removed dev.architectury.networking.simple)
+import net.minecraft.server.level.ServerPlayer; // mc<=1.21.8 (Architectury 18 removed dev.architectury.networking.simple)
 
-import java.util.Objects;
+import java.util.Objects; // mc<=1.21.8 (Architectury 18 removed dev.architectury.networking.simple)
 
 /**
  * Direction-specific marker base class for client-to-server packets built on Architectury's
@@ -18,23 +18,23 @@ import java.util.Objects;
  * The dispatch in {@link #handle(NetworkManager.PacketContext)} ensures {@link #handleOnServer(ServerPlayer)}
  * is invoked on the server main thread, so it is safe to mutate world state from there.
  */
-public abstract class NetworkPacketC2S extends BaseC2SMessage {
+public abstract class NetworkPacketC2S extends BaseC2SMessage { // mc<=1.21.8 (Architectury 18 removed dev.architectury.networking.simple)
     /**
      * Creates an empty packet, typically used by sender-side code that fills its fields before encoding.
      */
-    public NetworkPacketC2S() {
-        super();
-    }
+    public NetworkPacketC2S() { // mc<=1.21.8 (Architectury 18 removed dev.architectury.networking.simple)
+        super(); // mc<=1.21.8 (Architectury 18 removed dev.architectury.networking.simple)
+    } // mc<=1.21.8 (Architectury 18 removed dev.architectury.networking.simple)
 
     /**
      * Creates a packet by decoding its contents from the given buffer via {@link #fromBytes(RegistryFriendlyByteBuf)}.
      *
      * @param buf the buffer to decode from.
      */
-    public NetworkPacketC2S(RegistryFriendlyByteBuf buf) {
-        super();
-        this.fromBytes(buf);
-    }
+    public NetworkPacketC2S(RegistryFriendlyByteBuf buf) { // mc<=1.21.8 (Architectury 18 removed dev.architectury.networking.simple)
+        super(); // mc<=1.21.8 (Architectury 18 removed dev.architectury.networking.simple)
+        this.fromBytes(buf); // mc<=1.21.8 (Architectury 18 removed dev.architectury.networking.simple)
+    } // mc<=1.21.8 (Architectury 18 removed dev.architectury.networking.simple)
 
     /**
      * Handles this packet on the server after it has been received from a client.
@@ -44,7 +44,7 @@ public abstract class NetworkPacketC2S extends BaseC2SMessage {
      * @apiNote
      * Invoked on the server main thread, so it is safe to access and mutate world state.
      */
-    abstract protected void handleOnServer(ServerPlayer sender);
+    abstract protected void handleOnServer(ServerPlayer sender); // mc<=1.21.8 (Architectury 18 removed dev.architectury.networking.simple)
 
     /**
      * Serializes this packet's fields into the given buffer.
@@ -54,7 +54,7 @@ public abstract class NetworkPacketC2S extends BaseC2SMessage {
      * @apiNote
      * The default implementation writes nothing. Override for packets that carry payload data.
      */
-    public void toBytes(RegistryFriendlyByteBuf buf){}
+    public void toBytes(RegistryFriendlyByteBuf buf){} // mc<=1.21.8 (Architectury 18 removed dev.architectury.networking.simple)
 
     /**
      * Deserializes this packet's fields from the given buffer.
@@ -64,17 +64,17 @@ public abstract class NetworkPacketC2S extends BaseC2SMessage {
      * @apiNote
      * The default implementation reads nothing. Override for packets that carry payload data.
      */
-    public void fromBytes(RegistryFriendlyByteBuf buf){}
+    public void fromBytes(RegistryFriendlyByteBuf buf){} // mc<=1.21.8 (Architectury 18 removed dev.architectury.networking.simple)
 
     /**
      * Writes this packet to the given buffer. Delegates to {@link #toBytes(RegistryFriendlyByteBuf)}.
      *
      * @param buf the buffer to write to.
      */
-    @Override
-    public void write(RegistryFriendlyByteBuf buf) {
-        this.toBytes(buf);
-    }
+    @Override // mc<=1.21.8 (Architectury 18 removed dev.architectury.networking.simple)
+    public void write(RegistryFriendlyByteBuf buf) { // mc<=1.21.8 (Architectury 18 removed dev.architectury.networking.simple)
+        this.toBytes(buf); // mc<=1.21.8 (Architectury 18 removed dev.architectury.networking.simple)
+    } // mc<=1.21.8 (Architectury 18 removed dev.architectury.networking.simple)
 
     /**
      * Architectury entry point invoked when this packet arrives. Verifies that the receiving side is
@@ -82,13 +82,13 @@ public abstract class NetworkPacketC2S extends BaseC2SMessage {
      *
      * @param context the Architectury packet context.
      */
-    @Override
-    public void handle(NetworkManager.PacketContext context) {
-        if(context.getEnvironment() == Env.SERVER &&
-                context.getPlayer() instanceof ServerPlayer serverPlayer) {
-            Objects.requireNonNull(serverPlayer.getServer()).submit(() -> {
-                this.handleOnServer(serverPlayer);
-            });
-        }
-    }
-}
+    @Override // mc<=1.21.8 (Architectury 18 removed dev.architectury.networking.simple)
+    public void handle(NetworkManager.PacketContext context) { // mc<=1.21.8 (Architectury 18 removed dev.architectury.networking.simple)
+        if(context.getEnvironment() == Env.SERVER && // mc<=1.21.8 (Architectury 18 removed dev.architectury.networking.simple)
+                context.getPlayer() instanceof ServerPlayer serverPlayer) { // mc<=1.21.8 (Architectury 18 removed dev.architectury.networking.simple)
+            Objects.requireNonNull(serverPlayer.level().getServer()).submit(() -> { // mc<=1.21.8 (Architectury 18 removed dev.architectury.networking.simple)
+                this.handleOnServer(serverPlayer); // mc<=1.21.8 (Architectury 18 removed dev.architectury.networking.simple)
+            }); // mc<=1.21.8 (Architectury 18 removed dev.architectury.networking.simple)
+        } // mc<=1.21.8 (Architectury 18 removed dev.architectury.networking.simple)
+    } // mc<=1.21.8 (Architectury 18 removed dev.architectury.networking.simple)
+} // mc<=1.21.8 (Architectury 18 removed dev.architectury.networking.simple)

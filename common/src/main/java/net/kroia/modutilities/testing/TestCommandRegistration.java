@@ -22,14 +22,14 @@ public class TestCommandRegistration {
                     .requires(source -> source.hasPermission(2))
                     .executes(context -> {
                         ServerPlayer player = context.getSource().getPlayerOrException();
-                        new TestRunner(modName, modId, isSlave, player.getServer())
+                        new TestRunner(modName, modId, isSlave, player.level().getServer())
                             .runAll(player);
                         return 1;
                     })
                     .then(Commands.literal("list")
                         .executes(context -> {
                             ServerPlayer player = context.getSource().getPlayerOrException();
-                            new TestRunner(modName, modId, isSlave, player.getServer())
+                            new TestRunner(modName, modId, isSlave, player.level().getServer())
                                 .listCategories(player);
                             return 1;
                         })
@@ -39,7 +39,7 @@ public class TestCommandRegistration {
                         .executes(context -> {
                             ServerPlayer player = context.getSource().getPlayerOrException();
                             String cat = StringArgumentType.getString(context, "category");
-                            new TestRunner(modName, modId, isSlave, player.getServer())
+                            new TestRunner(modName, modId, isSlave, player.level().getServer())
                                 .runCategory(player, cat);
                             return 1;
                         })
