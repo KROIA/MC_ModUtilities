@@ -215,6 +215,10 @@ class Gui:
         m.add_command(label='Run tests', command=lambda: self.run_cells([x], ' '.join(x[1:])))
         m.add_command(label='Clear result', command=lambda: self.clear([x]))
         m.add_command(label='Open folder', command=lambda: open_folder(self.cell_dir(*x)))
+        p = self.projects[x[0]]
+        pd = rm.play_dir(self.out, p, *x[1:]) if p else ''
+        m.add_command(label='Open play folder', command=lambda: open_folder(pd),
+                      state='normal' if pd and os.path.isdir(pd) else 'disabled')
         m.tk_popup(e.x_root, e.y_root)
 
     # ---------------------------------------------------------------- state
@@ -400,7 +404,7 @@ class Gui:
         cell = os.path.join(self.out, os.path.basename(self.status_project(key)), loader, config)
         if state in ('failed', 'error'):
             lines += failed_tests(cell, 'banksystem' if key[0] == BANK else '*')
-        return '\n'.join(lines + [cell, 'right-click: Play / Run tests / Clear result / Open folder'])
+        return '\n'.join(lines + [cell, 'right-click: Play / Run tests / Clear result / Open folder / Open play folder'])
 
     def row_tip(self, key):
         p = self.status_project(key)
