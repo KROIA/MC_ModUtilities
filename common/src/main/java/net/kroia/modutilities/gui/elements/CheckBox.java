@@ -291,11 +291,11 @@ public class CheckBox extends GuiElement {
         checkBoxRect.width = height;
         checkBoxRect.height = height;
 
-        int checkedSize = height/2;
-        checkBoxCheckedRect.x = checkBoxRect.x + (checkBoxRect.width-checkedSize)/2;
-        checkBoxCheckedRect.y = checkBoxRect.y + (checkBoxRect.height-checkedSize)/2;
-        checkBoxCheckedRect.width = checkedSize;
-        checkBoxCheckedRect.height = checkedSize;
+        int inset = 2; // 1px frame + 1px empty gap on every side
+        checkBoxCheckedRect.x = checkBoxRect.x + inset;
+        checkBoxCheckedRect.y = checkBoxRect.y + inset;
+        checkBoxCheckedRect.width = Math.max(0, checkBoxRect.width - inset * 2);
+        checkBoxCheckedRect.height = Math.max(0, checkBoxRect.height - inset * 2);
 
 
 
