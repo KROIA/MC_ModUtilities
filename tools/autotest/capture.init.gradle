@@ -1,0 +1,12 @@
+// Gradle init script used by run_matrix.py (gradlew -I capture.init.gradle -Pautotest_agent=<jar>=<dir>).
+// Adds the capture agent to every runClient/runServer task, so the game run tasks record their exact
+// launch command (JVM args, classpath, main class, environment) and exit at once. Works for any project
+// (ModUtilities, BankSystem, StockMarket) without changes to its build scripts.
+def agent = startParameter.projectProperties['autotest_agent']
+if (agent) {
+    allprojects {
+        tasks.matching { it.name in ['runClient', 'runServer'] }.configureEach { task ->
+            task.jvmArgs "-javaagent:${agent}/${task.project.name}-${task.name}.json"
+        }
+    }
+}
