@@ -51,6 +51,8 @@ import java.util.concurrent.CompletableFuture;
  *   <li>{@code timeout} watchdog in seconds; on expiry a timeout report is written and the JVM halts (default 900)</li>
  *   <li>{@code mods} comma separated mod ids to run (default: all mods with registered suites)</li>
  *   <li>{@code connect} / {@code world} client only, see {@link AutoTestClient}</li>
+ *   <li>{@code play} manual play (run_matrix.py --play): only the multi-server link and the client's
+ *       connect/world are set up; no tests, no report, no auto-stop, no watchdog</li>
  * </ul>
  * The multi-server role comes from the instance's {@code config/modutilities/MultiServerConfig.json}. If that
  * config is enabled but no mod created the link by the first server tick (ModUtilities running
@@ -68,6 +70,7 @@ public final class AutoTest {
     private static final boolean STOP = Boolean.parseBoolean(System.getProperty(P + ".stop", "true"));
     private static final long TIMEOUT_SECONDS = Long.getLong(P + ".timeout", 900L);
     private static final @Nullable String MODS = System.getProperty(P + ".mods");
+    static final boolean PLAY = Boolean.getBoolean(P + ".play");
     /** Ticks every readiness condition must hold before the run starts (lets joins and syncs settle). */
     private static final int SETTLE_TICKS = 40;
 
@@ -92,7 +95,7 @@ public final class AutoTest {
 
     public static void init() {
         if (!isEnabled()) return;
-        ModUtilitiesMod.LOGGER.info("[AutoTest] enabled, instance '{}', report {}", LABEL, RESULTS);
+        ModUtilitiesMod.LOGGER.info("[AutoTest] enabled, instance '{}', {}", LABEL, PLAY ? "play mode (no tests)" : "report " + RESULTS);
 
         LifecycleEvent.SERVER_STARTED.register(server -> server.setDifficulty(Difficulty.PEACEFUL, true));
         TickEvent.SERVER_POST.register(AutoTest::serverTick);
@@ -108,6 +111,7 @@ public final class AutoTest {
         if (Platform.getEnvironment() == Env.CLIENT) {
             AutoTestClient.init();
         }
+        if (PLAY) return;
 
         Thread watchdog = new Thread(() -> {
             try {
@@ -131,6 +135,7 @@ public final class AutoTest {
     private static void serverTick(MinecraftServer server) {
         if (finished || started) return;
         if (++tick == 1) ensureMultiServer(server);
+        if (PLAY) return;
 
         String waiting = waitingFor(server);
         if (waiting != null) {
