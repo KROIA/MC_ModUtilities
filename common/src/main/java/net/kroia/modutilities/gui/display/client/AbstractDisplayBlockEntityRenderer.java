@@ -128,6 +128,9 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
             groupData.remove(controllerPos);
         }
 
+        // Group not formed/synced yet (e.g. the controller's update tag has not arrived): nothing to draw.
+        if (texW <= 0 || texH <= 0) return null;
+
         if (data == null) {
             //int prevTexture = org.lwjgl.opengl.GL11.glGetInteger(org.lwjgl.opengl.GL11.GL_TEXTURE_BINDING_2D); // mc<=1.21.4
             //int[] prevViewport = new int[4]; // mc<=1.21.4
@@ -248,6 +251,10 @@ public class AbstractDisplayBlockEntityRenderer<T extends AbstractDisplayBlockEn
         int gh = controller.getGroupHeight();
 
         GroupRenderData data = getOrCreateGroupData(controllerPos, gw, gh, config);
+        if (data == null) {
+            DisplayRenderProfiler.end(controllerPos, DisplayRenderProfiler.Category.TOTAL);
+            return null;
+        }
 
         long currentFrame = Minecraft.getInstance().level != null
                 ? Minecraft.getInstance().level.getGameTime() : 0;
