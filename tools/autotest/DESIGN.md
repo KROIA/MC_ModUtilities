@@ -71,8 +71,18 @@ Server side (dedicated or integrated), every server tick until done:
    within 30 s (NeoForge 26.x dev runs hang in their shutdown watchdog after closing the game module).
 
 Client side (`AutoTestClient`): on the title screen (after 20 ticks) either
-`ConnectScreen.startConnecting(host:port)` or `createWorldOpenFlows().createFreshLevel(...)` with a fixed
-seed. Quits (`Minecraft.stop()`) when the integrated server finished, when the dedicated server drops
+`ConnectScreen.startConnecting(host:port)`, `createWorldOpenFlows().createFreshLevel(...)` with a fixed
+seed (`world=new`) or `openWorld(<save>)` (`world=<save>`, run_matrix `--world`). Opening a save can stop at
+prompts; until joined the client answers them via reflection (field names identical 1.21.1–26.3):
+`BackupConfirmScreen` (snapshot upgrade, experimental/customized settings, 26.x `FILE_FIXING_REQUIRED` for
+older worlds) → `onProceed.proceed(false, false)` (join without backup), `ConfirmScreen` (26.x "upgrade done,
+join now?", low disk space) → `callback.accept(true)`; each screen instance once (it can stay up while the
+backup/upgrade runs async). `AlertScreen` (incompatible world) / `DatapackLoadFailureScreen` end the client
+with `world_open_failed`. 1.21.x stable releases upgrade older worlds without a prompt. Downgrades never
+reach the client: run_matrix compares level.dat `DataVersion` with `world_version` of the game's
+`version.json` (Loom merged jar / NeoForge `client-extra.jar` on the captured classpath) and fails the cell.
+Dedicated servers upgrade older worlds by themselves (26.x runs the file fixer unconditionally) and would
+load a newer world of the same series with data loss — the same check covers them. Quits (`Minecraft.stop()`) when the integrated server finished, when the dedicated server drops
 the connection after its run, or when the connection fails. Writes `results.json.client.json`.
 Before that, NeoForge's `LoadingErrorScreen` (shown in dev from 21.7 on for Architectury's `@OnlyIn`
 warning) is read via reflection: warnings only are dismissed by running its "Proceed" task, real
@@ -95,7 +105,7 @@ None needed toggles. Checked with javap on all 14 versions:
 | `WorldOptions(long, boolean, boolean)`, `ConnectScreen.startConnecting(6 args)`, `ServerData(String, String, Type)`, `ServerAddress.parseString`, `Minecraft.stop/level/isLocalServer`, `MinecraftServer.halt/setDifficulty/isDedicatedServer` | stable |
 | `Minecraft.screen` | removed in 26.2 → existing `ClientCompat.screen()` |
 | flat world presets | `createFlatWorldDimensions` only 1.21.2–26.1 → singleplayer looks up `WorldPresets.FLAT` in `Registries.WORLD_PRESET` and calls `createWorldDimensions()` (stable 1.21.1–26.3; the helper takes `HolderLookup.Provider`, which `RegistryAccess` extends on 1.21.1) |
-| `WorldOpenFlows.openWorld(String, Runnable)` (play: open an existing save), Architectury `ClientLifecycleEvent.CLIENT_STOPPING` | stable |
+| `WorldOpenFlows.openWorld(String, Runnable)` (open an existing save), `BackupConfirmScreen.onProceed`/`Listener.proceed(boolean, boolean)`, `ConfirmScreen.callback` (`BooleanConsumer`), `AlertScreen`, `DatapackLoadFailureScreen`, Architectury `ClientLifecycleEvent.CLIENT_STOPPING` | stable |
 
 ## 5. Launching several instances of one project
 
@@ -123,6 +133,9 @@ Per project: compile the agent, capture, then for each loader × config a fresh 
 `<out>/<project>/<loader>/<config>/<instance>/` with generated `server.properties`
 (distinct ports, `online-mode=false`, flat, peaceful, `max-tick-time=-1`), `eula.txt`,
 `config/modutilities/MultiServerConfig.json`, client `options.txt` (no onboarding, no pause on focus loss).
+With `--world` the template is copied (without `session.lock`) into every server's `world` and the
+singleplayer client's `saves/play` (`world=play` instead of `new`), fresh per cell; the flat settings then
+only matter for dimensions the world lacks.
 
 | config | instances and order | tested instances |
 |---|---|---|
@@ -151,7 +164,7 @@ started from the command line show up the same way.
   overwritten. Liveness: `OpenProcess` + `GetExitCodeProcess` via ctypes (Windows), `kill(pid, 0)` elsewhere.
 - `<out>/<project>/capture.json`: `{state: capturing, loaders, configs, started}` during Gradle, then
   `state: done` with `rc` and `finished`.
-- `<out>/<project>/<loader>/<config>/cell.json`: `{state: running, project, loader, config, started}`
+- `<out>/<project>/<loader>/<config>/cell.json`: `{state: running, project, loader, config, world, started}`
   before the cell starts, then the summary row plus `state` (`passed`, `failed` = failed tests,
   `error` = anything else not ok) and `finished`. It lives in the cell dir, which `prepare()` never
   deletes (only the instance subdirs). `running` without a live `running.lock` = interrupted.
@@ -163,7 +176,9 @@ started from the command line show up the same way.
   `fingerprint` for the project's own `<loader>/build/libs/<archives_name>-<loader>-<mod_version>.jar` and
   each `flatDir` dir of `<loader>/build.gradle` (`<dep archives_name>-<loader>-<dep>_version>.jar`, versions
   from `gradle.properties`). The GUI recomputes them (cached by path + mtime + size); a difference or a
-  missing jar marks the result stale. First the `flatDir` dependency projects (jar dir `../../..`) are built
+  missing jar marks the result stale. Also `world` (template path or null) and `world_fp`
+  (`world_fingerprint`: sha256 of path + relpath/size/mtime of every file but `session.lock`); the GUI compares
+  `world_fp` with its `test_world` setting's current fingerprint ("test world changed"). First the `flatDir` dependency projects (jar dir `../../..`) are built
   the same way, recursively upstream-first, each once per run_matrix call (test runs and `--play`); a failure
   → `dependency build failed: <project>`. This relies on Loom really using those jars: Loom keeps remapped
   copies of flatDir mod jars in `<project>/.gradle/loom-cache/remapped_mods` and would go on using an old
