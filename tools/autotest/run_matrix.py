@@ -5,6 +5,7 @@ Stdlib only. See README.md in this folder. Short version:
 
     python tools/autotest/run_matrix.py E:/.../mc_1.21.1_MC_ModUtilities
     python tools/autotest/run_matrix.py --root E:/.../StockMarket --versions 1.21.1 26.3 --configs sp mp
+    python tools/autotest/run_matrix.py E:/.../mc_1.21.1_MC_ModUtilities --play fabric mp [--world <world folder>]
 
 Per project it runs Gradle once per run task (runClient/runServer with a capture agent, added by
 capture.init.gradle) to record Loom's exact launch commands, then starts every game instance directly,
@@ -13,8 +14,10 @@ The project must be a dev build (enable_dev_features=true) for the tests and the
 """
 import argparse
 import glob
+import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -43,6 +46,50 @@ def build_agent(out_dir):
     return jar
 
 
+def gradlew(project):
+    return os.path.join(project, 'gradlew.bat' if os.name == 'nt' else 'gradlew')
+
+
+def build(project, loaders, offline, log):
+    """Builds the loaders' mod jars (dev features on), so the jars fingerprinted in cell.json are the tested code."""
+    cmd = [gradlew(project)] + [f':{l}:build' for l in loaders] + ['-x', 'test', '-Penable_dev_features=true'] + \
+          (['--offline'] if offline else [])
+    with open(log, 'a', encoding='utf-8', errors='replace') as f:
+        f.write(f'>>> {" ".join(cmd)}\n')
+        f.flush()
+        return subprocess.run(cmd, cwd=project, stdout=f, stderr=subprocess.STDOUT, timeout=3600).returncode
+
+
+def clear_remap_cache(project, log):
+    """Deletes Loom's remapped copies of the flatDir mod jars (.gradle/loom-cache/remapped_mods): Loom would keep
+    using an old remapped dependency after its jar changed, so the run would not test what the fingerprint says.
+    On a Windows file lock, stops the project's Gradle daemons and retries once. Returns False if it stays."""
+    cache = os.path.join(project, '.gradle', 'loom-cache', 'remapped_mods')
+    with open(log, 'a', encoding='utf-8', errors='replace') as f:
+        for attempt in (1, 2):
+            if not os.path.exists(cache):
+                return True
+            try:
+                shutil.rmtree(cache)
+                f.write(f'>>> cleared {cache}\n')
+                return True
+            except OSError as e:
+                f.write(f'>>> could not clear {cache}: {e}\n')
+                if attempt == 1:
+                    f.write('>>> gradlew --stop\n')
+                    f.flush()
+                    try:
+                        subprocess.run([gradlew(project), '--stop'], cwd=project, stdout=f, stderr=subprocess.STDOUT)
+                    except OSError as e:
+                        f.write(f'>>> {e}\n')
+    return False
+
+
+def dep_hashes(project, loaders):
+    """sha256 of the dependency mod jars (flatDir) of these loaders; empty for mods without such dependencies."""
+    return {j: file_sha256(j) for l in loaders for j in mod_jars(project, l)[1:]}
+
+
 def capture(project, loaders, agent, out_dir, offline, log):
     """Gradle starts every run task with the agent, which writes <loader>-<task>.json and exits.
 
@@ -53,9 +100,9 @@ def capture(project, loaders, agent, out_dir, offline, log):
     shutil.rmtree(cap, ignore_errors=True)
     os.makedirs(cap)
     rc = 0
-    with open(log, 'w', encoding='utf-8', errors='replace') as f:
+    with open(log, 'a', encoding='utf-8', errors='replace') as f:
         for task in [f':{l}:{t}' for l in loaders for t in ('runClient', 'runServer')]:
-            cmd = [os.path.join(project, 'gradlew.bat' if os.name == 'nt' else 'gradlew'), task,
+            cmd = [gradlew(project), task,
                    '-I', os.path.join(HERE, 'capture.init.gradle'), f'-Pautotest_agent={agent}={cap}',
                    '-Penable_dev_features=true'] + (['--offline'] if offline else [])  # tests only exist in dev builds
             f.write(f'>>> {" ".join(cmd)}\n')
@@ -69,6 +116,66 @@ def capture(project, loaders, agent, out_dir, offline, log):
                 with open(p, encoding='utf-8') as f:
                     specs[(l, t)] = json.load(f)
     return rc, specs
+
+
+# ---------------------------------------------------------------- jar fingerprints
+
+def gradle_props(project):
+    props = {}
+    try:
+        with open(os.path.join(project, 'gradle.properties'), encoding='utf-8') as f:
+            for line in f:
+                k, sep, v = line.partition('=')
+                if sep and not k.lstrip().startswith('#'):
+                    props[k.strip()] = v.strip()
+    except OSError:
+        pass
+    return props
+
+
+def mod_jars(project, loader):
+    """The mod jars a project/loader run uses: <loader>/build/libs/<archives_name>-<loader>-<mod_version>.jar, plus
+    the dependency jars its <loader>/build.gradle resolves via flatDir (<dep>-<loader>-<gradle.properties dep_version>.jar)."""
+    props = gradle_props(project)
+    jars = [os.path.join(project, loader, 'build', 'libs',
+                         f"{props.get('archives_name')}-{loader}-{props.get('mod_version')}.jar")]
+    try:
+        with open(os.path.join(project, loader, 'build.gradle'), encoding='utf-8') as f:
+            dirs = re.findall(r'^\s*dir\s+"([^"]+)"', f.read(), re.M)
+    except OSError:
+        dirs = []
+    for d in dirs:
+        d = os.path.join(project, loader, d.replace('${minecraft_version}', props.get('minecraft_version', '')))
+        name = gradle_props(os.path.join(d, '..', '..', '..')).get('archives_name', 'missing-project')
+        jars.append(os.path.join(d, f"{name}-{loader}-{props.get(name + '_version')}.jar"))
+    return [os.path.normpath(j) for j in jars]
+
+
+_hashes = {}
+
+
+def file_sha256(path):
+    """sha256 of a file or None if missing; cached by path+mtime+size (the GUI polls this)."""
+    try:
+        st = os.stat(path)
+    except OSError:
+        return None
+    key = (path, st.st_mtime_ns, st.st_size)
+    if key not in _hashes:
+        h = hashlib.sha256()
+        with open(path, 'rb') as f:
+            for chunk in iter(lambda: f.read(1 << 20), b''):
+                h.update(chunk)
+        _hashes[key] = h.hexdigest()
+    return _hashes[key]
+
+
+def jar_hashes(project, loader):
+    return {j: file_sha256(j) for j in mod_jars(project, loader)}
+
+
+def fingerprint(jars):
+    return hashlib.sha256(json.dumps(sorted(jars.items())).encode()).hexdigest()[:16]
 
 
 # ---------------------------------------------------------------- instances
@@ -189,20 +296,35 @@ def wait_until(cond, timeout, *must_live):
 
 # ---------------------------------------------------------------- one matrix cell
 
-def run_cell(specs, loader, config, cell_dir, timeout, mods):
+def run_cell(specs, loader, config, cell_dir, timeout, mods, play=None):
     """Starts the instances of one configuration, waits for them, stops everything.
-    Returns (instances, notes); every instance in `tested` is expected to have written results.json."""
+    Returns (instances, notes); every instance in `tested` is expected to have written results.json.
+    play=(template world or None, stop file): manual play, same instances and multi-server setup but no tests;
+    runs until the client is closed, a server exits or the stop file appears."""
     client_spec, server_spec = specs.get((loader, 'runClient')), specs.get((loader, 'runServer'))
     if not client_spec or not server_spec:
         return [], [], ['launch spec missing (see gradle-capture.log)']
     common = {'modutilities.autotest.timeout': timeout}
     if mods:
         common['modutilities.autotest.mods'] = mods
+    if play:
+        common = {'modutilities.autotest.play': 'true'}
+    template = play and play[0]
     d = lambda n: os.path.join(cell_dir, n)
     notes, servers, tested = [], [], []
 
+    def only_play(props):
+        # play: keep only how the client gets into the game; the test sequencing props do not apply
+        return {k: v for k, v in props.items() if k in ('connect', 'world')} if play else props
+
+    def copy_world(dst):
+        shutil.copytree(template, dst, ignore=shutil.ignore_patterns('session.lock'))
+
     def server(name, port, ms, **props):
         prepare(d(name), ms, port)
+        props = only_play(props)
+        if template:
+            copy_world(os.path.join(d(name), 'world'))  # level-name defaults to world
         inst = Instance(name, server_spec, d(name), {**common, **{f'modutilities.autotest.{k}': v for k, v in props.items()}})
         inst.start()
         servers.append(inst)
@@ -210,6 +332,10 @@ def run_cell(specs, loader, config, cell_dir, timeout, mods):
 
     def client(ms, **props):
         prepare(d('client'), ms)
+        props = only_play(props)
+        if template and props.get('world'):
+            copy_world(os.path.join(d('client'), 'saves', 'play'))
+            props['world'] = 'play'  # open this save instead of creating one
         inst = Instance('client', client_spec, d('client'), {**common, **{f'modutilities.autotest.{k}': v for k, v in props.items()}})
         inst.start()
         return inst
@@ -251,7 +377,12 @@ def run_cell(specs, loader, config, cell_dir, timeout, mods):
         def broken():
             return [s.name for s in servers if not s.alive() and
                     (not os.path.exists(s.results) or s.props.get('modutilities.autotest.stop') != 'true')]
-        if cl:
+        if play and cl:
+            wait_until(lambda: not cl.alive() or any(not s.alive() for s in servers) or os.path.exists(play[1]),
+                       10 ** 9)
+            notes.append('client closed' if not cl.alive() else 'stop requested' if os.path.exists(play[1])
+                         else 'server exited')
+        elif cl:
             wait_until(lambda: not cl.alive() or broken(), timeout + 60)
             if broken():
                 notes.append(f'{"/".join(broken())} exited early (crash?), cell aborted')
@@ -380,11 +511,19 @@ def main():
     ap.add_argument('--out', default=os.path.join(MODS_ROOT, 'autotest-out'), help='output folder')
     ap.add_argument('--offline', action='store_true', help='pass --offline to Gradle')
     ap.add_argument('--gui', action='store_true', help='open matrix_gui.py on the same --out')
+    ap.add_argument('--play', nargs=2, metavar=('LOADER', 'CONFIG'),
+                    help='manual play of one project: start the instances of CONFIG without tests until stopped')
+    ap.add_argument('--world', help='--play: world folder copied fresh into every instance (default: new superflat)')
     args = ap.parse_args()
 
     out = os.path.abspath(args.out)
     os.makedirs(out, exist_ok=True)
     projects = resolve_projects(args)
+    if args.play:
+        if args.play[0] not in LOADERS or args.play[1] not in CONFIGS or len(projects) != 1:
+            ap.error(f'--play needs one project, a loader {LOADERS} and a config {CONFIGS}')
+        if args.world and not os.path.isfile(os.path.join(args.world, 'level.dat')):
+            ap.error(f'--world {args.world} has no level.dat')
     lock = os.path.join(out, 'running.lock')
     other = lock_pid(lock)
     if other:
@@ -394,10 +533,50 @@ def main():
     if args.gui:
         start_gui(out)
     try:
-        run(args, out, projects)
+        if args.play:
+            play(args, out, projects[0])
+        else:
+            run(args, out, projects)
     finally:
         if lock_pid(lock) == os.getpid():
             os.remove(lock)
+
+
+def play(args, out, project):
+    """Manual play: <out>/play/<project>/<loader>/<config>/, status in <out>/play/play.json, stop via <out>/play/stop."""
+    loader, config = args.play
+    name = os.path.basename(project)
+    pdir = os.path.join(out, 'play', name)
+    os.makedirs(pdir, exist_ok=True)
+    stop_file = os.path.join(out, 'play', 'stop')
+    if os.path.exists(stop_file):
+        os.remove(stop_file)
+    status = os.path.join(out, 'play', 'play.json')
+    info = {'project': name, 'loader': loader, 'config': config, 'world': args.world, 'started': now()}
+    write_json(status, {**info, 'state': 'capturing'})
+    glog = os.path.join(pdir, 'gradle-capture.log')
+    open(glog, 'w').close()
+    notes = []
+    try:
+        # No build here; only clear Loom's remapped dependencies when a dependency jar changed since last time.
+        deps_file = os.path.join(out, name, 'deps.json')
+        old, deps = read_json(deps_file) or {}, dep_hashes(project, [loader])
+        if any(old.get(j) != h for j, h in deps.items()):
+            if not clear_remap_cache(project, glog):
+                notes = ['cannot clear loom cache (see gradle-capture.log)']
+                return
+            write_json(deps_file, {**old, **deps})
+        print(f'[{name}] capturing launch commands (gradle) ...', flush=True)
+        rc, specs = capture(project, [loader], build_agent(out), pdir, args.offline, glog)
+        write_json(status, {**info, 'state': 'playing'})
+        print(f'[{name}] playing {loader} {config}; close the game or create {stop_file} to stop', flush=True)
+        notes = run_cell(specs, loader, config, os.path.join(pdir, loader, config), args.timeout, None,
+                         play=(args.world, stop_file))[2]
+    finally:
+        write_json(status, {**info, 'state': 'stopped', 'notes': notes, 'finished': now()})
+        if os.path.exists(stop_file):
+            os.remove(stop_file)
+        print(f'[{name}] play ended: {" ".join(notes)}', flush=True)
 
 
 def run(args, out, projects):
@@ -408,9 +587,29 @@ def run(args, out, projects):
         pdir = os.path.join(out, name)
         os.makedirs(pdir, exist_ok=True)
         glog = os.path.join(pdir, 'gradle-capture.log')
-        print(f'[{name}] capturing launch commands (gradle) ...', flush=True)
+        print(f'[{name}] building jars and capturing launch commands (gradle) ...', flush=True)
         cap = {'state': 'capturing', 'loaders': args.loaders, 'configs': args.configs, 'started': now()}
         write_json(os.path.join(pdir, 'capture.json'), cap)
+        open(glog, 'w').close()
+        deps = dep_hashes(project, args.loaders)
+        if deps and not clear_remap_cache(project, glog):  # always for mods with flatDir dependencies
+            rc, reason = -1, 'cannot clear loom cache (see gradle-capture.log)'
+        else:
+            write_json(os.path.join(pdir, 'deps.json'), {**(read_json(os.path.join(pdir, 'deps.json')) or {}), **deps})
+            rc = build(project, args.loaders, args.offline, glog)
+            reason = f'build failed (rc {rc}, see gradle-capture.log)'
+        if rc != 0:
+            write_json(os.path.join(pdir, 'capture.json'), {**cap, 'state': 'done', 'rc': rc, 'finished': now()})
+            print(f'[{name}] {reason}', flush=True)
+            for loader in args.loaders:
+                for config in args.configs:
+                    cell = os.path.join(pdir, loader, config)
+                    row = {'passed': 0, 'failed': 0, 'errors': 1, 'ok': False, 'project': name, 'loader': loader,
+                           'config': config, 'seconds': 0, 'dir': cell, 'status': reason}
+                    rows.append(row)
+                    write_json(os.path.join(cell, 'cell.json'), {**row, 'state': 'error', 'finished': now()})
+            continue
+        jars = {l: jar_hashes(project, l) for l in args.loaders}
         rc, specs = capture(project, args.loaders, agent, pdir, args.offline, glog)
         write_json(os.path.join(pdir, 'capture.json'), {**cap, 'state': 'done', 'rc': rc, 'finished': now()})
         if rc != 0:
@@ -429,7 +628,8 @@ def run(args, out, projects):
                 row.update(project=name, loader=loader, config=config, seconds=int(time.time() - t0), dir=cell)
                 rows.append(row)
                 state = 'passed' if row['ok'] else 'failed' if row['failed'] else 'error'
-                write_json(status, {**row, 'state': state, 'finished': now()})
+                write_json(status, {**row, 'state': state, 'finished': now(), 'jars': jars[loader],
+                                    'fingerprint': fingerprint(jars[loader])})
                 print(f"    {'PASS' if row['ok'] else 'FAIL'} {row['passed']} passed, {row['failed']} failed, "
                       f"{row['errors']} errors  [{row['status']}]", flush=True)
 
