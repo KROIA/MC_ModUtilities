@@ -38,6 +38,10 @@ public class TestScreen extends GuiContainerScreen<MyContainerMenu> {
 ```
 
 ---
+## GUI scale
+`setGuiScale(float)` works exactly like on `GuiScreen`: the value is snapped to whole screen pixels per GUI unit and `getGuiScale()` returns the effective scale. See [GuiScreen](GuiScreen.md#gui-scale).
+
+---
 ## Open a container screen
 Since it works just like the normal Architectury container screen opening, it will not be described here.
 

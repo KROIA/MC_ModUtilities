@@ -79,8 +79,9 @@ public class Gui {
     protected SoundPlayer soundPlayer;
     protected int mousePosX, mousePosY;
 
-    private float guiScale = 1.0f; // Scale of the GUI, default is 1.0 (no scaling)
-    private float invGuiScale = 1.0f; // Inverse scale of the GUI, default is 1.0 (no scaling)
+    private float requestedGuiScale = 1.0f; // Scale requested via setGuiScale, default is 1.0 (no scaling)
+    private float guiScale = 1.0f; // Effective (pixel-snapped) scale used for rendering and input
+    private float invGuiScale = 1.0f; // Inverse of the effective scale
     private double displayScaleFactor = 1.0; // Minecraft GUI scale, set by hosting screen
     private int offscreenScissorScale = 0; // >0: use raw GL scissor with this scale instead of GuiGraphics
     private int offscreenFramebufferHeight = 0;
@@ -182,6 +183,7 @@ public class Gui {
     public void setDisplayScaleFactor(double factor)
     {
         this.displayScaleFactor = factor;
+        updateEffectiveGuiScale();
     }
 
     /**
@@ -205,15 +207,60 @@ public class Gui {
     }
 
     /**
-     * @return the GUI scale factor applied to this root (1.0 means no scaling)
+     * Returns the effective GUI scale factor applied to this root (1.0 means no
+     * scaling). This is the value actually used for rendering, mouse conversion
+     * and {@code getWidth()/getHeight()} of the hosting screen, so it is the one
+     * to use when converting GUI coordinates to screen coordinates. It can differ
+     * slightly from the value passed to {@link #setGuiScale(float)} because it is
+     * snapped to whole screen pixels (see {@link #snapGuiScale(float, double)}).
+     *
+     * @return the effective (pixel-snapped) GUI scale factor
      */
     public float getGuiScale() {
         return guiScale;
     }
 
     /**
-     * @return the inverse of the GUI scale factor, useful for converting from
-     *         window pixel space to GUI element space
+     * @return the GUI scale factor as passed to {@link #setGuiScale(float)},
+     *         before pixel snapping
+     */
+    public float getRequestedGuiScale() {
+        return requestedGuiScale;
+    }
+
+    /**
+     * Snaps a requested GUI scale so that one GUI unit covers a whole number of
+     * screen pixels: {@code round(requested * displayScaleFactor) / displayScaleFactor},
+     * with at least one pixel per unit.
+     * <p>
+     * WHY: with a fractional pixel ratio (e.g. 0.8 x GUI scale 3 = 2.4 px per
+     * unit) the NEAREST-sampled item sprites and GUI textures render texels as an
+     * uneven mix of 2 and 3 px columns, which looks pixelated/distorted. A scale
+     * of exactly 1.0 (or an invalid display factor) is returned unchanged.
+     * <p>
+     * Rounding to nearest never makes a requested scale {@code <= 1} larger than
+     * 1.0, so such a screen always keeps at least the GUI-unit area vanilla
+     * screens are designed for.
+     *
+     * @param requested          the requested GUI scale ({@code > 0})
+     * @param displayScaleFactor the Minecraft GUI scale (window pixels per GUI unit)
+     * @return the effective GUI scale
+     */
+    public static float snapGuiScale(float requested, double displayScaleFactor) {
+        if(requested == 1.0f || !(displayScaleFactor > 0.0))
+            return requested;
+        long pixels = Math.max(1L, Math.round(requested * displayScaleFactor));
+        return (float)(pixels / displayScaleFactor);
+    }
+
+    private void updateEffectiveGuiScale() {
+        this.guiScale = snapGuiScale(requestedGuiScale, displayScaleFactor);
+        this.invGuiScale = 1.0f / this.guiScale;
+    }
+
+    /**
+     * @return the inverse of the effective GUI scale factor, useful for
+     *         converting from window pixel space to GUI element space
      */
     public float getInvGuiScale() {
         return invGuiScale;
@@ -224,8 +271,9 @@ public class Gui {
      * coordinates.
      * <p>
      * Values that are zero or negative are treated as invalid and silently
-     * replaced with {@code 1.0}. The inverse scale is recomputed from the
-     * effective (corrected) value to keep both factors consistent.
+     * replaced with {@code 1.0}. The effective scale ({@link #getGuiScale()}) is
+     * the requested value snapped to whole screen pixels for the current display
+     * scale factor; it is recomputed whenever either value changes.
      *
      * @param guiScale the new scale factor; values {@code <= 0} are corrected
      *                 to {@code 1.0}
@@ -234,8 +282,8 @@ public class Gui {
         if(guiScale <= 0.0f) {
             guiScale = 1.0f;
         }
-        this.guiScale = guiScale;
-        this.invGuiScale = 1.0f / this.guiScale;
+        this.requestedGuiScale = guiScale;
+        updateEffectiveGuiScale();
     }
 
     public void setOffscreenScissorMode(int renderScale, int framebufferHeight) {
