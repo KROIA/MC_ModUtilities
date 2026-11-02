@@ -78,8 +78,9 @@ def bank_status(out, sm_project, loader, config, running):
     return state, {**d, **counts, 'status': f"via StockMarket (banksystem suites); SM: {d.get('status', '')}"}
 
 
-def stale_reason(d, jars):
-    """Why a finished result no longer matches the current jars (dict path -> sha256 or None), or None."""
+def stale_reason(d, jars, world_fp):
+    """Why a finished result no longer matches the current jars (dict path -> sha256 or None) and test world
+    (rm.world_fingerprint, None = new superflat), or None."""
     missing = [os.path.basename(j) for j, h in jars.items() if h is None]
     if missing:
         return 'jar missing: ' + ', '.join(missing)
@@ -87,7 +88,9 @@ def stale_reason(d, jars):
     if not old:
         return 'no jar fingerprint (older run)'
     changed = sorted(os.path.basename(j) for j in set(old) | set(jars) if old.get(j) != jars.get(j))
-    return 'changed: ' + ', '.join(changed) if changed else None
+    if changed:
+        return 'changed: ' + ', '.join(changed)
+    return 'test world changed' if d.get('world_fp') != world_fp else None
 
 
 def lighten(color):
@@ -149,10 +152,13 @@ class Gui:
             tk.Checkbutton(bar, text=m, variable=var).pack(side='left')
         bar2 = tk.Frame(root)
         bar2.pack(fill='x', padx=4, pady=(0, 4))
-        tk.Button(bar2, text='Choose play world...', command=self.choose_world).pack(side='left')
-        self.world_label = tk.Label(bar2, anchor='w')
-        self.world_label.pack(side='left')
-        self.show_world()
+        # Two template worlds: test_world for the test runs, play_world for Play; unset = new superflat world.
+        self.world_labels = {}
+        for key, what in (('test_world', 'test'), ('play_world', 'play')):
+            tk.Button(bar2, text=f'Choose {what} world...', command=lambda k=key: self.choose_world(k)).pack(side='left')
+            self.world_labels[key] = tk.Label(bar2, anchor='w')
+            self.world_labels[key].pack(side='left')
+            self.show_world(key)
 
         # Fixed header outside the scroll area; same widths/padding as the grid below keep the columns aligned.
         head = tk.Frame(root)
@@ -249,7 +255,9 @@ class Gui:
             return state, d, None
         if (p, loader) not in jars:
             jars[(p, loader)] = rm.jar_hashes(p, loader)
-        return state, d, stale_reason(d, jars[(p, loader)])
+        if 'world' not in jars:  # the per-tick cache also holds the test world's fingerprint
+            jars['world'] = rm.world_fingerprint(self.settings.get('test_world'))
+        return state, d, stale_reason(d, jars[(p, loader)], jars['world'])
 
     def cell_dir(self, key, loader, config):
         p = self.status_project(key)
@@ -275,7 +283,8 @@ class Gui:
             self.proc = None
         if self.queue and not self.proc and not running:
             p, ls, cs = self.queue.pop(0)
-            self.start(p, '--loaders', *ls, '--configs', *cs)
+            world = self.settings.get('test_world')
+            self.start(p, '--loaders', *ls, '--configs', *cs, *(['--world', world] if world else []))
         for b in self.buttons:
             b.config(state='disabled' if self.busy() else 'normal')
         play = self.play_now(running)
@@ -298,9 +307,12 @@ class Gui:
 
     def run_cells(self, cells, what):
         cells = [(self.status_project(k), l, c) for k, l, c in cells if self.status_project(k)]
+        world = self.settings.get('test_world')
         if self.busy():
             messagebox.showinfo('Busy', 'A run is active (the test ports are shared); stop it or wait.')
-        elif cells and messagebox.askokcancel('Run', f'Run {what}?'):
+        elif world and not os.path.isfile(os.path.join(world, 'level.dat')):
+            messagebox.showerror('Run', f'Test world {world} has no level.dat; choose another one.')
+        elif cells and messagebox.askokcancel('Run', f'Run {what} in {world or "a new superflat world"}?'):
             self.queue = plan_runs(cells)  # tick() starts them one after another
 
     def play(self, key, loader, config):
@@ -363,26 +375,26 @@ class Gui:
             if os.path.exists(f):
                 os.remove(f)
 
-    def choose_world(self):
-        d = filedialog.askdirectory(title='Minecraft world folder (contains level.dat)',
-                                    initialdir=self.settings.get('play_world') or self.out)
+    def choose_world(self, key):
+        title = key.replace('_', ' ').capitalize()
+        d = filedialog.askdirectory(title=f'{title}: Minecraft world folder (contains level.dat)',
+                                    initialdir=self.settings.get(key) or self.out)
         if not d:
-            if not (self.settings.get('play_world') and
-                    messagebox.askyesno('Play world', 'Use a generated superflat world instead?')):
+            if not (self.settings.get(key) and
+                    messagebox.askyesno(title, 'Use a generated superflat world instead?')):
                 return
-            self.settings.pop('play_world')
+            self.settings.pop(key)
         elif not os.path.isfile(os.path.join(d, 'level.dat')):
-            messagebox.showerror('Play world', f'{d} has no level.dat')
+            messagebox.showerror(title, f'{d} has no level.dat')
             return
         else:
-            self.settings['play_world'] = os.path.normpath(d)
+            self.settings[key] = os.path.normpath(d)
         rm.write_json(self.settings_file, self.settings)
-        self.show_world()
+        self.show_world(key)
 
-    def show_world(self):
-        w = self.settings.get('play_world')
-        self.world_label.config(text=f' play world: {w} (copied fresh on every Play)' if w else
-                                ' play world: new superflat world')
+    def show_world(self, key):
+        w, what = self.settings.get(key), key.split('_')[0]
+        self.world_labels[key].config(text=f' {what} world: {w or "new superflat world"}   ')
 
     # ---------------------------------------------------------------- tooltips
 
@@ -397,7 +409,7 @@ class Gui:
             lines.append(f"started {d.get('started')}, world: {d.get('world') or 'new superflat'}")
         elif 'passed' in d:
             lines.append(f"passed {d['passed']}, failed {d['failed']}, errors {d['errors']}, {d.get('seconds')} s")
-            lines.append(f"finished {d.get('finished')}")
+            lines.append(f"finished {d.get('finished')}, world: {d.get('world') or 'new superflat'}")
             lines.append(d.get('status', ''))
         elif d.get('started'):
             lines.append(f"started {d['started']}")

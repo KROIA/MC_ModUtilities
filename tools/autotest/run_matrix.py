@@ -5,6 +5,7 @@ Stdlib only. See README.md in this folder. Short version:
 
     python tools/autotest/run_matrix.py E:/.../mc_1.21.1_MC_ModUtilities
     python tools/autotest/run_matrix.py --root E:/.../StockMarket --versions 1.21.1 26.3 --configs sp mp
+    python tools/autotest/run_matrix.py E:/.../mc_1.21.1_MC_ModUtilities --world <world folder>
     python tools/autotest/run_matrix.py E:/.../mc_1.21.1_MC_ModUtilities --play fabric mp [--world <world folder>]
 
 Per project it runs Gradle once per run task (runClient/runServer with a capture agent, added by
@@ -14,14 +15,17 @@ The project must be a dev build (enable_dev_features=true) for the tests and the
 """
 import argparse
 import glob
+import gzip
 import hashlib
 import json
 import os
 import re
 import shutil
+import struct
 import subprocess
 import sys
 import time
+import zipfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 MODS_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(HERE))))  # tools/autotest -> repo -> mod -> mods
@@ -196,6 +200,47 @@ def fingerprint(jars):
     return hashlib.sha256(json.dumps(sorted(jars.items())).encode()).hexdigest()[:16]
 
 
+def world_fingerprint(world):
+    """Cheap fingerprint of a template world (path + name/size/mtime of every file but session.lock), or None."""
+    if not world:
+        return None
+    h = hashlib.sha256(os.path.normcase(os.path.abspath(world)).encode())
+    for dirpath, dirs, files in os.walk(world):
+        dirs.sort()
+        for f in sorted(files):
+            if f != 'session.lock':
+                try:
+                    st = os.stat(os.path.join(dirpath, f))
+                except OSError:
+                    continue  # the game is saving right now
+                h.update(f'{os.path.relpath(os.path.join(dirpath, f), world)}|{st.st_size}|{st.st_mtime_ns}\n'.encode())
+    return h.hexdigest()[:16]
+
+
+def world_data_version(world):
+    """DataVersion of a world's level.dat (gzip NBT; the int tag is found by name, no NBT parser), or None."""
+    try:
+        with gzip.open(os.path.join(world, 'level.dat')) as f:
+            raw = f.read()
+    except (OSError, EOFError):
+        return None
+    found = [struct.unpack('>i', m.group(1))[0] for m in re.finditer(rb'\x03\x00\x0bDataVersion(.{4})', raw, re.S)]
+    return max(found) if found else None
+
+
+def game_data_version(spec):
+    """world_version of the game a launch spec runs (version.json in its Minecraft jar), or None."""
+    for j in spec['classpath'].split(os.pathsep):
+        b = os.path.basename(j).lower()
+        if b.endswith('.jar') and ('minecraft' in b or 'client-extra' in b):  # Loom merged jar / NeoForge resources
+            try:
+                with zipfile.ZipFile(j) as z:
+                    return json.loads(z.read('version.json'))['world_version']
+            except (OSError, KeyError, ValueError, zipfile.BadZipFile):
+                continue
+    return None
+
+
 # ---------------------------------------------------------------- instances
 
 def argfile_quote(a):
@@ -315,20 +360,26 @@ def wait_until(cond, timeout, *must_live):
 
 # ---------------------------------------------------------------- one matrix cell
 
-def run_cell(specs, loader, config, cell_dir, timeout, mods, play=None):
+def run_cell(specs, loader, config, cell_dir, timeout, mods, world=None, play=None):
     """Starts the instances of one configuration, waits for them, stops everything.
-    Returns (instances, notes); every instance in `tested` is expected to have written results.json.
-    play=(template world or None, stop file): manual play, same instances and multi-server setup but no tests;
+    Returns (instances, tested, notes); every instance in `tested` is expected to have written results.json.
+    world: template world copied fresh into every instance (client save / server world); None = new superflat.
+    play=stop file: manual play, same instances and multi-server setup but no tests;
     runs until the client is closed, a server exits or the stop file appears."""
     client_spec, server_spec = specs.get((loader, 'runClient')), specs.get((loader, 'runServer'))
     if not client_spec or not server_spec:
         return [], [], ['launch spec missing (see gradle-capture.log)']
+    if world:
+        # A newer world would load with data loss (servers) or a downgrade prompt (client): refuse it.
+        wv, gv = world_data_version(world), game_data_version(client_spec)
+        if wv and gv and wv > gv:
+            return [], [], [f'world {os.path.basename(world)} is from a newer Minecraft (data version {wv} > {gv})']
     common = {'modutilities.autotest.timeout': timeout}
     if mods:
         common['modutilities.autotest.mods'] = mods
     if play:
         common = {'modutilities.autotest.play': 'true'}
-    template = play and play[0]
+    template = world
     d = lambda n: os.path.join(cell_dir, n)
     notes, servers, tested = [], [], []
 
@@ -397,9 +448,9 @@ def run_cell(specs, loader, config, cell_dir, timeout, mods, play=None):
             return [s.name for s in servers if not s.alive() and
                     (not os.path.exists(s.results) or s.props.get('modutilities.autotest.stop') != 'true')]
         if play and cl:
-            wait_until(lambda: not cl.alive() or any(not s.alive() for s in servers) or os.path.exists(play[1]),
+            wait_until(lambda: not cl.alive() or any(not s.alive() for s in servers) or os.path.exists(play),
                        10 ** 9)
-            notes.append('client closed' if not cl.alive() else 'stop requested' if os.path.exists(play[1])
+            notes.append('client closed' if not cl.alive() else 'stop requested' if os.path.exists(play)
                          else 'server exited')
         elif cl:
             wait_until(lambda: not cl.alive() or broken(), timeout + 60)
@@ -532,7 +583,8 @@ def main():
     ap.add_argument('--gui', action='store_true', help='open matrix_gui.py on the same --out')
     ap.add_argument('--play', nargs=2, metavar=('LOADER', 'CONFIG'),
                     help='manual play of one project: start the instances of CONFIG without tests until stopped')
-    ap.add_argument('--world', help='--play: world folder copied fresh into every instance (default: new superflat)')
+    ap.add_argument('--world', help='world folder copied fresh into every instance, for tests and --play '
+                                    '(default: new superflat world); the folder itself is never modified')
     args = ap.parse_args()
 
     out = os.path.abspath(args.out)
@@ -541,7 +593,9 @@ def main():
     if args.play:
         if args.play[0] not in LOADERS or args.play[1] not in CONFIGS or len(projects) != 1:
             ap.error(f'--play needs one project, a loader {LOADERS} and a config {CONFIGS}')
-        if args.world and not os.path.isfile(os.path.join(args.world, 'level.dat')):
+    if args.world:
+        args.world = os.path.normpath(os.path.abspath(args.world))
+        if not os.path.isfile(os.path.join(args.world, 'level.dat')):
             ap.error(f'--world {args.world} has no level.dat')
     lock = os.path.join(out, 'running.lock')
     other = lock_pid(lock)
@@ -599,7 +653,7 @@ def play(args, out, project):
         write_json(status, {**info, 'state': 'playing'})
         print(f'[{name}] playing {loader} {config}; close the game or create {stop_file} to stop', flush=True)
         notes = run_cell(specs, loader, config, play_dir(out, project, loader, config), args.timeout, None,
-                         play=(args.world, stop_file))[2]
+                         world=args.world, play=stop_file)[2]
     finally:
         write_json(status, {**info, 'state': 'stopped', 'notes': notes, 'finished': now()})
         if os.path.exists(stop_file):
@@ -644,6 +698,7 @@ def run(args, out, projects):
             continue
         jars = {l: jar_hashes(project, l) for l in args.loaders}
         rc, specs = capture(project, args.loaders, agent, pdir, args.offline, glog)
+        world_fp = world_fingerprint(args.world)  # the template as tested; the GUI compares it to the current one
         write_json(os.path.join(pdir, 'capture.json'), {**cap, 'state': 'done', 'rc': rc, 'finished': now()})
         if rc != 0:
             print(f'[{name}] gradle exited with {rc}, see {glog}', flush=True)
@@ -655,14 +710,15 @@ def run(args, out, projects):
                 # cell.json sits in the cell dir; prepare() only replaces the instance subdirs.
                 status = os.path.join(cell, 'cell.json')
                 write_json(status, {'state': 'running', 'project': name, 'loader': loader, 'config': config,
-                                    'started': now()})
-                insts, tested, notes = run_cell(specs, loader, config, cell, args.timeout, args.mods)
+                                    'world': args.world, 'started': now()})
+                insts, tested, notes = run_cell(specs, loader, config, cell, args.timeout, args.mods, args.world)
                 row = summarize(insts, tested, notes)
                 row.update(project=name, loader=loader, config=config, seconds=int(time.time() - t0), dir=cell)
                 rows.append(row)
                 state = 'passed' if row['ok'] else 'failed' if row['failed'] else 'error'
                 write_json(status, {**row, 'state': state, 'finished': now(), 'jars': jars[loader],
-                                    'fingerprint': fingerprint(jars[loader])})
+                                    'fingerprint': fingerprint(jars[loader]), 'world': args.world,
+                                    'world_fp': world_fp})
                 print(f"    {'PASS' if row['ok'] else 'FAIL'} {row['passed']} passed, {row['failed']} failed, "
                       f"{row['errors']} errors  [{row['status']}]", flush=True)
 

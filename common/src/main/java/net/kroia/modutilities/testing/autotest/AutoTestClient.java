@@ -1,12 +1,17 @@
 package net.kroia.modutilities.testing.autotest;
 
 import com.google.gson.JsonObject;
+import it.unimi.dsi.fastutil.booleans.BooleanConsumer;
 import dev.architectury.event.events.client.ClientLifecycleEvent;
 import dev.architectury.event.events.client.ClientTickEvent;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.gui.client.ClientCompat;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.AlertScreen;
+import net.minecraft.client.gui.screens.BackupConfirmScreen;
+import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.client.gui.screens.ConnectScreen;
+import net.minecraft.client.gui.screens.DatapackLoadFailureScreen;
 import net.minecraft.client.gui.screens.DisconnectedScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
@@ -51,6 +56,8 @@ final class AutoTestClient {
     private static boolean done;
     private static boolean warningsDismissed;
     private static int titleTicks;
+    /** The last world-open prompt answered: it can stay on screen for a few ticks after the answer. */
+    private static Screen answered;
 
     static void init() {
         if (CONNECT == null && WORLD == null) {
@@ -77,7 +84,10 @@ final class AutoTestClient {
             }
             return;
         }
-        if (mc.level != null) joined = true;
+        if (mc.level != null && !joined) {
+            joined = true;
+            offscreenGuiCheck(mc);
+        }
         if (AutoTest.isFinished()) {
             finish(mc, "tests_finished");
         } else if (joined && mc.level == null && !mc.isLocalServer()) {
@@ -85,7 +95,46 @@ final class AutoTestClient {
             finish(mc, "left_world");
         } else if (!joined && screen instanceof DisconnectedScreen) {
             finish(mc, "connect_failed");
+        } else if (!joined && CONNECT == null && screen != null && screen != answered) {
+            answerWorldPrompt(mc, screen);
         }
+    }
+
+    /**
+     * Opening a save may stop at a prompt: a backup question (world from an older version that needs file
+     * fixing on 26.x, snapshot upgrade, experimental/customized settings) or a yes/no (26.x "upgrade done, join
+     * now?", low disk space). The save is a throwaway copy, so answer "join without backup" / "yes". A world
+     * that cannot be opened (incompatible, broken datapacks) ends the run instead of waiting for the watchdog.
+     * Worlds newer than the game never get here: run_matrix refuses them.
+     */
+    private static void answerWorldPrompt(Minecraft mc, Screen screen) {
+        if (screen instanceof AlertScreen || screen instanceof DatapackLoadFailureScreen) {
+            ModUtilitiesMod.LOGGER.error("[AutoTest] client: cannot open the world: {}", screen.getTitle().getString());
+            finish(mc, "world_open_failed");
+            return;
+        }
+        if (!(screen instanceof BackupConfirmScreen) && !(screen instanceof ConfirmScreen)) return;
+        answered = screen;
+        ModUtilitiesMod.LOGGER.info("[AutoTest] client: confirming '{}'", screen.getTitle().getString());
+        try {
+            if (screen instanceof BackupConfirmScreen) {
+                ((BackupConfirmScreen.Listener) field(BackupConfirmScreen.class, "onProceed").get(screen)).proceed(false, false);
+            } else {
+                ((BooleanConsumer) field(ConfirmScreen.class, "callback").get(screen)).accept(true);
+            }
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            ModUtilitiesMod.LOGGER.error("[AutoTest] client: cannot answer the world prompt", e);
+            finish(mc, "world_prompt_failed");
+        }
+    }
+
+    /**
+     * Builds and closes the GuiRenderer display blocks render into (1.21.6+), with the game's own GuiRenderer
+     * already alive. Throws (crashing the run) if a second GuiRenderer cannot be built, as with Fabric API 0.129.
+     */
+    private static void offscreenGuiCheck(Minecraft mc) {
+        //new net.kroia.modutilities.gui.client.OffscreenGuiRenderer(mc.renderBuffers().bufferSource()).close(); // mc>=1.21.6 mc<=26.1
+        //new net.kroia.modutilities.gui.client.OffscreenGuiRenderer().close(); // mc>=26.2
     }
 
     private static void start(Minecraft mc, Screen parent) {
