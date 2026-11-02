@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import dev.architectury.event.events.common.LifecycleEvent;
+import dev.architectury.event.events.common.PlayerEvent;
 import dev.architectury.event.events.common.TickEvent;
 import dev.architectury.platform.Platform;
 import dev.architectury.utils.Env;
@@ -18,6 +19,7 @@ import net.kroia.modutilities.testing.TestSuite;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Difficulty;
+import net.minecraft.world.level.GameType;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -98,6 +100,11 @@ public final class AutoTest {
         ModUtilitiesMod.LOGGER.info("[AutoTest] enabled, instance '{}', {}", LABEL, PLAY ? "play mode (no tests)" : "report " + RESULTS);
 
         LifecycleEvent.SERVER_STARTED.register(server -> server.setDifficulty(Difficulty.PEACEFUL, true));
+        // Joins happen before waitPlayer + settle let the suites start, so tests always see a creative player.
+        PlayerEvent.PLAYER_JOIN.register(player -> {
+            player.setGameMode(GameType.CREATIVE);
+            ModUtilitiesMod.LOGGER.info("[AutoTest] {} set to creative", player.getScoreboardName());
+        });
         TickEvent.SERVER_POST.register(AutoTest::serverTick);
         LifecycleEvent.SERVER_STOPPING.register(server -> {
             if (ownsMultiServer) MultiServerManager.cleanup();
