@@ -94,7 +94,8 @@ None needed toggles. Checked with javap on all 14 versions:
 | `LevelSettings` constructor | drifts (GameRules package 1.21.11, `DifficultySettings` 26.1) — avoided by using `MinecraftServer.DEMO_SETTINGS` (present everywhere) and setting peaceful difficulty server-side |
 | `WorldOptions(long, boolean, boolean)`, `ConnectScreen.startConnecting(6 args)`, `ServerData(String, String, Type)`, `ServerAddress.parseString`, `Minecraft.stop/level/isLocalServer`, `MinecraftServer.halt/setDifficulty/isDedicatedServer` | stable |
 | `Minecraft.screen` | removed in 26.2 → existing `ClientCompat.screen()` |
-| flat world presets | `createFlatWorldDimensions` only 1.21.2–26.1 → singleplayer uses the normal preset |
+| flat world presets | `createFlatWorldDimensions` only 1.21.2–26.1 → singleplayer looks up `WorldPresets.FLAT` in `Registries.WORLD_PRESET` and calls `createWorldDimensions()` (stable 1.21.1–26.3; the helper takes `HolderLookup.Provider`, which `RegistryAccess` extends on 1.21.1) |
+| `WorldOpenFlows.openWorld(String, Runnable)` (play: open an existing save), Architectury `ClientLifecycleEvent.CLIENT_STOPPING` | stable |
 
 ## 5. Launching several instances of one project
 
@@ -157,3 +158,32 @@ started from the command line show up the same way.
 - `<out>/gui.lock`: pid of the open GUI; `--gui` does not open a second one.
 - The GUI turns a set of cells into one run_matrix call per project and config set (each call must be
   a full loaders × configs product), run one after another; log in `<out>/gui-run.log`.
+- Jar fingerprint: before capturing, run_matrix builds `:<loader>:build -x test -Penable_dev_features=true`
+  (build failure → every cell of the project `error`). `cell.json` gets `jars` {path: sha256} and
+  `fingerprint` for the project's own `<loader>/build/libs/<archives_name>-<loader>-<mod_version>.jar` and
+  each `flatDir` dir of `<loader>/build.gradle` (`<dep archives_name>-<loader>-<dep>_version>.jar`, versions
+  from `gradle.properties`). The GUI recomputes them (cached by path + mtime + size); a difference or a
+  missing jar marks the result stale. This relies on Loom really using those jars: Loom keeps remapped
+  copies of flatDir mod jars in `<project>/.gradle/loom-cache/remapped_mods` and would go on using an old
+  copy. So for every project with flatDir dependencies (detected from `<loader>/build.gradle` like the
+  jars above) run_matrix deletes that folder before the build in every test run, and in `--play` (no build)
+  when a dependency jar's sha256 differs from `<out>/<project>/deps.json` (last recorded values; written
+  by test runs and play). Logged in `gradle-capture.log`. If Windows keeps the folder locked, it runs
+  `gradlew --stop` in the project and retries once; otherwise every cell of the project is `error`
+  "cannot clear loom cache" (play: the session does not start).
+- BankSystem cells are a view of StockMarket cells: `mods.banksystem` of every `<instance>/results.json`;
+  passed when all instances completed with 0 failed / 0 errors.
+- Clear: deletes `cell.json` and `capture.json` under `<out>/<project>/`, never `play/` or `gui-settings.json`.
+
+## 8. Manual play (`--play LOADER CONFIG`)
+
+Same capture and the same instances, ports, `MultiServerConfig.json` and start order as the test cell
+(servers wait for `Done (`, the slave/client start after the master is up), in
+`<out>/play/<project>/<loader>/<config>/`. Instances get `-Dmodutilities.autotest.play=true` and only the
+`connect`/`world` properties: AutoTest then only creates the multi-server link if no mod did, and skips
+the tests, report, auto-stop and watchdog; the client joins/opens and then leaves the game alone (on
+`CLIENT_STOPPING` it arms the same 30 s halt fallback as the test client). `--world`: copied (without
+`session.lock`) to every server's `world` and the singleplayer client's `saves/play` (`world=play` →
+`openWorld`). It ends when the client exits, a server exits or `<out>/play/stop` appears; then servers get
+`stop` (60 s) and are killed. Status `<out>/play/play.json` (`capturing`/`playing`/`stopped`), shares
+`running.lock` with test runs. No jar build (the project's own code runs from its classes).
