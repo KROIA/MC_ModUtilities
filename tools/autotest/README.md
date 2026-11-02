@@ -76,7 +76,8 @@ above this folder), the same as run_matrix.py.
 
 - Hover: details (counts, status string, seconds, finished time, cell folder, failed test names).
 - Double-click a cell: run that cell; double-click a version label: run the whole row; right-click a
-  cell: menu **Play** / **Run tests** / **Clear result** / **Open folder**.
+  cell: menu **Play** / **Run tests** / **Clear result** / **Open folder** /
+  **Open play folder** (disabled until the cell was played).
 - **Play**: starts that project/loader/config for manual play (`--play`, see above); the client joins
   the server or opens the world by itself. Stop by closing the game or with **Stop**.
 - **Choose play world...**: pick a world folder (must contain `level.dat`) for Play; cancel the dialog to
