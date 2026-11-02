@@ -45,7 +45,9 @@ public class Gui {
         void play(SoundEvent sound, float volume, float pitch);
     }
 
-    private static IGraphics fallbackGraphics = new IGraphics() {};
+    private static final IGraphics HEADLESS_GRAPHICS = new IGraphics() {};
+    private static IGraphics fallbackGraphics = HEADLESS_GRAPHICS;
+    private static Thread fallbackGraphicsThread;
 
     /**
      * Sets a static fallback graphics backend used by elements that are not
@@ -55,11 +57,20 @@ public class Gui {
      * works before the element is added to a Gui.
      */
     public static void setFallbackGraphics(IGraphics graphics) {
-        if (graphics != null) fallbackGraphics = graphics;
+        if (graphics != null) {
+            fallbackGraphics = graphics;
+            fallbackGraphicsThread = Thread.currentThread();
+        }
     }
 
+    /**
+     * The installed backend is only handed to the thread that installed it (the client render thread).
+     * Other threads, e.g. the integrated server building display GUIs while loading chunks, get the
+     * headless estimates a dedicated server uses: the client Font is not thread safe and bakes glyphs
+     * on the GPU, which throws off the render thread.
+     */
     public static IGraphics getFallbackGraphics() {
-        return fallbackGraphics;
+        return Thread.currentThread() == fallbackGraphicsThread ? fallbackGraphics : HEADLESS_GRAPHICS;
     }
 
     protected IGraphics graphics;
