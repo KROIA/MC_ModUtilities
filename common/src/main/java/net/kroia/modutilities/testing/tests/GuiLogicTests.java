@@ -87,6 +87,29 @@ public class GuiLogicTests extends TestSuite {
 
         // Issue #14 regression: isVisible simplified logic
         addTest("gui_isVisible_simplified", this::testIsVisibleSimplified);
+
+        // Gui scale is snapped to whole screen pixels per GUI unit
+        addTest("gui_scale_snapped_to_pixels", this::testGuiScaleSnappedToPixels);
+    }
+
+    private TestResult testGuiScaleSnappedToPixels() {
+        // {requested, displayScaleFactor, expected effective scale}
+        double[][] cases = {
+                {0.8, 3, 2.0 / 3}, {0.8, 2, 1.0}, {0.8, 4, 0.75}, {0.65, 3, 2.0 / 3},
+                {0.65, 2, 0.5}, {0.5, 3, 2.0 / 3}, {0.5, 2, 0.5}, {0.1, 2, 0.5},
+                {1.0, 3, 1.0}, {1.5, 3, 1.0 + 2.0 / 3}, {0.8, 0, 0.8}};
+        for (double[] c : cases) {
+            float got = net.kroia.modutilities.gui.Gui.snapGuiScale((float) c[0], c[1]);
+            if (Math.abs(got - c[2]) > 1e-5)
+                return fail("snapGuiScale(" + c[0] + ", " + c[1] + ") = " + got + ", expected " + c[2]);
+        }
+        net.kroia.modutilities.gui.Gui gui = new net.kroia.modutilities.gui.Gui();
+        gui.setGuiScale(0.8f);
+        gui.setDisplayScaleFactor(3);
+        if (Math.abs(gui.getGuiScale() - 2.0f / 3) > 1e-5 || gui.getRequestedGuiScale() != 0.8f
+                || Math.abs(gui.getInvGuiScale() - 1.5f) > 1e-5)
+            return fail("Gui effective scale not updated on display factor change: " + gui.getGuiScale());
+        return pass("Gui scale snaps to whole screen pixels per unit");
     }
 
     // ========================================================================
