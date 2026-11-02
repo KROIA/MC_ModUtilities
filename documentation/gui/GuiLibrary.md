@@ -25,6 +25,7 @@ Before using the GUI library, you should understand:
 - Hierarchical element tree structure
 - Cross-version compatibility
 - Built-in layout management
+- Pixel-snapped custom screen scale (`setGuiScale`, see [GuiScreen](GuiScreen.md#gui-scale))
 - Debug visualization tools (F3-F6 keys)
 - Rich set of pre-built components
 - Custom element support
