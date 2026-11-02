@@ -27,16 +27,47 @@ Options:
 | `--configs` | `sp mp slave spslave` | `sp` singleplayer; `mp` client on a master server; `slave` master + slave server, client on the slave; `spslave` master server + singleplayer world as its slave |
 | `--timeout` | `900` | per-instance watchdog (seconds) |
 | `--mods` | all | comma separated mod ids to test, e.g. `banksystem,stockmarket` |
-| `--out` | `./autotest-out` | output folder |
+| `--out` | `<mods root>/autotest-out` | output folder (shared by every run, so the GUI shows CLI runs too) |
 | `--offline` | off | pass `--offline` to Gradle |
+| `--gui` | off | also open `matrix_gui.py` on the same `--out` (unless one is already open) |
 
-Exit code 0 when every cell passed.
+Exit code 0 when every cell passed. Only one run per output folder at a time (`running.lock`;
+all runs share the test ports): a second one exits with a message.
+
+## GUI
+
+`matrix_gui.py` shows every mod x MC version (rows) x loader x config (columns) live, and starts runs.
+Open it by double-clicking `matrix_gui.bat`, with `python tools/autotest/matrix_gui.py [--out DIR]`,
+or with `run_matrix.py ... --gui`. Default `--out` is `<mods root>/autotest-out` (`<mods root>` = 4 levels
+above this folder), the same as run_matrix.py.
+
+| color | meaning |
+|---|---|
+| grey | not run |
+| light blue | Gradle is capturing the launch for this row (row label red: capture failed, see tooltip) |
+| amber | running |
+| green | passed (cell text: number of passed tests) |
+| red | failed tests (`9 fail`) |
+| orange | error: no results, timeout, crash, launch spec missing (`1 err`) |
+| purple | interrupted: the run was killed while this cell ran |
+| dark, `n/a` | no project folder for this mod/version |
+
+- Hover: details (counts, status string, seconds, finished time, cell folder, failed test names).
+- Double-click a cell: run that cell; double-click a version label: run the whole row; right-click a
+  cell: open its folder.
+- **Run all** / **Run not passed**: every (non-green) cell of the ticked mods. Runs are queued, one
+  `run_matrix.py` call per project; output goes to `<out>/gui-run.log`.
+- **Stop**: kills the active run_matrix (also one started from the command line) and its games.
+- Run buttons are disabled while any run holds `running.lock`.
+- New MC version: [ADDING_A_VERSION.md](ADDING_A_VERSION.md).
 
 ## Output
 
 ```
 <out>/summary.json
-<out>/<project>/gradle-capture.log
+<out>/running.lock, gui.lock, gui-run.log
+<out>/<project>/gradle-capture.log, capture.json
+<out>/<project>/<loader>/<config>/cell.json                   cell status (read by the GUI)
 <out>/<project>/<loader>/<config>/<instance>/console.log      game log
 <out>/<project>/<loader>/<config>/<instance>/results.json     test report of that server
 <out>/<project>/<loader>/<config>/client/results.json.client.json   client status
