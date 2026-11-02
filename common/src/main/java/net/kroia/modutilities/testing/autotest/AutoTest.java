@@ -18,6 +18,8 @@ import net.kroia.modutilities.testing.TestRunner;
 import net.kroia.modutilities.testing.TestSuite;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.players.PlayerList;
+import net.minecraft.server.players.ServerOpListEntry;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.level.GameType;
 import org.jetbrains.annotations.Nullable;
@@ -100,10 +102,16 @@ public final class AutoTest {
         ModUtilitiesMod.LOGGER.info("[AutoTest] enabled, instance '{}', {}", LABEL, PLAY ? "play mode (no tests)" : "report " + RESULTS);
 
         LifecycleEvent.SERVER_STARTED.register(server -> server.setDifficulty(Difficulty.PEACEFUL, true));
-        // Joins happen before waitPlayer + settle let the suites start, so tests always see a creative player.
+        // Joins happen before waitPlayer + settle let the suites start, so tests always see a creative op.
         PlayerEvent.PLAYER_JOIN.register(player -> {
             player.setGameMode(GameType.CREATIVE);
             ModUtilitiesMod.LOGGER.info("[AutoTest] {} set to creative", player.getScoreboardName());
+            // Explicit level 4: the default op level is 2 on an integrated server, which would even lower
+            // a singleplayer owner's level 4 (cheats on) and leave a cheats-off world without commands.
+            PlayerList players = player.level().getServer().getPlayerList();
+            players.getOps().add(new ServerOpListEntry(player.getGameProfile(), 4, false));
+            players.sendPlayerPermissionLevel(player);
+            ModUtilitiesMod.LOGGER.info("[AutoTest] {} opped", player.getScoreboardName());
         });
         TickEvent.SERVER_POST.register(AutoTest::serverTick);
         LifecycleEvent.SERVER_STOPPING.register(server -> {
