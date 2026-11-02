@@ -15,7 +15,9 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.levelgen.WorldOptions;
 import net.minecraft.world.level.levelgen.presets.WorldPresets;
 
+import java.lang.reflect.Field;
 import java.nio.file.Path;
+import java.util.List;
 
 /**
  * Client half of {@link AutoTest}; only class-loaded on the physical client.
@@ -35,11 +37,14 @@ final class AutoTestClient {
     private static final int TITLE_TICKS = 20;
     /** Time {@link Minecraft#stop()} gets to exit the JVM normally before it is halted. */
     private static final long EXIT_GRACE_MS = 30_000L;
+    /** Shown by NeoForge (>= 21.7 in dev: Architectury's @OnlyIn warning) before the title screen. */
+    private static final String NEOFORGE_LOADING_SCREEN = "net.neoforged.neoforge.client.gui.LoadingErrorScreen";
     private static final Path CLIENT_RESULTS = AutoTest.RESULTS.resolveSibling(AutoTest.RESULTS.getFileName() + ".client.json");
 
     private static boolean started;
     private static boolean joined;
     private static boolean done;
+    private static boolean warningsDismissed;
     private static int titleTicks;
 
     static void init() {
@@ -54,6 +59,10 @@ final class AutoTestClient {
         if (done) return;
         Screen screen = ClientCompat.screen();
         if (!started) {
+            if (!warningsDismissed && screen != null && screen.getClass().getName().equals(NEOFORGE_LOADING_SCREEN)) {
+                dismissLoadingScreen(mc, screen);
+                return;
+            }
             if (screen instanceof TitleScreen && ++titleTicks >= TITLE_TICKS) {
                 started = true;
                 start(mc, screen);
@@ -83,6 +92,37 @@ final class AutoTestClient {
             mc.createWorldOpenFlows().createFreshLevel("autotest-" + WORLD, MinecraftServer.DEMO_SETTINGS,
                     new WorldOptions(SEED, false, false), WorldPresets::createNormalWorldDimensions, parent);
         }
+    }
+
+    /** Presses "Proceed" on a warnings-only NeoForge loading screen; fails fast on real errors. */
+    private static void dismissLoadingScreen(Minecraft mc, Screen screen) {
+        List<?> errors;
+        List<?> warnings;
+        Runnable next;
+        try {
+            Class<?> c = screen.getClass();
+            errors = (List<?>) field(c, "modLoadErrors").get(screen);
+            warnings = (List<?>) field(c, "modLoadWarnings").get(screen);
+            next = (Runnable) field(c, "nextScreenTask").get(screen);
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            ModUtilitiesMod.LOGGER.error("[AutoTest] client: cannot inspect NeoForge loading screen", e);
+            finish(mc, "loading_errors");
+            return;
+        }
+        if (!errors.isEmpty()) {
+            ModUtilitiesMod.LOGGER.error("[AutoTest] client: NeoForge mod loading errors: {}", errors);
+            finish(mc, "loading_errors");
+            return;
+        }
+        warningsDismissed = true;
+        ModUtilitiesMod.LOGGER.info("[AutoTest] client: dismissing NeoForge loading warnings ({})", warnings.size());
+        next.run();
+    }
+
+    private static Field field(Class<?> c, String name) throws NoSuchFieldException {
+        Field f = c.getDeclaredField(name);
+        f.setAccessible(true);
+        return f;
     }
 
     private static void finish(Minecraft mc, String status) {

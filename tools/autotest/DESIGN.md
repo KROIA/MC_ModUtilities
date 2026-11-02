@@ -58,7 +58,9 @@ Server side (dedicated or integrated), every server tick until done:
    - `after=<file>`: file exists (used to run the slave after the master's run).
    All conditions must then hold for 40 ticks (settle) before the run starts.
 3. Run every mod's suites that `canRunOn(isSlave)` with the first online player (or none), on the
-   server thread, like the `/x test` command does.
+   server thread, like the `/x test` command does. The run is queued as a server task (not run inside
+   the `SERVER_POST` tick event): tests that register event listeners would otherwise make
+   Architectury throw `ConcurrentModificationException` and crash the server.
 4. Write `results.json` atomically (tmp + rename; other instances poll it), then a dedicated server
    with `stop=true` halts itself. In singleplayer a static "finished" flag tells the client to quit.
 5. After `SERVER_STOPPED` a dedicated autotest server calls `System.exit(0)` (from its own thread):
@@ -72,6 +74,9 @@ Client side (`AutoTestClient`): on the title screen (after 20 ticks) either
 `ConnectScreen.startConnecting(host:port)` or `createWorldOpenFlows().createFreshLevel(...)` with a fixed
 seed. Quits (`Minecraft.stop()`) when the integrated server finished, when the dedicated server drops
 the connection after its run, or when the connection fails. Writes `results.json.client.json`.
+Before that, NeoForge's `LoadingErrorScreen` (shown in dev from 21.7 on for Architectury's `@OnlyIn`
+warning) is read via reflection: warnings only are dismissed by running its "Proceed" task, real
+errors (or a reflection failure) end the client with status `loading_errors`.
 
 Watchdog: a daemon thread per JVM; after `timeout` seconds it writes a `timeout` report and halts.
 Peaceful difficulty is set on every autotest server.
@@ -98,7 +103,8 @@ whole build). So Gradle is only used up front, to *record* the launch (one short
 run task: on Gradle 9 `runClient` + `runServer` in one build fail task validation):
 
 - `-Pautotest_agent=<capture.jar>=<dir>` adds `-javaagent:capture.jar=<dir>/<loader>-<task>.json` to
-  `runClient`/`runServer` (root build.gradle, identical in every version folder).
+  `runClient`/`runServer` through the Gradle init script `capture.init.gradle` (`gradlew -I ...`), so
+  no project build script needs a hook (works for BankSystem/StockMarket as they are).
 - `CaptureAgent.premain` writes `java.home`, `java.class.path`, `sun.java.command`, the JVM input
   arguments (`--module-path=…`, `--add-opens=…`, Architectury's own agent, …) and the environment
   (NeoForge's `MOD_CLASSES`), then `halt(0)`s before the game starts. Gradle sees a normal exit.
@@ -124,10 +130,30 @@ Per project: compile the agent, capture, then for each loader × config a fresh 
 | `slave` | master (`waitSlaves=1`, no player, keeps running) → slave (`after=master results`, `waitPlayer`) → client joins slave | master, slave |
 | `spslave` | master (`waitSlaves=1`, no player) → client creates a world configured as slave (`after=master results`) | master, client |
 
-Shutdown: the client quits by itself (bounded by its watchdog, killed after timeout + 60 s);
+Shutdown: the client quits by itself (bounded by its watchdog, killed after timeout + 60 s). If a
+server exits without a report, or a master that must stay up exits, the cell is aborted at once
+(its peers would only wait for a link or file that never comes);
 self-stopping servers get 120 s; then every remaining server gets `stop` on stdin, 60 s, then
 `taskkill /T /F`. Ready detection for servers: `Done (` in the console log.
 
 Output: per-cell line while running, `summary.json`, and a table
 project × loader × config → OK/FAIL, passed, failed, errors, seconds, instance statuses.
 Exit code 0 only if every cell passed.
+
+## 7. Live status files and GUI (`matrix_gui.py`)
+
+All JSON is written atomically (tmp + `os.replace`); the GUI only polls files (every 2 s), so runs
+started from the command line show up the same way.
+
+- `<out>/running.lock`: pid of the active run_matrix; written at start, removed in `finally`. A lock
+  whose pid is alive makes a second run exit (ports are shared); a dead pid is a stale lock and is
+  overwritten. Liveness: `OpenProcess` + `GetExitCodeProcess` via ctypes (Windows), `kill(pid, 0)` elsewhere.
+- `<out>/<project>/capture.json`: `{state: capturing, loaders, configs, started}` during Gradle, then
+  `state: done` with `rc` and `finished`.
+- `<out>/<project>/<loader>/<config>/cell.json`: `{state: running, project, loader, config, started}`
+  before the cell starts, then the summary row plus `state` (`passed`, `failed` = failed tests,
+  `error` = anything else not ok) and `finished`. It lives in the cell dir, which `prepare()` never
+  deletes (only the instance subdirs). `running` without a live `running.lock` = interrupted.
+- `<out>/gui.lock`: pid of the open GUI; `--gui` does not open a second one.
+- The GUI turns a set of cells into one run_matrix call per project and config set (each call must be
+  a full loaders × configs product), run one after another; log in `<out>/gui-run.log`.

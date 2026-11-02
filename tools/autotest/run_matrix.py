@@ -6,8 +6,8 @@ Stdlib only. See README.md in this folder. Short version:
     python tools/autotest/run_matrix.py E:/.../mc_1.21.1_MC_ModUtilities
     python tools/autotest/run_matrix.py --root E:/.../StockMarket --versions 1.21.1 26.3 --configs sp mp
 
-Per project it runs Gradle once (runClient/runServer with a capture agent, see build.gradle
-`autotest_agent`) to record Loom's exact launch commands, then starts every game instance directly,
+Per project it runs Gradle once per run task (runClient/runServer with a capture agent, added by
+capture.init.gradle) to record Loom's exact launch commands, then starts every game instance directly,
 so master, slave and client of one project run side by side without fighting over Gradle locks.
 The project must be a dev build (enable_dev_features=true) for the tests and the autotest hook to exist.
 """
@@ -21,6 +21,7 @@ import sys
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+MODS_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(HERE))))  # tools/autotest -> repo -> mod -> mods
 CONFIGS = ('sp', 'mp', 'slave', 'spslave')
 LOADERS = ('fabric', 'neoforge')
 MASTER_PORT, SLAVE_PORT, LINK_PORT = 25611, 25612, 25690
@@ -55,7 +56,7 @@ def capture(project, loaders, agent, out_dir, offline, log):
     with open(log, 'w', encoding='utf-8', errors='replace') as f:
         for task in [f':{l}:{t}' for l in loaders for t in ('runClient', 'runServer')]:
             cmd = [os.path.join(project, 'gradlew.bat' if os.name == 'nt' else 'gradlew'), task,
-                   f'-Pautotest_agent={agent}={cap}',
+                   '-I', os.path.join(HERE, 'capture.init.gradle'), f'-Pautotest_agent={agent}={cap}',
                    '-Penable_dev_features=true'] + (['--offline'] if offline else [])  # tests only exist in dev builds
             f.write(f'>>> {" ".join(cmd)}\n')
             f.flush()
@@ -154,8 +155,10 @@ def prepare(run_dir, multiserver, server_port=None):
             'narrator:0', 'fullscreen:false', '']))
     else:
         write(os.path.join(run_dir, 'eula.txt'), 'eula=true\n')
+        # newer versions (26.3) default the whitelist on -> client gets "not white-listed"
         write(os.path.join(run_dir, 'server.properties'), '\n'.join([
-            f'server-port={server_port}', 'online-mode=false', 'enforce-secure-profile=false', 'level-seed=20240101',
+            f'server-port={server_port}', 'online-mode=false', 'white-list=false', 'enforce-whitelist=false',
+            'enforce-secure-profile=false', 'level-seed=20240101',
             'level-type=minecraft\\:flat', 'generate-structures=false', 'difficulty=peaceful', 'spawn-protection=0',
             'max-tick-time=-1', 'view-distance=4', 'simulation-distance=4', 'enable-rcon=false', 'motd=autotest', '']))
 
@@ -243,9 +246,16 @@ def run_cell(specs, loader, config, cell_dir, timeout, mods):
                 cl = client(ms_slave('autotest_sp_slave'), world='new', after=master.results)
                 tested.append(cl)
         # The client quits on its own once its world/server is done; its watchdog bounds this.
+        # A server that died without a report, or a master that should stay up but exited, leaves the
+        # others waiting for a link or a file that never comes: end the cell at once instead.
+        def broken():
+            return [s.name for s in servers if not s.alive() and
+                    (not os.path.exists(s.results) or s.props.get('modutilities.autotest.stop') != 'true')]
         if cl:
-            cl.wait(timeout + 60)
-            if cl.alive():
+            wait_until(lambda: not cl.alive() or broken(), timeout + 60)
+            if broken():
+                notes.append(f'{"/".join(broken())} exited early (crash?), cell aborted')
+            elif cl.alive():
                 notes.append('client hung, killed')
         # Servers that stop themselves after their run get time to finish writing.
         for s in servers:
@@ -265,6 +275,56 @@ def read_json(path):
             return json.load(f)
     except (OSError, ValueError):
         return None
+
+
+def write_json(path, data):
+    """Atomic (tmp + replace): the GUI polls these files."""
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path + '.tmp', 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=2)
+    os.replace(path + '.tmp', path)
+
+
+def now():
+    return time.strftime('%Y-%m-%dT%H:%M:%S')
+
+
+def pid_alive(pid):
+    if os.name == 'nt':
+        import ctypes
+        k = ctypes.windll.kernel32
+        h = k.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+        if not h:
+            return False
+        code = ctypes.c_ulong()
+        ok = k.GetExitCodeProcess(h, ctypes.byref(code))
+        k.CloseHandle(h)
+        return bool(ok) and code.value == 259  # STILL_ACTIVE
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
+def lock_pid(path):
+    """pid in a lock file if that process is alive, else None."""
+    try:
+        with open(path) as f:
+            pid = int(f.read().strip())
+    except (OSError, ValueError):
+        return None
+    return pid if pid_alive(pid) else None
+
+
+def start_gui(out):
+    if lock_pid(os.path.join(out, 'gui.lock')):
+        return
+    exe = os.path.join(os.path.dirname(sys.executable), 'pythonw.exe')
+    exe = exe if os.path.exists(exe) else sys.executable
+    flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0
+    subprocess.Popen([exe, os.path.join(HERE, 'matrix_gui.py'), '--out', out], creationflags=flags,
+                     stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def summarize(insts, tested, notes):
@@ -291,10 +351,15 @@ def summarize(insts, tested, notes):
 
 # ---------------------------------------------------------------- main
 
+def find_projects(root, version):
+    """mc_<version>_* folders under root (case-insensitive; the trailing _ keeps 1.21.1 from matching 1.21.10)."""
+    return [p for p in glob.glob(os.path.join(root, '*')) if os.path.basename(p).lower().startswith(f'mc_{version}_')]
+
+
 def resolve_projects(args):
     projects = [os.path.abspath(p) for p in args.projects]
     for v in args.versions or []:
-        hits = [p for p in glob.glob(os.path.join(args.root, '*')) if os.path.basename(p).lower().startswith(f'mc_{v}_')]
+        hits = find_projects(args.root, v)
         if not hits:
             sys.exit(f'no project folder for version {v} under {args.root}')
         projects += hits
@@ -312,21 +377,42 @@ def main():
     ap.add_argument('--configs', nargs='*', default=list(CONFIGS), choices=CONFIGS)
     ap.add_argument('--timeout', type=int, default=900, help='per-instance watchdog, seconds')
     ap.add_argument('--mods', help='comma separated mod ids to test (default: every mod with registered suites)')
-    ap.add_argument('--out', default=os.path.join(os.getcwd(), 'autotest-out'), help='output folder')
+    ap.add_argument('--out', default=os.path.join(MODS_ROOT, 'autotest-out'), help='output folder')
     ap.add_argument('--offline', action='store_true', help='pass --offline to Gradle')
+    ap.add_argument('--gui', action='store_true', help='open matrix_gui.py on the same --out')
     args = ap.parse_args()
 
     out = os.path.abspath(args.out)
     os.makedirs(out, exist_ok=True)
+    projects = resolve_projects(args)
+    lock = os.path.join(out, 'running.lock')
+    other = lock_pid(lock)
+    if other:
+        sys.exit(f'another run_matrix (pid {other}) is using {out} and the test ports; stop it first')
+    with open(lock, 'w') as f:
+        f.write(str(os.getpid()))
+    if args.gui:
+        start_gui(out)
+    try:
+        run(args, out, projects)
+    finally:
+        if lock_pid(lock) == os.getpid():
+            os.remove(lock)
+
+
+def run(args, out, projects):
     agent = build_agent(out)
     rows = []
-    for project in resolve_projects(args):
+    for project in projects:
         name = os.path.basename(project)
         pdir = os.path.join(out, name)
         os.makedirs(pdir, exist_ok=True)
         glog = os.path.join(pdir, 'gradle-capture.log')
         print(f'[{name}] capturing launch commands (gradle) ...', flush=True)
+        cap = {'state': 'capturing', 'loaders': args.loaders, 'configs': args.configs, 'started': now()}
+        write_json(os.path.join(pdir, 'capture.json'), cap)
         rc, specs = capture(project, args.loaders, agent, pdir, args.offline, glog)
+        write_json(os.path.join(pdir, 'capture.json'), {**cap, 'state': 'done', 'rc': rc, 'finished': now()})
         if rc != 0:
             print(f'[{name}] gradle exited with {rc}, see {glog}', flush=True)
         for loader in args.loaders:
@@ -334,10 +420,16 @@ def main():
                 cell = os.path.join(pdir, loader, config)
                 print(f'[{name}] {loader} {config} ...', flush=True)
                 t0 = time.time()
+                # cell.json sits in the cell dir; prepare() only replaces the instance subdirs.
+                status = os.path.join(cell, 'cell.json')
+                write_json(status, {'state': 'running', 'project': name, 'loader': loader, 'config': config,
+                                    'started': now()})
                 insts, tested, notes = run_cell(specs, loader, config, cell, args.timeout, args.mods)
                 row = summarize(insts, tested, notes)
                 row.update(project=name, loader=loader, config=config, seconds=int(time.time() - t0), dir=cell)
                 rows.append(row)
+                state = 'passed' if row['ok'] else 'failed' if row['failed'] else 'error'
+                write_json(status, {**row, 'state': state, 'finished': now()})
                 print(f"    {'PASS' if row['ok'] else 'FAIL'} {row['passed']} passed, {row['failed']} failed, "
                       f"{row['errors']} errors  [{row['status']}]", flush=True)
 
