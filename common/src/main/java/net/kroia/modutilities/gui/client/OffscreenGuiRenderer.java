@@ -35,6 +35,12 @@ package net.kroia.modutilities.gui.client;
         //return activeSize; // mc>=1.21.6
     //} // mc>=1.21.6
 
+    /** True while the constructor builds its GuiRenderer; read by FabricSpecialGuiElementRegistryMixin. */
+    //private static boolean constructing; // mc>=1.21.6 mc<=1.21.8
+    //public static boolean isConstructing() { // mc>=1.21.6 mc<=1.21.8
+        //return constructing; // mc>=1.21.6 mc<=1.21.8
+    //} // mc>=1.21.6 mc<=1.21.8
+
     //private final GuiRenderState state = new GuiRenderState(); // mc>=1.21.6
     //private final GuiRenderer renderer; // mc>=1.21.6
     //private final FogRenderer fogRenderer = new FogRenderer(); // mc>=1.21.6 mc<=26.1
@@ -46,7 +52,12 @@ package net.kroia.modutilities.gui.client;
     /** @param bufferSource buffer source used for item rendering into the item atlas */
     //public OffscreenGuiRenderer(MultiBufferSource.BufferSource bufferSource) { // mc>=1.21.6 mc<=26.1
     //public OffscreenGuiRenderer() { // (26.2: no buffer sources; items render through the feature dispatcher) // mc>=26.2
-        //renderer = new GuiRenderer(state, bufferSource, List.of()); // mc>=1.21.6 mc<=1.21.8
+        //constructing = true; // mc>=1.21.6 mc<=1.21.8
+        //try { // mc>=1.21.6 mc<=1.21.8
+            //renderer = new GuiRenderer(state, bufferSource, List.of()); // mc>=1.21.6 mc<=1.21.8
+        //} finally { // mc>=1.21.6 mc<=1.21.8
+            //constructing = false; // mc>=1.21.6 mc<=1.21.8
+        //} // mc>=1.21.6 mc<=1.21.8
         //Minecraft mc = Minecraft.getInstance(); // mc>=1.21.9
         //featureDispatcher = new net.minecraft.client.renderer.feature.FeatureRenderDispatcher(submitNodes, mc.getBlockRenderer(), bufferSource, // mc>=1.21.9 mc<=1.21.11
         //featureDispatcher = new net.minecraft.client.renderer.feature.FeatureRenderDispatcher(submitNodes, mc.getModelManager(), bufferSource, // mc>=26.1 mc<=26.1

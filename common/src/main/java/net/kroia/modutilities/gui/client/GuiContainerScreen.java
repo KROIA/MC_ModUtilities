@@ -447,6 +447,13 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
         gui.setPartialTick(pPartialTick);
         if(enableForeground)
             gui.render();
+        // mc>=1.21.7: JEI draws its ingredient list only from inside vanilla's container render, which this
+        // screen skips (ContainerView draws slots + carried item itself), so fire that hook here, above our GUI.
+        //pGuiGraphics.nextStratum(); // mc>=1.21.7
+        //pGuiGraphics.pose().pushMatrix(); // mc>=1.21.7 mc<=1.21.11 (vanilla fires the hook inside its leftPos/topPos translation)
+        //pGuiGraphics.pose().translate(leftPos, topPos); // mc>=1.21.7 mc<=1.21.11
+        //ContainerForegroundHook.fire(this, pGuiGraphics, pMouseX, pMouseY, pPartialTick); // mc>=1.21.7
+        //pGuiGraphics.pose().popMatrix(); // mc>=1.21.7 mc<=1.21.11
         if(enableTooltip)
             gui.renderTooltip();
         if(enableGizmos)
