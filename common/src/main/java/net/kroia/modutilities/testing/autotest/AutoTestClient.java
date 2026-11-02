@@ -1,6 +1,7 @@
 package net.kroia.modutilities.testing.autotest;
 
 import com.google.gson.JsonObject;
+import dev.architectury.event.events.client.ClientLifecycleEvent;
 import dev.architectury.event.events.client.ClientTickEvent;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.gui.client.ClientCompat;
@@ -11,7 +12,10 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.level.levelgen.WorldDimensions;
 import net.minecraft.world.level.levelgen.WorldOptions;
 import net.minecraft.world.level.levelgen.presets.WorldPresets;
 
@@ -22,10 +26,11 @@ import java.util.List;
 /**
  * Client half of {@link AutoTest}; only class-loaded on the physical client.
  * <p>
- * On the title screen it either joins {@code -Dmodutilities.autotest.connect=host:port} or creates a
- * fresh singleplayer world ({@code -Dmodutilities.autotest.world=new}, fixed seed). It quits when the
- * integrated server finished its run, when the dedicated server closes the connection after its run,
- * or when the connection fails. Its own status goes to {@code <results>.client.json}.
+ * On the title screen it either joins {@code -Dmodutilities.autotest.connect=host:port}, creates a
+ * fresh superflat singleplayer world ({@code -Dmodutilities.autotest.world=new}, fixed seed) or opens the
+ * existing save {@code saves/<name>} ({@code world=<name>}). It quits when the integrated server finished
+ * its run, when the dedicated server closes the connection after its run, or when the connection fails.
+ * Its own status goes to {@code <results>.client.json}. In play mode it only joins/opens and stays.
  */
 final class AutoTestClient {
     private AutoTestClient() {}
@@ -53,6 +58,8 @@ final class AutoTestClient {
             return;
         }
         ClientTickEvent.CLIENT_POST.register(AutoTestClient::tick);
+        // The user closes the game: make sure the dev JVM really exits (see finish()).
+        if (AutoTest.PLAY) ClientLifecycleEvent.CLIENT_STOPPING.register(mc -> haltLater());
     }
 
     private static void tick(Minecraft mc) {
@@ -66,6 +73,7 @@ final class AutoTestClient {
             if (screen instanceof TitleScreen && ++titleTicks >= TITLE_TICKS) {
                 started = true;
                 start(mc, screen);
+                if (AutoTest.PLAY) done = true; // manual play: no quit logic
             }
             return;
         }
@@ -85,13 +93,24 @@ final class AutoTestClient {
             ModUtilitiesMod.LOGGER.info("[AutoTest] client: connecting to {}", CONNECT);
             ConnectScreen.startConnecting(parent, mc, ServerAddress.parseString(CONNECT),
                     new ServerData("autotest", CONNECT, ServerData.Type.OTHER), false, null);
+        } else if (!"new".equals(WORLD)) {
+            ModUtilitiesMod.LOGGER.info("[AutoTest] client: opening saved world '{}'", WORLD);
+            mc.createWorldOpenFlows().openWorld(WORLD, () -> {});
         } else {
-            ModUtilitiesMod.LOGGER.info("[AutoTest] client: creating singleplayer world '{}'", WORLD);
+            ModUtilitiesMod.LOGGER.info("[AutoTest] client: creating superflat singleplayer world '{}'", WORLD);
             // DEMO_SETTINGS + a method reference keep this call identical on every supported version
             // (LevelSettings/GameRules constructors and the dimensions function type all drift).
             mc.createWorldOpenFlows().createFreshLevel("autotest-" + WORLD, MinecraftServer.DEMO_SETTINGS,
-                    new WorldOptions(SEED, false, false), WorldPresets::createNormalWorldDimensions, parent);
+                    new WorldOptions(SEED, false, false), AutoTestClient::flatWorld, parent);
         }
+    }
+
+    /**
+     * The superflat preset from the registry (fast to generate). Takes {@link HolderLookup.Provider}, so the
+     * method reference fits {@code createFreshLevel} on 1.21.1 ({@code RegistryAccess}) and later versions.
+     */
+    private static WorldDimensions flatWorld(HolderLookup.Provider registries) {
+        return registries.lookupOrThrow(Registries.WORLD_PRESET).getOrThrow(WorldPresets.FLAT).value().createWorldDimensions();
     }
 
     /** Presses "Proceed" on a warnings-only NeoForge loading screen; fails fast on real errors. */
@@ -129,8 +148,15 @@ final class AutoTestClient {
         done = true;
         write(status);
         ModUtilitiesMod.LOGGER.info("[AutoTest] client: {}, quitting", status);
-        // Dev launches do not always exit after Minecraft.stop() (non-daemon launcher thread pools;
-        // NeoForge 26.x fails in its shutdown watchdog after closing the game module), so halt as a fallback.
+        haltLater();
+        mc.stop();
+    }
+
+    /**
+     * Dev launches do not always exit after Minecraft.stop() (non-daemon launcher thread pools;
+     * NeoForge 26.x fails in its shutdown watchdog after closing the game module), so halt as a fallback.
+     */
+    private static void haltLater() {
         Thread exit = new Thread(() -> {
             try {
                 Thread.sleep(EXIT_GRACE_MS);
@@ -141,7 +167,6 @@ final class AutoTestClient {
         }, "ModUtilities-AutoTest-Exit");
         exit.setDaemon(true);
         exit.start();
-        mc.stop();
     }
 
     private static void write(String status) {

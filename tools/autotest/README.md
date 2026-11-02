@@ -17,7 +17,12 @@ Design: [DESIGN.md](DESIGN.md).
 ```
 python tools/autotest/run_matrix.py <project folder> [<project folder> ...]
 python tools/autotest/run_matrix.py --root E:/Dokumente/Minecraft/mods/MC_ModUtilities --versions 1.21.1 26.3
+python tools/autotest/run_matrix.py <project folder> --play fabric mp [--world <world folder>]
 ```
+
+Per project it first builds the loaders' mod jars (`gradlew :<loader>:build -x test -Penable_dev_features=true`),
+so the tested code and the jars are the same; a failed build marks the project's cells as error.
+Test worlds are always fresh superflat worlds.
 
 Options:
 
@@ -30,6 +35,8 @@ Options:
 | `--out` | `<mods root>/autotest-out` | output folder (shared by every run, so the GUI shows CLI runs too) |
 | `--offline` | off | pass `--offline` to Gradle |
 | `--gui` | off | also open `matrix_gui.py` on the same `--out` (unless one is already open) |
+| `--play L C` | off | manual play of one project, loader `L`, config `C`: the same instances and multi-server setup as the test cell, no tests, no auto-stop. Ends when the game client is closed or `<out>/play/stop` exists (GUI Stop); servers get `stop`, then are killed. Output in `<out>/play/<project>/<loader>/<config>/` |
+| `--world DIR` | new superflat | `--play`: world folder (with `level.dat`) copied fresh into every instance: servers `<instance>/world`, singleplayer client `saves/play` (opened directly). The template is never modified |
 
 Exit code 0 when every cell passed. Only one run per output folder at a time (`running.lock`;
 all runs share the test ports): a second one exits with a message.
@@ -51,21 +58,42 @@ above this folder), the same as run_matrix.py.
 | orange | error: no results, timeout, crash, launch spec missing (`1 err`) |
 | purple | interrupted: the run was killed while this cell ran |
 | dark, `n/a` | no project folder for this mod/version |
+| teal, `PLAY` | a play session of this cell is running |
+| lighter colour, `*` suffix | stale: a mod jar changed since this result (tooltip: which jar, or `jar missing`) |
+
+- Results persist: reopening the GUI shows the last results (read from `cell.json`). Only
+  **Clear results** (all cells; logs, `play/` and settings are kept) or **Clear result** in a cell's
+  menu resets cells to "not run".
+- Stale: each `cell.json` stores the sha256 of the jars the run used (the project's own
+  `<loader>/build/libs` jar plus the ModUtilities/BankSystem jars it gets via `flatDir`). The GUI
+  compares them with the current jars (hashes cached by mtime/size). A ModUtilities jar change makes
+  ModUtilities, BankSystem and StockMarket cells stale; a BankSystem jar change the StockMarket (and
+  BankSystem) cells. Results from before fingerprinting count as stale. Stale cells are rerun by
+  **Run not passed**.
+- BankSystem rows have no own runs: every StockMarket cell also runs the banksystem suites, so a
+  BankSystem cell shows the banksystem counts of the matching StockMarket cell ("results via
+  StockMarket"). Running or clearing a BankSystem cell does so for the StockMarket cell.
 
 - Hover: details (counts, status string, seconds, finished time, cell folder, failed test names).
 - Double-click a cell: run that cell; double-click a version label: run the whole row; right-click a
-  cell: open its folder.
-- **Run all** / **Run not passed**: every (non-green) cell of the ticked mods. Runs are queued, one
-  `run_matrix.py` call per project; output goes to `<out>/gui-run.log`.
-- **Stop**: kills the active run_matrix (also one started from the command line) and its games.
-- Run buttons are disabled while any run holds `running.lock`.
+  cell: menu **Play** / **Run tests** / **Clear result** / **Open folder**.
+- **Play**: starts that project/loader/config for manual play (`--play`, see above); the client joins
+  the server or opens the world by itself. Stop by closing the game or with **Stop**.
+- **Choose play world...**: pick a world folder (must contain `level.dat`) for Play; cancel the dialog to
+  go back to a new superflat world. Saved in `<out>/gui-settings.json`.
+- **Run all** / **Run not passed**: every (non-green or stale) cell of the ticked mods. Runs are queued,
+  one `run_matrix.py` call per project; output goes to `<out>/gui-run.log`.
+- **Stop**: a play session is stopped gracefully (`<out>/play/stop`); otherwise (or pressed again) it kills
+  the active run_matrix (also one started from the command line) and its games.
+- Run/Play are refused while any run or play session holds `running.lock` (shared ports).
 - New MC version: [ADDING_A_VERSION.md](ADDING_A_VERSION.md).
 
 ## Output
 
 ```
 <out>/summary.json
-<out>/running.lock, gui.lock, gui-run.log
+<out>/running.lock, gui.lock, gui-run.log, gui-settings.json
+<out>/play/play.json, play/<project>/<loader>/<config>/<instance>/   play sessions
 <out>/<project>/gradle-capture.log, capture.json
 <out>/<project>/<loader>/<config>/cell.json                   cell status (read by the GUI)
 <out>/<project>/<loader>/<config>/<instance>/console.log      game log
