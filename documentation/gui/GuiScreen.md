@@ -130,6 +130,11 @@ public class TestScreen extends GuiScreen {
 
 ---
 
+### GUI scale
+`setGuiScale(float)` (on `GuiScreen` / `GuiContainerScreen`, usually called in the constructor) scales the whole screen relative to the Minecraft GUI scale. Values below 1 make the screen smaller and give `updateLayout` more room in `getWidth()` / `getHeight()`.
+
+The requested value is snapped so that one GUI unit is a whole number of screen pixels: `round(scale * mcGuiScale) / mcGuiScale` (at least 1 px per unit). Example: 0.8 at Minecraft GUI scale 3 renders as 2/3 (2 px per unit instead of 2.4). This keeps items and textures sharp; without it nearest-sampled textures show uneven 2/3 px texel columns. The snapped value is recomputed on every `init()` (resize, GUI scale change), so always lay out from `getWidth()` / `getHeight()` instead of assuming a fixed size. `getGuiScale()` returns the effective (snapped) scale, `Gui.getRequestedGuiScale()` the value you passed. A scale of 1.0 is never changed.
+
 ### Debuging
 There are multiple debug keys defined which can help finding bugs in layouting or drawing stuff.
 - **F3**: 
