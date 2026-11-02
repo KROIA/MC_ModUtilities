@@ -8,6 +8,7 @@
     "GuiGraphicsAccessor",
     "MinecraftAccessor",
     "GuiRendererWindowMixin",
+    "GuiRendererScaledItemsMixin",
     "FabricSpecialGuiElementRegistryMixin"
   ],
   "mixins": [
