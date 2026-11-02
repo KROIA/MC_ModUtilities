@@ -73,15 +73,6 @@ subprojects {
         }
     }
 
-    // tools/autotest/run_matrix.py: -Pautotest_agent=<capture agent jar>=<out dir> makes the game run tasks
-    // record their exact launch command (JVM args, classpath, main class, environment) and exit at once,
-    // so the orchestrator can start several instances of one project in parallel without Gradle.
-    if (project.hasProperty('autotest_agent')) {
-        tasks.matching { it.name in ['runClient', 'runServer'] }.configureEach {
-            jvmArgs "-javaagent:${project.property('autotest_agent')}/${project.name}-${it.name}.json"
-        }
-    }
-
     java {
         // Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
         // if it is present.
