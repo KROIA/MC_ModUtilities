@@ -30,6 +30,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Unattended test runs for tools/autotest/run_matrix.py. Dev builds only (see {@code DevBootstrap}).
@@ -78,6 +79,7 @@ public final class AutoTest {
     private static int readyTicks;
     private static String waitingFor = "server start";
     private static boolean ownsMultiServer;
+    private static boolean started;
 
     public static boolean isEnabled() {
         return LABEL != null;
@@ -127,7 +129,7 @@ public final class AutoTest {
     }
 
     private static void serverTick(MinecraftServer server) {
-        if (finished) return;
+        if (finished || started) return;
         if (++tick == 1) ensureMultiServer(server);
 
         String waiting = waitingFor(server);
@@ -139,7 +141,11 @@ public final class AutoTest {
         }
         waitingFor = "settle";
         if (++readyTicks < SETTLE_TICKS) return;
-        run(server);
+        started = true;
+        // Run as a server task, not inside this tick event: tests may register event listeners, and
+        // Architectury throws ConcurrentModificationException when that happens while it iterates
+        // the SERVER_POST listeners. execute() from another thread queues the task on the server thread.
+        CompletableFuture.runAsync(() -> server.execute(() -> run(server)));
     }
 
     private static @Nullable String waitingFor(MinecraftServer server) {
