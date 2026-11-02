@@ -60,6 +60,24 @@ def build(project, loaders, offline, log):
         return subprocess.run(cmd, cwd=project, stdout=f, stderr=subprocess.STDOUT, timeout=3600).returncode
 
 
+def build_deps(project, loaders, offline, log, built):
+    """Builds the flatDir dependency projects (found via mod_jars: <dep>/<loader>/build/libs/x.jar), their own
+    dependencies first, so the project never runs against stale dependency jars. `built` maps project -> rc and
+    keeps every project to one build per run_matrix invocation. Returns the first failed project or None."""
+    for dep in dict.fromkeys(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(j))))
+                             for l in loaders for j in mod_jars(project, l)[1:]):
+        failed = build_deps(dep, loaders, offline, log, built)
+        if failed:
+            return failed
+        key = os.path.normcase(dep)
+        if key not in built:
+            print(f'[{os.path.basename(project)}] building dependency {os.path.basename(dep)} ...', flush=True)
+            built[key] = build(dep, loaders, offline, log)
+        if built[key] != 0:
+            return dep
+    return None
+
+
 def clear_remap_cache(project, log):
     """Deletes Loom's remapped copies of the flatDir mod jars (.gradle/loom-cache/remapped_mods): Loom would keep
     using an old remapped dependency after its jar changed, so the run would not test what the fingerprint says.
@@ -563,7 +581,12 @@ def play(args, out, project):
     open(glog, 'w').close()
     notes = []
     try:
-        # No build here; only clear Loom's remapped dependencies when a dependency jar changed since last time.
+        # The capture compiles the project itself; rebuild its dependency projects, then clear Loom's remapped
+        # dependencies only when a dependency jar changed since last time.
+        failed = build_deps(project, [loader], args.offline, glog, {})
+        if failed:
+            notes = [f'dependency build failed: {os.path.basename(failed)} (see gradle-capture.log)']
+            return
         deps_file = os.path.join(out, name, 'deps.json')
         old, deps = read_json(deps_file) or {}, dep_hashes(project, [loader])
         if any(old.get(j) != h for j, h in deps.items()):
@@ -587,6 +610,7 @@ def play(args, out, project):
 def run(args, out, projects):
     agent = build_agent(out)
     rows = []
+    built = {}
     for project in projects:
         name = os.path.basename(project)
         pdir = os.path.join(out, name)
@@ -596,12 +620,16 @@ def run(args, out, projects):
         cap = {'state': 'capturing', 'loaders': args.loaders, 'configs': args.configs, 'started': now()}
         write_json(os.path.join(pdir, 'capture.json'), cap)
         open(glog, 'w').close()
+        failed = build_deps(project, args.loaders, args.offline, glog, built)
         deps = dep_hashes(project, args.loaders)
-        if deps and not clear_remap_cache(project, glog):  # always for mods with flatDir dependencies
+        if failed:
+            rc, reason = -1, f'dependency build failed: {os.path.basename(failed)} (see gradle-capture.log)'
+        elif deps and not clear_remap_cache(project, glog):  # always for mods with flatDir dependencies
             rc, reason = -1, 'cannot clear loom cache (see gradle-capture.log)'
         else:
             write_json(os.path.join(pdir, 'deps.json'), {**(read_json(os.path.join(pdir, 'deps.json')) or {}), **deps})
-            rc = build(project, args.loaders, args.offline, glog)
+            key = os.path.normcase(project)
+            rc = built[key] = built[key] if key in built else build(project, args.loaders, args.offline, glog)
             reason = f'build failed (rc {rc}, see gradle-capture.log)'
         if rc != 0:
             write_json(os.path.join(pdir, 'capture.json'), {**cap, 'state': 'done', 'rc': rc, 'finished': now()})

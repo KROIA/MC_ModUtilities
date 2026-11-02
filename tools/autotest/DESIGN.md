@@ -163,10 +163,12 @@ started from the command line show up the same way.
   `fingerprint` for the project's own `<loader>/build/libs/<archives_name>-<loader>-<mod_version>.jar` and
   each `flatDir` dir of `<loader>/build.gradle` (`<dep archives_name>-<loader>-<dep>_version>.jar`, versions
   from `gradle.properties`). The GUI recomputes them (cached by path + mtime + size); a difference or a
-  missing jar marks the result stale. This relies on Loom really using those jars: Loom keeps remapped
+  missing jar marks the result stale. First the `flatDir` dependency projects (jar dir `../../..`) are built
+  the same way, recursively upstream-first, each once per run_matrix call (test runs and `--play`); a failure
+  → `dependency build failed: <project>`. This relies on Loom really using those jars: Loom keeps remapped
   copies of flatDir mod jars in `<project>/.gradle/loom-cache/remapped_mods` and would go on using an old
   copy. So for every project with flatDir dependencies (detected from `<loader>/build.gradle` like the
-  jars above) run_matrix deletes that folder before the build in every test run, and in `--play` (no build)
+  jars above) run_matrix deletes that folder before the build in every test run, and in `--play`
   when a dependency jar's sha256 differs from `<out>/<project>/deps.json` (last recorded values; written
   by test runs and play). Logged in `gradle-capture.log`. If Windows keeps the folder locked, it runs
   `gradlew --stop` in the project and retries once; otherwise every cell of the project is `error`
@@ -186,4 +188,5 @@ the tests, report, auto-stop and watchdog; the client joins/opens and then leave
 `session.lock`) to every server's `world` and the singleplayer client's `saves/play` (`world=play` →
 `openWorld`). It ends when the client exits, a server exits or `<out>/play/stop` appears; then servers get
 `stop` (60 s) and are killed. Status `<out>/play/play.json` (`capturing`/`playing`/`stopped`), shares
-`running.lock` with test runs. No jar build (the project's own code runs from its classes).
+`running.lock` with test runs. No jar build of the project itself (its code runs from its classes); its
+dependency projects are built first.
