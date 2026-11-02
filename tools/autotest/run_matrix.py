@@ -543,6 +543,10 @@ def main():
             os.remove(lock)
 
 
+def play_dir(out, project, loader, config):
+    return os.path.join(out, 'play', os.path.basename(project), loader, config)
+
+
 def play(args, out, project):
     """Manual play: <out>/play/<project>/<loader>/<config>/, status in <out>/play/play.json, stop via <out>/play/stop."""
     loader, config = args.play
@@ -571,7 +575,7 @@ def play(args, out, project):
         rc, specs = capture(project, [loader], build_agent(out), pdir, args.offline, glog)
         write_json(status, {**info, 'state': 'playing'})
         print(f'[{name}] playing {loader} {config}; close the game or create {stop_file} to stop', flush=True)
-        notes = run_cell(specs, loader, config, os.path.join(pdir, loader, config), args.timeout, None,
+        notes = run_cell(specs, loader, config, play_dir(out, project, loader, config), args.timeout, None,
                          play=(args.world, stop_file))[2]
     finally:
         write_json(status, {**info, 'state': 'stopped', 'notes': notes, 'finished': now()})
