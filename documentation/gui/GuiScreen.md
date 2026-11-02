@@ -135,6 +135,8 @@ public class TestScreen extends GuiScreen {
 
 The requested value is snapped so that one GUI unit is a whole number of screen pixels: `round(scale * mcGuiScale) / mcGuiScale` (at least 1 px per unit). Example: 0.8 at Minecraft GUI scale 3 renders as 2/3 (2 px per unit instead of 2.4). This keeps items and textures sharp; without it nearest-sampled textures show uneven 2/3 px texel columns. The snapped value is recomputed on every `init()` (resize, GUI scale change), so always lay out from `getWidth()` / `getHeight()` instead of assuming a fixed size. `getGuiScale()` returns the effective (snapped) scale, `Gui.getRequestedGuiScale()` the value you passed. A scale of 1.0 is never changed.
 
+On 1.21.6+ items drawn under a custom scale stay crisp: they are rendered into an extra item atlas at the snapped pixel density instead of being resampled from vanilla's atlas.
+
 ### Debuging
 There are multiple debug keys defined which can help finding bugs in layouting or drawing stuff.
 - **F3**: 
