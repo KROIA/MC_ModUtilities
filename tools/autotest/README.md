@@ -21,7 +21,9 @@ python tools/autotest/run_matrix.py <project folder> --play fabric mp [--world <
 ```
 
 Per project it first builds the loaders' mod jars (`gradlew :<loader>:build -x test -Penable_dev_features=true`),
-so the tested code and the jars are the same; a failed build marks the project's cells as error.
+so the tested code and the jars are the same; a failed build marks the project's cells as error. Before that it
+builds the `flatDir` dependency projects the same way (ModUtilities, then BankSystem; each once per call, also
+in `--play`), so a dependent mod never runs against stale dependency jars.
 Test worlds are always fresh superflat worlds.
 
 Options:
