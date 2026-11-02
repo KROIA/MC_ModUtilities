@@ -154,10 +154,10 @@ class Gui:
         bar2.pack(fill='x', padx=4, pady=(0, 4))
         # Two template worlds: test_world for the test runs, play_world for Play; unset = new superflat world.
         self.world_labels = {}
-        for key, what in (('test_world', 'test'), ('play_world', 'play')):
-            tk.Button(bar2, text=f'Choose {what} world...', command=lambda k=key: self.choose_world(k)).pack(side='left')
+        for i, (key, what) in enumerate((('test_world', 'test'), ('play_world', 'play'))):
+            tk.Button(bar2, text=f'Choose {what} world...', command=lambda k=key: self.choose_world(k)).grid(row=i, column=0, sticky='ew')
             self.world_labels[key] = tk.Label(bar2, anchor='w')
-            self.world_labels[key].pack(side='left')
+            self.world_labels[key].grid(row=i, column=1, sticky='w')
             self.show_world(key)
 
         # Fixed header outside the scroll area; same widths/padding as the grid below keep the columns aligned.
