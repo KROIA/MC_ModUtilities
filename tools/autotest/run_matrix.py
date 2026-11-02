@@ -267,6 +267,7 @@ def prepare(run_dir, multiserver, server_port=None):
             f'server-port={server_port}', 'online-mode=false', 'white-list=false', 'enforce-whitelist=false',
             'enforce-secure-profile=false', 'level-seed=20240101',
             'level-type=minecraft\\:flat', 'generate-structures=false', 'difficulty=peaceful', 'spawn-protection=0',
+            'gamemode=creative', 'force-gamemode=true',
             'max-tick-time=-1', 'view-distance=4', 'simulation-distance=4', 'enable-rcon=false', 'motd=autotest', '']))
 
 
