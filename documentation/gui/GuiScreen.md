@@ -172,6 +172,19 @@ The Gui Screen renders in different steps:
 3) Tooltips
 4) Gizmos (Used for drawing the Bounding boxes which gets toggled by the **F3** Key). For the GuiElement it is the `GuiElement.renderGizmos()` which can be overwritten to draw custom stuff for debugging.
 
+### Overriding input and render methods across Minecraft versions
+Minecraft 1.21.9 moved screen input to event records (`mouseClicked(MouseButtonEvent, boolean)`, `keyPressed(KeyEvent)`, `charTyped(CharacterEvent)`), and 26.1 renamed screen rendering to `extractRenderState` / `extractBackground` with a `GuiGraphicsExtractor` parameter.
+
+`GuiScreen` and `GuiContainerScreen` bridge this for you: on every version the **int-based methods stay the extension points**:
+
+- `mouseClicked(double mouseX, double mouseY, int button)`, `mouseReleased(...)`, `mouseDragged(...)`, `mouseScrolled(...)`
+- `keyPressed(int keyCode, int scanCode, int modifiers)`
+- `charTyped(char codePoint, int modifiers)`
+
+On 1.21.9+ the event-record overrides forward to these methods, so override only the int-based ones and never the event-record variants. Compare `keyCode` / `button` against the named [`InputConstants`](GuiLibrary.md#inputconstants), never raw numbers (26.3 uses SDL3 key codes; there `scanCode` carries the layout key code, see `InputConstants.shortcutKey`).
+
+Overriding `render(...)` / `renderBackground(...)` directly is not version-neutral: the graphics parameter is `GuiGraphics` up to 1.21.11 and `GuiGraphicsExtractor` from 26.1. Draw through `GuiElement` render methods and `IGraphics` instead. See [Multi-Version Compatibility](../development/MultiVersionCompat.md) for the other compat helpers.
+
 ---
 ## See Also
 
