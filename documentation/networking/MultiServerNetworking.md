@@ -97,6 +97,8 @@ All slave-to-slave communication flows through the master server.
 
 Configuration loaded from `config/modutilities/MultiServerConfig.json`:
 
+> **Moved in 2.2.0:** older versions read `config/MultiServerConfig.json`. On first start, an existing file at the old location is moved to `config/modutilities/MultiServerConfig.json` once; an already existing file at the new location is never overwritten.
+
 **Master Configuration**:
 ```json
 {

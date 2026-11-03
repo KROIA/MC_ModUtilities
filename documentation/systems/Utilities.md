@@ -10,7 +10,9 @@ MC ModUtilities provides a comprehensive set of utility classes to simplify comm
 - **JSON Handling**: Serialization and formatting
 - **Timing**: Persistent timer with auto-restart capabilities
 - **Platform Detection**: Mod loading and platform abstraction
-- **Cross-Platform Support**: Unified API for Fabric/Forge/Quilt
+- **Cross-Platform Support**: Unified API for Fabric and NeoForge
+- **Recipe Images**: Export crafting recipes as PNG images ([RecipeImageExporter](#recipeimageexporter))
+- **Multi-Version Helpers**: see [Multi-Version Compatibility](../development/MultiVersionCompat.md)
 
 **Location**: `net.kroia.modutilities`
 
@@ -726,7 +728,7 @@ public void checkConflicts() {
 
 ## PlatformAbstraction
 
-Interface for platform-specific implementations (Fabric/Forge/Quilt).
+Interface for platform-specific implementations (Fabric and NeoForge; the `FORGE` and `QUILT` values of `UtilitiesPlatform.Type` remain in the enum, but those loaders are not built).
 
 **Note**: This is an internal interface used by `UtilitiesPlatform`. Most mods should use the higher-level utility classes instead.
 
@@ -750,8 +752,8 @@ UtilitiesPlatform.Type platform = UtilitiesPlatform.getPlatformType();
 
 switch (platform) {
     case FABRIC -> System.out.println("Running on Fabric");
-    case FORGE -> System.out.println("Running on Forge");
-    case QUILT -> System.out.println("Running on Quilt");
+    case NEOFORGE -> System.out.println("Running on NeoForge");
+    default -> System.out.println("Unsupported loader: " + platform);
 }
 
 // Access server instance
@@ -894,6 +896,37 @@ public JsonObject loadSettings(String jsonString) {
 
 ---
 
+## RecipeImageExporter
+
+`net.kroia.modutilities.gui.client.RecipeImageExporter` (client-only) renders a shaped crafting recipe (3x3 grid, arrow, result with stack count) into an offscreen render target with Minecraft's item renderer and saves it as a PNG. Used to generate recipe images for documentation (e.g. by BankSystem / StockMarket).
+
+- Must be called on the **render thread** (returns `false` and logs an error otherwise). Typical flow: a server command sends an S2C packet, the client packet handler calls the exporter.
+- Returns `true` on success; failures (null arguments, I/O errors) are logged and return `false`.
+- `scale` is the pixel scale factor of the output (each GUI pixel becomes `scale x scale` image pixels); the overloads without it use 4.
+
+```java
+import net.kroia.modutilities.gui.client.RecipeImageExporter;
+
+// Pattern strings + item IDs (space = empty slot)
+RecipeImageExporter.exportShapedRecipe(
+        new String[]{"ABA", " C ", " C "},
+        Map.of('A', "minecraft:iron_ingot", 'B', "minecraft:diamond", 'C', "minecraft:stick"),
+        "mymod:my_tool", 1,
+        Path.of("recipes/my_tool.png"));
+
+// Or an explicit ItemStack grid (rows x columns, null/EMPTY = empty slot)
+ItemStack[][] grid = RecipeImageExporter.patternToGrid(pattern, keyMap);
+RecipeImageExporter.exportShapedRecipe(grid, resultStack, outputPath, 8);
+```
+
+| Method | Description |
+|--------|-------------|
+| `exportShapedRecipe(ItemStack[][] grid, ItemStack result, Path out[, int scale])` | Export from an item grid |
+| `exportShapedRecipe(String[] pattern, Map<Character,String> keyMap, String resultId[, int resultCount], Path out[, int scale])` | Export from pattern strings and item IDs |
+| `patternToGrid(String[] pattern, Map<Character,String> keyMap)` | Convert pattern strings into a 3x3 `ItemStack` grid |
+
+---
+
 ## Performance Tips
 
 1. **ItemUtilities**: `getAllItems()` and `getItemsByCategory()` are already cached internally; call `invalidateCreativeItemCache()` on world load/unload and resource pack reload to refresh
@@ -908,5 +941,6 @@ public JsonObject loadSettings(String jsonString) {
 
 - [Event System](Events.md) - For event-driven programming
 - [Persistence System](Persistence.md) - For saving game state
-- [GUI System](../gui/README.md) - For user interface utilities
-- [Networking](../networking/README.md) - For client-server communication
+- [GUI System](../gui/GuiLibrary.md) - For user interface utilities
+- [Networking](../networking/Networking.md) - For client-server communication
+- [Multi-Version Compatibility](../development/MultiVersionCompat.md) - Compat helpers for code that builds on every supported MC version
