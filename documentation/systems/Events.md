@@ -553,5 +553,5 @@ For high-frequency events (e.g., every tick), consider:
 ## See Also
 
 - [Persistence System](../systems/Persistence.md) - For saving event-driven state
-- [Networking](../networking/README.md) - For network event handling
+- [Networking](../networking/Networking.md) - For network event handling
 - [Sandbox System](../development/Sandbox.md) - For testing events in isolation
