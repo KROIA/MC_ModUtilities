@@ -16,12 +16,13 @@ Design: [DESIGN.md](DESIGN.md).
 
 ```
 python tools/autotest/run_matrix.py <project folder> [<project folder> ...]
-python tools/autotest/run_matrix.py --root E:/Dokumente/Minecraft/mods/MC_ModUtilities --versions 1.21.1 26.3
+python tools/autotest/run_matrix.py --root <mods root>/MC_ModUtilities --versions 1.21.1 26.3
 python tools/autotest/run_matrix.py <project folder> --world <world folder>
 python tools/autotest/run_matrix.py <project folder> --play fabric mp [--world <world folder>]
 ```
 
-Per project it first builds the loaders' mod jars (`gradlew :<loader>:build -x test -Penable_dev_features=true`),
+Per project it first builds the loaders' mod jars (`gradlew :common:build :<loader>:build -x test -Penable_dev_features=true`; `:common` because dependents
+compile against its plain/`-dev` jar via `flatDir`),
 so the tested code and the jars are the same; a failed build marks the project's cells as error. Before that it
 builds the `flatDir` dependency projects the same way (ModUtilities, then BankSystem; each once per call, also
 in `--play`), so a dependent mod never runs against stale dependency jars.
@@ -40,6 +41,10 @@ Options:
 | `--offline` | off | pass `--offline` to Gradle |
 | `--gui` | off | also open `matrix_gui.py` on the same `--out` (unless one is already open) |
 | `--play L C` | off | manual play of one project, loader `L`, config `C`: the same instances and multi-server setup as the test cell, no tests, no auto-stop. Ends when the game client is closed or `<out>/play/stop` exists (GUI Stop); servers get `stop`, then are killed. Output in `<out>/play/<project>/<loader>/<config>/` |
+| `--clean-build` | off | no tests: `gradlew clean build -x test -Penable_dev_features=false` (release jars) of every given project, after clearing its Loom remap cache (locked cache = failure, no `gradlew --stop`: that would kill the parallel builds). One chain per MC version (`mc_<version>_` folder prefix) in the given order (dependencies first); `--jobs` chains run at once. A failure skips the rest of its chain (`dependency <name> failed`), other versions go on. Log `<out>/<project>/clean-build.log`, status `<out>/clean-build.json`, result per loader in `<out>/<project>/build.json`; exit code 1 if any failed |
+| `--jobs N` | `4` | `--clean-build`: MC versions built at once |
+| `--build-kind K` | `release` | `--clean-build`: `release` (`-Penable_dev_features=false`) or `dev` (`true`, jars include the tests). A test run right after a dev clean build finds the jars UP-TO-DATE (no recompile); it still clears the Loom remap cache of mods with `flatDir` dependencies, so those re-remap their dependency jars (seconds) |
+| `--test-jobs N` | `2` | `sp` cells run at once (own game dir, no ports, ~2-4 GB RAM each, one game window each), beside the multi-server cells, which still run one at a time (shared ports), and beside the builds/captures of the next projects. `1` = everything sequential |
 | `--world DIR` | new superflat | tests and `--play`: world folder (with `level.dat`) copied fresh into every instance of every cell: servers `<instance>/world`, singleplayer client `saves/play` (opened directly). The template is never modified. An older world is upgraded (the client confirms the backup/upgrade prompts by itself); a world newer than the cell's MC fails the cell (`world ... is from a newer Minecraft`) |
 
 Exit code 0 when every cell passed. Only one run per output folder at a time (`running.lock`;
@@ -65,6 +70,14 @@ above this folder), the same as run_matrix.py.
 | teal, `PLAY` | a play session of this cell is running |
 | lighter colour, `*` suffix | stale: a mod jar or the test world changed since this result (tooltip: which jar, `jar missing` or `test world changed`) |
 
+- **build** column (first per loader): the last Gradle build of the row's own project (BankSystem rows: the
+  BankSystem project), recorded by run_matrix in `<out>/<project>/build.json` per loader. Green `release`
+  (`--clean-build`), blue `dev` (test runs, `--build-kind dev`), red `FAIL` (`> Task :<loader>:... FAILED`, or every loader when
+  e.g. `:common` failed or it timed out), orange `no jar` (built, jar gone), light grey `jar ?` (jar without a
+  recorded build), grey empty (neither), amber `building` (a build of it runs now, also dependency builds of a
+  test run or Play), purple `intr` (that build was killed). A `?` suffix: the jar is newer than the recorded build (built outside
+  the tool). Hover: kind, rc, start/finish, jar path/time/size, build log path, error excerpt (`* What went wrong:`).
+  Right-click: **Clean build** of that project (`--clean-build <project>`, kind from the combobox). The status bar counts `build failed`.
 - Results persist: reopening the GUI shows the last results (read from `cell.json`). Only
   **Clear results** (all cells; logs, `play/` and settings are kept) or **Clear result** in a cell's
   menu resets cells to "not run".
@@ -89,8 +102,21 @@ above this folder), the same as run_matrix.py.
 - **Choose test world...** / **Choose play world...**: pick a world folder (must contain `level.dat`) for the
   test runs (`--world` of Run all / Run not passed / Run tests) and for Play, independently; cancel the dialog
   to go back to a new superflat world. Saved in `<out>/gui-settings.json` (`test_world`, `play_world`).
-- **Run all** / **Run not passed**: every (non-green or stale) cell of the ticked mods. Runs are queued,
-  one `run_matrix.py` call per project; output goes to `<out>/gui-run.log`.
+- Column checkboxes (under each test column header): only ticked columns take part in **Run all**,
+  **Run not passed** and a row double-click; unticked headers are grey. Single-cell actions (cell double-click,
+  **Run tests**, **Play**) ignore them. Right-click a loader header: tick/untick its 4 columns. Saved as
+  `columns_off` (e.g. `["fabric/mp"]`) in `gui-settings.json`; all on by default.
+- **Run all** / **Run not passed**: every (non-green or stale) cell of the ticked mods and columns. Runs are queued,
+  one `run_matrix.py` call per set of projects with the same loaders/configs selection (Run all: one call), so
+  sp cells of several projects run side by side; output goes to `<out>/gui-run.log`. **test jobs** (1-8, saved
+  as `test_jobs` in `gui-settings.json`, default 2) is passed as `--test-jobs`. The status bar lists every
+  running cell.
+- **Clean build all**: `--clean-build --build-kind <kind> --jobs <build jobs>` of every existing project (per MC
+  version ModUtilities, then BankSystem, then StockMarket), so fresh jars are in `<loader>/build/libs`. The
+  combobox next to it picks the kind, `release` or `dev` (saved as `build_kind`, default `release`; also used by
+  the right-click **Clean build**). **build jobs** (1-14, saved
+  as `build_jobs` in `gui-settings.json`, default 4): MC versions built at once. The status bar shows the progress
+  (`clean build 12/42: <running projects>`), and failed projects until the next run. Test results show stale afterwards (the next test run rebuilds dev jars).
 - **Stop**: a play session is stopped gracefully (`<out>/play/stop`); otherwise (or pressed again) it kills
   the active run_matrix (also one started from the command line) and its games.
 - Run/Play are refused while any run or play session holds `running.lock` (shared ports).
@@ -100,9 +126,9 @@ above this folder), the same as run_matrix.py.
 
 ```
 <out>/summary.json
-<out>/running.lock, gui.lock, gui-run.log, gui-settings.json
+<out>/running.lock, gui.lock, gui-run.log, gui-settings.json, clean-build.json
 <out>/play/play.json, play/<project>/<loader>/<config>/<instance>/   play sessions
-<out>/<project>/gradle-capture.log, capture.json
+<out>/<project>/gradle-capture.log, clean-build.log, capture.json, build.json   build.json: last build per loader (GUI build column)
 <out>/<project>/<loader>/<config>/cell.json                   cell status (read by the GUI)
 <out>/<project>/<loader>/<config>/<instance>/console.log      game log
 <out>/<project>/<loader>/<config>/<instance>/results.json     test report of that server

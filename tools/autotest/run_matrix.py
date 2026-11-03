@@ -7,6 +7,7 @@ Stdlib only. See README.md in this folder. Short version:
     python tools/autotest/run_matrix.py --root E:/.../StockMarket --versions 1.21.1 26.3 --configs sp mp
     python tools/autotest/run_matrix.py E:/.../mc_1.21.1_MC_ModUtilities --world <world folder>
     python tools/autotest/run_matrix.py E:/.../mc_1.21.1_MC_ModUtilities --play fabric mp [--world <world folder>]
+    python tools/autotest/run_matrix.py --clean-build [--jobs 4] [--build-kind dev] <project> ...   (clean jars)
 
 Per project it runs Gradle once per run task (runClient/runServer with a capture agent, added by
 capture.init.gradle) to record Loom's exact launch commands, then starts every game instance directly,
@@ -14,9 +15,11 @@ so master, slave and client of one project run side by side without fighting ove
 The project must be a dev build (enable_dev_features=true) for the tests and the autotest hook to exist.
 """
 import argparse
+import concurrent.futures
 import glob
 import gzip
 import hashlib
+import itertools
 import json
 import os
 import re
@@ -24,6 +27,7 @@ import shutil
 import struct
 import subprocess
 import sys
+import threading
 import time
 import zipfile
 
@@ -33,6 +37,7 @@ CONFIGS = ('sp', 'mp', 'slave', 'spslave')
 LOADERS = ('fabric', 'neoforge')
 MASTER_PORT, SLAVE_PORT, LINK_PORT = 25611, 25612, 25690
 SECRET = 'autotest-secret'
+NO_WINDOW = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0  # no console pop-ups under the windowless GUI
 
 
 # ---------------------------------------------------------------- launch capture
@@ -42,11 +47,12 @@ def build_agent(out_dir):
     cls = os.path.join(out_dir, 'agent-classes')
     jar = os.path.join(out_dir, 'capture.jar')
     os.makedirs(cls, exist_ok=True)
-    subprocess.run(['javac', '--release', '21', '-d', cls, os.path.join(HERE, 'CaptureAgent.java')], check=True)
+    subprocess.run(['javac', '--release', '21', '-d', cls, os.path.join(HERE, 'CaptureAgent.java')], check=True,
+                   creationflags=NO_WINDOW)
     manifest = os.path.join(out_dir, 'agent-manifest.txt')
     with open(manifest, 'w') as f:
         f.write('Premain-Class: CaptureAgent\n')
-    subprocess.run(['jar', 'cfm', jar, manifest, '-C', cls, '.'], check=True)
+    subprocess.run(['jar', 'cfm', jar, manifest, '-C', cls, '.'], check=True, creationflags=NO_WINDOW)
     return jar
 
 
@@ -54,41 +60,81 @@ def gradlew(project):
     return os.path.join(project, 'gradlew.bat' if os.name == 'nt' else 'gradlew')
 
 
-def build(project, loaders, offline, log):
-    """Builds the loaders' mod jars (dev features on), so the jars fingerprinted in cell.json are the tested code."""
-    cmd = [gradlew(project)] + [f':{l}:build' for l in loaders] + ['-x', 'test', '-Penable_dev_features=true'] + \
-          (['--offline'] if offline else [])
+def build(project, loaders, offline, log, out, kind='dev', clean=False):
+    """Builds the loaders' mod jars, kind 'dev' (dev features on: the jars fingerprinted in cell.json are the tested
+    code) or 'release'; clean: `clean build` of the whole project (--clean-build). Records the result per loader in
+    <out>/<project>/build.json (read by the GUI). A timeout returns -1.
+    Non-clean builds include :common:build: dependents compile against the plain common jar (26.x: its -dev jar) in
+    common/build/libs via flatDir, which the loader builds do not rebuild (a release one would lack the tests)."""
+    tasks = ['clean', 'build'] if clean else [':common:build'] + [f':{l}:build' for l in loaders]
+    start, started = os.path.getsize(log), now()
+    path = os.path.join(out, os.path.basename(project), 'build.json')
+    entry = {'kind': kind, 'started': started, 'log': log}
+    write_json(path, {**(read_json(path) or {}), **{l: entry for l in loaders}})  # no 'finished' = building
+    try:
+        rc = gradle(project, tasks + ['-x', 'test', f"-Penable_dev_features={'true' if kind == 'dev' else 'false'}"],
+                    offline, log)
+    except subprocess.TimeoutExpired:
+        rc = -1
+    with open(log, 'rb') as f:  # only what this build wrote
+        f.seek(start)
+        text = f.read().decode('utf-8', 'replace')
+    entry = {**entry, 'rc': rc, 'finished': now()}
+    errors = build_errors(text, loaders, rc)
+    write_json(path, {**(read_json(path) or {}), **{l: {**entry, **e} for l, e in errors.items()}})  # other loaders stay
+    return rc
+
+
+def build_errors(text, loaders, rc):
+    """Per loader {'failed', 'error'} from one build's Gradle output: `> Task :<loader>:<task> FAILED` lines, error =
+    the lines after `* What went wrong:`. A failed build without a failed loader task (e.g. :common) fails every
+    loader; rc -1 = timeout."""
+    failed = set(re.findall(r'^> Task :([^:\s]+):\S+ FAILED', text, re.M)) & set(loaders)
+    lines = text.splitlines()
+    i = next((n for n, l in enumerate(lines) if l.startswith('* What went wrong:')), None)
+    err = ['timeout'] if rc == -1 else [] if i is None else \
+        [l for l in itertools.takewhile(lambda l: not l.startswith('* '), lines[i + 1:i + 9]) if l.strip()]
+    if rc and not failed:
+        failed = set(loaders)
+    return {l: {'failed': l in failed, 'error': err if l in failed else []} for l in loaders}
+
+
+def gradle(project, tasks, offline, log):
+    """Runs gradlew with these tasks/args in the project, output appended to log; returns the exit code."""
+    cmd = [gradlew(project)] + tasks + (['--offline'] if offline else [])
     with open(log, 'a', encoding='utf-8', errors='replace') as f:
         f.write(f'>>> {" ".join(cmd)}\n')
         f.flush()
-        return subprocess.run(cmd, cwd=project, stdout=f, stderr=subprocess.STDOUT, timeout=3600).returncode
+        return subprocess.run(cmd, cwd=project, stdout=f, stderr=subprocess.STDOUT, timeout=3600,
+                              creationflags=NO_WINDOW).returncode
 
 
-def build_deps(project, loaders, offline, log, built):
+def build_deps(project, loaders, offline, log, built, out):
     """Builds the flatDir dependency projects (found via mod_jars: <dep>/<loader>/build/libs/x.jar), their own
     dependencies first, so the project never runs against stale dependency jars. `built` maps project -> rc and
     keeps every project to one build per run_matrix invocation. Returns the first failed project or None."""
     for dep in dict.fromkeys(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(j))))
                              for l in loaders for j in mod_jars(project, l)[1:]):
-        failed = build_deps(dep, loaders, offline, log, built)
+        failed = build_deps(dep, loaders, offline, log, built, out)
         if failed:
             return failed
         key = os.path.normcase(dep)
         if key not in built:
             print(f'[{os.path.basename(project)}] building dependency {os.path.basename(dep)} ...', flush=True)
-            built[key] = build(dep, loaders, offline, log)
+            built[key] = build(dep, loaders, offline, log, out)
         if built[key] != 0:
             return dep
     return None
 
 
-def clear_remap_cache(project, log):
+def clear_remap_cache(project, log, stop_daemons=True):
     """Deletes Loom's remapped copies of the flatDir mod jars (.gradle/loom-cache/remapped_mods): Loom would keep
     using an old remapped dependency after its jar changed, so the run would not test what the fingerprint says.
-    On a Windows file lock, stops the project's Gradle daemons and retries once. Returns False if it stays."""
+    On a Windows file lock, stops the project's Gradle daemons (unless not stop_daemons) and retries once.
+    Returns False if it stays."""
     cache = os.path.join(project, '.gradle', 'loom-cache', 'remapped_mods')
     with open(log, 'a', encoding='utf-8', errors='replace') as f:
-        for attempt in (1, 2):
+        for attempt in (1, 2) if stop_daemons else (2,):
             if not os.path.exists(cache):
                 return True
             try:
@@ -101,7 +147,8 @@ def clear_remap_cache(project, log):
                     f.write('>>> gradlew --stop\n')
                     f.flush()
                     try:
-                        subprocess.run([gradlew(project), '--stop'], cwd=project, stdout=f, stderr=subprocess.STDOUT)
+                        subprocess.run([gradlew(project), '--stop'], cwd=project, stdout=f, stderr=subprocess.STDOUT,
+                                       creationflags=NO_WINDOW)
                     except OSError as e:
                         f.write(f'>>> {e}\n')
     return False
@@ -129,7 +176,8 @@ def capture(project, loaders, agent, out_dir, offline, log):
                    '-Penable_dev_features=true'] + (['--offline'] if offline else [])  # tests only exist in dev builds
             f.write(f'>>> {" ".join(cmd)}\n')
             f.flush()
-            rc = subprocess.run(cmd, cwd=project, stdout=f, stderr=subprocess.STDOUT, timeout=3600).returncode or rc
+            rc = subprocess.run(cmd, cwd=project, stdout=f, stderr=subprocess.STDOUT, timeout=3600,
+                                creationflags=NO_WINDOW).returncode or rc
     specs = {}
     for l in loaders:
         for t in ('runClient', 'runServer'):
@@ -263,7 +311,7 @@ class Instance:
             f.write('\n'.join(argfile_quote(a) for a in args))
         java = os.path.join(self.spec['javaHome'], 'bin', 'java')
         self.log = open(self.console, 'w', encoding='utf-8', errors='replace')
-        flags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0
+        flags = subprocess.CREATE_NEW_PROCESS_GROUP | NO_WINDOW if os.name == 'nt' else 0  # the game window stays
         self.proc = subprocess.Popen([java, '@' + argfile], cwd=self.dir, env=self.spec['env'], stdin=subprocess.PIPE,
                                      stdout=self.log, stderr=subprocess.STDOUT, creationflags=flags)
 
@@ -298,7 +346,8 @@ class Instance:
     def kill(self):
         if self.alive():
             if os.name == 'nt':
-                subprocess.run(['taskkill', '/T', '/F', '/PID', str(self.proc.pid)], capture_output=True)
+                subprocess.run(['taskkill', '/T', '/F', '/PID', str(self.proc.pid)], capture_output=True,
+                               creationflags=NO_WINDOW)
             else:
                 self.proc.kill()
             self.wait(10)
@@ -585,6 +634,13 @@ def main():
                     help='manual play of one project: start the instances of CONFIG without tests until stopped')
     ap.add_argument('--world', help='world folder copied fresh into every instance, for tests and --play '
                                     '(default: new superflat world); the folder itself is never modified')
+    ap.add_argument('--clean-build', action='store_true',
+                    help='clean build (no tests) of --build-kind; per MC version in the given order')
+    ap.add_argument('--build-kind', choices=('release', 'dev'), default='release',
+                    help='--clean-build: release (dev features off) or dev (dev features on, tests included)')
+    ap.add_argument('--jobs', type=int, default=4, help='--clean-build: MC versions built at once')
+    ap.add_argument('--test-jobs', type=int, default=2,
+                    help='sp cells run at once, beside the one-at-a-time multi-server cells (1 = all sequential)')
     args = ap.parse_args()
 
     out = os.path.abspath(args.out)
@@ -606,7 +662,9 @@ def main():
     if args.gui:
         start_gui(out)
     try:
-        if args.play:
+        if args.clean_build:
+            clean_build(args, out, projects)
+        elif args.play:
             play(args, out, projects[0])
         else:
             run(args, out, projects)
@@ -637,7 +695,7 @@ def play(args, out, project):
     try:
         # The capture compiles the project itself; rebuild its dependency projects, then clear Loom's remapped
         # dependencies only when a dependency jar changed since last time.
-        failed = build_deps(project, [loader], args.offline, glog, {})
+        failed = build_deps(project, [loader], args.offline, glog, {}, out)
         if failed:
             notes = [f'dependency build failed: {os.path.basename(failed)} (see gradle-capture.log)']
             return
@@ -661,9 +719,90 @@ def play(args, out, project):
         print(f'[{name}] play ended: {" ".join(notes)}', flush=True)
 
 
+def clean_build(args, out, projects):
+    """`gradlew clean build` of every project, args.build_kind release (dev features off) or dev. Projects are
+    grouped into one chain per MC version (mc_<version>_ folder prefix), built in the given order (dependencies first: dependents
+    read their jars via flatDir); up to args.jobs chains run at once. A failure skips the rest of its chain only.
+    Log <out>/<project>/clean-build.log, status <out>/clean-build.json; exit code 1 if any failed."""
+    status, lock = os.path.join(out, 'clean-build.json'), threading.Lock()
+    chains = {}
+    for p in projects:
+        m = re.match(r'mc_([^_]+)_', os.path.basename(p), re.I)
+        chains.setdefault(m.group(1).lower() if m else p, []).append(p)
+    info = {'state': 'building', 'running': [], 'done': 0, 'total': len(projects), 'failed': [], 'started': now()}
+
+    def fail(name, log, reason):  # build.json entry, so the GUI build cell shows why
+        path = os.path.join(out, name, 'build.json')
+        entry = {'kind': args.build_kind, 'rc': None, 'started': now(), 'finished': now(), 'failed': True,
+                 'error': [reason], 'log': log}
+        write_json(path, {**(read_json(path) or {}), **{l: entry for l in LOADERS}})
+        with open(log, 'a', encoding='utf-8') as f:
+            f.write(f'>>> {reason}\n')
+
+    def chain(ps):
+        for i, project in enumerate(ps):
+            name = os.path.basename(project)
+            log = os.path.join(out, name, 'clean-build.log')
+            os.makedirs(os.path.dirname(log), exist_ok=True)
+            open(log, 'w').close()
+            with lock:
+                info['running'].append(name)
+                write_json(status, info)
+            print(f'[{name}] clean build ...', flush=True)
+            # remap cache first: Loom would compile against stale remapped dependency jars; no `gradlew --stop`
+            # fallback, it would kill the parallel builds of this Gradle version
+            ok = clear_remap_cache(project, log, stop_daemons=False)
+            if not ok:
+                fail(name, log, 'loom cache locked')
+            ok = ok and build(project, list(LOADERS), args.offline, log, out, args.build_kind, clean=True) == 0
+            skipped = [] if ok else [os.path.basename(p) for p in ps[i + 1:]]
+            for s in skipped:
+                os.makedirs(os.path.join(out, s), exist_ok=True)
+                fail(s, os.path.join(out, s, 'clean-build.log'), f'dependency {name} failed')
+                print(f'[{s}] skipped: dependency {name} failed', flush=True)
+            print(f"[{name}] {'ok' if ok else 'FAILED, see ' + log}", flush=True)
+            with lock:
+                info['running'].remove(name)
+                info['done'] += 1 + len(skipped)
+                info['failed'] += ([] if ok else [name]) + skipped
+                write_json(status, info)
+            if not ok:
+                return
+
+    with concurrent.futures.ThreadPoolExecutor(max(1, args.jobs)) as ex:
+        list(ex.map(chain, chains.values()))  # list(): re-raises a chain's exception
+    write_json(status, {**info, 'state': 'done', 'finished': now()})
+    print(f"clean build done, failed: {', '.join(info['failed']) or 'none'}", flush=True)
+    sys.exit(1 if info['failed'] else 0)
+
+
+def test_cell(args, name, pdir, specs, jars, world_fp, loader, config):
+    """Runs one cell and writes its cell.json; returns its summary row. Thread-safe: own cell dir and instances."""
+    cell = os.path.join(pdir, loader, config)
+    print(f'[{name}] {loader} {config} ...', flush=True)
+    t0 = time.time()
+    # cell.json sits in the cell dir; prepare() only replaces the instance subdirs.
+    status = os.path.join(cell, 'cell.json')
+    write_json(status, {'state': 'running', 'project': name, 'loader': loader, 'config': config,
+                        'world': args.world, 'started': now()})
+    insts, tested, notes = run_cell(specs, loader, config, cell, args.timeout, args.mods, args.world)
+    row = summarize(insts, tested, notes)
+    row.update(project=name, loader=loader, config=config, seconds=int(time.time() - t0), dir=cell)
+    state = 'passed' if row['ok'] else 'failed' if row['failed'] else 'error'
+    write_json(status, {**row, 'state': state, 'finished': now(), 'jars': jars, 'fingerprint': fingerprint(jars),
+                        'world': args.world, 'world_fp': world_fp})
+    print(f"[{name}] {loader} {config} {'PASS' if row['ok'] else 'FAIL'} {row['passed']} passed, {row['failed']} "
+          f"failed, {row['errors']} errors  [{row['status']}]", flush=True)
+    return row
+
+
 def run(args, out, projects):
+    """Per project (in order): dependency builds, build, launch capture, then its cells. Multi-server cells run one
+    at a time (shared ports); sp cells (no ports, own game dir) go to a pool of args.test_jobs and run beside the
+    following cells and projects, so sp cells of several projects overlap within one call."""
     agent = build_agent(out)
-    rows = []
+    rows, pending = [], []
+    pool = concurrent.futures.ThreadPoolExecutor(max(1, args.test_jobs))
     built = {}
     for project in projects:
         name = os.path.basename(project)
@@ -674,7 +813,7 @@ def run(args, out, projects):
         cap = {'state': 'capturing', 'loaders': args.loaders, 'configs': args.configs, 'started': now()}
         write_json(os.path.join(pdir, 'capture.json'), cap)
         open(glog, 'w').close()
-        failed = build_deps(project, args.loaders, args.offline, glog, built)
+        failed = build_deps(project, args.loaders, args.offline, glog, built, out)
         deps = dep_hashes(project, args.loaders)
         if failed:
             rc, reason = -1, f'dependency build failed: {os.path.basename(failed)} (see gradle-capture.log)'
@@ -683,7 +822,7 @@ def run(args, out, projects):
         else:
             write_json(os.path.join(pdir, 'deps.json'), {**(read_json(os.path.join(pdir, 'deps.json')) or {}), **deps})
             key = os.path.normcase(project)
-            rc = built[key] = built[key] if key in built else build(project, args.loaders, args.offline, glog)
+            rc = built[key] = built[key] if key in built else build(project, args.loaders, args.offline, glog, out)
             reason = f'build failed (rc {rc}, see gradle-capture.log)'
         if rc != 0:
             write_json(os.path.join(pdir, 'capture.json'), {**cap, 'state': 'done', 'rc': rc, 'finished': now()})
@@ -704,23 +843,15 @@ def run(args, out, projects):
             print(f'[{name}] gradle exited with {rc}, see {glog}', flush=True)
         for loader in args.loaders:
             for config in args.configs:
-                cell = os.path.join(pdir, loader, config)
-                print(f'[{name}] {loader} {config} ...', flush=True)
-                t0 = time.time()
-                # cell.json sits in the cell dir; prepare() only replaces the instance subdirs.
-                status = os.path.join(cell, 'cell.json')
-                write_json(status, {'state': 'running', 'project': name, 'loader': loader, 'config': config,
-                                    'world': args.world, 'started': now()})
-                insts, tested, notes = run_cell(specs, loader, config, cell, args.timeout, args.mods, args.world)
-                row = summarize(insts, tested, notes)
-                row.update(project=name, loader=loader, config=config, seconds=int(time.time() - t0), dir=cell)
-                rows.append(row)
-                state = 'passed' if row['ok'] else 'failed' if row['failed'] else 'error'
-                write_json(status, {**row, 'state': state, 'finished': now(), 'jars': jars[loader],
-                                    'fingerprint': fingerprint(jars[loader]), 'world': args.world,
-                                    'world_fp': world_fp})
-                print(f"    {'PASS' if row['ok'] else 'FAIL'} {row['passed']} passed, {row['failed']} failed, "
-                      f"{row['errors']} errors  [{row['status']}]", flush=True)
+                job = (name, pdir, specs, jars[loader], world_fp, loader, config)
+                if config == 'sp' and args.test_jobs > 1:  # no ports: runs beside everything else
+                    pending.append(pool.submit(test_cell, args, *job))
+                else:
+                    rows.append(test_cell(args, *job))
+    pool.shutdown(wait=True)
+    rows += [f.result() for f in pending]  # re-raises a crashed cell
+    names = [os.path.basename(p) for p in projects]
+    rows.sort(key=lambda r: (names.index(r['project']), LOADERS.index(r['loader']), CONFIGS.index(r['config'])))
 
     with open(os.path.join(out, 'summary.json'), 'w', encoding='utf-8') as f:
         json.dump(rows, f, indent=2)
