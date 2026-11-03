@@ -1,0 +1,93 @@
+{
+  "versions": [
+    "1.21.1",
+    "1.21.2",
+    "1.21.3",
+    "1.21.4",
+    "1.21.5",
+    "1.21.6",
+    "1.21.7",
+    "1.21.8",
+    "1.21.9",
+    "1.21.10",
+    "1.21.11",
+    "26.1",
+    "26.2",
+    "26.3"
+  ],
+  "release_type": "release",
+  "curseforge_manual_release": true,
+  "display_name": "{mod} {modver} ({Loader} {mc})",
+  "version_number": "{mod_version}-{loader}",
+  "changelog": "See the full changelog on GitHub: [v{modver}]({repo}/blob/{branch}/changelog/v{modver}.md)",
+  "loaders": {
+    "fabric": {
+      "modrinth": [
+        "fabric"
+      ],
+      "curseforge": "Fabric"
+    },
+    "neoforge": {
+      "modrinth": [
+        "neoforge"
+      ],
+      "curseforge": "NeoForge"
+    }
+  },
+  "dev_packages": [
+    "net/kroia/modutilities/testing/",
+    "net/kroia/modutilities/sandbox/",
+    "net/kroia/banksystem/testing/",
+    "net/kroia/stockmarket/testing/"
+  ],
+  "mods": {
+    "BankSystem": {
+      "folder": "BankSystem",
+      "repo": "https://github.com/KROIA/BankSystem",
+      "modrinth": "kroia_banksystem",
+      "curseforge_id": "1175370",
+      "curseforge_slug": "banksystem",
+      "dependencies": [
+        {
+          "modrinth": "architectury-api",
+          "curseforge": "architectury-api",
+          "type": "required"
+        },
+        {
+          "modrinth": "fabric-api",
+          "curseforge": "fabric-api",
+          "type": "required",
+          "loaders": [
+            "fabric"
+          ]
+        }
+      ]
+    },
+    "StockMarket": {
+      "folder": "StockMarket",
+      "repo": "https://github.com/KROIA/StockMarket",
+      "modrinth": "kroia_stockmarket",
+      "curseforge_id": "1158647",
+      "curseforge_slug": "stockmarket",
+      "dependencies": [
+        {
+          "mod": "BankSystem",
+          "type": "required"
+        },
+        {
+          "modrinth": "architectury-api",
+          "curseforge": "architectury-api",
+          "type": "required"
+        },
+        {
+          "modrinth": "fabric-api",
+          "curseforge": "fabric-api",
+          "type": "required",
+          "loaders": [
+            "fabric"
+          ]
+        }
+      ]
+    }
+  }
+}
