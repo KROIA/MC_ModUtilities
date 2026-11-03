@@ -2,7 +2,7 @@
 
 Example: adding `26.4`. All 14+ ModUtilities folders keep an identical `tools/autotest`.
 
-1. **Project folders** (under the mods root, e.g. `E:/Dokumente/Minecraft/mods`), exact naming:
+1. **Project folders** (under the mods root, e.g. `<mods root>`), exact naming:
    - `MC_ModUtilities/mc_26.4_MC_ModUtilities`
    - `BankSystem/mc_26.4_BankSystem`
    - `StockMarket/MC_26.4_StockMarket` (uppercase `MC_`)
@@ -38,7 +38,7 @@ Example: adding `26.4`. All 14+ ModUtilities folders keep an identical `tools/au
 6. **Single cell first**:
 
    ```
-   python tools/autotest/run_matrix.py E:/Dokumente/Minecraft/mods/MC_ModUtilities/mc_26.4_MC_ModUtilities --loaders fabric --configs sp --gui
+   python tools/autotest/run_matrix.py <mods root>/MC_ModUtilities/mc_26.4_MC_ModUtilities --loaders fabric --configs sp --gui
    ```
 
    Then double-click the version label in the GUI to run the whole row, and do the same for
