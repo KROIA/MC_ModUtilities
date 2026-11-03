@@ -111,6 +111,23 @@ public class ExampleScreen extends GuiScreen {
 ```
 
 ---
+### Listing active streams
+`StreamSystem` (and `StreamManager`, reachable from a stream via `GenericStream.getManager()`) can list the currently running streams:
+
+- `getActiveServerSenderStreams()`
+- `getActiveClientSenderStreams()`
+- `getActiveServerReceiverStreams()`
+- `getActiveClientReceiverStreams()`
+
+Each returns a `List<Tuple<UUID, String>>`: `getA()` is the stream ID, `getB()` the stream type ID (usable with `StreamSystem.getRegisteredStream(...)`).
+
+> **Breaking change (2.2.0):** the `Tuple` here is `net.kroia.modutilities.Tuple`, not `net.minecraft.util.Tuple` (removed in Minecraft 26.2). It has the same API (`getA`/`setA`/`getB`/`setB`); update the import:
+> ```java
+> import net.kroia.modutilities.Tuple; // was net.minecraft.util.Tuple
+> ```
+> See [Multi-Version Compatibility](../development/MultiVersionCompat.md#tuple).
+
+---
 ## See Also
 
 - [Networking Library](Networking.md) - Overview of networking features

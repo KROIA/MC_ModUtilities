@@ -4,20 +4,27 @@
 
 The Sandbox system is a testing and development framework built into MC_ModUtilities. Since this mod is a library that provides no gameplay content on its own, the Sandbox serves as a testbed for demonstrating and verifying library features during development.
 
-## Important: Production Builds
+## Dev Builds and Release Builds
 
-**CRITICAL**: The Sandbox system MUST be disabled for production releases. It is intended solely for development and testing purposes.
+The Sandbox is development-only. It is never disabled by editing Java code; it is **not compiled** into release builds.
 
-### Disabling the Sandbox
+The single switch is the Gradle property `enable_dev_features` in `gradle.properties` (default `false`):
 
-To disable the Sandbox for production builds, comment out or remove the `Sandbox.init()` call in `ModUtilitiesMod.java`:
-
-```java
-public static void init()
-{
-    // Sandbox.init();  // DISABLE THIS FOR PRODUCTION
-}
+```properties
+# Dev-only code (sandbox, unit tests, autotest). false = release: those packages are not compiled.
+enable_dev_features = false
 ```
+
+- **Release build** (`enable_dev_features=false`): the root `build.gradle` excludes `net/kroia/modutilities/sandbox/**` and `net/kroia/modutilities/testing/**` from compilation. The jar contains no sandbox or test code, and any release class that still references it is a compile error.
+- **Dev build**: set the property to `true`, or pass it on the command line:
+
+  ```
+  ./gradlew build -Penable_dev_features=true
+  ```
+
+At runtime `ModUtilitiesMod.ENABLE_DEV_FEATURES` is `true` exactly when the dev classes were compiled in. `ModUtilitiesMod.init()` then loads `net.kroia.modutilities.testing.DevBootstrap` via reflection, whose `init()` calls `Sandbox.init()` and `AutoTest.init()`. Do not call `Sandbox.init()` directly from release code: it would no longer compile with `enable_dev_features=false`.
+
+Sandbox assets (blockstates, models, lang entries under `assets/modutilities`) are data, not code, and are not excluded.
 
 ## Location
 
@@ -26,22 +33,7 @@ All Sandbox-related code is located in:
 common/src/main/java/net/kroia/modutilities/sandbox/
 ```
 
-## How to Enable
-
-To enable the Sandbox system during development, ensure `Sandbox.init()` is called from `ModUtilitiesMod.init()`:
-
-```java
-package net.kroia.modutilities;
-
-import net.kroia.modutilities.sandbox.Sandbox;
-
-public class ModUtilitiesMod {
-    public static void init()
-    {
-        Sandbox.init();  // Enable Sandbox for testing
-    }
-}
-```
+The Sandbox also registers the ModUtilities [test suites](../testing/TestSuite.md) and the `/modutilities test` command. To run all suites automatically on every loader and server configuration, use the [in-game autotest harness](../../tools/autotest/README.md).
 
 ## Available Test Components
 
@@ -164,7 +156,7 @@ dispatcher.register(
 
 ### 4. Initialize in Sandbox.init()
 
-If your test requires initialization, add it to `Sandbox.init()`:
+If your test requires initialization, add it to `Sandbox.init()` (called by `DevBootstrap` in dev builds only):
 
 ```java
 public static void init()
@@ -185,10 +177,12 @@ public static void init()
 2. **Document New Tests**: Add comments explaining what each test demonstrates
 3. **Use Logging**: Log important events to help debug issues
 4. **Clean Exit**: Ensure resources are properly cleaned up (close streams, save data)
-5. **ALWAYS DISABLE FOR PRODUCTION**: Never ship with Sandbox enabled
+5. **Release builds use `enable_dev_features=false`**: Never ship a jar built with dev features; release code must not reference `sandbox` classes
 
 ## See Also
 
 - [Networking Library](../networking/Networking.md)
 - [GUI Library](../gui/GuiLibrary.md)
 - [Streaming System](../networking/StreamSystem.md)
+- [Test Suite](../testing/TestSuite.md)
+- [Automated in-game tests](../../tools/autotest/README.md)
