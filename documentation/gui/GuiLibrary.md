@@ -57,9 +57,9 @@ Several classes have been moved to the `gui.client` package. **Update your impor
 |---|---|---|
 | `IGraphics` | `net.kroia.modutilities.gui` | Rendering abstraction interface (common code) |
 | `IInputProvider` | `net.kroia.modutilities.gui` | Input polling interface (common code) |
-| `InputConstants` | `net.kroia.modutilities.gui` | GLFW-free key/mouse constants (common code) |
+| `InputConstants` | `net.kroia.modutilities.gui` | Windowing-library-free key/mouse constants (common code), see [InputConstants](#inputconstants) |
 | `ClientGraphics` | `net.kroia.modutilities.gui.client` | Screen rendering backend (replaces `Graphics`) |
-| `ClientInputProvider` | `net.kroia.modutilities.gui.client` | GLFW input backend |
+| `ClientInputProvider` | `net.kroia.modutilities.gui.client` | Client `IInputProvider` backend (delegates to `InputCompat`; GLFW, or SDL3 from 26.3) |
 | `WorldGraphics` | `net.kroia.modutilities.gui.client` | Block-face rendering backend |
 
 ### What stays the same
@@ -146,6 +146,50 @@ The GUI library is split into common code (runs on server + client) and client-o
 - `GuiScreen`, `GuiContainerScreen`
 - `ClientGraphics`, `ClientInputProvider`, `WorldGraphics`
 - `ContainerView`, `InventoryView`
+
+### InputConstants
+
+`net.kroia.modutilities.gui.InputConstants` holds the key and mouse button constants that GUI element code compares against in `mouseClicked`, `keyPressed` etc. Every value is a compile-time alias of Minecraft's `com.mojang.blaze3d.platform.InputConstants`, so:
+
+- the values always match the key codes Minecraft delivers on the running version, and
+- common code can use them without loading the client-only Minecraft class at runtime (javac inlines the constants).
+
+Available constants: `MOUSE_BUTTON_LEFT/RIGHT/MIDDLE`, `KEY_A`, `KEY_C`, `KEY_E`, `KEY_V`, `KEY_X`, `KEY_ESCAPE`, `KEY_ENTER`, `KEY_KP_ENTER`, `KEY_BACKSPACE`, `KEY_DELETE`, `KEY_SPACE`, arrow keys (`KEY_LEFT/RIGHT/UP/DOWN`), `KEY_PAGE_UP/PAGE_DOWN`, `KEY_HOME/END`, `KEY_F3`–`KEY_F6`, `KEY_LEFT_SHIFT/LEFT_CONTROL/LEFT_ALT`.
+
+> **Never compare against raw key literals** (`keyCode == 32`, `button == 0`, `GLFW.GLFW_KEY_*`). Minecraft 26.3 replaced GLFW with SDL3, which changed every key code and mouse button number (e.g. the left mouse button is 1, not 0). Code that uses the named constants compiles and works unchanged on every supported version. If you need a key that is missing, add an alias to `InputConstants` instead of hard-coding the number.
+
+**Ctrl shortcuts:** use `InputConstants.shortcutKey(keyCode, scanCode)` to detect select-all / copy / cut / paste. It returns the key that follows the printed letter of the user's keyboard layout (like vanilla's `EditBox`). Up to 26.2 it returns `keyCode` unchanged; on 26.3 it maps SDL3's layout key code, and returns `-1` if the physical A/C/V/X position carries another letter.
+
+```java
+@Override
+protected boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+    if (isKeyPressed(InputConstants.KEY_LEFT_CONTROL)) {
+        switch (InputConstants.shortcutKey(keyCode, scanCode)) {
+            case InputConstants.KEY_A -> { selectAll(); return true; }
+            case InputConstants.KEY_C -> { copy(); return true; }
+        }
+    }
+    if (keyCode == InputConstants.KEY_ENTER || keyCode == InputConstants.KEY_KP_ENTER) {
+        submit();
+        return true;
+    }
+    return false;
+}
+```
+
+For held-key queries, modifier state and mouse/cursor access from client code, use [`InputCompat`](../development/MultiVersionCompat.md#inputcompat).
+
+### GuiElementRegistry
+
+`net.kroia.modutilities.gui.GuiElementRegistry` maps a string type key to a factory for each `GuiElement` class. `Gui` uses it to serialize its element tree (type key, id, bounds, `serializeState()`, children) and to rebuild it from NBT. This is how [display block](DisplayBlock.md) GUIs are synced to clients and survive the client rebuilding the `Gui` (chunk reload, world rejoin): elements whose class is **not** registered are skipped during serialization and are missing after the rebuild.
+
+The 16 built-in element types are pre-registered. Register your own element types once during mod initialization (common code, both sides):
+
+```java
+GuiElementRegistry.register("my_widget", MyWidget.class, MyWidget::new);
+```
+
+The factory must create an element with a no-argument default state; everything else is restored through `deserializeState(...)`. See [Display Block System](DisplayBlock.md#guielementregistry) for the full API.
 
 ## See Also
 

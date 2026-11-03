@@ -6,8 +6,8 @@ It also provides functions which can be overwritten to process the received pack
 ---
 ## Content
 - [Example Implementation](#example-implementation)
-  - [Server :arrow_right: Client packet](#server-️-client-packett)
-  - [Client :arrow_right: Server packet](#client---server-packet)
+  - [Server :arrow_right: Client packet](#server-arrow_right-client-packet)
+  - [Client :arrow_right: Server packet](#client-arrow_right-server-packet)
 - [:link: Packet Registration](#packet-registration)
 - [:arrow_heading_up: Sending a Packet](#sending-a-packet)
 - [:arrow_heading_down: Receiving a Packet](#receiving-a-packet)

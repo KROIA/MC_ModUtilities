@@ -223,6 +223,7 @@ Extend `AbstractDisplayBlock`. The base class handles facing, voxel shape, place
 package com.example.mymod;
 
 import com.mojang.serialization.MapCodec;
+import net.kroia.modutilities.RegistryCompat;
 import net.kroia.modutilities.gui.display.AbstractDisplayBlock;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
@@ -241,7 +242,10 @@ public class MyDisplayBlock extends AbstractDisplayBlock {
     }
 
     public MyDisplayBlock() {
-        super(BlockBehaviour.Properties.of().strength(2.0f).noOcclusion());
+        // RegistryCompat sets the registry ID that MC 1.21.2+ requires before the block is constructed
+        super(RegistryCompat.blockProperties(
+                BlockBehaviour.Properties.of().strength(2.0f).noOcclusion(),
+                MyModRegistration.id("my_display_block")));
     }
 
     @Override
@@ -261,10 +265,10 @@ package com.example.mymod;
 import dev.architectury.registry.client.rendering.BlockEntityRendererRegistry;
 import dev.architectury.registry.registries.DeferredRegister;
 import dev.architectury.registry.registries.RegistrySupplier;
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
+import net.kroia.modutilities.RegistryCompat;
 import net.kroia.modutilities.gui.display.client.AbstractDisplayBlockEntityRenderer;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation; // Identifier on MC 1.21.11+
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
@@ -290,7 +294,8 @@ public class MyModRegistration {
     // Block item
     public static final RegistrySupplier<Item> MY_DISPLAY_BLOCK_ITEM =
             ITEMS.register("my_display_block", () ->
-                    new BlockItem(MY_DISPLAY_BLOCK.get(), new Item.Properties()));
+                    new BlockItem(MY_DISPLAY_BLOCK.get(),
+                            RegistryCompat.blockItemProperties(new Item.Properties(), id("my_display_block"))));
 
     // Block entity type
     @SuppressWarnings("unchecked")
@@ -298,10 +303,14 @@ public class MyModRegistration {
             MY_DISPLAY_BLOCK_ENTITY =
             (RegistrySupplier<BlockEntityType<MyDisplayBlockEntity>>) (RegistrySupplier<?>)
             BLOCK_ENTITIES.register("my_display_block_entity", () ->
-                    BlockEntityType.Builder.of(
+                    RegistryCompat.createBlockEntityType(
                             MyDisplayBlockEntity::new,
-                            MY_DISPLAY_BLOCK.get()
-                    ).build(null));
+                            MY_DISPLAY_BLOCK.get()));
+
+    /** Registry ID in this mod's namespace (the class is named Identifier on MC 1.21.11+). */
+    public static ResourceLocation id(String path) {
+        return ResourceLocation.fromNamespaceAndPath(MOD_ID, path);
+    }
 
     /** Call during mod initialization (before registry freeze). */
     public static void register() {
@@ -310,8 +319,7 @@ public class MyModRegistration {
         BLOCK_ENTITIES.register();
     }
 
-    /** Call from client-only initialization code. */
-    @Environment(EnvType.CLIENT)
+    /** Call from client-only initialization code (e.g. inside if (UtilitiesPlatform.isClient())). */
     public static void registerClient() {
         MY_DISPLAY_BLOCK_ENTITY.listen(blockEntityType ->
                 BlockEntityRendererRegistry.register(blockEntityType,
@@ -321,6 +329,8 @@ public class MyModRegistration {
 ```
 
 Note: `AbstractDisplayBlockEntityRenderer` is used directly. There is no need to subclass it -- just register it for your block entity type.
+
+Note: block, item and block entity type creation goes through [`RegistryCompat`](../development/MultiVersionCompat.md#registrycompat). Plain `BlockBehaviour.Properties.of()` / `new Item.Properties()` without a registry ID crash on MC 1.21.2+, and `BlockEntityType.Builder` no longer exists there; the `RegistryCompat` calls compile and work on every supported version. Do not annotate the client method with `@Environment(EnvType.CLIENT)`: Architectury turns it into NeoForge `@OnlyIn`, which NeoForge 21.7.3+ reports with a warning screen.
 
 ### Step 4: Add Resource Files
 
@@ -1079,6 +1089,7 @@ public class InfoDisplayBlockEntity extends AbstractDisplayBlockEntity {
 package com.example.mymod;
 
 import com.mojang.serialization.MapCodec;
+import net.kroia.modutilities.RegistryCompat;
 import net.kroia.modutilities.gui.display.AbstractDisplayBlock;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
@@ -1097,7 +1108,9 @@ public class InfoDisplayBlock extends AbstractDisplayBlock {
     }
 
     public InfoDisplayBlock() {
-        super(BlockBehaviour.Properties.of().strength(2.0f).noOcclusion());
+        super(RegistryCompat.blockProperties(
+                BlockBehaviour.Properties.of().strength(2.0f).noOcclusion(),
+                MyModRegistration.id("info_display_block")));
     }
 
     @Override

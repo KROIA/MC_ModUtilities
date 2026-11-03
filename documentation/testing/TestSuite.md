@@ -16,7 +16,7 @@
 6. [Defining Categories](#defining-categories)
 7. [Integrating in Your Mod](#integrating-in-your-mod)
 8. [Commands](#commands)
-9. [Production Builds](#production-builds)
+9. [Dev Builds and Release Builds](#dev-builds-and-release-builds)
 10. [ModUtilities Internal Tests](#modutilities-internal-tests)
 
 ---
@@ -28,7 +28,8 @@ The MC_ModUtilities Test Suite Framework provides **in-game unit testing** that 
 - **Test mod logic inside a live Minecraft server** without external tooling.
 - **Be shared across multiple mods** (ModUtilities, BankSystem, StockMarket, and any future mod) through a single framework living in the `net.kroia.modutilities.testing` package.
 - **Filter tests by server role** in a master/slave multi-server setup, so master-only tests do not run on slave servers and vice versa.
-- **Disable entirely in production** with a single boolean flag (`ENABLE_TESTS`), ensuring zero overhead in release builds.
+- **Stay out of release builds entirely**: the `testing` package is only compiled when the Gradle property `enable_dev_features` is `true` (see [Dev Builds and Release Builds](#dev-builds-and-release-builds)).
+- **Run automatically** on every Minecraft version, loader and server configuration through the [in-game autotest harness](../../tools/autotest/README.md).
 
 All test output is rendered as color-coded chat messages directly to the player who triggered the command, with green checkmarks for passing tests, red crosses for failures, and yellow exclamation marks for errors.
 
@@ -103,7 +104,7 @@ import net.kroia.modutilities.testing.TestRegistry;
 
 public class MyMod {
     public static void init() {
-        // Only registers if ENABLE_TESTS is true
+        // Only reached in dev builds (enable_dev_features=true)
         TestRegistry.register(new CoreTests());
     }
 }
@@ -312,12 +313,13 @@ Orchestrates test execution and reports results to a player via chat messages.
 #### Constructor
 
 ```java
-public TestRunner(String modName, boolean isSlave, @Nullable MinecraftServer server)
+public TestRunner(String modName, String modId, boolean isSlave, @Nullable MinecraftServer server)
 ```
 
 | Parameter | Description |
 |-----------|-------------|
 | `modName` | Displayed in the chat prefix, e.g. `[MyMod Test]`. |
+| `modId`   | Selects this mod's suites from `TestRegistry` and names the report file `logs/UnitTests/<modId>.log`. |
 | `isSlave` | Whether the current server is a slave instance (used for category filtering). |
 | `server`  | The `MinecraftServer` instance, passed to suites that need it. |
 
@@ -325,9 +327,15 @@ public TestRunner(String modName, boolean isSlave, @Nullable MinecraftServer ser
 
 | Method | Description |
 |--------|-------------|
-| `runAll(ServerPlayer player)` | Run all registered test suites that are eligible for the current server type. Skips suites whose category `canRunOn(isSlave)` returns `false`. |
-| `runCategory(ServerPlayer player, String categoryName)` | Run only suites matching the given category name. Reports an error if the category is unknown or not eligible. |
+| `runAll(@Nullable ServerPlayer player)` | Run all registered test suites that are eligible for the current server type. Skips suites whose category `canRunOn(isSlave)` returns `false`. |
+| `runCategory(@Nullable ServerPlayer player, String categoryName)` | Run only suites matching the given category name. Reports an error if the category is unknown or not eligible. |
 | `listCategories(ServerPlayer player)` | Print all known categories to chat, showing test counts. Ineligible categories are shown with strikethrough text and a reason. |
+| `getResults()` | Per-suite results of every suite run so far, keyed by `category/SuiteClass`. Used by the autotest harness for machine-readable reports. |
+
+**Headless runs and failure reporting:**
+
+- `player` may be `null`: the run is headless (no chat output) and all results are still collected in `getResults()` and written to `logs/UnitTests/<modId>.log`. The autotest harness runs suites this way.
+- If a suite's `setup()` or `teardown()` throws, the failure is recorded as an `ERROR` result named `<setup>` / `<teardown>` instead of being lost. `teardown()` always runs (from a `finally` block), also after a failed `setup()`, and `Throwable`s (not just `Exception`s) are caught.
 
 #### Chat Output Format
 
@@ -352,7 +360,7 @@ Static registry that holds all test suites across all mods. Also contains the ma
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `ENABLE_TESTS` | `public static final boolean` | Master switch. Set to `false` to disable the entire test framework. Default: `true`. |
+| `ENABLE_TESTS` | `public static final boolean` | Legacy switch, always `true`. Release builds exclude the whole `testing` package instead; see [Dev Builds and Release Builds](#dev-builds-and-release-builds). |
 
 #### Static Methods
 
@@ -725,30 +733,50 @@ Categories that cannot run on the current server type are shown with strikethrou
 
 ---
 
-## Production Builds
+## Dev Builds and Release Builds
 
-### The ENABLE_TESTS Kill Switch
+### The `enable_dev_features` switch
 
-In `TestRegistry`:
+Test code is not disabled at runtime; it is **not compiled** into release builds. The single switch is the Gradle property `enable_dev_features` in `gradle.properties`:
 
-```java
-public static final boolean ENABLE_TESTS = true;
+```properties
+# Dev-only code (sandbox, unit tests, autotest). false = release: those packages are not compiled.
+enable_dev_features = false
 ```
 
-Set this to `false` before building a production/release JAR. Because it is a `static final boolean`, the JVM/compiler can eliminate dead code paths at compile time.
+When it is not `true`, the root `build.gradle` excludes `net/kroia/modutilities/testing/**` and `net/kroia/modutilities/sandbox/**` from compilation in every module. Any release class that still references dev code fails to compile instead of silently shipping test code.
 
-### What Gets Disabled
+For a dev build, either set the property to `true` locally or pass it on the command line (the autotest harness always does this):
 
-When `ENABLE_TESTS = false`:
+```
+./gradlew build -Penable_dev_features=true
+```
 
-| Component | Behavior |
-|-----------|----------|
-| `TestRegistry.register()` | Returns immediately without storing the suite. |
-| `TestCommandRegistration.register()` | Returns immediately; no commands are registered in Brigadier. |
-| Test suite classes | Still exist in the JAR but are never instantiated or executed. |
-| Category objects | Still constructed (static fields), but since no suites reference them, they have no effect. |
+### How release code reaches dev code
 
-In practice, with `ENABLE_TESTS = false`, the test commands simply do not exist in the game, and no test code is ever invoked.
+`ModUtilitiesMod` has exactly one entry point into dev code, loaded via reflection so release code compiles without it:
+
+```java
+public static final boolean ENABLE_DEV_FEATURES = devClassesPresent(); // was DevBootstrap compiled in?
+
+// in ModUtilitiesMod.init():
+if (ENABLE_DEV_FEATURES) {
+    // Class.forName("net.kroia.modutilities.testing.DevBootstrap").getMethod("init").invoke(null)
+    initDevFeatures();
+}
+```
+
+`DevBootstrap.init()` starts the sandbox (which registers the ModUtilities suites and the `/modutilities test` command) and the autotest hook. `ModUtilitiesMod.ENABLE_DEV_FEATURES` therefore always matches the Gradle switch; check it at runtime instead of a hand-maintained flag.
+
+`TestRegistry.ENABLE_TESTS` still exists inside the `testing` package (always `true`); in a release build the whole package, including that flag, is absent.
+
+### Dependent mods
+
+The `testing` API only exists in a ModUtilities jar built with `enable_dev_features=true`. Dependent mods (BankSystem, StockMarket) use the same pattern for their own test code: exclude their test packages unless the switch is set, and reach them only through a reflective bootstrap. A dev build of a dependent mod needs a dev build of ModUtilities.
+
+### Automated runs
+
+The [autotest harness](../../tools/autotest/README.md) (`tools/autotest/run_matrix.py`, or the matrix GUI `matrix_gui.bat`) builds with `-Penable_dev_features=true`, starts real Fabric and NeoForge instances in singleplayer, multiplayer and multi-server configurations, runs every registered suite headless and prints a pass/fail table. See also [Adding a version](../../tools/autotest/ADDING_A_VERSION.md) and [Design](../../tools/autotest/DESIGN.md).
 
 ---
 

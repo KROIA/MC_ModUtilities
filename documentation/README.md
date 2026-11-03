@@ -28,6 +28,7 @@ The GUI library provides a modern, component-based system for creating user inte
 - [ContainerView](gui/GuiElements/ContainerView.md) - Container-based views
 - [DropDownMenu](gui/GuiElements/DropDownMenu.md) - Drop-down selection menus
 - [EmptyButton](gui/GuiElements/EmptyButton.md) - Unstyled button base
+- [ExpandablePanel](gui/GuiElements/ExpandablePanel.md) - Collapsible container with a clickable header
 - [Frame](gui/GuiElements/Frame.md) - Bordered frame container
 - [HorizontalSlider](gui/GuiElements/HorizontalSlider.md) - Horizontal slider control
 - [InventoryView](gui/GuiElements/InventoryView.md) - Player/container inventory display
@@ -93,13 +94,21 @@ Comprehensive networking library for client-server communication.
   - JsonUtilities
 
 #### Client Utilities
-- RecipeImageExporter - Off-screen framebuffer renderer for crafting recipe PNG export (documentation pending)
+- [RecipeImageExporter](systems/Utilities.md#recipeimageexporter) - Off-screen renderer that exports crafting recipes as PNG images
 
-### Development
+### Development & testing
+
+#### Multi-version development
+- [Multi-Version Compatibility](development/MultiVersionCompat.md) - Compat helpers (`RegistryCompat`, `NbtCompat`, `InputCompat`, `PlayerCompat`, `PermissionCompat`, `ClientCompat`, `Tuple`) and the `// mc<=X` / `// mc>=X` source-toggle convention
 
 #### Testing
-- [Sandbox System](development/Sandbox.md) - Development testing framework
-- [Test Suite](testing/TestSuite.md) - Automated test suite for library features
+- [Test Suite](testing/TestSuite.md) - In-game unit test framework (`TestSuite`, `TestRegistry`, `TestRunner`)
+- [Sandbox System](development/Sandbox.md) - Development sandbox with example blocks, screens and test commands
+- [Automated in-game tests](../tools/autotest/README.md) - `run_matrix.py` / matrix GUI: runs every suite on Fabric and NeoForge in all server configurations
+  - [Adding a version](../tools/autotest/ADDING_A_VERSION.md) - Adding a new Minecraft version to the test matrix
+  - [Design](../tools/autotest/DESIGN.md) - How dev-only code is compiled out and how the harness works
+
+Dev-only code (sandbox, unit tests, autotest) is only compiled with `enable_dev_features=true`; see [Test Suite](testing/TestSuite.md#dev-builds-and-release-builds).
 
 #### Contributing
 - JavaDoc documentation (in progress)
@@ -111,7 +120,8 @@ Comprehensive networking library for client-server communication.
 - **Need to send data?** Check the [Networking Overview](networking/Networking.md)
 - **Building UIs?** See the [GUI Library Overview](gui/GuiLibrary.md) and [GuiScreen](gui/GuiScreen.md)
 - **Multi-server setup?** See [Multi-Server Networking](networking/MultiServerNetworking.md)
-- **Testing features?** Use the [Sandbox System](development/Sandbox.md) and [Test Suite](testing/TestSuite.md)
+- **Testing features?** Use the [Sandbox System](development/Sandbox.md), [Test Suite](testing/TestSuite.md) and [automated in-game tests](../tools/autotest/README.md)
+- **Targeting several Minecraft versions?** See [Multi-Version Compatibility](development/MultiVersionCompat.md)
 
 ## Documentation Status
 
@@ -122,7 +132,7 @@ Legend:
 
 | System | Status | Notes |
 |--------|--------|-------|
-| GUI Library | Complete | 18 component docs, layout, 5 use cases, display block |
+| GUI Library | Complete | 19 component docs, layout, 5 use cases, display block |
 | Networking (Client-Server) | Complete | All major features documented |
 | Networking (Multi-Server) | Complete | TCP Master/Slave system documented |
 | Settings Library | Complete | JSON parser system documented |
@@ -132,7 +142,9 @@ Legend:
 | Utility Classes | Complete | Helper functions API reference documented |
 | Sandbox System | Complete | Development testing framework documented |
 | Test Suite | Complete | Automated test suite documented |
-| RecipeImageExporter | Pending | Crafting recipe PNG export needs docs |
+| Automated in-game tests | Complete | `tools/autotest` harness documented |
+| Multi-Version Compatibility | Complete | Compat helpers and source toggles documented |
+| RecipeImageExporter | Complete | Short reference in Utility Classes |
 
 ## Prerequisites by System
 
@@ -212,6 +224,6 @@ When adding new documentation:
 
 ---
 
-**Version:** 2.0.1  
-**Minecraft Version:** 1.21.1  
-**Last Updated:** May 2026
+**Version:** 2.2.0  
+**Minecraft Versions:** 1.21.1 – 1.21.11, 26.1, 26.2, 26.3  
+**Last Updated:** November 2026
