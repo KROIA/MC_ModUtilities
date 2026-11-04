@@ -23,7 +23,7 @@ public record HandshakePayload(String serverId, String token, String mcVersion) 
 
     /** @return The Minecraft version of the running game, e.g. "1.21.1". */
     public static String localMcVersion() {
-        return SharedConstants.getCurrentVersion().getName(); // mc<=1.21.5
-        //return SharedConstants.getCurrentVersion().name(); // mc>=1.21.6
+        //return SharedConstants.getCurrentVersion().getName(); // mc<=1.21.5
+        return SharedConstants.getCurrentVersion().name(); // mc>=1.21.6
     }
 }
