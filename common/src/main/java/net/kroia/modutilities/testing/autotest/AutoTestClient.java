@@ -15,7 +15,7 @@ import net.minecraft.client.gui.screens.DatapackLoadFailureScreen;
 import net.minecraft.client.gui.screens.DisconnectedScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
-import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.core.HolderLookup;
@@ -55,7 +55,7 @@ final class AutoTestClient {
     private static boolean started;
     private static boolean joined;
     private static boolean done;
-    private static boolean inventoryOpened;
+    private static boolean chatOpened;
     private static boolean warningsDismissed;
     private static int titleTicks;
     /** The last world-open prompt answered: it can stay on screen for a few ticks after the answer. */
@@ -89,9 +89,9 @@ final class AutoTestClient {
             joined = true;
             offscreenGuiCheck(mc);
         }
-        if (joined && !inventoryOpened) openInventory(mc);
+        if (joined && !chatOpened) openChat(mc);
         if (AutoTest.PLAY) {
-            done = inventoryOpened; // manual play: no quit logic
+            done = chatOpened; // manual play: no quit logic
             return;
         }
         if (AutoTest.isFinished()) {
@@ -107,14 +107,18 @@ final class AutoTestClient {
     }
 
     /**
-     * A non-pausing screen that frees the cursor: with pauseOnLostFocus:false nothing else releases the mouse
-     * grab while the user works in another window. Waits for the player and never replaces an open screen.
+     * Opens the chat screen, a non-pausing screen that frees the cursor: with pauseOnLostFocus:false nothing else
+     * releases the mouse grab while the user works in another window. Not the inventory: in creative that is the
+     * creative inventory, which reads the shared CreativeModeTabs lists on the client thread and would race with
+     * the creative-tab tests rebuilding them on the integrated server. Waits for the player and never replaces an
+     * open screen.
      */
-    private static void openInventory(Minecraft mc) {
+    private static void openChat(Minecraft mc) {
         if (mc.player == null || ClientCompat.screen() != null) return;
-        inventoryOpened = true;
-        ClientCompat.setScreen(new InventoryScreen(mc.player));
-        ModUtilitiesMod.LOGGER.info("[AutoTest] client: opened inventory to release the mouse");
+        chatOpened = true;
+        ClientCompat.setScreen(new ChatScreen("")); // mc<=1.21.8
+        //ClientCompat.setScreen(new ChatScreen("", false)); // mc>=1.21.9
+        ModUtilitiesMod.LOGGER.info("[AutoTest] client: opened chat to release the mouse");
     }
 
     /**
