@@ -50,7 +50,8 @@ public class PayloadDecoder extends ByteToMessageDecoder {
         {
             case PacketIds.HANDSHAKE -> new HandshakePayload(
                     readString(in),  // serverId
-                    readString(in)   // token
+                    readString(in),  // token
+                    in.isReadable() ? readString(in) : "" // mcVersion, absent from older slaves
             );
             case PacketIds.HANDSHAKE_RESULT ->  HandshakeResultPayload.STREAM_CODEC.decode(in);
             case PacketIds.BROADCAST -> new BroadcastPayload(
