@@ -2,7 +2,9 @@ package net.kroia.modutilities.testing.tests;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.handler.codec.DecoderException;
 import net.kroia.modutilities.networking.ExtraCodecUtils;
 import net.kroia.modutilities.networking.client_server.arrs.GenericRequest;
@@ -10,6 +12,14 @@ import net.kroia.modutilities.networking.client_server.arrs.RequestRegistry;
 import net.kroia.modutilities.networking.client_server.streaming.GenericStream;
 import net.kroia.modutilities.networking.client_server.streaming.StreamRegistry;
 import net.kroia.modutilities.networking.multi_server.MultiServerConfig;
+import net.kroia.modutilities.networking.multi_server.codec.PayloadDecoder;
+import net.kroia.modutilities.networking.multi_server.codec.PayloadEncoder;
+import net.kroia.modutilities.networking.multi_server.master.MasterPacketHandler;
+import net.kroia.modutilities.networking.multi_server.master.MasterTCPServer;
+import net.kroia.modutilities.networking.multi_server.payload.HandshakePayload;
+import net.kroia.modutilities.networking.multi_server.payload.HandshakeResultPayload;
+import net.kroia.modutilities.networking.multi_server.payload.PacketIds;
+import net.kroia.modutilities.networking.multi_server.slave.SlaveServerClient;
 import net.kroia.modutilities.testing.TestCategory;
 import net.kroia.modutilities.testing.TestResult;
 import net.kroia.modutilities.testing.TestSuite;
@@ -20,6 +30,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class NetworkingTests extends TestSuite {
@@ -87,6 +98,10 @@ public class NetworkingTests extends TestSuite {
         addTest("codec_nullable_absent", this::testCodecNullableAbsent);
         addTest("codec_jsonElement_roundtrip", this::testCodecJsonElementRoundtrip);
         addTest("codec_friendlyByteBuf_roundtrip", this::testCodecFriendlyByteBufRoundtrip);
+
+        // Multi-server handshake tests
+        addTest("handshake_codec_roundtrip", this::testHandshakeCodecRoundtrip);
+        addTest("handshake_mc_version_mismatch_rejected", this::testHandshakeMcVersionMismatchRejected);
     }
 
     // ========================================================================
@@ -450,6 +465,47 @@ public class NetworkingTests extends TestSuite {
         }
 
         return pass("Invalid enum ordinals correctly throw DecoderException");
+    }
+
+    // ========================================================================
+    // Multi-server handshake tests
+    // ========================================================================
+
+    private TestResult testHandshakeCodecRoundtrip() {
+        HandshakePayload sent = new HandshakePayload("server_a", "secret", "1.21.1");
+        EmbeddedChannel encoder = new EmbeddedChannel(new PayloadEncoder());
+        encoder.writeOutbound(sent);
+        ByteBuf encoded = encoder.readOutbound();
+        EmbeddedChannel decoder = new EmbeddedChannel(new PayloadDecoder());
+        decoder.writeInbound(encoded);
+        Object decoded = decoder.readInbound();
+        if (!sent.equals(decoded))
+            return fail("Handshake roundtrip failed: expected " + sent + ", got " + decoded);
+
+        // Older slaves send only serverId and token: must decode with an empty mcVersion, not throw.
+        ByteBuf legacy = Unpooled.buffer();
+        legacy.writeByte(PacketIds.HANDSHAKE);
+        for (String str : new String[]{"server_a", "secret"}) {
+            byte[] bytes = str.getBytes(StandardCharsets.UTF_8);
+            legacy.writeShort(bytes.length);
+            legacy.writeBytes(bytes);
+        }
+        decoder.writeInbound(legacy);
+        return assertEquals("Legacy handshake should decode with empty mcVersion",
+                new HandshakePayload("server_a", "secret", ""), decoder.readInbound());
+    }
+
+    private TestResult testHandshakeMcVersionMismatchRejected() {
+        MasterTCPServer master = new MasterTCPServer(null, "secret", 0, () -> {}, e -> {}, id -> {}, id -> {});
+        EmbeddedChannel channel = new EmbeddedChannel(new MasterPacketHandler(null, master));
+        channel.writeInbound(new HandshakePayload("server_a", "secret", "0.0.0-other"));
+        Object response = channel.readOutbound();
+        if (!(response instanceof HandshakeResultPayload hr)
+                || hr.result() != SlaveServerClient.ConnectionEstablishState.MC_VERSION_MISMATCH)
+            return fail("Expected MC_VERSION_MISMATCH, got " + response);
+        if (channel.isOpen())
+            return fail("Channel should be closed after a version mismatch");
+        return pass("Mismatched Minecraft version is rejected and the channel closed");
     }
 
     private TestResult testCodecObjectArrayRoundtrip() {

@@ -9,7 +9,8 @@ import net.minecraft.network.codec.StreamCodec;
  * slave whether its connection attempt was accepted.
  * <p>
  * The carried {@link SlaveServerClient.ConnectionEstablishState} indicates one of:
- * {@code SUCCESS}, {@code INVALID_SHARED_SECRET}, or {@code SLAVE_ID_ALREADY_USED}.
+ * {@code SUCCESS}, {@code INVALID_SHARED_SECRET}, {@code SLAVE_ID_ALREADY_USED}
+ * or {@code MC_VERSION_MISMATCH}.
  *
  * @param result The outcome of the handshake authentication.
  */

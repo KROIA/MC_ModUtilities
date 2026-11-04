@@ -84,7 +84,8 @@ public class SlavePacketHandler extends SimpleChannelInboundHandler<Payload> {
                     case SlaveServerClient.ConnectionEstablishState.SUCCESS:
                         break;
                     case SlaveServerClient.ConnectionEstablishState.INVALID_SHARED_SECRET,
-                         SlaveServerClient.ConnectionEstablishState.SLAVE_ID_ALREADY_USED:
+                         SlaveServerClient.ConnectionEstablishState.SLAVE_ID_ALREADY_USED,
+                         SlaveServerClient.ConnectionEstablishState.MC_VERSION_MISMATCH:
                         ctx.close();
                         break;
                 }

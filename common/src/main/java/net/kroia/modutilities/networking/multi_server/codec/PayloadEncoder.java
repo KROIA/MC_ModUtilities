@@ -43,6 +43,7 @@ public class PayloadEncoder extends MessageToByteEncoder<Payload> {
             case HandshakePayload hs -> {
                 writeString(out, hs.serverId());
                 writeString(out, hs.token());
+                writeString(out, hs.mcVersion());
             }
             case HandshakeResultPayload hr -> HandshakeResultPayload.STREAM_CODEC.encode(out, hr);
             case BroadcastPayload bc -> {

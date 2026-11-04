@@ -131,10 +131,11 @@ All TCP communication uses typed payload objects:
 Sent by slave to authenticate with master.
 - `serverId` - Unique identifier for the slave
 - `token` - Shared secret for authentication
+- `mcVersion` - Minecraft version of the slave (empty when sent by an older ModUtilities)
 
 #### HandshakeResultPayload
 Master's response to handshake.
-- `result` - Connection state: `SUCCESS`, `INVALID_SHARED_SECRET`, `SLAVE_ID_ALREADY_USED`
+- `result` - Connection state: `SUCCESS`, `INVALID_SHARED_SECRET`, `SLAVE_ID_ALREADY_USED`, `MC_VERSION_MISMATCH`
 
 #### ForwardPacketPayload
 Wraps Minecraft CustomPacketPayload for cross-server transmission.
@@ -267,9 +268,10 @@ public class MyModEvents {
 ### Step 4: Connection Handshake Process
 
 1. Slave connects to master's TCP port
-2. Slave sends `HandshakePayload` with ID and shared secret
+2. Slave sends `HandshakePayload` with ID, shared secret and Minecraft version
 3. Master validates:
    - Shared secret matches
+   - Minecraft version equals the master's (checked only after the secret)
    - Slave ID is unique (not already connected)
 4. Master sends `HandshakeResultPayload` with result
 5. If successful, connection is established
@@ -281,7 +283,7 @@ Slave                          Master
   ├──── TCP Connect ────────────>│
   │                              │
   ├──── HandshakePayload ───────>│
-  │     (slaveID, token)         │
+  │ (slaveID, token, mcVersion)  │
   │                              │
   │                       [Validate]
   │                              │
@@ -676,7 +678,7 @@ public class CrossServerPlayerTracker {
 
 | Payload Type | Direction | Purpose | Fields |
 |-------------|-----------|---------|--------|
-| `HandshakePayload` | Slave → Master | Initial authentication | `serverId`, `token` |
+| `HandshakePayload` | Slave → Master | Initial authentication | `serverId`, `token`, `mcVersion` |
 | `HandshakeResultPayload` | Master → Slave | Authentication result | `result` (enum) |
 | `ForwardPacketPayload` | Bidirectional | Wrap and forward custom packets | `senderPlayerUUID`, `senderServerID`, `packetType`, `data` |
 | `BroadcastPayload` | Master → Slaves | Simple broadcast message | `senderName`, `fromServer`, `message` |
@@ -982,7 +984,15 @@ telnet <master-ip> 25575
 - Check if another slave is already connected with same ID
 - Restart master server to clear stale connections
 
-#### 4. Packets Not Being Received
+#### 4. Minecraft Version Mismatch
+
+**Problem**: `MC_VERSION_MISMATCH` error.
+
+**Solutions**:
+- Run the master and all slaves on the same Minecraft version; the master log names both versions
+- Update ModUtilities on the slave (older versions do not send their Minecraft version)
+
+#### 5. Packets Not Being Received
 
 **Problem**: Packets sent but not received on other side.
 
@@ -999,7 +1009,7 @@ ModLogger.info("Packet registered: " +
     MultiServerPacketRegistry.isRegistered(packet.type().id()));
 ```
 
-#### 5. Reconnection Loop
+#### 6. Reconnection Loop
 
 **Problem**: Slave continuously disconnects and reconnects.
 
@@ -1009,7 +1019,7 @@ ModLogger.info("Packet registered: " +
 - Review logs for error patterns
 - Ensure handlers don't throw unhandled exceptions
 
-#### 6. Master Server Won't Start
+#### 7. Master Server Won't Start
 
 **Problem**: Master server fails to bind to port.
 
