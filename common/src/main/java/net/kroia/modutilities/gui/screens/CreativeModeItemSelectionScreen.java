@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui.screens;
 
+import net.kroia.modutilities.gui.client.InputCompat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.client.player.LocalPlayer;
@@ -46,10 +47,17 @@ public class CreativeModeItemSelectionScreen extends CreativeModeInventoryScreen
 
     @Override
     public void onClose() {
+        // Closing passes through "no screen", which grabs + re-centers the mouse.
+        // Save the raw window cursor pos and restore it once the callback has shown its screen.
+        Minecraft mc = Minecraft.getInstance();
+        double mouseX = mc.mouseHandler.xpos();
+        double mouseY = mc.mouseHandler.ypos();
         super.onClose();
         if(onClosed != null)
         {
             onClosed.run();
         }
+        if(mc.screen != null)
+            InputCompat.setCursorPos(mouseX, mouseY);
     }
 }
