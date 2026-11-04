@@ -15,6 +15,7 @@ import net.minecraft.client.gui.screens.DatapackLoadFailureScreen;
 import net.minecraft.client.gui.screens.DisconnectedScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.core.HolderLookup;
@@ -54,6 +55,7 @@ final class AutoTestClient {
     private static boolean started;
     private static boolean joined;
     private static boolean done;
+    private static boolean inventoryOpened;
     private static boolean warningsDismissed;
     private static int titleTicks;
     /** The last world-open prompt answered: it can stay on screen for a few ticks after the answer. */
@@ -80,13 +82,17 @@ final class AutoTestClient {
             if (screen instanceof TitleScreen && ++titleTicks >= TITLE_TICKS) {
                 started = true;
                 start(mc, screen);
-                if (AutoTest.PLAY) done = true; // manual play: no quit logic
             }
             return;
         }
         if (mc.level != null && !joined) {
             joined = true;
             offscreenGuiCheck(mc);
+        }
+        if (joined && !inventoryOpened) openInventory(mc);
+        if (AutoTest.PLAY) {
+            done = inventoryOpened; // manual play: no quit logic
+            return;
         }
         if (AutoTest.isFinished()) {
             finish(mc, "tests_finished");
@@ -98,6 +104,17 @@ final class AutoTestClient {
         } else if (!joined && CONNECT == null && screen != null && screen != answered) {
             answerWorldPrompt(mc, screen);
         }
+    }
+
+    /**
+     * A non-pausing screen that frees the cursor: with pauseOnLostFocus:false nothing else releases the mouse
+     * grab while the user works in another window. Waits for the player and never replaces an open screen.
+     */
+    private static void openInventory(Minecraft mc) {
+        if (mc.player == null || ClientCompat.screen() != null) return;
+        inventoryOpened = true;
+        ClientCompat.setScreen(new InventoryScreen(mc.player));
+        ModUtilitiesMod.LOGGER.info("[AutoTest] client: opened inventory to release the mouse");
     }
 
     /**

@@ -133,6 +133,8 @@ Per project: compile the agent, capture, then for each loader × config a fresh 
 `<out>/<project>/<loader>/<config>/<instance>/` with generated `server.properties`
 (distinct ports, `online-mode=false`, flat, peaceful, `max-tick-time=-1`), `eula.txt`,
 `config/modutilities/MultiServerConfig.json`, client `options.txt` (no onboarding, no pause on focus loss).
+Since nothing pauses, the client opens the player's inventory once it has joined, which frees the cursor
+while the game keeps running.
 With `--world` the template is copied (without `session.lock`) into every server's `world` and the
 singleplayer client's `saves/play` (`world=play` instead of `new`), fresh per cell; the flat settings then
 only matter for dimensions the world lacks.
