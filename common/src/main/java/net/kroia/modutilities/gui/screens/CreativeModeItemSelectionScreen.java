@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui.screens;
 
+import net.kroia.modutilities.gui.client.ClientCompat;
 import net.kroia.modutilities.gui.client.InputCompat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
@@ -57,7 +58,7 @@ public class CreativeModeItemSelectionScreen extends CreativeModeInventoryScreen
         {
             onClosed.run();
         }
-        if(mc.screen != null)
+        if(ClientCompat.screen() != null)
             InputCompat.setCursorPos(mouseX, mouseY);
     }
 }
