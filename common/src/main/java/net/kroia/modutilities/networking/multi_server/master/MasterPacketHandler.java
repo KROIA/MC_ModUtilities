@@ -80,8 +80,8 @@ public class MasterPacketHandler extends SimpleChannelInboundHandler<Payload> {
     /**
      * Dispatches an incoming {@link Payload} based on its concrete type.
      * <p>
-     * Handles the slave handshake (validating the shared secret and rejecting
-     * duplicate slave IDs) and forwards data packets to the
+     * Handles the slave handshake (validating the shared secret, rejecting a
+     * Minecraft version mismatch and duplicate slave IDs) and forwards data packets to the
      * {@link MultiServerPacketRegistry}. Unknown payload types are logged and ignored.
      *
      * @param ctx     The Netty channel handler context for this connection.
@@ -104,6 +104,21 @@ public class MasterPacketHandler extends SimpleChannelInboundHandler<Payload> {
                         masterTCPServer.getSharedSecret().getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
                     HandshakeResultPayload response = new HandshakeResultPayload(SlaveServerClient.ConnectionEstablishState.INVALID_SHARED_SECRET);
                     warn("Rejected connection from '"+hs.serverId()+"' ("+resolveRemoteAddress(ctx)+") - "+response.result());
+                    Channel channel = ctx.channel();
+                    if (channel != null && channel.isActive()) {
+                        channel.writeAndFlush(response);
+                    }
+                    ctx.close();
+                    return;
+                }
+
+                // Checked after the secret so unauthenticated peers learn nothing about this server.
+                String masterMcVersion = HandshakePayload.localMcVersion();
+                if (!masterMcVersion.equals(hs.mcVersion())) {
+                    HandshakeResultPayload response = new HandshakeResultPayload(SlaveServerClient.ConnectionEstablishState.MC_VERSION_MISMATCH);
+                    warn("Rejected connection from '"+hs.serverId()+"' ("+resolveRemoteAddress(ctx)+") - "+response.result()
+                            +": slave runs Minecraft '"+(hs.mcVersion().isEmpty() ? "unknown (outdated ModUtilities)" : hs.mcVersion())
+                            +"', master runs '"+masterMcVersion+"'");
                     Channel channel = ctx.channel();
                     if (channel != null && channel.isActive()) {
                         channel.writeAndFlush(response);
