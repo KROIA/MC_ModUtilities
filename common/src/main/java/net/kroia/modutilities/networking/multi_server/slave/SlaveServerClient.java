@@ -57,7 +57,9 @@ public class SlaveServerClient {
         /** The shared secret presented by the slave does not match the master's configuration. */
         INVALID_SHARED_SECRET,
         /** Another slave is already registered with the same {@code serverId}. */
-        SLAVE_ID_ALREADY_USED
+        SLAVE_ID_ALREADY_USED,
+        /** The slave runs a different Minecraft version than the master. Keep this constant last: the wire format is ordinal-based. */
+        MC_VERSION_MISMATCH
     }
 
 
@@ -180,7 +182,7 @@ public class SlaveServerClient {
 
                 info("Connected to master at "+masterHost+":" + masterPort);
                 // Immediately authenticate with the master
-                sendToMaster(new HandshakePayload(serverId, sharedSecret));
+                sendToMaster(new HandshakePayload(serverId, sharedSecret, HandshakePayload.localMcVersion()));
             } else {
                 connectionFailReason =  future.cause();
                 warn("Could not connect to master — retrying in 5s... Reason: "+connectionFailReason);
@@ -374,6 +376,14 @@ public class SlaveServerClient {
             }
             case ConnectionEstablishState.SLAVE_ID_ALREADY_USED -> {
                 info("Can't connect to master. A slave with the same slave ID: '"+getServerID()+"' is already connected to the master.");
+                try {
+                    onConnectionFailed.accept(state);
+                }catch (Exception e) {
+                    error("Failed to call callback: onConnectionFailed. Reason: "+e.getMessage(),e);
+                }
+            }
+            case ConnectionEstablishState.MC_VERSION_MISMATCH -> {
+                info("Can't connect to master. The master runs a different Minecraft version than this server ("+HandshakePayload.localMcVersion()+"). See the master log for its version.");
                 try {
                     onConnectionFailed.accept(state);
                 }catch (Exception e) {
