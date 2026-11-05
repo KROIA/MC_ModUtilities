@@ -47,4 +47,9 @@ public class ClientInputProvider implements IInputProvider {
     public void setCursorPos(double x, double y) {
         InputCompat.setCursorPos(x, y);
     }
+
+    @Override
+    public void setTextInputFocus(Object owner, boolean focused) {
+        InputCompat.setTextInputFocus(owner, focused);
+    }
 }
