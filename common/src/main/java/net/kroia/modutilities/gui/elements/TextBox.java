@@ -524,9 +524,11 @@ public class TextBox extends GuiElement {
 
     @Override
     public void focusGained() {
+        if (getRoot() != null) getRoot().getInputProvider().setTextInputFocus(this, true);
     }
     @Override
     public void focusLost() {
+        if (getRoot() != null) getRoot().getInputProvider().setTextInputFocus(this, false);
         cursorVisible = false;
         viewScrollX = 0;
         textLabel.setManualScrollOffsetX(0);
