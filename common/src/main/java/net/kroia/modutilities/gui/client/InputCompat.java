@@ -54,6 +54,18 @@ public final class InputCompat {
         //return (hasShiftDown() ? InputConstants.MOD_SHIFT : 0) | (hasControlDown() ? InputConstants.MOD_CONTROL : 0) | (hasAltDown() ? InputConstants.MOD_ALT : 0); // mc>=26.3
     }
 
+    /**
+     * Starts or stops OS text input for a focused text field. 26.3 (SDL3) only delivers typed
+     * characters while text input is started; older versions always deliver them.
+     *
+     * @param owner   the text field; stopping only takes effect if it is the current owner
+     * @param focused {@code true} to start text input, {@code false} to stop it
+     */
+    public static void setTextInputFocus(Object owner, boolean focused) {
+        return; // mc<=26.2
+        //Minecraft.getInstance().textInputManager().onTextInputFocusChange(owner, focused); // mc>=26.3
+    }
+
     /** @return {@code true} while either alt key is held */
     public static boolean hasAltDown() {
         //return Screen.hasAltDown(); // mc<=1.21.8

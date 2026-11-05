@@ -47,4 +47,12 @@ public interface IInputProvider {
      * @param y the y coordinate in window pixels
      */
     default void setCursorPos(double x, double y) {}
+
+    /**
+     * Starts or stops OS text input for a focused text field (required on 26.3+ to receive typed characters).
+     *
+     * @param owner   the text field gaining or losing focus
+     * @param focused {@code true} when the field gained focus
+     */
+    default void setTextInputFocus(Object owner, boolean focused) {}
 }
