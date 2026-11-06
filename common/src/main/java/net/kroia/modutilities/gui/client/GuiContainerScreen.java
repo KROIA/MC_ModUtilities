@@ -93,7 +93,7 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
         gui.setGraphicsBackend(clientGraphics);
         gui.setInputProvider(new ClientInputProvider(InputCompat.windowHandle()));
         gui.setFont(Minecraft.getInstance().font);
-        gui.setDisplayScaleFactor(Minecraft.getInstance().getWindow().getGuiScale());
+        ClientGuiSettings.applyTo(gui);
         gui.setSoundPlayer((sound, volume, pitch) -> playLocalSound(sound, volume, pitch));
         clientGraphics.setFont(Minecraft.getInstance().font);
     }
@@ -234,7 +234,7 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     public final void init() {
         super.init();
         // Re-inject display scale (may have changed on resize)
-        gui.setDisplayScaleFactor(Minecraft.getInstance().getWindow().getGuiScale());
+        ClientGuiSettings.applyTo(gui);
         gui.init();
         updateLayout(gui);
         applyJeiOverlayHide();

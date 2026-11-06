@@ -83,6 +83,7 @@ public class Gui {
     private float guiScale = 1.0f; // Effective (pixel-snapped) scale used for rendering and input
     private float invGuiScale = 1.0f; // Inverse of the effective scale
     private double displayScaleFactor = 1.0; // Minecraft GUI scale, set by hosting screen
+    private float baseGuiScale = 1.0f; // Host-wide factor (user "GUI scale" setting), multiplied with requestedGuiScale
     private int offscreenScissorScale = 0; // >0: use raw GL scissor with this scale instead of GuiGraphics
     private int offscreenFramebufferHeight = 0;
 
@@ -253,8 +254,48 @@ public class Gui {
         return (float)(pixels / displayScaleFactor);
     }
 
+    /**
+     * Base factor that turns a fixed absolute pixel scale into a factor relative to
+     * the Minecraft GUI scale: {@code min(fixedPixelScale, maxPixelScale) / displayScaleFactor}.
+     * <p>
+     * {@code maxPixelScale} is the largest scale Minecraft's own "auto" GUI scale
+     * would pick for the window, so a large fixed scale on a small window never
+     * makes the screen smaller than vanilla screens are designed for.
+     *
+     * @param fixedPixelScale    window pixels per GUI unit wanted by the user; {@code <= 0} means
+     *                           "follow Minecraft" and returns {@code 1.0}
+     * @param maxPixelScale      the largest scale that still fits the window ({@code >= 1})
+     * @param displayScaleFactor the Minecraft GUI scale (window pixels per GUI unit)
+     * @return the base factor to pass to {@link #setBaseGuiScale(float)}
+     */
+    public static float fixedBaseGuiScale(int fixedPixelScale, int maxPixelScale, double displayScaleFactor) {
+        if(fixedPixelScale <= 0 || !(displayScaleFactor > 0.0))
+            return 1.0f;
+        return (float)(Math.min(fixedPixelScale, Math.max(1, maxPixelScale)) / displayScaleFactor);
+    }
+
+    /**
+     * Sets the host-wide base factor that is multiplied with the value passed to
+     * {@link #setGuiScale(float)} before pixel snapping. Hosting screens use it for
+     * the user's library "GUI scale" setting (see {@link #fixedBaseGuiScale(int, int, double)});
+     * {@code 1.0} (default) keeps the Minecraft GUI scale.
+     *
+     * @param baseGuiScale the base factor; values {@code <= 0} are corrected to {@code 1.0}
+     */
+    public void setBaseGuiScale(float baseGuiScale) {
+        this.baseGuiScale = baseGuiScale > 0.0f ? baseGuiScale : 1.0f;
+        updateEffectiveGuiScale();
+    }
+
+    /**
+     * @return the host-wide base factor, see {@link #setBaseGuiScale(float)}
+     */
+    public float getBaseGuiScale() {
+        return baseGuiScale;
+    }
+
     private void updateEffectiveGuiScale() {
-        this.guiScale = snapGuiScale(requestedGuiScale, displayScaleFactor);
+        this.guiScale = snapGuiScale(requestedGuiScale * baseGuiScale, displayScaleFactor);
         this.invGuiScale = 1.0f / this.guiScale;
     }
 

@@ -2,6 +2,7 @@ package net.kroia.modutilities.testing.tests;
 
 import net.kroia.modutilities.gui.elements.CheckBox;
 import net.kroia.modutilities.gui.elements.EmptyButton;
+import net.kroia.modutilities.gui.elements.HorizontalListView;
 import net.kroia.modutilities.gui.elements.HorizontalSlider;
 import net.kroia.modutilities.gui.elements.TabElement;
 import net.kroia.modutilities.gui.elements.TextBox;
@@ -72,6 +73,9 @@ public class GuiLogicTests extends TestSuite {
         // N46 regression: VerticalListView tracks allObjectSize
         addTest("VerticalListView_addChild_updatesSize", this::testVerticalListViewAddChildUpdatesSize);
 
+        // Task #103 regression: clear + refill keeps the scroll position
+        addTest("ListView_refill_keepsScrollOffset", this::testListViewRefillKeepsScrollOffset);
+
         // N40 regression: setOutlineThickness works correctly
         addTest("GuiElement_setOutlineThickness_setsValue", this::testGuiElementSetOutlineThicknessSetsValue);
 
@@ -109,6 +113,24 @@ public class GuiLogicTests extends TestSuite {
         if (Math.abs(gui.getGuiScale() - 2.0f / 3) > 1e-5 || gui.getRequestedGuiScale() != 0.8f
                 || Math.abs(gui.getInvGuiScale() - 1.5f) > 1e-5)
             return fail("Gui effective scale not updated on display factor change: " + gui.getGuiScale());
+
+        // Fixed library GUI scale (Task #101): {fixedPixelScale, maxPixelScale, mcGuiScale, expected base}
+        double[][] fixedCases = {
+                {0, 4, 3, 1.0}, {2, 4, 1, 2.0}, {2, 4, 2, 1.0}, {2, 4, 4, 0.5},
+                {6, 3, 2, 1.5}, {3, 0, 3, 1.0 / 3}, {2, 4, 0, 1.0}};
+        for (double[] c : fixedCases) {
+            float got = net.kroia.modutilities.gui.Gui.fixedBaseGuiScale((int) c[0], (int) c[1], c[2]);
+            if (Math.abs(got - c[3]) > 1e-5)
+                return fail("fixedBaseGuiScale(" + c[0] + ", " + c[1] + ", " + c[2] + ") = " + got + ", expected " + c[3]);
+        }
+        // Same pixel size at every MC GUI scale: fixed 2 px/unit, screen's own scale 0.5 -> 1 px/unit
+        for (int mc = 1; mc <= 4; mc++) {
+            gui.setGuiScale(0.5f);
+            gui.setDisplayScaleFactor(mc);
+            gui.setBaseGuiScale(net.kroia.modutilities.gui.Gui.fixedBaseGuiScale(2, 4, mc));
+            if (Math.abs(gui.getGuiScale() * mc - 1.0f) > 1e-5)
+                return fail("fixed scale not MC-scale independent at MC scale " + mc + ": " + gui.getGuiScale());
+        }
         return pass("Gui scale snaps to whole screen pixels per unit");
     }
 
@@ -396,6 +418,26 @@ public class GuiLogicTests extends TestSuite {
     // ========================================================================
     // N46 regression: VerticalListView tracks allObjectSize via addChild
     // ========================================================================
+
+    private TestResult testListViewRefillKeepsScrollOffset() {
+        // Content viewport is 298px (300 - 2*outline); 20 rows of 30px = 600px -> max offset 302
+        net.kroia.modutilities.gui.elements.base.ListView[] views = {
+                new VerticalListView(0, 0, 200, 300), new HorizontalListView(0, 0, 300, 200)};
+        for (var view : views) {
+            String name = view.getClass().getSimpleName();
+            for (int i = 0; i < 20; i++) view.addChild(new EmptyButton(0, 0, 30, 30));
+            view.setScrollOffset(200);
+            view.removeChilds();
+            for (int i = 0; i < 20; i++) view.addChild(new EmptyButton(0, 0, 30, 30));
+            if (view.getScrollOffset() != 200)
+                return fail(name + ": refill with same rows changed offset 200 -> " + view.getScrollOffset());
+            view.removeChilds();
+            for (int i = 0; i < 12; i++) view.addChild(new EmptyButton(0, 0, 30, 30)); // 360px -> max 62
+            if (view.getScrollOffset() != 62)
+                return fail(name + ": refill with fewer rows should clamp to 62, got " + view.getScrollOffset());
+        }
+        return pass("ListView keeps scroll offset across clear + refill, clamps when content shrinks");
+    }
 
     private TestResult testVerticalListViewAddChildUpdatesSize() {
         VerticalListView listView = new VerticalListView(0, 0, 200, 300);
