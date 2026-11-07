@@ -3,6 +3,7 @@ architectury {
 }
 
 repositories {
+    mavenCentral()
     maven {
         // Jared's maven hosts JEI since January 2023.
         name = "Jared's maven"
@@ -31,4 +32,8 @@ dependencies {
     // NEZNAMY TAB API - compileOnly soft dependency. TabPlaceholderBackend is only
     // class-loaded when the "tab" mod is present (see ModUtilitiesMod.init).
     compileOnly 'com.github.NEZNAMY:TAB-API:5.5.0'
+
+    // LuckPerms API (Maven Central) - compileOnly soft dependency, never bundled. Plain Java API, so no
+    // remapping. Only LuckPermsBridge.Lp references it, and that class loads only when LuckPerms is present.
+    compileOnly "net.luckperms:api:${rootProject.luckperms_api_version}"
 }
