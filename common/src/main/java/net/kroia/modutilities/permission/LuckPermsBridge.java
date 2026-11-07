@@ -10,6 +10,7 @@ import net.luckperms.api.cacheddata.CachedDataManager;
 import net.luckperms.api.event.group.GroupDataRecalculateEvent;
 import net.luckperms.api.event.user.UserDataRecalculateEvent;
 import net.luckperms.api.model.user.User;
+import net.luckperms.api.model.user.UserManager;
 import net.luckperms.api.node.Node;
 import net.luckperms.api.util.Tristate;
 import net.minecraft.server.MinecraftServer;
@@ -17,6 +18,7 @@ import net.minecraft.server.MinecraftServer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -86,6 +88,37 @@ public final class LuckPermsBridge {
     }
 
     /**
+     * Looks up the player's <b>effective</b> value of {@code node} (user node, groups, wildcards; unset = {@code false}),
+     * evaluated exactly like {@link #addNodeChangeListener}. Works for offline players: they are loaded from storage
+     * and handed back to LuckPerms' housekeeper ({@code cleanupUser}) afterwards.
+     * The future completes on a LuckPerms thread; hop to the server thread before touching game state.
+     *
+     * <p>Use case: {@code setNode(uuid, node, false)} only removes the user node. If a group still grants it, the
+     * effective value stays {@code true} and no change event fires, so check afterwards. Chain it on the
+     * {@code setNode} future: once that completes the write is applied and the user's cached data invalidated, so
+     * this lookup sees the post-write state.
+     * <pre>{@code
+     * // "/banksystem deop <player>":
+     * data.setAdminFlagOnly(uuid, false);
+     * LuckPermsBridge.setNode(uuid, "banksystem.admin", false)
+     *         .thenCompose(ok -> LuckPermsBridge.getEffective(uuid, "banksystem.admin"))
+     *         .thenAccept(v -> server.execute(() -> {
+     *             if (v.equals(Optional.of(true))) {
+     *                 data.setAdminFlagOnly(uuid, true);
+     *                 source.sendFailure(Component.literal("Player is still admin through a LuckPerms group"));
+     *             }
+     *         }));
+     * }</pre>
+     *
+     * @return the effective value; empty if LuckPerms is absent or the lookup failed (logged)
+     */
+    public static CompletableFuture<Optional<Boolean>> getEffective(UUID player, String node) {
+        if (!isAvailable())
+            return CompletableFuture.completedFuture(Optional.empty());
+        return Lp.getEffective(player, node);
+    }
+
+    /**
      * Calls {@code listener(player, effectiveValue)} on the server thread whenever LuckPerms changes the player's
      * effective value of {@code node}. Call during mod init; it stays registered for every server start.
      * No-op without LuckPerms.
@@ -140,6 +173,8 @@ public final class LuckPermsBridge {
                 if (value)
                     user.data().add(Node.builder(node).value(true).build());
             }).thenApply(v -> {
+                // the node edits already invalidate the cache; be explicit so a following getEffective sees the write
+                modified[0].getCachedData().invalidate();
                 // modifyUser only saves; tell other servers on the same storage (what LP's own commands do)
                 api.getMessagingService().ifPresent(ms -> ms.pushUserUpdate(modified[0]));
                 return true;
@@ -147,6 +182,29 @@ public final class LuckPermsBridge {
                 ModUtilitiesMod.LOGGER.error("[LuckPerms] Failed to set {}={} for {}", node, value, player, t);
                 return false;
             });
+        }
+
+        static CompletableFuture<Optional<Boolean>> getEffective(UUID player, String node) {
+            UserManager users = api().getUserManager();
+            User loaded = users.getUser(player);
+            if (loaded != null)
+                return CompletableFuture.completedFuture(Optional.of(effective(loaded.getCachedData(), node).asBoolean()));
+            // offline: load, read, then let LuckPerms unload it (no-op if the player is online by now)
+            return users.loadUser(player).thenApply(user -> {
+                try {
+                    return Optional.of(effective(user.getCachedData(), node).asBoolean());
+                } finally {
+                    users.cleanupUser(user);
+                }
+            }).exceptionally(t -> {
+                ModUtilitiesMod.LOGGER.error("[LuckPerms] Failed to look up {} for {}", node, player, t);
+                return Optional.empty();
+            });
+        }
+
+        // Shared by the listener and getEffective so both agree on what "effective" means.
+        private static Tristate effective(CachedDataManager data, String node) {
+            return data.getPermissionData().checkPermission(node);
         }
 
         static synchronized void subscribe() {
@@ -172,7 +230,7 @@ public final class LuckPermsBridge {
         // Reads the live cache when it runs, so out-of-order async events still end on the latest state.
         private static void check(UUID player, CachedDataManager data) {
             LISTENERS.forEach((node, listeners) -> {
-                Tristate now = data.getPermissionData().checkPermission(node);
+                Tristate now = effective(data, node);
                 Tristate before = LAST_SEEN.computeIfAbsent(node, k -> new HashMap<>()).put(player, now);
                 if (now == before || (before == null && now == Tristate.UNDEFINED))
                     return;
