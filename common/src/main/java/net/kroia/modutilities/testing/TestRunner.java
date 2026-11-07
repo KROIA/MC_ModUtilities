@@ -86,6 +86,7 @@ public class TestRunner {
             totalPassed += counts[0];
             totalFailed += counts[1];
             totalError += counts[2];
+            totalSkipped += counts[3];
         }
 
         sendSummary(player, totalPassed, totalFailed, totalError, totalSkipped);
@@ -115,6 +116,7 @@ public class TestRunner {
         int totalPassed = 0;
         int totalFailed = 0;
         int totalError = 0;
+        int totalSkipped = 0;
         boolean found = false;
 
         for (TestSuite suite : suites) {
@@ -124,6 +126,7 @@ public class TestRunner {
                 totalPassed += counts[0];
                 totalFailed += counts[1];
                 totalError += counts[2];
+                totalSkipped += counts[3];
             }
         }
 
@@ -137,7 +140,7 @@ public class TestRunner {
             return;
         }
 
-        sendSummary(player, totalPassed, totalFailed, totalError, 0);
+        sendSummary(player, totalPassed, totalFailed, totalError, totalSkipped);
     }
 
     public void listCategories(ServerPlayer player) {
@@ -204,6 +207,7 @@ public class TestRunner {
         int passed = 0;
         int failed = 0;
         int error = 0;
+        int skipped = 0;
 
         List<TestResult> results = new ArrayList<>();
         this.results.put(category.getName() + "/" + suite.getClass().getSimpleName(), results);
@@ -223,7 +227,7 @@ public class TestRunner {
                         .append(Component.literal("Setup failed: " + describe(t)).withStyle(ChatFormatting.RED)));
                 // Returning here still runs the finally block below, so a partially
                 // completed setup gets cleaned up.
-                return new int[]{0, 0, testCount};
+                return new int[]{0, 0, testCount, 0};
             }
 
             for (Map.Entry<String, Supplier<TestResult>> entry : suite.getTests().entrySet()) {
@@ -249,6 +253,7 @@ public class TestRunner {
                     case PASS -> passed++;
                     case FAIL -> failed++;
                     case ERROR -> error++;
+                    case SKIP -> skipped++;
                 }
             }
         } finally {
@@ -283,9 +288,14 @@ public class TestRunner {
             summaryLine.append(Component.literal(String.valueOf(error)).withStyle(ChatFormatting.YELLOW));
             summaryLine.append(Component.literal(" errors").withStyle(ChatFormatting.WHITE));
         }
+        if (skipped > 0) {
+            summaryLine.append(Component.literal(", ").withStyle(ChatFormatting.WHITE));
+            summaryLine.append(Component.literal(String.valueOf(skipped)).withStyle(ChatFormatting.DARK_GRAY));
+            summaryLine.append(Component.literal(" skipped").withStyle(ChatFormatting.WHITE));
+        }
         send(player, summaryLine);
 
-        return new int[]{passed, failed, error};
+        return new int[]{passed, failed, error, skipped};
     }
 
     /** Chat output is optional: headless runs (no player) only write the log file. */
@@ -321,6 +331,9 @@ public class TestRunner {
                     send(player, Component.literal("    " + result.getMessage()).withStyle(ChatFormatting.YELLOW));
                 }
             }
+            case SKIP -> send(player, Component.literal("  ")
+                    .append(Component.literal("- " + result.getTestName() + " (skipped: " + result.getMessage() + ")")
+                            .withStyle(ChatFormatting.DARK_GRAY)));
         }
     }
 
@@ -448,6 +461,8 @@ public class TestRunner {
                     log.append("     ").append(result.getMessage()).append('\n');
                 }
             }
+            case SKIP -> log.append("SKIP ").append(result.getTestName())
+                    .append(" (").append(result.getMessage()).append(")\n");
         }
     }
 
@@ -501,6 +516,7 @@ public class TestRunner {
                 yield TestResult.fail(name, source.getMessage());
             }
             case ERROR -> TestResult.error(name, source.getMessage() != null ? source.getMessage() : "");
+            case SKIP -> TestResult.skip(name, source.getMessage() != null ? source.getMessage() : "");
         };
     }
 }

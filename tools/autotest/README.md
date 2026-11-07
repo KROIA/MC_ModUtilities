@@ -46,9 +46,70 @@ Options:
 | `--build-kind K` | `release` | `--clean-build`: `release` (`-Penable_dev_features=false`) or `dev` (`true`, jars include the tests). A test run right after a dev clean build finds the jars UP-TO-DATE (no recompile); it still clears the Loom remap cache of mods with `flatDir` dependencies, so those re-remap their dependency jars (seconds) |
 | `--test-jobs N` | `2` | `sp` cells run at once (own game dir, no ports, ~2-4 GB RAM each, one game window each), beside the multi-server cells, which still run one at a time (shared ports), and beside the builds/captures of the next projects. `1` = everything sequential |
 | `--world DIR` | new superflat | tests and `--play`: world folder (with `level.dat`) copied fresh into every instance of every cell: servers `<instance>/world`, singleplayer client `saves/play` (opened directly). The template is never modified. An older world is upgraded (the client confirms the backup/upgrade prompts by itself); a world newer than the cell's MC fails the cell (`world ... is from a newer Minecraft`) |
+| `--luckperms M` | `off` | LuckPerms dimension, see [LuckPerms](#luckperms). `off`: the plain cells (unchanged); `on`: `<config>-lp` cells only; `both`: plain + `-lp`; `removed`: only the two-phase `lp-removed` cell per loader; `all`: plain + `-lp` + `lp-removed` |
 
 Exit code 0 when every cell passed. Only one run per output folder at a time (`running.lock`;
 all runs share the test ports): a second one exits with a message.
+
+## LuckPerms
+
+LuckPerms is never a dependency of the mods. For tests it is put on the **dev runtime** classpath only, opt-in with
+the Gradle property `-Pwith_luckperms=true` (Loom `modLocalRuntime`: not in the jar, not in the published POM/module).
+Versions (Modrinth Maven, separate builds per loader) are in `gradle.properties`: `luckperms_fabric_version`,
+`luckperms_neoforge_version`. `gradlew :fabric:runServer -Pwith_luckperms=true` works by hand too.
+
+With `--luckperms on|both|all` the launch commands are captured a second time with `-Pwith_luckperms=true`
+(`<out>/<project>/launch-lp/`) and every `--configs` entry also runs as `<config>-lp` (cell dir
+`<out>/<project>/<loader>/<config>-lp/`). On NeoForge each instance gets `defaultconfigs/neoforge-server.toml` with
+`permissionHandler = "luckperms:permission_handler"`, so `PermissionCompat` node checks go through LuckPerms
+(LuckPerms also sets it itself when the value is the default). LuckPerms' Fabric build is server-only
+(`"environment": "server"`), so on Fabric `sp-lp` / `spslave-lp` clients run without it and its tests skip; use `mp-lp`.
+
+`lp-removed` (`--luckperms removed|all`, one cell per loader, cell dir `<loader>/lp-removed/phase1|phase2/`):
+1. phase 1: `mp` with LuckPerms. Tests record expectations in `<world>/testing/luckperms_phase1.json`
+   (`LuckPermsPhase.record`).
+2. phase 2: `mp` without LuckPerms on a copy of phase 1's master world (NeoForge: the world's server config still
+   names LuckPerms' handler, NeoForge falls back to its default). `LuckPermsRemovedTests` (and dependents' phase-2
+   checks) run only there.
+
+The cell fails if phase 1 wrote no phase file (LuckPerms missing, e.g. a dependent without the Gradle lines below),
+or phase 2 ran no `LuckPermsRemoved*` test. Its counts are phase 1 + phase 2.
+
+Skipped tests: a test returns `skip(reason)` (`TestResult.Status.SKIP`) when a precondition is missing, e.g.
+LuckPerms tests without LuckPerms. They count as neither passed nor failed: `skipped` in `results.json` (per mod and
+total), the `skip` column of the summary table, `SKIP <name> (<reason>)` in `logs/UnitTests/<mod>.log`, grey in chat.
+The GUI only shows the plain config columns; `-lp` / `lp-removed` results are in the summary table, `summary.json`
+and their `cell.json`.
+
+### Dependent mods
+
+Same lines in the dependent's `fabric/build.gradle` / `neoforge/build.gradle` (and the two versions in its
+`gradle.properties`), e.g. for Fabric:
+
+```groovy
+if ((findProperty('with_luckperms') ?: 'false').toBoolean()) {
+    repositories {
+        maven {
+            url = 'https://api.modrinth.com/maven'
+            content { includeGroup 'maven.modrinth' }
+        }
+    }
+    dependencies {
+        modLocalRuntime "maven.modrinth:luckperms:${rootProject.luckperms_fabric_version}" // neoforge: luckperms_neoforge_version
+    }
+}
+```
+
+Phase-file contract (`net.kroia.modutilities.testing.LuckPermsPhase`, dev builds only):
+- Phase 1 (`LuckPermsBridge.isAvailable()`): `LuckPermsPhase.record(server, "<modid>", key, value)` stores strings
+  under the mod id in `<world>/testing/luckperms_phase1.json` (`{"mods": {"<modid>": {key: value}}}`); a no-op
+  (returns false) without LuckPerms. Record in a test of a suite that runs on every LuckPerms run; save the mod's own
+  state as usual (the server saves on stop). Example keys: `admin.<uuid>=true`, `syncSetting=on`, `migrationMarker=1`.
+- Phase 2: `LuckPermsPhase.isPhase2(server)` (phase file present, LuckPerms not loaded) gates the checks;
+  `expected(server, modid, key)` / `expectations(server, modid)` return what phase 1 recorded. Return `skip(...)`
+  when not in phase 2. Name the suite `*LuckPermsRemoved*` (the matrix counts those as phase-2 tests).
+- Waiting for LuckPerms futures in a test: `TestSuite.await(future, ms)` / `pumpUntil` / `pump` keep running queued
+  server tasks while waiting (LuckPermsBridge listeners are delivered as server tasks).
 
 ## GUI
 
@@ -130,6 +191,8 @@ above this folder), the same as run_matrix.py.
 <out>/play/play.json, play/<project>/<loader>/<config>/<instance>/   play sessions
 <out>/<project>/gradle-capture.log, clean-build.log, capture.json, build.json   build.json: last build per loader (GUI build column)
 <out>/<project>/<loader>/<config>/cell.json                   cell status (read by the GUI)
+<out>/<project>/<loader>/<config>-lp/...                      same with LuckPerms (--luckperms)
+<out>/<project>/<loader>/lp-removed/phase1|phase2/<instance>/ two-phase LuckPerms-removed cell
 <out>/<project>/<loader>/<config>/<instance>/console.log      game log
 <out>/<project>/<loader>/<config>/<instance>/results.json     test report of that server
 <out>/<project>/<loader>/<config>/client/results.json.client.json   client status

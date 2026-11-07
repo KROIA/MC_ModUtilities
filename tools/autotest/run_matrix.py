@@ -35,6 +35,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 MODS_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(HERE))))  # tools/autotest -> repo -> mod -> mods
 CONFIGS = ('sp', 'mp', 'slave', 'spslave')
 LOADERS = ('fabric', 'neoforge')
+LP_MODES = ('off', 'on', 'both', 'removed', 'all')  # --luckperms
+LP_SUFFIX = '-lp'  # cell label of a config run with LuckPerms, e.g. mp-lp
+REMOVED = 'lp-removed'  # two-phase cell: mp with LuckPerms, then mp without it on the same world
+PHASE_FILE = os.path.join('testing', 'luckperms_phase1.json')  # in the world folder (LuckPermsPhase.FILE)
 MASTER_PORT, SLAVE_PORT, LINK_PORT = 25611, 25612, 25690
 SECRET = 'autotest-secret'
 NO_WINDOW = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0  # no console pop-ups under the windowless GUI
@@ -159,13 +163,14 @@ def dep_hashes(project, loaders):
     return {j: file_sha256(j) for l in loaders for j in mod_jars(project, l)[1:]}
 
 
-def capture(project, loaders, agent, out_dir, offline, log):
+def capture(project, loaders, agent, out_dir, offline, log, lp=False):
     """Gradle starts every run task with the agent, which writes <loader>-<task>.json and exits.
 
     One Gradle invocation per task: on Gradle 9 runClient and runServer in one build fail validation
     (runServer reads the run dir that runClient's downloadAssets writes, without a declared dependency).
+    lp: capture with -Pwith_luckperms=true (LuckPerms on the dev runtime classpath) into launch-lp/.
     """
-    cap = os.path.join(out_dir, 'launch')
+    cap = os.path.join(out_dir, 'launch-lp' if lp else 'launch')
     shutil.rmtree(cap, ignore_errors=True)
     os.makedirs(cap)
     rc = 0
@@ -173,7 +178,8 @@ def capture(project, loaders, agent, out_dir, offline, log):
         for task in [f':{l}:{t}' for l in loaders for t in ('runClient', 'runServer')]:
             cmd = [gradlew(project), task,
                    '-I', os.path.join(HERE, 'capture.init.gradle'), f'-Pautotest_agent={agent}={cap}',
-                   '-Penable_dev_features=true'] + (['--offline'] if offline else [])  # tests only exist in dev builds
+                   '-Penable_dev_features=true'] + (['-Pwith_luckperms=true'] if lp else []) \
+                + (['--offline'] if offline else [])  # tests only exist in dev builds
             f.write(f'>>> {" ".join(cmd)}\n')
             f.flush()
             rc = subprocess.run(cmd, cwd=project, stdout=f, stderr=subprocess.STDOUT, timeout=3600,
@@ -409,8 +415,9 @@ def wait_until(cond, timeout, *must_live):
 
 # ---------------------------------------------------------------- one matrix cell
 
-def run_cell(specs, loader, config, cell_dir, timeout, mods, world=None, play=None):
+def run_cell(specs, loader, config, cell_dir, timeout, mods, world=None, play=None, lp=False):
     """Starts the instances of one configuration, waits for them, stops everything.
+    lp: specs include LuckPerms; on NeoForge every instance gets LuckPerms as permission handler.
     Returns (instances, tested, notes); every instance in `tested` is expected to have written results.json.
     world: template world copied fresh into every instance (client save / server world); None = new superflat.
     play=stop file: manual play, same instances and multi-server setup but no tests;
@@ -439,8 +446,16 @@ def run_cell(specs, loader, config, cell_dir, timeout, mods, world=None, play=No
     def copy_world(dst):
         shutil.copytree(template, dst, ignore=shutil.ignore_patterns('session.lock'))
 
+    def lp_config(run_dir):
+        # NeoForge routes PermissionAPI node checks to the configured handler only. neoforge-server.toml is a
+        # per-world server config; defaultconfigs/ seeds it for worlds that have none yet.
+        if lp and loader == 'neoforge':
+            write(os.path.join(run_dir, 'defaultconfigs', 'neoforge-server.toml'),
+                  'permissionHandler = "luckperms:permission_handler"\n')
+
     def server(name, port, ms, **props):
         prepare(d(name), ms, port)
+        lp_config(d(name))
         props = only_play(props)
         if template:
             copy_world(os.path.join(d(name), 'world'))  # level-name defaults to world
@@ -451,6 +466,7 @@ def run_cell(specs, loader, config, cell_dir, timeout, mods, world=None, play=No
 
     def client(ms, **props):
         prepare(d('client'), ms)
+        lp_config(d('client'))
         props = only_play(props)
         if template and props.get('world'):
             copy_world(os.path.join(d('client'), 'saves', 'play'))
@@ -579,14 +595,14 @@ def start_gui(out):
 
 def summarize(insts, tested, notes):
     """passed/failed/errors over every instance that should have run tests, plus a status string."""
-    row = {'passed': 0, 'failed': 0, 'errors': 0, 'status': []}
+    row = {'passed': 0, 'failed': 0, 'errors': 0, 'skipped': 0, 'status': []}
     for i in tested:
         r = read_json(i.results)
         if r is None:
             row['status'].append(f'{i.name}:no-results')
             row['errors'] += 1
             continue
-        for k in ('passed', 'failed', 'errors'):
+        for k in ('passed', 'failed', 'errors', 'skipped'):
             row[k] += r.get(k, 0)
         row['status'].append(f"{i.name}:{r.get('status')}/{r.get('role')}")
     for i in insts:
@@ -626,6 +642,9 @@ def main():
     ap.add_argument('--loaders', nargs='*', default=list(LOADERS), choices=LOADERS)
     ap.add_argument('--configs', nargs='*', default=list(CONFIGS), choices=CONFIGS)
     ap.add_argument('--timeout', type=int, default=900, help='per-instance watchdog, seconds')
+    ap.add_argument('--luckperms', choices=LP_MODES, default='off',
+                    help='off: plain cells; on: <config>-lp cells (LuckPerms in the dev runtime); both: plain + lp; '
+                         'removed: only the two-phase lp-removed cell per loader; all: plain + lp + lp-removed')
     ap.add_argument('--mods', help='comma separated mod ids to test (default: every mod with registered suites)')
     ap.add_argument('--out', default=os.path.join(MODS_ROOT, 'autotest-out'), help='output folder')
     ap.add_argument('--offline', action='store_true', help='pass --offline to Gradle')
@@ -777,7 +796,9 @@ def clean_build(args, out, projects):
 
 
 def test_cell(args, name, pdir, specs, jars, world_fp, loader, config):
-    """Runs one cell and writes its cell.json; returns its summary row. Thread-safe: own cell dir and instances."""
+    """Runs one cell and writes its cell.json; returns its summary row. Thread-safe: own cell dir and instances.
+    config: a CONFIGS entry, <config>-lp (that config with LuckPerms; specs = the LuckPerms launch specs) or
+    lp-removed (specs = (plain specs, LuckPerms specs), see run_removed)."""
     cell = os.path.join(pdir, loader, config)
     print(f'[{name}] {loader} {config} ...', flush=True)
     t0 = time.time()
@@ -785,15 +806,58 @@ def test_cell(args, name, pdir, specs, jars, world_fp, loader, config):
     status = os.path.join(cell, 'cell.json')
     write_json(status, {'state': 'running', 'project': name, 'loader': loader, 'config': config,
                         'world': args.world, 'started': now()})
-    insts, tested, notes = run_cell(specs, loader, config, cell, args.timeout, args.mods, args.world)
-    row = summarize(insts, tested, notes)
+    if config == REMOVED:
+        row = run_removed(args, specs, loader, cell)
+    else:
+        lp = config.endswith(LP_SUFFIX)
+        insts, tested, notes = run_cell(specs, loader, config.removesuffix(LP_SUFFIX), cell, args.timeout, args.mods,
+                                        args.world, lp=lp)
+        row = summarize(insts, tested, notes)
     row.update(project=name, loader=loader, config=config, seconds=int(time.time() - t0), dir=cell)
     state = 'passed' if row['ok'] else 'failed' if row['failed'] else 'error'
     write_json(status, {**row, 'state': state, 'finished': now(), 'jars': jars, 'fingerprint': fingerprint(jars),
                         'world': args.world, 'world_fp': world_fp})
     print(f"[{name}] {loader} {config} {'PASS' if row['ok'] else 'FAIL'} {row['passed']} passed, {row['failed']} "
-          f"failed, {row['errors']} errors  [{row['status']}]", flush=True)
+          f"failed, {row['errors']} errors, {row['skipped']} skipped  [{row['status']}]", flush=True)
     return row
+
+
+def run_removed(args, specs, loader, cell):
+    """"LuckPerms removed from a save": phase 1 runs mp WITH LuckPerms (tests record expectations in the world via
+    LuckPermsPhase), phase 2 runs mp WITHOUT LuckPerms on a copy of phase 1's master world (LuckPermsRemovedTests and
+    dependents' phase-2 checks). Instances in <cell>/phase1/, <cell>/phase2/. Returns the combined summary row."""
+    plain, with_lp = specs
+    rows, notes = [], []
+    insts, tested, n = run_cell(with_lp, loader, 'mp', os.path.join(cell, 'phase1'), args.timeout, args.mods,
+                                args.world, lp=True)
+    rows.append(summarize(insts, tested, n))
+    world = os.path.join(cell, 'phase1', 'master', 'world')
+    if not os.path.isfile(os.path.join(world, PHASE_FILE)):
+        notes.append(f'phase1 wrote no {PHASE_FILE} (LuckPerms missing from the dev run? see README)')
+    else:
+        insts, tested, n = run_cell(plain, loader, 'mp', os.path.join(cell, 'phase2'), args.timeout, args.mods, world)
+        rows.append(summarize(insts, tested, n))
+        ran = [t for i in tested for m in ((read_json(i.results) or {}).get('mods') or {}).values()
+               for suite, ts in (m.get('suites') or {}).items() if 'LuckPermsRemoved' in suite
+               for t in ts if t.get('status') != 'SKIP']
+        if not ran:
+            notes.append('phase2 ran no LuckPermsRemoved test (all skipped or missing)')
+    row = {k: sum(r[k] for r in rows) for k in ('passed', 'failed', 'errors', 'skipped')}
+    row['errors'] += len(notes)
+    row['status'] = ' | '.join(f'phase{i + 1}: {r["status"]}' for i, r in enumerate(rows)) + ''.join(' ' + x for x in notes)
+    row['ok'] = len(rows) == 2 and not notes and all(r['ok'] for r in rows)
+    return row
+
+
+def cell_labels(configs, mode):
+    """Cell labels of one loader for --luckperms mode: plain configs, <config>-lp, lp-removed."""
+    plain = list(configs) if mode in ('off', 'both', 'all') else []
+    lp = [c + LP_SUFFIX for c in configs] if mode in ('on', 'both', 'all') else []
+    return plain + lp + ([REMOVED] if mode in ('removed', 'all') else [])
+
+
+def label_order(label):
+    return (CONFIGS + tuple(c + LP_SUFFIX for c in CONFIGS) + (REMOVED,)).index(label)
 
 
 def run(args, out, projects):
@@ -801,6 +865,9 @@ def run(args, out, projects):
     at a time (shared ports); sp cells (no ports, own game dir) go to a pool of args.test_jobs and run beside the
     following cells and projects, so sp cells of several projects overlap within one call."""
     agent = build_agent(out)
+    labels = cell_labels(args.configs, args.luckperms)
+    need_plain = any(not l.endswith(LP_SUFFIX) for l in labels)  # lp-removed phase 2 runs without LuckPerms
+    need_lp = any(l.endswith(LP_SUFFIX) or l == REMOVED for l in labels)
     rows, pending = [], []
     pool = concurrent.futures.ThreadPoolExecutor(max(1, args.test_jobs))
     built = {}
@@ -828,40 +895,45 @@ def run(args, out, projects):
             write_json(os.path.join(pdir, 'capture.json'), {**cap, 'state': 'done', 'rc': rc, 'finished': now()})
             print(f'[{name}] {reason}', flush=True)
             for loader in args.loaders:
-                for config in args.configs:
+                for config in labels:
                     cell = os.path.join(pdir, loader, config)
-                    row = {'passed': 0, 'failed': 0, 'errors': 1, 'ok': False, 'project': name, 'loader': loader,
+                    row = {'passed': 0, 'failed': 0, 'errors': 1, 'skipped': 0, 'ok': False, 'project': name, 'loader': loader,
                            'config': config, 'seconds': 0, 'dir': cell, 'status': reason}
                     rows.append(row)
                     write_json(os.path.join(cell, 'cell.json'), {**row, 'state': 'error', 'finished': now()})
             continue
         jars = {l: jar_hashes(project, l) for l in args.loaders}
-        rc, specs = capture(project, args.loaders, agent, pdir, args.offline, glog)
+        rc, specs = capture(project, args.loaders, agent, pdir, args.offline, glog) if need_plain else (0, {})
+        lp_specs = {}
+        if need_lp:
+            lp_rc, lp_specs = capture(project, args.loaders, agent, pdir, args.offline, glog, lp=True)
+            rc = rc or lp_rc
         world_fp = world_fingerprint(args.world)  # the template as tested; the GUI compares it to the current one
         write_json(os.path.join(pdir, 'capture.json'), {**cap, 'state': 'done', 'rc': rc, 'finished': now()})
         if rc != 0:
             print(f'[{name}] gradle exited with {rc}, see {glog}', flush=True)
         for loader in args.loaders:
-            for config in args.configs:
-                job = (name, pdir, specs, jars[loader], world_fp, loader, config)
-                if config == 'sp' and args.test_jobs > 1:  # no ports: runs beside everything else
+            for config in labels:
+                cell_specs = (specs, lp_specs) if config == REMOVED else lp_specs if config.endswith(LP_SUFFIX) else specs
+                job = (name, pdir, cell_specs, jars[loader], world_fp, loader, config)
+                if config.removesuffix(LP_SUFFIX) == 'sp' and args.test_jobs > 1:  # no ports: runs beside everything else
                     pending.append(pool.submit(test_cell, args, *job))
                 else:
                     rows.append(test_cell(args, *job))
     pool.shutdown(wait=True)
     rows += [f.result() for f in pending]  # re-raises a crashed cell
     names = [os.path.basename(p) for p in projects]
-    rows.sort(key=lambda r: (names.index(r['project']), LOADERS.index(r['loader']), CONFIGS.index(r['config'])))
+    rows.sort(key=lambda r: (names.index(r['project']), LOADERS.index(r['loader']), label_order(r['config'])))
 
     with open(os.path.join(out, 'summary.json'), 'w', encoding='utf-8') as f:
         json.dump(rows, f, indent=2)
     print()
-    hdr = f"{'project':34} {'loader':9} {'config':8} {'result':6} {'pass':>5} {'fail':>5} {'err':>4} {'sec':>5}  status"
+    hdr = f"{'project':34} {'loader':9} {'config':10} {'result':6} {'pass':>5} {'fail':>5} {'err':>4} {'skip':>5} {'sec':>5}  status"
     print(hdr)
     print('-' * len(hdr))
     for r in rows:
-        print(f"{r['project'][:34]:34} {r['loader']:9} {r['config']:8} {'OK' if r['ok'] else 'FAIL':6} "
-              f"{r['passed']:>5} {r['failed']:>5} {r['errors']:>4} {r['seconds']:>5}  {r['status']}")
+        print(f"{r['project'][:34]:34} {r['loader']:9} {r['config']:10} {'OK' if r['ok'] else 'FAIL':6} "
+              f"{r['passed']:>5} {r['failed']:>5} {r['errors']:>4} {r.get('skipped', 0):>5} {r['seconds']:>5}  {r['status']}")
     print(f'\nlogs and reports: {out}  (per cell: <project>/<loader>/<config>/<instance>/console.log, results.json,'
           f' logs/UnitTests/<mod>.log)')
     sys.exit(0 if rows and all(r['ok'] for r in rows) else 1)

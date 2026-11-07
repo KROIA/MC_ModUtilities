@@ -206,7 +206,7 @@ public final class AutoTest {
                 String modId = suite.getCategory().getModId();
                 if (filter == null || filter.contains(modId)) modIds.add(modId);
             }
-            int[] total = new int[3];
+            int[] total = new int[4];
             JsonObject mods = new JsonObject();
             for (String modId : modIds) {
                 ModUtilitiesMod.LOGGER.info("[AutoTest] running {} tests (slave={})", modId, isSlave);
@@ -218,6 +218,7 @@ public final class AutoTest {
             report.addProperty("passed", total[0]);
             report.addProperty("failed", total[1]);
             report.addProperty("errors", total[2]);
+            report.addProperty("skipped", total[3]);
         } catch (Throwable t) {
             ModUtilitiesMod.LOGGER.error("[AutoTest] run aborted", t);
             report.addProperty("status", "error");
@@ -233,7 +234,7 @@ public final class AutoTest {
 
     private static JsonObject modReport(String modId, boolean isSlave, Map<String, List<TestResult>> results, int[] total) {
         JsonObject mod = new JsonObject();
-        int[] counts = new int[3];
+        int[] counts = new int[4]; // by TestResult.Status ordinal: PASS, FAIL, ERROR, SKIP
         JsonObject suites = new JsonObject();
         for (Map.Entry<String, List<TestResult>> e : results.entrySet()) {
             JsonArray tests = new JsonArray();
@@ -256,9 +257,10 @@ public final class AutoTest {
         mod.addProperty("passed", counts[0]);
         mod.addProperty("failed", counts[1]);
         mod.addProperty("errors", counts[2]);
+        mod.addProperty("skipped", counts[3]);
         mod.add("skippedSuites", skipped);
         mod.add("suites", suites);
-        for (int i = 0; i < 3; i++) total[i] += counts[i];
+        for (int i = 0; i < counts.length; i++) total[i] += counts[i];
         return mod;
     }
 

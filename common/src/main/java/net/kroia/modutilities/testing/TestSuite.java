@@ -5,6 +5,8 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
 public abstract class TestSuite {
@@ -52,6 +54,50 @@ public abstract class TestSuite {
 
     protected TestResult fail(String message) {
         return TestResult.fail("", message);
+    }
+
+    /** Test did not run because a precondition is missing (e.g. an optional mod); counted as skipped, not failed. */
+    protected TestResult skip(String reason) {
+        return TestResult.skip("", reason);
+    }
+
+    /**
+     * Waits for {@code future} while the server keeps running its queued tasks (on the server thread, via
+     * {@code managedBlock}), so work the future needs on the server thread, or callbacks it schedules there,
+     * cannot deadlock against the waiting test. Off the server thread (or without a server) it simply blocks.
+     *
+     * @return the result
+     * @throws IllegalStateException on timeout; a failed future rethrows its cause wrapped
+     */
+    protected <T> T await(CompletableFuture<T> future, long timeoutMillis) {
+        pumpUntil(future::isDone, timeoutMillis);
+        if (!future.isDone())
+            throw new IllegalStateException("timed out after " + timeoutMillis + " ms");
+        return future.join();
+    }
+
+    /** Runs queued server tasks until {@code done} is true or the timeout passed; @return {@code done} at the end. */
+    protected boolean pumpUntil(BooleanSupplier done, long timeoutMillis) {
+        long end = System.nanoTime() + timeoutMillis * 1_000_000L;
+        MinecraftServer s = server;
+        if (s != null && s.isSameThread()) {
+            s.managedBlock(() -> done.getAsBoolean() || System.nanoTime() > end);
+        } else {
+            while (!done.getAsBoolean() && System.nanoTime() < end) {
+                try {
+                    Thread.sleep(10);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        }
+        return done.getAsBoolean();
+    }
+
+    /** Runs queued server tasks for {@code millis} (lets async callbacks that hop to the server thread arrive). */
+    protected void pump(long millis) {
+        pumpUntil(() -> false, millis);
     }
 
     protected TestResult assertEquals(Object expected, Object actual) {
