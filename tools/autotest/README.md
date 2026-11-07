@@ -57,6 +57,9 @@ LuckPerms is never a dependency of the mods. For tests it is put on the **dev ru
 the Gradle property `-Pwith_luckperms=true` (Loom `modLocalRuntime`: not in the jar, not in the published POM/module).
 Versions (Modrinth Maven, separate builds per loader) are in `gradle.properties`: `luckperms_fabric_version`,
 `luckperms_neoforge_version`. `gradlew :fabric:runServer -Pwith_luckperms=true` works by hand too.
+NeoForge uses 5.4.149 (Modrinth tags it 1.21.3, its mods.toml has no Minecraft/NeoForge range): 5.4.140, the last
+build tagged 1.21.1, kicks every joining player with "Capability has not been initialised" (LuckPerms #3963, #4048);
+5.4.149 is the oldest build with the fix (LuckPerms commit b18717e) and passes the tests on 1.21.1 / NeoForge 21.1.84.
 
 With `--luckperms on|both|all` the launch commands are captured a second time with `-Pwith_luckperms=true`
 (`<out>/<project>/launch-lp/`) and every `--configs` entry also runs as `<config>-lp` (cell dir

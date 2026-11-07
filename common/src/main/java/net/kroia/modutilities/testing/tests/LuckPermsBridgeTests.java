@@ -41,6 +41,7 @@ public class LuckPermsBridgeTests extends TestSuite {
     private final String loopNode = NODE_PREFIX + rnd();
     private final List<Event> events = new CopyOnWriteArrayList<>();
     private final AtomicInteger loopCalls = new AtomicInteger();
+    private final List<Boolean> loopValues = new CopyOnWriteArrayList<>();
     private final List<String> groups = new ArrayList<>();
     private final List<UUID> offlineUsers = new ArrayList<>();
     private final UUID fallbackSubject = UUID.randomUUID();
@@ -54,6 +55,7 @@ public class LuckPermsBridgeTests extends TestSuite {
         // Documented mirror pattern: the listener writes the value back through setNode. Must not loop.
         LuckPermsBridge.addNodeChangeListener(loopNode, (uuid, value) -> {
             loopCalls.incrementAndGet();
+            loopValues.add(value);
             LuckPermsBridge.setNode(uuid, loopNode, value);
         });
     }
@@ -199,10 +201,12 @@ public class LuckPermsBridgeTests extends TestSuite {
             await(LuckPermsBridge.setNode(u, loopNode, false), TIMEOUT);
             pump(1000);
             loopCalls.set(0);
+            loopValues.clear();
             await(LuckPermsBridge.setNode(u, loopNode, true), TIMEOUT);
             pumpUntil(() -> loopCalls.get() >= 1, 5000);
             pump(3000); // the listener's write-back must not trigger it again
-            return assertEquals("listener calls for one change with write-back", 1, loopCalls.get());
+            return assertEquals("listener calls for one change with write-back (values seen: " + loopValues + ")",
+                    1, loopCalls.get());
         } finally {
             cleanup(u);
         }

@@ -49,7 +49,9 @@ import java.util.function.BiConsumer;
  *
  * <h2>Semantics</h2>
  * <ul>
- *   <li>{@code setNode(uuid, node, true)} sets {@code node=true} (global context) on the user;
+ *   <li>{@code setNode(uuid, node, true)} sets {@code node=true} (global context) on the user, replacing a global
+ *       {@code node=false} entry; if the user already has a global {@code node=true} it changes nothing, so a
+ *       listener writing the value back never makes the effective value dip to unset (no event, no loop);
  *       {@code setNode(uuid, node, false)} <b>removes</b> the user's global {@code node} entry (true or false) instead
  *       of adding {@code node=false}, so group grants keep working. Consequence: deop cannot override a grant the
  *       player inherits from a group; the listener then reports {@code true} again and the flag follows LuckPerms.</li>
@@ -77,7 +79,7 @@ public final class LuckPermsBridge {
     /**
      * Persists {@code node} for the player in LuckPerms, online or offline, and pushes the change to other servers
      * through LuckPerms' messaging service (if configured). {@code value=false} removes the user's global node entry
-     * (see class docs).
+     * (see class docs). Writes for the same player are applied one after another, in call order.
      *
      * @return completes with true once saved; false if LuckPerms is absent or the update failed (logged)
      */
@@ -164,14 +166,41 @@ public final class LuckPermsBridge {
             }
         }
 
+        // player -> tail of that player's queued setNode writes
+        static final Map<UUID, CompletableFuture<Boolean>> WRITES = new ConcurrentHashMap<>();
+
+        /**
+         * modifyUser = load from storage + edit + save. Two overlapping calls for one player race: the second load
+         * reads storage before the first save landed and resets the live user to the old state (effective value
+         * dips, listeners fire, a write-back listener loops). So writes per player run one after another.
+         */
         static CompletableFuture<Boolean> setNode(UUID player, String node, boolean value) {
+            CompletableFuture<Boolean> mine = new CompletableFuture<>();
+            CompletableFuture<Boolean> prev = WRITES.put(player, mine);
+            (prev == null ? CompletableFuture.completedFuture(true) : prev)
+                    .thenCompose(ignored -> write(player, node, value))
+                    .whenComplete((ok, t) -> {
+                        WRITES.remove(player, mine);
+                        mine.complete(ok != null && ok);
+                    });
+            return mine;
+        }
+
+        private static CompletableFuture<Boolean> write(UUID player, String node, boolean value) {
             LuckPerms api = api();
             User[] modified = new User[1];
             return api.getUserManager().modifyUser(player, user -> {
                 modified[0] = user;
-                user.data().clear(n -> n.getKey().equalsIgnoreCase(node) && n.getContexts().isEmpty());
-                if (value)
-                    user.data().add(Node.builder(node).value(true).build());
+                if (!value) {
+                    user.data().clear(n -> isGlobal(n, node));
+                    return;
+                }
+                // Never remove an existing true entry: readers on other threads would briefly see the node unset,
+                // fire listeners with false, and a listener writing that back would start a loop.
+                if (user.getNodes().stream().anyMatch(n -> isGlobal(n, node) && n.getValue()))
+                    return;
+                user.data().clear(n -> isGlobal(n, node) && !n.getValue());
+                user.data().add(Node.builder(node).value(true).build());
             }).thenApply(v -> {
                 // the node edits already invalidate the cache; be explicit so a following getEffective sees the write
                 modified[0].getCachedData().invalidate();
@@ -182,6 +211,10 @@ public final class LuckPermsBridge {
                 ModUtilitiesMod.LOGGER.error("[LuckPerms] Failed to set {}={} for {}", node, value, player, t);
                 return false;
             });
+        }
+
+        private static boolean isGlobal(Node n, String node) {
+            return n.getKey().equalsIgnoreCase(node) && n.getContexts().isEmpty();
         }
 
         static CompletableFuture<Optional<Boolean>> getEffective(UUID player, String node) {
