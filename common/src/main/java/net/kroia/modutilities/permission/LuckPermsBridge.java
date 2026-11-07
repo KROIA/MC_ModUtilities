@@ -91,8 +91,9 @@ public final class LuckPermsBridge {
 
     /**
      * Looks up the player's <b>effective</b> value of {@code node} (user node, groups, wildcards; unset = {@code false}),
-     * evaluated exactly like {@link #addNodeChangeListener}. Works for offline players: they are loaded from storage
-     * and handed back to LuckPerms' housekeeper ({@code cleanupUser}) afterwards.
+     * evaluated exactly like {@link #addNodeChangeListener}. Works for offline players: they are always loaded fresh
+     * from storage and handed back to LuckPerms' housekeeper ({@code cleanupUser}) afterwards. Runs after this
+     * player's pending {@link #setNode} writes, so it sees them even when not chained on the {@code setNode} future.
      * The future completes on a LuckPerms thread; hop to the server thread before touching game state.
      *
      * <p>Use case: {@code setNode(uuid, node, false)} only removes the user node. If a group still grants it, the
@@ -218,20 +219,31 @@ public final class LuckPermsBridge {
         }
 
         static CompletableFuture<Optional<Boolean>> getEffective(UUID player, String node) {
+            // after this player's queued setNode writes, so the read sees them
+            CompletableFuture<Boolean> pending = WRITES.get(player);
+            return (pending == null ? CompletableFuture.completedFuture(true) : pending)
+                    .thenCompose(ignored -> read(player, node))
+                    .exceptionally(t -> {
+                        ModUtilitiesMod.LOGGER.error("[LuckPerms] Failed to look up {} for {}", node, player, t);
+                        return Optional.empty();
+                    });
+        }
+
+        private static CompletableFuture<Optional<Boolean>> read(UUID player, String node) {
             UserManager users = api().getUserManager();
-            User loaded = users.getUser(player);
-            if (loaded != null)
-                return CompletableFuture.completedFuture(Optional.of(effective(loaded.getCachedData(), node).asBoolean()));
-            // offline: load, read, then let LuckPerms unload it (no-op if the player is online by now)
+            MinecraftServer server = UtilitiesPlatform.getServer();
+            User online = server != null && server.getPlayerList().getPlayer(player) != null ? users.getUser(player) : null;
+            if (online != null) // LuckPerms keeps online users current
+                return CompletableFuture.completedFuture(Optional.of(effective(online.getCachedData(), node).asBoolean()));
+            // Offline: a still-loaded instance (e.g. left over from modifyUser) can hold stale cached data, so always
+            // load from storage, read, then let LuckPerms unload it (no-op if the player is online by now).
             return users.loadUser(player).thenApply(user -> {
                 try {
+                    user.getCachedData().invalidate();
                     return Optional.of(effective(user.getCachedData(), node).asBoolean());
                 } finally {
                     users.cleanupUser(user);
                 }
-            }).exceptionally(t -> {
-                ModUtilitiesMod.LOGGER.error("[LuckPerms] Failed to look up {} for {}", node, player, t);
-                return Optional.empty();
             });
         }
 

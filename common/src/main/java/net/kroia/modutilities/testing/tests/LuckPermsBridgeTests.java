@@ -74,6 +74,7 @@ public class LuckPermsBridgeTests extends TestSuite {
         addTest("lp_listener_fires_once_on_server_thread", lp(this::testListenerFiresOnce));
         addTest("lp_listener_write_back_does_not_loop", lp(this::testListenerNoLoop));
         addTest("lp_offline_uuid", lp(this::testOfflineUuid));
+        addTest("lp_offline_read_after_write_repeated", lp(this::testOfflineReadAfterWrite));
         addTest("lp_record_phase1_state", lp(this::testRecordPhase1));
     }
 
@@ -227,6 +228,31 @@ public class LuckPermsBridgeTests extends TestSuite {
             await(LuckPermsBridge.setNode(off, node, false), TIMEOUT);
             return assertEquals("offline getEffective after setNode(false)", Optional.of(false),
                     await(LuckPermsBridge.getEffective(off, node), TIMEOUT));
+        } finally {
+            await(Lp.deleteUser(off), TIMEOUT);
+            offlineUsers.remove(off);
+        }
+    }
+
+    /**
+     * The deop pattern on an offline player, without polling: a read issued right after a write must see it, both
+     * unchained (getEffective called before setNode completed) and chained on the setNode future.
+     */
+    private TestResult testOfflineReadAfterWrite() {
+        UUID off = UUID.randomUUID();
+        offlineUsers.add(off);
+        try {
+            for (int i = 1; i <= 5; i++) {
+                LuckPermsBridge.setNode(off, node, true);
+                Optional<Boolean> v = await(LuckPermsBridge.getEffective(off, node), TIMEOUT);
+                if (!v.equals(Optional.of(true)))
+                    return TestResult.fail("", "round " + i + ": getEffective right after setNode(true)", "Optional[true]", String.valueOf(v));
+                v = await(LuckPermsBridge.setNode(off, node, false)
+                        .thenCompose(ok -> LuckPermsBridge.getEffective(off, node)), TIMEOUT);
+                if (!v.equals(Optional.of(false)))
+                    return TestResult.fail("", "round " + i + ": setNode(false).thenCompose(getEffective)", "Optional[false]", String.valueOf(v));
+            }
+            return pass("5 rounds of offline write + immediate read");
         } finally {
             await(Lp.deleteUser(off), TIMEOUT);
             offlineUsers.remove(off);

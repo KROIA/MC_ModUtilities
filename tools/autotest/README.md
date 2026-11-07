@@ -99,9 +99,15 @@ if ((findProperty('with_luckperms') ?: 'false').toBoolean()) {
     }
     dependencies {
         modLocalRuntime "maven.modrinth:luckperms:${rootProject.luckperms_fabric_version}" // neoforge: luckperms_neoforge_version
+        // Fabric only: LuckPerms needs fabric-permissions-api-v0 >= 0.3.1. ModUtilities ships it jar-in-jar, but that
+        // copy is not loaded in a dependent's dev run, so without this line LuckPerms refuses to load.
+        modLocalRuntime "me.lucko:fabric-permissions-api:${rootProject.fabric_permissions_api_version}"
     }
 }
 ```
+
+Fabric also needs `fabric_permissions_api_version = 0.3.1` in the dependent's `gradle.properties` (the same value as
+ModUtilities'; 0.3.1 is the last release for MC <= 1.21.1).
 
 Phase-file contract (`net.kroia.modutilities.testing.LuckPermsPhase`, dev builds only):
 - Phase 1 (`LuckPermsBridge.isAvailable()`): `LuckPermsPhase.record(server, "<modid>", key, value)` stores strings
