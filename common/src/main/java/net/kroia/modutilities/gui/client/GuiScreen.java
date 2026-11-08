@@ -464,6 +464,7 @@ public abstract class GuiScreen extends Screen {
             gui.renderTooltip();
         if(enableGizmos)
             gui.renderGizmos();
+        ClientGuiSettings.renderFeedback(clientGraphics, width);
     }
 
     // mc>=26.1: Screen renders through extractBackground/extractRenderState; forward to the methods above so
@@ -651,6 +652,11 @@ public abstract class GuiScreen extends Screen {
             }
         }
 
+        // Library GUI scale shortcuts (Ctrl + '+' / '-' / '0'); never while a text box has focus
+        if(gui.getFocusedElement() == null && ClientGuiSettings.handleScaleKey(keyCode)) {
+            rebuildWidgets(); // same path as a window resize: init() re-applies the scale and re-lays out
+            return true;
+        }
         boolean ret = gui.keyPressed(keyCode, scanCode, modifiers);
         if(ret)
             return true;

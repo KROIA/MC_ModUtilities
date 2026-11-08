@@ -114,10 +114,12 @@ public class GuiLogicTests extends TestSuite {
                 || Math.abs(gui.getInvGuiScale() - 1.5f) > 1e-5)
             return fail("Gui effective scale not updated on display factor change: " + gui.getGuiScale());
 
-        // Fixed library GUI scale (Task #101): {fixedPixelScale, maxPixelScale, mcGuiScale, expected base}
+        // Library GUI scale setting: {setting (0 auto, -1 follow MC, N fixed), maxPixelScale, mcGuiScale, expected base}
         double[][] fixedCases = {
-                {0, 4, 3, 1.0}, {2, 4, 1, 2.0}, {2, 4, 2, 1.0}, {2, 4, 4, 0.5},
-                {6, 3, 2, 1.5}, {3, 0, 3, 1.0 / 3}, {2, 4, 0, 1.0}};
+                {0, 4, 3, 4.0 / 3}, {0, 4, 1, 4.0}, {0, 4, 4, 1.0}, {0, 0, 2, 0.5},
+                {-1, 4, 3, 1.0}, {-1, 4, 1, 1.0},
+                {2, 4, 1, 2.0}, {2, 4, 2, 1.0}, {2, 4, 4, 0.5},
+                {6, 3, 2, 1.5}, {3, 0, 3, 1.0 / 3}, {2, 4, 0, 1.0}, {0, 4, 0, 1.0}};
         for (double[] c : fixedCases) {
             float got = net.kroia.modutilities.gui.Gui.fixedBaseGuiScale((int) c[0], (int) c[1], c[2]);
             if (Math.abs(got - c[3]) > 1e-5)
@@ -130,6 +132,29 @@ public class GuiLogicTests extends TestSuite {
             gui.setBaseGuiScale(net.kroia.modutilities.gui.Gui.fixedBaseGuiScale(2, 4, mc));
             if (Math.abs(gui.getGuiScale() * mc - 1.0f) > 1e-5)
                 return fail("fixed scale not MC-scale independent at MC scale " + mc + ": " + gui.getGuiScale());
+        }
+        // Auto ignores the MC GUI scale: always the window's max-fit scale
+        for (int mc = 1; mc <= 4; mc++) {
+            gui.setGuiScale(1.0f);
+            gui.setDisplayScaleFactor(mc);
+            gui.setBaseGuiScale(net.kroia.modutilities.gui.Gui.fixedBaseGuiScale(0, 4, mc));
+            if (Math.abs(gui.getGuiScale() * mc - 4.0f) > 1e-5)
+                return fail("auto scale not MC-scale independent at MC scale " + mc + ": " + gui.getGuiScale());
+        }
+        // {setting, max, mc, expected pixels per unit}
+        int[][] pixelCases = {{0, 4, 2, 4}, {0, 0, 2, 1}, {-1, 4, 2, 2}, {-1, 4, 0, 1}, {3, 4, 1, 3}, {6, 3, 1, 3}};
+        for (int[] c : pixelCases) {
+            int got = net.kroia.modutilities.gui.Gui.pixelGuiScale(c[0], c[1], c[2]);
+            if (got != c[3])
+                return fail("pixelGuiScale(" + c[0] + ", " + c[1] + ", " + c[2] + ") = " + got + ", expected " + c[3]);
+        }
+        // Shortcut stepping {setting, delta, max, mc, expected new setting}: steps from the resolved scale, clamps 1..max
+        int[][] stepCases = {{0, -1, 4, 2, 3}, {0, 1, 4, 2, 4}, {-1, 1, 4, 2, 3}, {-1, -1, 4, 1, 1},
+                {2, 1, 4, 1, 3}, {1, -1, 4, 1, 1}, {6, -1, 3, 1, 2}, {4, 1, 4, 1, 4}};
+        for (int[] c : stepCases) {
+            int got = net.kroia.modutilities.gui.Gui.stepGuiScaleSetting(c[0], c[1], c[2], c[3]);
+            if (got != c[4])
+                return fail("stepGuiScaleSetting(" + c[0] + ", " + c[1] + ", " + c[2] + ", " + c[3] + ") = " + got + ", expected " + c[4]);
         }
         return pass("Gui scale snaps to whole screen pixels per unit");
     }

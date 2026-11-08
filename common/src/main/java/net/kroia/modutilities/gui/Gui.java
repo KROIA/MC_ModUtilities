@@ -255,23 +255,53 @@ public class Gui {
     }
 
     /**
-     * Base factor that turns a fixed absolute pixel scale into a factor relative to
-     * the Minecraft GUI scale: {@code min(fixedPixelScale, maxPixelScale) / displayScaleFactor}.
+     * Window pixels per GUI unit for a library "GUI scale" setting:
+     * {@code 0} (auto) = {@code maxPixelScale}, {@code < 0} = {@code mcPixelScale} (follow Minecraft),
+     * {@code N > 0} = {@code min(N, maxPixelScale)}. Never less than 1.
+     *
+     * @param setting       the library GUI scale setting
+     * @param maxPixelScale the largest scale that still fits the window, i.e. what Minecraft's own
+     *                      "auto" GUI scale picks for it
+     * @param mcPixelScale  the Minecraft GUI scale
+     * @return window pixels per GUI unit
+     */
+    public static int pixelGuiScale(int setting, int maxPixelScale, int mcPixelScale) {
+        int max = Math.max(1, maxPixelScale);
+        if(setting < 0)
+            return Math.max(1, mcPixelScale);
+        return setting == 0 ? max : Math.min(setting, max);
+    }
+
+    /**
+     * Base factor that turns a library "GUI scale" setting into a factor relative to
+     * the Minecraft GUI scale: {@code pixelGuiScale(setting, maxPixelScale, -) / displayScaleFactor}.
      * <p>
      * {@code maxPixelScale} is the largest scale Minecraft's own "auto" GUI scale
      * would pick for the window, so a large fixed scale on a small window never
      * makes the screen smaller than vanilla screens are designed for.
      *
-     * @param fixedPixelScale    window pixels per GUI unit wanted by the user; {@code <= 0} means
-     *                           "follow Minecraft" and returns {@code 1.0}
+     * @param setting            {@code 0} = auto, the largest scale that fits the window;
+     *                           {@code < 0} = follow Minecraft (returns {@code 1.0});
+     *                           {@code N > 0} = N window pixels per GUI unit, capped to fit
      * @param maxPixelScale      the largest scale that still fits the window ({@code >= 1})
      * @param displayScaleFactor the Minecraft GUI scale (window pixels per GUI unit)
      * @return the base factor to pass to {@link #setBaseGuiScale(float)}
      */
-    public static float fixedBaseGuiScale(int fixedPixelScale, int maxPixelScale, double displayScaleFactor) {
-        if(fixedPixelScale <= 0 || !(displayScaleFactor > 0.0))
+    public static float fixedBaseGuiScale(int setting, int maxPixelScale, double displayScaleFactor) {
+        if(setting < 0 || !(displayScaleFactor > 0.0))
             return 1.0f;
-        return (float)(Math.min(fixedPixelScale, Math.max(1, maxPixelScale)) / displayScaleFactor);
+        return (float)(pixelGuiScale(setting, maxPixelScale, 1) / displayScaleFactor);
+    }
+
+    /**
+     * Steps a library "GUI scale" setting by {@code delta} pixels per GUI unit, starting
+     * from the scale it currently resolves to (see {@link #pixelGuiScale(int, int, int)}).
+     *
+     * @return the new fixed setting, clamped to {@code 1..maxPixelScale}
+     */
+    public static int stepGuiScaleSetting(int setting, int delta, int maxPixelScale, int mcPixelScale) {
+        int stepped = pixelGuiScale(setting, maxPixelScale, mcPixelScale) + delta;
+        return Math.max(1, Math.min(Math.max(1, maxPixelScale), stepped));
     }
 
     /**
