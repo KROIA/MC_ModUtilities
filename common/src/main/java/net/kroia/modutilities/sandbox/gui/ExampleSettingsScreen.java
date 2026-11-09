@@ -7,6 +7,9 @@ import net.kroia.modutilities.gui.elements.Button;
 import net.kroia.modutilities.gui.elements.CheckBox;
 import net.kroia.modutilities.gui.elements.DropDownMenu;
 import net.kroia.modutilities.gui.elements.ExpandablePanel;
+import net.kroia.modutilities.gui.elements.FeatureToggleSection;
+import net.kroia.modutilities.gui.elements.VerticalListView;
+import net.kroia.modutilities.gui.layout.LayoutVertical;
 import net.kroia.modutilities.gui.elements.HorizontalSlider;
 import net.kroia.modutilities.gui.elements.Label;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
@@ -20,6 +23,7 @@ import net.minecraft.network.chat.Component;
  *  - {@link CheckBox} for boolean toggles
  *  - {@link DropDownMenu} populated with options and a selection callback
  *  - Mixing element types in a labelled grid layout
+ *  - {@link FeatureToggleSection} rows ("Integrations") inside a scrolling list
  *
  * Open via: /modutilities openExample settings
  */
@@ -43,6 +47,7 @@ public class ExampleSettingsScreen extends GuiScreen {
     private final DropDownMenu difficultyDropDown;
     private final ExpandablePanel advancedPanel;
     private final Button applyButton;
+    private final VerticalListView integrationsList;
 
     public ExampleSettingsScreen() {
         super(Component.literal("Settings Example"));
@@ -103,6 +108,40 @@ public class ExampleSettingsScreen extends GuiScreen {
 
         applyButton = new Button("Apply", this::onApply);
         addElement(applyButton);
+
+        // "Integrations": feature rows with on/off check box, expandable child settings,
+        // restart marker and a locked (master-only) example.
+        integrationsList = new VerticalListView();
+        LayoutVertical listLayout = new LayoutVertical();
+        listLayout.stretchX = true;
+        listLayout.stretchY = false;
+        integrationsList.setLayout(listLayout);
+
+        FeatureToggleSection placeholders = new FeatureToggleSection("Placeholders");
+        placeholders.setFeatureEnabled(true);
+        Label topCount = new Label("Top count: 10");
+        topCount.setHeight(16);
+        topCount.setAlignment(GuiElement.Alignment.LEFT);
+        Label restartMarker = FeatureToggleSection.createRestartIndicator();
+        restartMarker.setEnabled(true);
+        topCount.addChild(restartMarker);
+        restartMarker.setBounds(100, 0, 150, 16);
+        placeholders.addChild(topCount);
+        placeholders.addChild(new CheckBox("Show decimals"));
+        placeholders.setRestartRequired(true);
+        integrationsList.addChild(placeholders);
+
+        FeatureToggleSection numismatics = new FeatureToggleSection("Numismatics");
+        numismatics.addChild(new CheckBox("Allow deposit"));
+        numismatics.addChild(new CheckBox("Allow withdraw"));
+        integrationsList.addChild(numismatics);
+
+        FeatureToggleSection discord = new FeatureToggleSection("Discord", true);
+        discord.setFeatureEnabled(true);
+        discord.addChild(new CheckBox("Post transactions"));
+        discord.setLocked(true, FeatureToggleSection.MASTER_ONLY_REASON);
+        integrationsList.addChild(discord);
+        addElement(integrationsList);
     }
 
     private void onDropdownMenuSelected(Integer index, GuiElement guiElement) {
@@ -160,5 +199,8 @@ public class ExampleSettingsScreen extends GuiScreen {
         y += advancedPanel.getHeaderHeight() + spacing * 2;
 
         applyButton.setBounds(x + totalWidth / 2 - 50, y, 100, 22);
+        y = applyButton.getBottom() + spacing;
+
+        integrationsList.setBounds(x, y, totalWidth, Math.max(40, getHeight() - y - spacing));
     }
 }

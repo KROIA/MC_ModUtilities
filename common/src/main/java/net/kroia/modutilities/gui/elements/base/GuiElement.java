@@ -97,6 +97,8 @@ public abstract class GuiElement {
     public static int DEFAULT_HOVER_BACKGROUND_COLOR = 0xFFAAAAAA;
     public static int DEFAULT_OUTLINE_COLOR = 0xFF333333;
     public static int DEFAULT_HOVER_TOOLTIP_MOUSE_OFFSET = 5;
+    /** Dimming overlay drawn over a {@linkplain #setInteractive(boolean) non-interactive} element. */
+    public static int DEFAULT_NON_INTERACTIVE_OVERLAY_COLOR = 0x99303030;
 
     private Gui root;
     private GuiElement parent = null;
@@ -109,6 +111,7 @@ public abstract class GuiElement {
     private final List<GuiElement> childs = new ArrayList<>();
 
     private boolean isEnabled = true;
+    private boolean isInteractive = true;
     private boolean checkOverlapForRendering = true; // If true, the element will only be rendered if it is visible (overlaps with the parent)
     private int gizmoColor = 0x55FF0000;
     private int backgroundColor = DEFAULT_BACKGROUND_COLOR;
@@ -274,6 +277,28 @@ public abstract class GuiElement {
     public boolean isEnabled()
     {
         return isEnabled;
+    }
+
+    /**
+     * Makes this element (and its whole subtree) non-interactive while keeping it
+     * visible: mouse/keyboard input is no longer dispatched to the branch and a
+     * dimming overlay ({@link #DEFAULT_NON_INTERACTIVE_OVERLAY_COLOR}) is drawn on
+     * top of it. Hover tooltips keep working. Unlike {@link #setEnabled(boolean)}
+     * the element still renders and takes part in layout.
+     *
+     * @param interactive {@code false} to grey out and block input
+     */
+    public void setInteractive(boolean interactive)
+    {
+        isInteractive = interactive;
+    }
+
+    /**
+     * @return {@code false} if this element was greyed out via {@link #setInteractive(boolean)}
+     */
+    public boolean isInteractive()
+    {
+        return isInteractive;
     }
 
     public String getId() { return id; }
@@ -686,6 +711,8 @@ public abstract class GuiElement {
                 continue;
             child.renderInternal();
         }
+        if(!isInteractive)
+            drawRect(0, 0, getWidth(), getHeight(), DEFAULT_NON_INTERACTIVE_OVERLAY_COLOR);
         graphics.popPose();
 
     }
@@ -1134,7 +1161,7 @@ public abstract class GuiElement {
 
     public boolean mouseClickedInternal(int button, boolean isOverParent)
     {
-        if(!isEnabled)
+        if(!isEnabled || !isInteractive)
             return false;
         isOverParent &= isMouseOver();
         boolean consumed = false;
@@ -1151,7 +1178,7 @@ public abstract class GuiElement {
     }
     public boolean mouseReleasedInternal(int button, boolean isOverParent)
     {
-        if(!isEnabled)
+        if(!isEnabled || !isInteractive)
             return false;
         isOverParent &= isMouseOver();
         boolean consumed = false;
@@ -1169,7 +1196,7 @@ public abstract class GuiElement {
     }
     public boolean mouseDraggedInternal(int button, double deltaX, double deltaY)
     {
-        if(!isEnabled)
+        if(!isEnabled || !isInteractive)
             return false;
         for(GuiElement child : childs)
         {
@@ -1180,7 +1207,7 @@ public abstract class GuiElement {
     }
     public boolean mouseScrolledInternal(double delta, boolean isOverParent)
     {
-        if(!isEnabled)
+        if(!isEnabled || !isInteractive)
             return false;
         isOverParent &= isMouseOver();
         boolean consumed = false;
@@ -1196,7 +1223,7 @@ public abstract class GuiElement {
     }
     public boolean keyPressedInternal(int keyCode, int scanCode, int modifiers)
     {
-        if(!isEnabled)
+        if(!isEnabled || !isInteractive)
             return false;
         for(GuiElement child : childs)
         {
@@ -1207,7 +1234,7 @@ public abstract class GuiElement {
     }
     public boolean charTypedInternal(char codePoint, int modifiers)
     {
-        if(!isEnabled)
+        if(!isEnabled || !isInteractive)
             return false;
         for(GuiElement child : childs)
         {

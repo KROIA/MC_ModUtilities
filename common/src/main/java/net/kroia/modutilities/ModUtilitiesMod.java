@@ -4,6 +4,7 @@ import dev.architectury.event.events.common.LifecycleEvent;
 import dev.architectury.networking.NetworkManager;
 import dev.architectury.platform.Platform;
 import dev.architectury.utils.Env;
+import net.kroia.modutilities.discord.DiscordWebhooks;
 import net.kroia.modutilities.gui.display.DisplayNetworking;
 import net.kroia.modutilities.networking.client_server.NetworkPacket;
 import net.kroia.modutilities.networking.client_server.arrs.GenericRequestPacket;
@@ -31,6 +32,7 @@ public class ModUtilitiesMod {
     {
         registerSharedPackets();
         DisplayNetworking.init();
+        DiscordWebhooks.init();
         if (ModChecker.isModLoaded("tab")) {
             // TabPlaceholderBackend is only class-loaded inside this guard (soft dependency).
             LifecycleEvent.SERVER_STARTED.register(server -> {

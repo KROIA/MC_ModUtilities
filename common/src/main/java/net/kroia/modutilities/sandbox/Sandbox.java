@@ -389,6 +389,7 @@ public class Sandbox {
             TestRegistry.register(new UtilityTests());
             TestRegistry.register(new net.kroia.modutilities.testing.tests.LuckPermsBridgeTests());
             TestRegistry.register(new net.kroia.modutilities.testing.tests.LuckPermsRemovedTests());
+            TestRegistry.register(new net.kroia.modutilities.testing.tests.DiscordTests());
         }
 
         CommandRegistrationEvent.EVENT.register((dispatcher, registryAccess, environment) -> {
