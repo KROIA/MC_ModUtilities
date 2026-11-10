@@ -213,8 +213,10 @@ class Gui:
             tk.Checkbutton(bar, text=m, variable=var).pack(side='left')
         # test-topic selection: <out>/test-selection.json, read by every run_matrix test run
         self.selection_file, self.topic_win = os.path.join(out, rm.SELECTION), None
-        tk.Button(bar, text='Topics...', command=self.topics).pack(side='left')
-        self.partial = tk.Label(bar, fg='white', bg='#e04040', font=('TkDefaultFont', 9, 'bold'), cursor='hand2')
+        topic_bar = tk.Frame(root)
+        topic_bar.pack(fill='x', padx=4)
+        tk.Button(topic_bar, text='Topics...', command=self.topics).pack(side='left')
+        self.partial = tk.Label(topic_bar, fg='white', bg='#e04040', font=('TkDefaultFont', 9, 'bold'), cursor='hand2')
         self.partial.bind('<Button-1>', lambda e: self.topics())
         bar2 = tk.Frame(root)
         bar2.pack(fill='x', padx=4, pady=(0, 4))
