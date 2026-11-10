@@ -317,6 +317,7 @@ class Instance:
             f.write('\n'.join(argfile_quote(a) for a in args))
         java = os.path.join(self.spec['javaHome'], 'bin', 'java')
         self.log = open(self.console, 'w', encoding='utf-8', errors='replace')
+        self.started = time.time()
         flags = subprocess.CREATE_NEW_PROCESS_GROUP | NO_WINDOW if os.name == 'nt' else 0  # the game window stays
         self.proc = subprocess.Popen([java, '@' + argfile], cwd=self.dir, env=self.spec['env'], stdin=subprocess.PIPE,
                                      stdout=self.log, stderr=subprocess.STDOUT, creationflags=flags)
@@ -411,6 +412,15 @@ def wait_until(cond, timeout, *must_live):
             return False
         time.sleep(1)
     return False
+
+
+def client_crashed(inst):
+    """A startup crash the client never quits from: its main thread died before Minecraft's crash handler (the dev
+    launcher's non-daemon pools keep the JVM up), or NeoForge wrote a mod-loading crash report (crash-*-fml.txt) and
+    waits on its error screen. crash-*-client.txt is ignored: Minecraft exits after it, and 26.x writes one on every
+    normal quit ("Client shutdown from post-main")."""
+    return inst.log_has('Exception in thread "main"') or any(
+        os.path.getmtime(p) >= inst.started for p in glob.glob(os.path.join(inst.dir, 'crash-reports', '*-fml.txt')))
 
 
 # ---------------------------------------------------------------- one matrix cell
@@ -513,19 +523,20 @@ def run_cell(specs, loader, config, cell_dir, timeout, mods, world=None, play=No
             return [s.name for s in servers if not s.alive() and
                     (not os.path.exists(s.results) or s.props.get('modutilities.autotest.stop') != 'true')]
         if play and cl:
-            wait_until(lambda: not cl.alive() or any(not s.alive() for s in servers) or os.path.exists(play),
-                       10 ** 9)
-            notes.append('client closed' if not cl.alive() else 'stop requested' if os.path.exists(play)
-                         else 'server exited')
+            wait_until(lambda: not cl.alive() or client_crashed(cl) or any(not s.alive() for s in servers)
+                       or os.path.exists(play), 10 ** 9)
+            notes.append('client closed' if not cl.alive() else 'client crashed on startup' if client_crashed(cl)
+                         else 'stop requested' if os.path.exists(play) else 'server exited')
         elif cl:
-            wait_until(lambda: not cl.alive() or broken(), timeout + 60)
+            wait_until(lambda: not cl.alive() or broken() or client_crashed(cl), timeout + 60)
             if broken():
                 notes.append(f'{"/".join(broken())} exited early (crash?), cell aborted')
             elif cl.alive():
-                notes.append('client hung, killed')
-        # Servers that stop themselves after their run get time to finish writing.
+                notes.append('client crashed on startup, cell aborted' if client_crashed(cl) else 'client hung, killed')
+        # Servers that stop themselves after their run get time to finish writing (not after a client startup crash:
+        # they wait for a player that never comes).
         for s in servers:
-            if s.props.get('modutilities.autotest.stop') == 'true':
+            if s.props.get('modutilities.autotest.stop') == 'true' and not (cl and client_crashed(cl)):
                 wait_until(lambda: not s.alive() or os.path.exists(s.results), 120)
     finally:
         for s in servers:
