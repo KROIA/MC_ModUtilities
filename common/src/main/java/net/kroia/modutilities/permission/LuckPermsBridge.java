@@ -34,7 +34,7 @@ import java.util.function.BiConsumer;
  *
  * <h2>Two-way flag sync</h2>
  * <pre>{@code
- * // mod init:
+ * // mod init or server start:
  * LuckPermsBridge.addNodeChangeListener("banksystem.admin", (uuid, admin) -> {
  *     // Runs on the server thread. Write the flag DIRECTLY, never through the path that calls setNode.
  *     // Our own setNode also ends up here; the flag already has that value, so this is a no-op (loop-safe).
@@ -69,7 +69,6 @@ public final class LuckPermsBridge {
 
     private static final boolean PRESENT = ModChecker.isModLoaded("luckperms") && classPresent();
     private static final Map<String, List<BiConsumer<UUID, Boolean>>> LISTENERS = new ConcurrentHashMap<>();
-    private static boolean lifecycleHooked;
 
     /** @return true if LuckPerms is installed and its API is up (it comes up while the server starts) */
     public static boolean isAvailable() {
@@ -123,21 +122,26 @@ public final class LuckPermsBridge {
 
     /**
      * Calls {@code listener(player, effectiveValue)} on the server thread whenever LuckPerms changes the player's
-     * effective value of {@code node}. Call during mod init; it stays registered for every server start.
-     * No-op without LuckPerms.
+     * effective value of {@code node}. Callable any time, including from server-start handlers; it stays registered
+     * for every later server start. No-op without LuckPerms.
      */
-    public static synchronized void addNodeChangeListener(String node, BiConsumer<UUID, Boolean> listener) {
+    public static void addNodeChangeListener(String node, BiConsumer<UUID, Boolean> listener) {
         if (!PRESENT)
             return;
         LISTENERS.computeIfAbsent(node, k -> new CopyOnWriteArrayList<>()).add(listener);
-        if (!lifecycleHooked) {
-            lifecycleHooked = true;
-            // LuckPerms creates a fresh API (and event bus) on every server start, so subscribe on each start.
-            LifecycleEvent.SERVER_STARTED.register(server -> Lp.subscribe());
-            LifecycleEvent.SERVER_STOPPED.register(server -> Lp.LAST_SEEN.clear());
-            if (isAvailable())
-                Lp.subscribe(); // registered after the server started
-        }
+    }
+
+    /**
+     * Called once from ModUtilities' common init. Hooks the lifecycle eagerly: registering it lazily from
+     * {@link #addNodeChangeListener} inside a SERVER_STARTED handler threw a ConcurrentModificationException.
+     */
+    public static void init() {
+        if (!PRESENT)
+            return;
+        // LuckPerms creates a fresh API (and event bus) on every server start, so subscribe on each start.
+        // check() reads LISTENERS per event, so listeners added later need no extra subscribe.
+        LifecycleEvent.SERVER_STARTED.register(server -> Lp.subscribe());
+        LifecycleEvent.SERVER_STOPPED.register(server -> Lp.LAST_SEEN.clear());
     }
 
     private static boolean classPresent() {

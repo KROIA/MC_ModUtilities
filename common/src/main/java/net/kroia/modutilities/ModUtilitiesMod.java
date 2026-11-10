@@ -14,6 +14,7 @@ import net.kroia.modutilities.networking.client_server.streaming.StreamStartPack
 import net.kroia.modutilities.networking.client_server.streaming.StreamStopClientSenderPacket;
 import net.kroia.modutilities.networking.client_server.streaming.StreamStopServerSenderPacket;
 import net.kroia.modutilities.networking.multi_server.MultiServerPacketRegistry;
+import net.kroia.modutilities.permission.LuckPermsBridge;
 import net.kroia.modutilities.placeholder.TabPlaceholderBackend;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -33,6 +34,7 @@ public class ModUtilitiesMod {
         registerSharedPackets();
         DisplayNetworking.init();
         DiscordWebhooks.init();
+        LuckPermsBridge.init();
         if (ModChecker.isModLoaded("tab")) {
             // TabPlaceholderBackend is only class-loaded inside this guard (soft dependency).
             LifecycleEvent.SERVER_STARTED.register(server -> {
