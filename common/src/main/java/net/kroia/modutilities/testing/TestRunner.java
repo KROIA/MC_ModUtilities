@@ -78,6 +78,10 @@ public class TestRunner {
 
         for (TestSuite suite : suites) {
             TestCategory category = suite.getCategory();
+            if (TestRegistry.isExcluded(suite)) { // not run, not counted; AutoTest reports it as excluded
+                log.append("EXCLUDED ").append(TestRegistry.topicKey(suite)).append('\n');
+                continue;
+            }
             if (!category.canRunOn(isSlave)) {
                 totalSkipped += suite.getTestCount();
                 continue;

@@ -68,4 +68,43 @@ public class TestRegistry {
     public static void clear() {
         testSuites.clear();
     }
+
+    /**
+     * Test-topic selection (tools/autotest test-selection.json, run_matrix --exclude/--only): comma separated keys
+     * {@code <modid>}, {@code <modid>/<Category>} or {@code <modid>/<Category>/<SuiteClass>}. Excluded suites are not
+     * run ({@link TestRunner#runAll}, {@link OfflineTests}) and are reported as excluded.
+     */
+    public static final String EXCLUDE_PROPERTY = "modutilities.tests.exclude";
+    /** If set, only suites matching one of these keys run; the rest count as excluded. Exclude applies on top. */
+    public static final String INCLUDE_PROPERTY = "modutilities.tests.include";
+
+    /** @return {@code <modid>/<Category>/<SuiteClass>}, the key the selection properties match. */
+    public static String topicKey(TestSuite suite) {
+        return suite.getCategory().getModId() + "/" + suite.getCategory().getName() + "/" + suite.getClass().getSimpleName();
+    }
+
+    public static boolean isExcluded(TestSuite suite) {
+        return isExcluded(topicKey(suite), System.getProperty(INCLUDE_PROPERTY), System.getProperty(EXCLUDE_PROPERTY));
+    }
+
+    /** @param include, exclude comma separated patterns or null; a blank include means "everything". */
+    public static boolean isExcluded(String key, String include, String exclude) {
+        return (include != null && !include.isBlank() && !matches(key, include)) || (exclude != null && matches(key, exclude));
+    }
+
+    /**
+     * @return true if one of the comma separated patterns is a '/'-segment-wise prefix of key; a {@code *} segment
+     * matches any one segment (a suite in any category: modid, star, SuiteClass). No regex.
+     */
+    static boolean matches(String key, String patterns) {
+        String[] k = key.split("/");
+        for (String p : patterns.split(",")) {
+            if (p.isBlank()) continue;
+            String[] s = p.trim().split("/");
+            int i = 0;
+            while (i < s.length && i < k.length && (s[i].equals("*") || s[i].equals(k[i]))) i++;
+            if (i == s.length) return true;
+        }
+        return false;
+    }
 }

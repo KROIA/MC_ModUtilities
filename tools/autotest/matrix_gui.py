@@ -3,7 +3,7 @@
 
     python tools/autotest/matrix_gui.py [--out DIR]
 
-Watches the run_matrix.py output folder (cell.json, capture.json, running.lock, play/play.json) and starts
+Watches the run_matrix.py output folder (cell.json, capture.json, play/play.json) and the global running.lock, and starts
 test runs and manual play sessions. See README.md (GUI section).
 """
 import argparse
@@ -156,6 +156,15 @@ def plan_runs(cells):
     return [(ps, list(ls), list(cs)) for (ls, cs), ps in runs.items()]
 
 
+def toggle_topic(leaves, exclude, node):
+    """Exclude list after a click on a topic tree node (mod, mod/Category or suite key): every suite under it off
+    if all were on, else all on. Written as suite keys; keys that match no listed suite are kept as they are."""
+    under = {k for k in leaves if rm.matches(k, [node])}
+    off = {k for k in leaves if rm.excluded(k, [], exclude)}
+    off = off - under if off & under else off | under
+    return sorted(off) + [e for e in exclude if not any(rm.matches(k, [e]) for k in leaves)]
+
+
 class Gui:
     def __init__(self, root, out):
         self.root, self.out, self.queue, self.proc = root, out, [], None
@@ -189,6 +198,11 @@ class Gui:
         tk.Button(bar, text='Open output folder', command=lambda: open_folder(out)).pack(side='left')
         for m, var in self.mod_on.items():
             tk.Checkbutton(bar, text=m, variable=var).pack(side='left')
+        # test-topic selection: <out>/test-selection.json, read by every run_matrix test run
+        self.selection_file, self.topic_win = os.path.join(out, rm.SELECTION), None
+        tk.Button(bar, text='Topics...', command=self.topics).pack(side='left')
+        self.partial = tk.Label(bar, fg='white', bg='#e04040', font=('TkDefaultFont', 9, 'bold'), cursor='hand2')
+        self.partial.bind('<Button-1>', lambda e: self.topics())
         bar2 = tk.Frame(root)
         bar2.pack(fill='x', padx=4, pady=(0, 4))
         # Two template worlds: test_world for the test runs, play_world for Play; unset = new superflat world.
@@ -295,7 +309,8 @@ class Gui:
     # ---------------------------------------------------------------- state
 
     def running_pid(self):
-        return rm.lock_pid(os.path.join(self.out, 'running.lock'))
+        """pid of the run_matrix holding the global port lock (rm.LOCK), whatever its --out."""
+        return rm.lock_pid(rm.LOCK)
 
     def busy(self):
         return bool(self.queue or (self.proc and self.proc.poll() is None) or self.running_pid())
@@ -335,7 +350,8 @@ class Gui:
         for (key, l, c), lab in self.labels.items():
             state, d, stale = self.cell_info(key, l, c, running, jars)
             color = COLORS.get(state, COLORS['error'])
-            lab.config(text=cell_text(state, d) + ('*' if stale else ''), bg=lighten(color) if stale else color,
+            partial = '~' if d.get('only') or d.get('excluded') else ''
+            lab.config(text=cell_text(state, d) + ('*' if stale else '') + partial, bg=lighten(color) if stale else color,
                        fg='white' if state in ('n/a', 'failed') and not stale else 'black')
             counts['stale' if stale else state] = counts.get('stale' if stale else state, 0) + 1
             if state in ('running', 'capturing'):
@@ -360,6 +376,7 @@ class Gui:
                        *(['--world', world] if world else []))
         for b in self.buttons:
             b.config(state='disabled' if self.busy() else 'normal')
+        self.show_partial()
         play = self.play_now(running)
         active = (f"playing: {play['project']} {play['loader']} {play['config']}"
                   + (' (gradle)' if play['state'] == 'capturing' else '')) if play else \
@@ -534,6 +551,72 @@ class Gui:
         w, what = self.settings.get(key), key.split('_')[0]
         self.world_labels[key].config(text=f' {what} world: {w or "new superflat world"}   ')
 
+    # ---------------------------------------------------------------- test topics
+
+    def show_partial(self):
+        """Red PARTIAL label while the selection file switches any topic off (also when edited outside the GUI)."""
+        n = len(rm.read_selection(self.selection_file))
+        if n:
+            self.partial.config(text=f' PARTIAL: {n} topic{"s" if n > 1 else ""} off ')
+            self.partial.pack(side='left', padx=4)
+        else:
+            self.partial.pack_forget()
+
+    def topics(self):
+        """Tree mod > category > suite from <out>/topics.json; a click toggles a node (all of its suites) in
+        <out>/test-selection.json."""
+        if self.topic_win and self.topic_win.winfo_exists():
+            self.topic_win.lift()
+            return
+        win = self.topic_win = tk.Toplevel(self.root)
+        win.title('Test topics')
+        topics = rm.read_json(os.path.join(self.out, rm.TOPICS)) or {}
+        leaves = sorted(f'{m}/{s}' for m, ss in topics.items() for s in ss)
+        tree = ttk.Treeview(win, show='tree', height=min(30, max(5, len(leaves) + len(topics))))
+        tree.column('#0', width=420)
+        sb = tk.Scrollbar(win, orient='vertical', command=tree.yview)
+        tree.config(yscrollcommand=sb.set)
+        for key in leaves:
+            parts = key.split('/')
+            for i in range(1, len(parts) + 1):
+                if not tree.exists('/'.join(parts[:i])):
+                    tree.insert('/'.join(parts[:i - 1]), 'end', iid='/'.join(parts[:i]), open=i == 1)
+        tree.tag_configure('off', foreground='gray')
+        hint = tk.Label(win, justify='left', anchor='w')
+
+        def refresh():
+            exclude = rm.read_selection(self.selection_file)
+            for node in [n for m in tree.get_children() for n in (m, *tree.get_children(m))] + leaves:
+                under = [k for k in leaves if rm.matches(k, [node])]
+                off = sum(rm.excluded(k, [], exclude) for k in under)
+                tree.item(node, text=f"{'☐' if off == len(under) else '☑' if not off else '▣'} {node.split('/')[-1]}",
+                          tags=('off',) if off == len(under) else ())
+            unknown = [e for e in exclude if not any(rm.matches(k, [e]) for k in leaves)]
+            hint.config(text='\n'.join(filter(None, [
+                'No topics yet: run once to discover topics.' if not leaves else
+                'Click: switch a suite, category or mod on/off. Saved at once; used by every following run.',
+                unknown and 'Also off (not in the list): ' + ', '.join(unknown)])))
+            self.show_partial()
+
+        def save(exclude):
+            rm.write_json(self.selection_file, {'exclude': exclude})
+            refresh()
+
+        def click(e):
+            node = tree.identify_row(e.y)
+            if node and 'indicator' not in tree.identify_element(e.x, e.y):  # not the expand arrow
+                save(toggle_topic(leaves, rm.read_selection(self.selection_file), node))
+
+        tree.bind('<Button-1>', click)
+        hint.pack(side='top', fill='x', padx=4, pady=4)
+        btns = tk.Frame(win)
+        btns.pack(side='bottom', fill='x', padx=4, pady=4)
+        tk.Button(btns, text='All on (full run)', command=lambda: save([])).pack(side='left')
+        tk.Button(btns, text='Close', command=win.destroy).pack(side='right')
+        sb.pack(side='right', fill='y')
+        tree.pack(side='left', fill='both', expand=True)
+        refresh()
+
     # ---------------------------------------------------------------- tooltips
 
     def cell_tip(self, key, loader, config):
@@ -549,6 +632,7 @@ class Gui:
             lines.append(f"passed {d['passed']}, failed {d['failed']}, errors {d['errors']}, {d.get('seconds')} s")
             lines.append(f"finished {d.get('finished')}, world: {d.get('world') or 'new superflat'}")
             lines.append(d.get('status', ''))
+            lines.append(f"test topics: {rm.selection_text(d.get('only'), d.get('excluded')) or 'all (full run)'}")
         elif d.get('started'):
             lines.append(f"started {d['started']}")
         cell = os.path.join(self.out, os.path.basename(self.status_project(key)), loader, config)

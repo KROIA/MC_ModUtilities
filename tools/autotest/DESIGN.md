@@ -161,9 +161,10 @@ Exit code 0 only if every cell passed.
 All JSON is written atomically (tmp + `os.replace`); the GUI only polls files (every 2 s), so runs
 started from the command line show up the same way.
 
-- `<out>/running.lock`: pid of the active run_matrix; written at start, removed in `finally`. A lock
-  whose pid is alive makes a second run exit (ports are shared); a dead pid is a stale lock and is
-  overwritten. Liveness: `OpenProcess` + `GetExitCodeProcess` via ctypes (Windows), `kill(pid, 0)` elsewhere.
+- `<mods root>/autotest-out/running.lock` (`run_matrix.LOCK`, the default out's lock for every `--out`): pid
+  of the active run_matrix; written at start, removed in `finally` if it is still ours. A lock whose pid is
+  alive makes a second run exit, whatever its `--out` (ports are shared), or wait with `--wait-lock`; a dead
+  pid is a stale lock and is overwritten. Liveness: `OpenProcess` + `GetExitCodeProcess` via ctypes (Windows), `kill(pid, 0)` elsewhere.
 - `<out>/<project>/capture.json`: `{state: capturing, loaders, configs, started}` during Gradle, then
   `state: done` with `rc` and `finished`.
 - `<out>/<project>/<loader>/<config>/cell.json`: `{state: running, project, loader, config, world, started}`

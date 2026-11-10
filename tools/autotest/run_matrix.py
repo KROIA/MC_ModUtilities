@@ -40,8 +40,13 @@ LP_SUFFIX = '-lp'  # cell label of a config run with LuckPerms, e.g. mp-lp
 REMOVED = 'lp-removed'  # two-phase cell: mp with LuckPerms, then mp without it on the same world
 PHASE_FILE = os.path.join('testing', 'luckperms_phase1.json')  # in the world folder (LuckPermsPhase.FILE)
 MASTER_PORT, SLAVE_PORT, LINK_PORT = 25611, 25612, 25690
+# One port lock for every run, whatever its --out (the default out folder's lock): all runs share the ports above.
+LOCK = os.path.join(MODS_ROOT, 'autotest-out', 'running.lock')
 SECRET = 'autotest-secret'
 NO_WINDOW = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0  # no console pop-ups under the windowless GUI
+SELECTION = 'test-selection.json'  # <out>/: {"exclude": [topic keys]}, written by the GUI's Topics dialog
+TOPICS = 'topics.json'  # <out>/: {modid: [Category/SuiteClass, ...]} from the latest results of each mod
+EXCLUDE_PROP, INCLUDE_PROP = 'modutilities.tests.exclude', 'modutilities.tests.include'  # TestRegistry
 
 
 # ---------------------------------------------------------------- launch capture
@@ -425,9 +430,10 @@ def client_crashed(inst):
 
 # ---------------------------------------------------------------- one matrix cell
 
-def run_cell(specs, loader, config, cell_dir, timeout, mods, world=None, play=None, lp=False):
+def run_cell(specs, loader, config, cell_dir, timeout, mods, world=None, play=None, lp=False, only=(), exclude=()):
     """Starts the instances of one configuration, waits for them, stops everything.
     lp: specs include LuckPerms; on NeoForge every instance gets LuckPerms as permission handler.
+    only/exclude: test-topic keys, passed to every instance as the TestRegistry include/exclude properties.
     Returns (instances, tested, notes); every instance in `tested` is expected to have written results.json.
     world: template world copied fresh into every instance (client save / server world); None = new superflat.
     play=stop file: manual play, same instances and multi-server setup but no tests;
@@ -443,6 +449,9 @@ def run_cell(specs, loader, config, cell_dir, timeout, mods, world=None, play=No
     common = {'modutilities.autotest.timeout': timeout}
     if mods:
         common['modutilities.autotest.mods'] = mods
+    for prop, keys in ((INCLUDE_PROP, only), (EXCLUDE_PROP, exclude)):
+        if keys:
+            common[prop] = ','.join(keys)
     if play:
         common = {'modutilities.autotest.play': 'true'}
     template = world
@@ -566,6 +575,56 @@ def now():
     return time.strftime('%Y-%m-%dT%H:%M:%S')
 
 
+# ---------------------------------------------------------------- test-topic selection
+
+def matches(key, patterns):
+    """Mirror of TestRegistry.matches: a pattern is a '/'-segment-wise prefix of key, '*' = any one segment."""
+    k = key.split('/')
+    return any(len(s) <= len(k) and all(a in ('*', b) for a, b in zip(s, k))
+               for s in (p.strip().split('/') for p in patterns if p.strip()))
+
+
+def excluded(key, only, exclude):
+    """Mirror of TestRegistry.isExcluded: not matched by a non-empty `only`, or matched by `exclude`."""
+    return bool(only) and not matches(key, only) or matches(key, exclude)
+
+
+def read_selection(path):
+    """Exclude keys of a selection file ({"exclude": [...]}); [] if it is missing or broken."""
+    data = read_json(path)
+    return [k.strip() for k in (data.get('exclude') or [] if isinstance(data, dict) else []) if k.strip()]
+
+
+def test_selection(args, out):
+    """(only, exclude) of a test run: the selection file (--selection, default <out>/test-selection.json) plus
+    --exclude; --all-tests and --only ignore the file, so neither silently loses a topic switched off in the GUI."""
+    use_file = not (args.all_tests or args.only)
+    exclude = (read_selection(args.selection or os.path.join(out, SELECTION)) if use_file else []) + (args.exclude or [])
+    return list(args.only or []), list(dict.fromkeys(exclude))
+
+
+def selection_text(only, exclude):
+    """One line for the summary: '' for a full run."""
+    return 'PARTIAL: ' + '; '.join(filter(None, [only and 'only ' + ', '.join(only),
+                                                 exclude and 'excluded ' + ', '.join(exclude)])) if only or exclude else ''
+
+
+_topics_lock = threading.Lock()  # sp cells finish in pool threads
+
+
+def merge_topics(out, results):
+    """Updates <out>/topics.json from these results.json files: per mod, the suites it registered in its latest
+    report (results.json 'topics', excluded suites included). The GUI's Topics dialog lists them."""
+    with _topics_lock:
+        path = os.path.join(out, TOPICS)
+        topics = read_json(path) or {}
+        for r in results:
+            for mod, m in ((read_json(r) or {}).get('mods') or {}).items():
+                if 'topics' in m:
+                    topics[mod] = sorted(m['topics'])
+        write_json(path, topics)
+
+
 def pid_alive(pid):
     if os.name == 'nt':
         import ctypes
@@ -592,6 +651,23 @@ def lock_pid(path):
     except (OSError, ValueError):
         return None
     return pid if pid_alive(pid) else None
+
+
+def take_lock(path, wait):
+    """Writes our pid into the port lock. While a live run_matrix holds it: exit, or (wait) poll until it is free."""
+    said = None
+    while other := lock_pid(path):
+        if not wait:
+            sys.exit(f'another run_matrix (pid {other}) holds {path}: the game and multi-server ports are shared by '
+                     f'every run, whatever its --out; stop it first or use --wait-lock')
+        if other != said:
+            print(f'waiting for run_matrix pid {other} to end ({path}) ...', flush=True)
+            said = other
+        time.sleep(5)
+    # ponytail: check-then-write, not atomic; two runs starting in the same instant could both pass
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, 'w') as f:
+        f.write(str(os.getpid()))
 
 
 def start_gui(out):
@@ -671,10 +747,19 @@ def main():
     ap.add_argument('--jobs', type=int, default=4, help='--clean-build: MC versions built at once')
     ap.add_argument('--test-jobs', type=int, default=2,
                     help='sp cells run at once, beside the one-at-a-time multi-server cells (1 = all sequential)')
+    ap.add_argument('--exclude', nargs='+', metavar='KEY',
+                    help='test topics not to run (modid[/Category[/SuiteClass]], * = any segment), added to the '
+                         'selection file')
+    ap.add_argument('--only', nargs='+', metavar='KEY', help='run only these test topics; ignores the selection file')
+    ap.add_argument('--all-tests', action='store_true', help='ignore the selection file (full run unless --exclude)')
+    ap.add_argument('--selection', metavar='FILE', help=f'selection file (default <out>/{SELECTION})')
+    ap.add_argument('--wait-lock', action='store_true',
+                    help='if another run_matrix holds the port lock, wait until it ends instead of exiting')
     args = ap.parse_args()
 
     out = os.path.abspath(args.out)
     os.makedirs(out, exist_ok=True)
+    args.only, args.exclude = test_selection(args, out)
     projects = resolve_projects(args)
     if args.play:
         if args.play[0] not in LOADERS or args.play[1] not in CONFIGS or len(projects) != 1:
@@ -683,12 +768,7 @@ def main():
         args.world = os.path.normpath(os.path.abspath(args.world))
         if not os.path.isfile(os.path.join(args.world, 'level.dat')):
             ap.error(f'--world {args.world} has no level.dat')
-    lock = os.path.join(out, 'running.lock')
-    other = lock_pid(lock)
-    if other:
-        sys.exit(f'another run_matrix (pid {other}) is using {out} and the test ports; stop it first')
-    with open(lock, 'w') as f:
-        f.write(str(os.getpid()))
+    take_lock(LOCK, args.wait_lock)
     if args.gui:
         start_gui(out)
     try:
@@ -699,8 +779,8 @@ def main():
         else:
             run(args, out, projects)
     finally:
-        if lock_pid(lock) == os.getpid():
-            os.remove(lock)
+        if lock_pid(LOCK) == os.getpid():
+            os.remove(LOCK)
 
 
 def play_dir(out, project, loader, config):
@@ -822,9 +902,12 @@ def test_cell(args, name, pdir, specs, jars, world_fp, loader, config):
     else:
         lp = config.endswith(LP_SUFFIX)
         insts, tested, notes = run_cell(specs, loader, config.removesuffix(LP_SUFFIX), cell, args.timeout, args.mods,
-                                        args.world, lp=lp)
+                                        args.world, lp=lp, only=args.only, exclude=args.exclude)
         row = summarize(insts, tested, notes)
-    row.update(project=name, loader=loader, config=config, seconds=int(time.time() - t0), dir=cell)
+    merge_topics(os.path.dirname(pdir), glob.glob(os.path.join(cell, '*', 'results.json'))
+                 + glob.glob(os.path.join(cell, 'phase*', '*', 'results.json')))
+    row.update(project=name, loader=loader, config=config, seconds=int(time.time() - t0), dir=cell,
+               only=args.only, excluded=args.exclude)
     state = 'passed' if row['ok'] else 'failed' if row['failed'] else 'error'
     write_json(status, {**row, 'state': state, 'finished': now(), 'jars': jars, 'fingerprint': fingerprint(jars),
                         'world': args.world, 'world_fp': world_fp})
@@ -839,14 +922,16 @@ def run_removed(args, specs, loader, cell):
     dependents' phase-2 checks). Instances in <cell>/phase1/, <cell>/phase2/. Returns the combined summary row."""
     plain, with_lp = specs
     rows, notes = [], []
+    sel = {'only': args.only, 'exclude': args.exclude}
     insts, tested, n = run_cell(with_lp, loader, 'mp', os.path.join(cell, 'phase1'), args.timeout, args.mods,
-                                args.world, lp=True)
+                                args.world, lp=True, **sel)
     rows.append(summarize(insts, tested, n))
     world = os.path.join(cell, 'phase1', 'master', 'world')
     if not os.path.isfile(os.path.join(world, PHASE_FILE)):
         notes.append(f'phase1 wrote no {PHASE_FILE} (LuckPerms missing from the dev run? see README)')
     else:
-        insts, tested, n = run_cell(plain, loader, 'mp', os.path.join(cell, 'phase2'), args.timeout, args.mods, world)
+        insts, tested, n = run_cell(plain, loader, 'mp', os.path.join(cell, 'phase2'), args.timeout, args.mods, world,
+                                    **sel)
         rows.append(summarize(insts, tested, n))
         ran = [t for i in tested for m in ((read_json(i.results) or {}).get('mods') or {}).values()
                for suite, ts in (m.get('suites') or {}).items() if 'LuckPermsRemoved' in suite
@@ -909,7 +994,8 @@ def run(args, out, projects):
                 for config in labels:
                     cell = os.path.join(pdir, loader, config)
                     row = {'passed': 0, 'failed': 0, 'errors': 1, 'skipped': 0, 'ok': False, 'project': name, 'loader': loader,
-                           'config': config, 'seconds': 0, 'dir': cell, 'status': reason}
+                           'config': config, 'seconds': 0, 'dir': cell, 'status': reason, 'only': args.only,
+                           'excluded': args.exclude}
                     rows.append(row)
                     write_json(os.path.join(cell, 'cell.json'), {**row, 'state': 'error', 'finished': now()})
             continue
@@ -945,7 +1031,8 @@ def run(args, out, projects):
     for r in rows:
         print(f"{r['project'][:34]:34} {r['loader']:9} {r['config']:10} {'OK' if r['ok'] else 'FAIL':6} "
               f"{r['passed']:>5} {r['failed']:>5} {r['errors']:>4} {r.get('skipped', 0):>5} {r['seconds']:>5}  {r['status']}")
-    print(f'\nlogs and reports: {out}  (per cell: <project>/<loader>/<config>/<instance>/console.log, results.json,'
+    print(f"\ntest topics: {selection_text(args.only, args.exclude) or 'all (full run)'}")
+    print(f'logs and reports: {out}  (per cell: <project>/<loader>/<config>/<instance>/console.log, results.json,'
           f' logs/UnitTests/<mod>.log)')
     sys.exit(0 if rows and all(r['ok'] for r in rows) else 1)
 

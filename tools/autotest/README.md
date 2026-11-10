@@ -47,9 +47,50 @@ Options:
 | `--test-jobs N` | `2` | `sp` cells run at once (own game dir, no ports, ~2-4 GB RAM each, one game window each), beside the multi-server cells, which still run one at a time (shared ports), and beside the builds/captures of the next projects. `1` = everything sequential |
 | `--world DIR` | new superflat | tests and `--play`: world folder (with `level.dat`) copied fresh into every instance of every cell: servers `<instance>/world`, singleplayer client `saves/play` (opened directly). The template is never modified. An older world is upgraded (the client confirms the backup/upgrade prompts by itself); a world newer than the cell's MC fails the cell (`world ... is from a newer Minecraft`) |
 | `--luckperms M` | `off` | LuckPerms dimension, see [LuckPerms](#luckperms). `off`: the plain cells (unchanged); `on`: `<config>-lp` cells only; `both`: plain + `-lp`; `removed`: only the two-phase `lp-removed` cell per loader; `all`: plain + `-lp` + `lp-removed` |
+| `--exclude KEY ...` | none | test topics not to run in this call, added to the selection file's list, see [Test topics](#test-topics) |
+| `--only KEY ...` | none | run only these test topics; ignores the selection file (`--exclude` still applies) |
+| `--all-tests` | off | ignore the selection file: full run (unless `--exclude`/`--only`). Use it for the pre-release run |
+| `--selection FILE` | `<out>/test-selection.json` | another selection file |
+| `--wait-lock` | off | another run holds the port lock: wait (poll every 5 s) instead of exiting |
 
-Exit code 0 when every cell passed. Only one run per output folder at a time (`running.lock`;
-all runs share the test ports): a second one exits with a message.
+Exit code 0 when every cell passed. Only one run at a time, whatever its `--out`: every run (tests, `--play`,
+`--clean-build`) takes the global port lock `<mods root>/autotest-out/running.lock` (all runs share the test ports).
+A second one exits with a message, or with `--wait-lock` waits until the first one ends.
+
+## Test topics
+
+A topic is a test suite, key `<modid>/<Category>/<SuiteClass>`, e.g. `modutilities/mu_gui/GuiLogicTests`
+(category = `TestCategory` name, the same `<Category>/<SuiteClass>` key as in `results.json`). A pattern is a key
+or a prefix of it on `/` boundaries: `<modid>/<Category>` = every suite of that category, `<modid>` = the whole
+mod. A `*` segment matches any one segment: `stockmarket/*/BotStressTestSuite`. Exact, case-sensitive, no regex.
+
+- **Selection file** `<out>/test-selection.json` (same folder as `gui-settings.json`): `{"exclude": [patterns]}`.
+  An exclude list, so new suites run by default. The GUI's **Topics...** dialog writes it; edit it by hand or
+  from a script the same way. Every test run reads it (CLI and GUI runs alike); a missing file = full run.
+- **Game side** (mod-agnostic, `TestRegistry`): system properties `modutilities.tests.exclude` and
+  `modutilities.tests.include` (comma separated patterns). If include is set, only matching suites run; exclude
+  applies on top. A deselected suite is not run (no setup/teardown, no counts); `results.json` lists it per mod in
+  `excludedSuites` (not `skippedSuites`), the top level has `excludedSuites` = how many suites; the unit-test log
+  has an `EXCLUDED <key>` line. Every mod's `topics` lists all its registered suites, deselected ones included.
+  run_matrix passes both properties to every instance.
+- **Topic list**: after each cell run_matrix copies each mod's `topics` into `<out>/topics.json`
+  (`{modid: [Category/SuiteClass, ...]}`, per mod the latest run's list). The GUI menu is built from it, so it is
+  empty until a mod ran once.
+- **Summary**: every row of `summary.json` (and `cell.json`) has `only` and `excluded` (the patterns of that run);
+  the table ends with `test topics: PARTIAL: only ...; excluded ...` or `test topics: all (full run)`.
+- **Offline** (`gradlew :common:test`): `OfflineTests` honours the same properties; `common/build.gradle`
+  forwards them: `gradlew :common:test -Dmodutilities.tests.exclude=modutilities/mu_gui`. A deselected suite shows
+  as one skipped `<Category>/<SuiteClass>/<excluded>` test.
+
+Workflow: run a new feature's suite on its own (`--only <key>`), then switch it off in **Topics...** (or add it to
+the file) to keep everyday runs fast. Before a release: **All on** (or `--all-tests`) and run everything; check
+that the summary says `all (full run)`.
+
+```
+python tools/autotest/run_matrix.py <project> --only stockmarket/*/BotStressTestSuite
+python tools/autotest/run_matrix.py <project> --exclude modutilities/mu_gui stockmarket
+python tools/autotest/run_matrix.py <project> --all-tests
+```
 
 ## LuckPerms
 
@@ -139,6 +180,7 @@ above this folder), the same as run_matrix.py.
 | dark, `n/a` | no project folder for this mod/version |
 | teal, `PLAY` | a play session of this cell is running |
 | lighter colour, `*` suffix | stale: a mod jar or the test world changed since this result (tooltip: which jar, `jar missing` or `test world changed`) |
+| `~` suffix | partial run: topics were deselected (tooltip: `test topics: PARTIAL: ...`) |
 
 - **build** column (first per loader): the last Gradle build of the row's own project (BankSystem rows: the
   BankSystem project), recorded by run_matrix in `<out>/<project>/build.json` per loader. Green `release`
@@ -187,16 +229,24 @@ above this folder), the same as run_matrix.py.
   the right-click **Clean build**). **build jobs** (1-14, saved
   as `build_jobs` in `gui-settings.json`, default 4): MC versions built at once. The status bar shows the progress
   (`clean build 12/42: <running projects>`), and failed projects until the next run. Test results show stale afterwards (the next test run rebuilds dev jars).
+- **Topics...**: tree mod > category > suite from `<out>/topics.json` ("run once to discover topics" while it is
+  empty). Click a node to switch it (all of its suites) on or off (☑ on, ☐ off, ▣ mixed); saved at once to
+  `<out>/test-selection.json` (as suite keys; patterns that match no listed suite are kept and shown below the
+  hint) and used by every following run. **All on (full run)** empties the list. While the list is not empty the
+  main window shows a red **PARTIAL: n topics off** label (click: opens the dialog). See [Test topics](#test-topics).
 - **Stop**: a play session is stopped gracefully (`<out>/play/stop`); otherwise (or pressed again) it kills
   the active run_matrix (also one started from the command line) and its games.
-- Run/Play are refused while any run or play session holds `running.lock` (shared ports).
+- Run/Play are refused while any run or play session holds the global `running.lock` (shared ports), also one
+  with another `--out`; **Stop** then kills that run.
 - New MC version: [ADDING_A_VERSION.md](ADDING_A_VERSION.md).
 
 ## Output
 
 ```
 <out>/summary.json
-<out>/running.lock, gui.lock, gui-run.log, gui-settings.json, clean-build.json
+<mods root>/autotest-out/running.lock                       global port lock (for every --out)
+<out>/gui.lock, gui-run.log, gui-settings.json, clean-build.json
+<out>/test-selection.json, topics.json                         test-topic selection and topic list
 <out>/play/play.json, play/<project>/<loader>/<config>/<instance>/   play sessions
 <out>/<project>/gradle-capture.log, clean-build.log, capture.json, build.json   build.json: last build per loader (GUI build column)
 <out>/<project>/<loader>/<config>/cell.json                   cell status (read by the GUI)

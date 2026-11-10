@@ -16,7 +16,9 @@ import java.util.stream.Stream;
  * }</pre>
  * Same order as the in-game {@link TestRunner}: setup, tests, teardown (always), each one JUnit test named
  * {@code category/SuiteClass/test} (also {@code .../<setup>}, {@code .../<teardown>}); tests are skipped when setup failed.
- * SKIP results are reported as JUnit skips, FAIL/ERROR as failures.
+ * SKIP results are reported as JUnit skips, FAIL/ERROR as failures. The test-topic selection properties
+ * ({@code modutilities.tests.exclude} / {@code .include}, see {@link TestRegistry#isExcluded(TestSuite)}) apply here too:
+ * an excluded suite is one skipped {@code .../<excluded>} test.
  * <p>
  * No game bootstrap here (it costs ~4.5 s): a suite that touches registries (Items, ItemStack, registry codecs) calls
  * {@code SharedConstants.tryDetectVersion(); Bootstrap.bootStrap();} in its setup(), a no-op in game. Code that reaches
@@ -30,7 +32,13 @@ public final class OfflineTests {
         registerSuites.run();
         return TestRegistry.getTestSuites().stream()
                 .filter(suite -> !suite.needsGame())
-                .flatMap(OfflineTests::tests);
+                .flatMap(suite -> TestRegistry.isExcluded(suite) ? excluded(suite) : tests(suite));
+    }
+
+    /** A suite deselected by {@link TestRegistry#EXCLUDE_PROPERTY} / {@code INCLUDE_PROPERTY}: one JUnit skip, not run. */
+    private static Stream<DynamicTest> excluded(TestSuite suite) {
+        return Stream.of(DynamicTest.dynamicTest(suite.getCategory().getName() + "/" + suite.getClass().getSimpleName()
+                + "/<excluded>", () -> Assumptions.abort("excluded by the test-topic selection")));
     }
 
     private static Stream<DynamicTest> tests(TestSuite suite) {

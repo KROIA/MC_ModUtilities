@@ -206,7 +206,7 @@ public final class AutoTest {
                 String modId = suite.getCategory().getModId();
                 if (filter == null || filter.contains(modId)) modIds.add(modId);
             }
-            int[] total = new int[4];
+            int[] total = new int[5]; // passed, failed, errors, skipped, excluded suites
             JsonObject mods = new JsonObject();
             for (String modId : modIds) {
                 ModUtilitiesMod.LOGGER.info("[AutoTest] running {} tests (slave={})", modId, isSlave);
@@ -219,6 +219,7 @@ public final class AutoTest {
             report.addProperty("failed", total[1]);
             report.addProperty("errors", total[2]);
             report.addProperty("skipped", total[3]);
+            report.addProperty("excludedSuites", total[4]); // suites, not tests: see each mod's excludedSuites
         } catch (Throwable t) {
             ModUtilitiesMod.LOGGER.error("[AutoTest] run aborted", t);
             report.addProperty("status", "error");
@@ -250,17 +251,24 @@ public final class AutoTest {
             }
             suites.add(e.getKey(), tests);
         }
-        JsonArray skipped = new JsonArray();
+        // topics: every registered suite (run_matrix caches them in <out>/topics.json for the GUI's topic menu)
+        JsonArray skipped = new JsonArray(), excluded = new JsonArray(), topics = new JsonArray();
         for (TestSuite suite : TestRegistry.getTestSuites(modId)) {
-            if (!suite.getCategory().canRunOn(isSlave)) skipped.add(suite.getCategory().getName() + "/" + suite.getClass().getSimpleName());
+            String key = suite.getCategory().getName() + "/" + suite.getClass().getSimpleName();
+            topics.add(key);
+            if (TestRegistry.isExcluded(suite)) excluded.add(key);
+            else if (!suite.getCategory().canRunOn(isSlave)) skipped.add(key);
         }
         mod.addProperty("passed", counts[0]);
         mod.addProperty("failed", counts[1]);
         mod.addProperty("errors", counts[2]);
         mod.addProperty("skipped", counts[3]);
         mod.add("skippedSuites", skipped);
+        mod.add("excludedSuites", excluded);
+        mod.add("topics", topics);
         mod.add("suites", suites);
         for (int i = 0; i < counts.length; i++) total[i] += counts[i];
+        total[4] += excluded.size();
         return mod;
     }
 
