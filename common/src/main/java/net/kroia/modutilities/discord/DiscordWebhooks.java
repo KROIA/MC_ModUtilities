@@ -16,6 +16,7 @@ import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -402,10 +403,28 @@ public final class DiscordWebhooks {
     private static JsonObject loadTemplates(String modId, String language) {
         Optional<Path> path = Platform.getOptionalMod(modId)
                 .flatMap(mod -> findResource(mod, "assets", modId, "discord", language + ".json"));
-        if (path.isEmpty())
-            return new JsonObject();
-        JsonObject templates = read(path.get());
+        JsonObject templates = path.isPresent() ? read(path.get())
+                : readClasspath("assets/" + modId + "/discord/" + language + ".json");
         return templates == null ? new JsonObject() : templates;
+    }
+
+    // Loom dev runs keep common resources in a devlibs jar outside the mod container
+    private static JsonObject readClasspath(String resource) {
+        InputStream found = DiscordWebhooks.class.getClassLoader().getResourceAsStream(resource);
+        ClassLoader context = Thread.currentThread().getContextClassLoader();
+        if (found == null && context != null)
+            found = context.getResourceAsStream(resource);
+        if (found == null)
+            return null;
+        try (InputStream in = found) {
+            JsonElement e = JsonUtilities.fromString(new String(in.readAllBytes(), StandardCharsets.UTF_8));
+            if (e instanceof JsonObject o)
+                return o;
+        } catch (Exception ignored) {
+            // the exception text may quote file content, so it is not logged
+        }
+        ModUtilitiesMod.LOGGER.warn("[Discord] {} is not a valid JSON object; it is ignored and left unchanged", resource);
+        return null;
     }
 
     private static Optional<Path> findResource(Mod mod, String... path) {
