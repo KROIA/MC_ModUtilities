@@ -92,7 +92,7 @@ public final class ClientGuiSettings extends ModSettings {
     }
 
     /**
-     * Handles the GUI scale shortcuts: Ctrl + '+' / '-' (main row, numpad '+', and the
+     * Handles the GUI scale shortcuts: Ctrl + '+' / '-' (main row, numpad '+' / '-', and the
      * QWERTZ '+' / '-' positions) step the scale, Ctrl + '0' toggles auto / follow Minecraft.
      * Saves the new setting; the caller re-inits its screen so the change shows at once.
      * Callers must skip this while a text box has focus.
@@ -109,7 +109,8 @@ public final class ClientGuiSettings extends ModSettings {
         switch (keyCode) {
             case InputConstants.KEY_EQUALS, InputConstants.KEY_ADD, InputConstants.KEY_RBRACKET ->
                     next = Gui.stepGuiScaleSetting(current, 1, max, mcScale);
-            case InputConstants.KEY_MINUS, InputConstants.KEY_SLASH -> // no Mojang name for numpad minus
+            case InputConstants.KEY_MINUS, InputConstants.KEY_SLASH,
+                 org.lwjgl.glfw.GLFW.GLFW_KEY_KP_SUBTRACT -> // numpad '-': InputConstants has no name for it
                     next = Gui.stepGuiScaleSetting(current, -1, max, mcScale);
             case InputConstants.KEY_0, InputConstants.KEY_NUMPAD0 -> next = current == 0 ? -1 : 0;
             default -> { return false; }
