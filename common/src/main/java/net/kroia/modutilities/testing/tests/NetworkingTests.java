@@ -7,7 +7,12 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.handler.codec.DecoderException;
 import net.kroia.modutilities.networking.ExtraCodecUtils;
+import net.kroia.modutilities.networking.NetworkPacketManager;
 import net.kroia.modutilities.networking.client_server.arrs.GenericRequest;
+import net.kroia.modutilities.networking.client_server.arrs.GenericRequestPacket;
+import net.kroia.modutilities.networking.client_server.arrs.RequestManager;
+import net.kroia.modutilities.networking.client_server.arrs.RequestNotSentException;
+import net.kroia.modutilities.networking.client_server.arrs.RequestOutcomeUnknownException;
 import net.kroia.modutilities.networking.client_server.arrs.RequestRegistry;
 import net.kroia.modutilities.networking.client_server.streaming.GenericStream;
 import net.kroia.modutilities.networking.client_server.streaming.StreamRegistry;
@@ -32,6 +37,7 @@ import net.minecraft.network.codec.StreamCodec;
 
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 public class NetworkingTests extends TestSuite {
 
@@ -102,6 +108,13 @@ public class NetworkingTests extends TestSuite {
         // Multi-server handshake tests
         addTest("handshake_codec_roundtrip", this::testHandshakeCodecRoundtrip);
         addTest("handshake_mc_version_mismatch_rejected", this::testHandshakeMcVersionMismatchRejected);
+
+        // M2 request failures
+        addTest("request_timeout_outcome_unknown", this::testRequestTimeoutOutcomeUnknown);
+        addTest("request_timeout_override", this::testRequestTimeoutOverride);
+        addTest("request_not_sent_plain_failure", this::testRequestNotSentPlainFailure);
+        addTest("request_failures_off_by_default", this::testRequestFailuresOffByDefault);
+        addTest("request_disconnect_sweep", this::testRequestDisconnectSweep);
     }
 
     // ========================================================================
@@ -770,14 +783,130 @@ public class NetworkingTests extends TestSuite {
     }
 
     // ========================================================================
+    // M2 request failures (timeouts, refused sends, disconnect sweep)
+    // ========================================================================
+
+    /** Runs {@code body} with the failure switch on and a manager whose master/slave sends return {@code sendResult}. */
+    private TestResult withFailures(boolean enabled, boolean sendResult, java.util.function.Function<RequestManager, TestResult> body) {
+        boolean old = RequestManager.ENABLE_REQUEST_FAILURES;
+        RequestManager.ENABLE_REQUEST_FAILURES = enabled;
+        try {
+            NetworkPacketManager npm = new NetworkPacketManager("modutilities_test") {
+                @Override public void setupClientReceiverPackets() {}
+                @Override public void setupServerReceiverPackets() {}
+                @Override public void setupServerServerPackets() {}
+            };
+            return body.apply(new RequestManager(npm) {
+                @Override protected boolean sendToMaster(GenericRequestPacket packet) { return sendResult; }
+                @Override protected boolean sendToSlave(String slaveID, GenericRequestPacket packet) { return sendResult; }
+            });
+        } finally {
+            RequestManager.ENABLE_REQUEST_FAILURES = old;
+        }
+    }
+
+    /** @return the failure cause of a completed future, or null if it is pending or succeeded */
+    private static Throwable causeOf(CompletableFuture<?> f) {
+        if (!f.isCompletedExceptionally()) return null;
+        try {
+            f.join();
+            return null;
+        } catch (java.util.concurrent.CompletionException | java.util.concurrent.CancellationException e) {
+            return e.getCause() != null ? e.getCause() : e;
+        }
+    }
+
+    private TestResult testRequestTimeoutOutcomeUnknown() {
+        return withFailures(true, true, m -> {
+            CompletableFuture<String> f = m.sendRequestToMaster(createDummyRequest("m2_timeout", 1), "x");
+            if (f.isDone() && !f.isCompletedExceptionally()) return skip("no server buffer (server not running)");
+            pump(20);
+            int failed = m.cleanupExpiredRequests(false);
+            if (failed != 1) return fail("expected 1 timed-out request, got " + failed);
+            Throwable cause = causeOf(f);
+            return assertTrue("timeout must fail with RequestOutcomeUnknownException, got " + cause,
+                    cause instanceof RequestOutcomeUnknownException);
+        });
+    }
+
+    private TestResult testRequestTimeoutOverride() {
+        return withFailures(true, true, m -> {
+            CompletableFuture<String> shortF = m.sendRequestToSlave(createDummyRequest("m2_short", 1), "s", "x");
+            CompletableFuture<String> defaultF = m.sendRequestToSlave(createDummyRequest("m2_default"), "s", "x");
+            if (shortF.isDone() && !shortF.isCompletedExceptionally()) return skip("no server buffer (server not running)");
+            pump(20);
+            m.cleanupExpiredRequests(false);
+            if (!(causeOf(shortF) instanceof RequestOutcomeUnknownException))
+                return fail("getTimeoutMs() = 1 ms request should have timed out");
+            return assertFalse("default 30 s request must still be pending", defaultF.isDone());
+        });
+    }
+
+    private TestResult testRequestNotSentPlainFailure() {
+        return withFailures(true, false, m -> {
+            CompletableFuture<String> toMaster = m.sendRequestToMaster(createDummyRequest("m2_not_sent"), "x");
+            if (toMaster.isDone() && !toMaster.isCompletedExceptionally()) return skip("no server buffer (server not running)");
+            CompletableFuture<String> toSlave = m.sendRequestToSlave(createDummyRequest("m2_not_sent"), "s", "x");
+            for (CompletableFuture<String> f : List.of(toMaster, toSlave)) {
+                Throwable cause = causeOf(f);
+                if (cause == null) return fail("refused send must fail at once");
+                if (!(cause instanceof RequestNotSentException))
+                    return fail("refused send must fail with RequestNotSentException, got " + cause);
+            }
+            // holders removed: nothing left for the sweep
+            return assertEquals("holders must be removed", 0, m.failRequestsOnConnectionLost("s", Long.MAX_VALUE)
+                    + m.failRequestsOnConnectionLost(null, Long.MAX_VALUE));
+        });
+    }
+
+    private TestResult testRequestFailuresOffByDefault() {
+        return withFailures(false, false, m -> {
+            CompletableFuture<String> f = m.sendRequestToMaster(createDummyRequest("m2_off"), "x");
+            if (f.isDone() && !f.isCompletedExceptionally()) return skip("no server buffer (server not running)");
+            return assertFalse("switch off: refused send stays pending (old behaviour)", f.isDone());
+        });
+    }
+
+    private TestResult testRequestDisconnectSweep() {
+        return withFailures(true, true, m -> {
+            CompletableFuture<String> toA = m.sendRequestToSlave(createDummyRequest("m2_sweep"), "a", "x");
+            if (toA.isDone() && !toA.isCompletedExceptionally()) return skip("no server buffer (server not running)");
+            CompletableFuture<String> toB = m.sendRequestToSlave(createDummyRequest("m2_sweep"), "b", "x");
+            CompletableFuture<String> toMaster = m.sendRequestToMaster(createDummyRequest("m2_sweep"), "x");
+            long now = System.currentTimeMillis();
+            // Requests created after the disconnect are kept.
+            if (m.failRequestsOnConnectionLost("a", now - 60_000) != 0)
+                return fail("requests newer than the disconnect must be kept");
+            m.failRequestsOnConnectionLost("a", now);
+            if (!(causeOf(toA) instanceof RequestOutcomeUnknownException))
+                return fail("slave 'a' disconnect must fail its request with RequestOutcomeUnknownException");
+            if (toB.isDone() || toMaster.isDone())
+                return fail("slave 'a' disconnect must not touch requests to 'b' or to the master");
+            m.failRequestsOnConnectionLost(null, now);
+            if (!(causeOf(toMaster) instanceof RequestOutcomeUnknownException))
+                return fail("master disconnect must fail requests to the master");
+            return assertFalse("master disconnect must not touch master-to-slave requests", toB.isDone());
+        });
+    }
+
+    // ========================================================================
     // Dummy implementations for testing
     // ========================================================================
 
     private GenericRequest<String, String> createDummyRequest(String typeId) {
+        return createDummyRequest(typeId, RequestManager.DEFAULT_TIMEOUT_MS);
+    }
+
+    private GenericRequest<String, String> createDummyRequest(String typeId, long timeoutMs) {
         return new GenericRequest<>() {
             @Override
             public String getRequestTypeID() {
                 return typeId;
+            }
+
+            @Override
+            public long getTimeoutMs() {
+                return timeoutMs;
             }
 
             @Override

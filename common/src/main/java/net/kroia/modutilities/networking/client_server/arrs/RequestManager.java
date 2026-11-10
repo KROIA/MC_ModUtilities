@@ -12,10 +12,13 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Predicate;
 
 /**
  * The RequestManager executes and tracks requests sent between client and server (and, in
@@ -28,10 +31,21 @@ import java.util.concurrent.CompletableFuture;
  * </ul>
  * This class needs access to the {@link NetworkPacketManager} from this utility mod to send requests.
  *
- * @apiNote Callers should periodically invoke {@link #cleanupExpiredRequests(long)} to free
- *          pending requests whose responses never arrive (otherwise the maps would grow without bound).
+ * @apiNote While {@link #ENABLE_REQUEST_FAILURES} is on, ModUtilities calls {@link #cleanupExpiredRequests(boolean)}
+ *          every 20 ticks and fails requests whose responses never arrive.
  */
 public class RequestManager {
+
+    /**
+     * Switch for the request failure paths, off by default: timeouts (every 20 server and client ticks),
+     * immediate failure when a master/slave send is refused, and the disconnect sweep. While off,
+     * such requests stay pending forever (old behaviour).
+     * <p>
+     * Turn it on with {@code RequestManager.ENABLE_REQUEST_FAILURES = true;} once every caller that moves
+     * value on failure tells a never-sent failure from a {@link RequestOutcomeUnknownException}
+     * (BankSystem B6). The switch is JVM-wide and covers every mod using the ARRS.
+     */
+    public static volatile boolean ENABLE_REQUEST_FAILURES = false;
 
 
 
@@ -71,7 +85,9 @@ public class RequestManager {
      * @param <IN>    The type of input data.
      * @param <OUT>   The type of output data provided by the responder.
      * @return A future that completes with the response data, or with a completed-null future if
-     *         the client cannot allocate a buffer (e.g. not in an active world).
+     *         the client cannot allocate a buffer (e.g. not in an active world; nothing was sent).
+     *         Completes exceptionally with {@link RequestOutcomeUnknownException} when no response
+     *         arrives within {@link GenericRequest#getTimeoutMs()} (only while {@link #ENABLE_REQUEST_FAILURES} is on).
      */
     public <IN, OUT> CompletableFuture<OUT> sendRequestToServer(@NotNull GenericRequest<IN, OUT> request,
                                                                 IN input) {
@@ -101,8 +117,7 @@ public class RequestManager {
      * @param input   The input data for the request delivered to the receiver.
      * @param <IN>    The type of input data.
      * @param <OUT>   The type of output data provided by the responder.
-     * @return A future that completes with the response data, or with a completed-null future if
-     *         a server-side buffer cannot be allocated.
+     * @return See {@link GenericRequest#sendRequestToMaster(Object)}.
      * @apiNote Intended to be called on the slave server only.
      */
     public <IN, OUT> CompletableFuture<OUT> sendRequestToMaster(@NotNull GenericRequest<IN, OUT> request,
@@ -122,7 +137,8 @@ public class RequestManager {
         UUID requestId = requestPacket.getRequestID();
 
         pendingServerServerRequests.put(requestId, requestData);
-        MultiServerManager.sendToMaster(requestPacket);
+        if(!sendToMaster(requestPacket))
+            failNotSent(requestId, requestData);
         return requestData.responseFuture;
     }
     /**
@@ -133,8 +149,7 @@ public class RequestManager {
      * @param input   The input data for the request delivered to the receiver.
      * @param <IN>    The type of input data.
      * @param <OUT>   The type of output data provided by the responder.
-     * @return A future that completes with the response data, or with a completed-null future if
-     *         a server-side buffer cannot be allocated.
+     * @return See {@link GenericRequest#sendRequestToSlave(String, Object)}.
      * @apiNote Intended to be called on the master server only.
      */
     public <IN, OUT> CompletableFuture<OUT> sendRequestToSlave(@NotNull GenericRequest<IN, OUT> request,
@@ -152,11 +167,31 @@ public class RequestManager {
         requestData.responseFuture = new CompletableFuture<>();
         requestData.requestPacket = requestPacket;
         requestData.request = request;
+        requestData.targetSlaveID = slaveID;
         UUID requestId = requestPacket.getRequestID();
 
         pendingServerServerRequests.put(requestId, requestData);
-        MultiServerManager.sendToSlave(slaveID, requestPacket);
+        if(!sendToSlave(slaveID, requestPacket))
+            failNotSent(requestId, requestData);
         return requestData.responseFuture;
+    }
+
+    /** Sends to the master; protected so tests can simulate the link. @return false if the send was refused */
+    protected boolean sendToMaster(GenericRequestPacket packet) {
+        return MultiServerManager.sendToMaster(packet);
+    }
+
+    /** Sends to a slave; protected so tests can simulate the link. @return false if the send was refused */
+    protected boolean sendToSlave(String slaveID, GenericRequestPacket packet) {
+        return MultiServerManager.sendToSlave(slaveID, packet);
+    }
+
+    private void failNotSent(UUID requestId, ServerRequestHolder<?, ?> holder) {
+        if(!ENABLE_REQUEST_FAILURES)
+            return; // old behaviour: stays pending
+        pendingServerServerRequests.remove(requestId);
+        holder.responseFuture.completeExceptionally(new RequestNotSentException(
+                "ARRS request not sent: " + holder.request.getRequestTypeID()));
     }
 
     /**
@@ -232,50 +267,48 @@ public class RequestManager {
     public static final long DEFAULT_TIMEOUT_MS = 30_000L;
 
     /**
-     * Removes pending requests older than the given age. Pending server requests have their
-     * response futures completed exceptionally with a {@link java.util.concurrent.TimeoutException}.
-     * Callers should invoke this periodically (e.g. on a server tick) to prevent unbounded
-     * memory growth when responses never arrive.
+     * Fails pending requests older than their {@link GenericRequest#getTimeoutMs()} with a
+     * {@link RequestOutcomeUnknownException}. Runs on the thread that completes the futures of that side.
      *
-     * @param maxAgeMs maximum age of a pending request in milliseconds
-     * @return total number of expired requests that were removed
+     * @param clientSide {@code true}: requests this client sent to the server (client thread);
+     *                   {@code false}: master/slave requests (server thread)
+     * @return number of requests that timed out
      */
-    public int cleanupExpiredRequests(long maxAgeMs) {
-        long cutoff = System.currentTimeMillis() - maxAgeMs;
-        int removed = 0;
-        var serverIt = pendingServerRequests.entrySet().iterator();
-        while (serverIt.hasNext()) {
-            var entry = serverIt.next();
-            if (entry.getValue().creationTimeMs < cutoff) {
-                if (entry.getValue().responseFuture != null) {
-                    entry.getValue().responseFuture.completeExceptionally(
-                        new java.util.concurrent.TimeoutException("Request timed out: " + entry.getKey()));
-                }
-                serverIt.remove();
-                removed++;
-            }
+    public int cleanupExpiredRequests(boolean clientSide) {
+        long now = System.currentTimeMillis();
+        if(clientSide)
+            return failPending(pendingServerRequests, h -> now - h.creationTimeMs > h.request.getTimeoutMs(), "timed out");
+        // Server-to-client requests are unused and have no future: just drop old ones.
+        pendingClientRequests.values().removeIf(h -> now - h.creationTimeMs > DEFAULT_TIMEOUT_MS);
+        return failPending(pendingServerServerRequests, h -> now - h.creationTimeMs > h.request.getTimeoutMs(), "timed out");
+    }
+
+    /**
+     * Disconnect sweep: fails the master/slave requests sent over a lost connection with a
+     * {@link RequestOutcomeUnknownException}. Call on the server thread.
+     *
+     * @param slaveID      on the master: the slave that disconnected; on a slave: {@code null} (master lost)
+     * @param disconnectMs when the connection was lost; requests created later are kept
+     * @return number of failed requests
+     */
+    public int failRequestsOnConnectionLost(@Nullable String slaveID, long disconnectMs) {
+        return failPending(pendingServerServerRequests,
+                h -> h.creationTimeMs <= disconnectMs && Objects.equals(slaveID, h.targetSlaveID), "connection lost");
+    }
+
+    private static int failPending(Map<UUID, ServerRequestHolder<?,?>> pending, Predicate<ServerRequestHolder<?,?>> fail, String reason) {
+        int failed = 0;
+        for (var it = pending.entrySet().iterator(); it.hasNext(); ) {
+            var entry = it.next();
+            ServerRequestHolder<?,?> h = entry.getValue();
+            if (!fail.test(h))
+                continue;
+            it.remove();
+            h.responseFuture.completeExceptionally(new RequestOutcomeUnknownException(
+                    "ARRS request " + reason + ", outcome unknown: " + h.request.getRequestTypeID() + " " + entry.getKey()));
+            failed++;
         }
-        var serverServerIt = pendingServerServerRequests.entrySet().iterator();
-        while (serverServerIt.hasNext()) {
-            var entry = serverServerIt.next();
-            if (entry.getValue().creationTimeMs < cutoff) {
-                if (entry.getValue().responseFuture != null) {
-                    entry.getValue().responseFuture.completeExceptionally(
-                        new java.util.concurrent.TimeoutException("Request timed out: " + entry.getKey()));
-                }
-                serverServerIt.remove();
-                removed++;
-            }
-        }
-        var clientIt = pendingClientRequests.entrySet().iterator();
-        while (clientIt.hasNext()) {
-            var entry = clientIt.next();
-            if (entry.getValue().creationTimeMs < cutoff) {
-                clientIt.remove();
-                removed++;
-            }
-        }
-        return removed;
+        return failed;
     }
 
 

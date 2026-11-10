@@ -1,12 +1,15 @@
 package net.kroia.modutilities;
 
+import dev.architectury.event.events.client.ClientTickEvent;
 import dev.architectury.event.events.common.LifecycleEvent;
+import dev.architectury.event.events.common.TickEvent;
 import dev.architectury.networking.NetworkManager;
 import dev.architectury.platform.Platform;
 import dev.architectury.utils.Env;
 import net.kroia.modutilities.discord.DiscordWebhooks;
 import net.kroia.modutilities.gui.display.DisplayNetworking;
 import net.kroia.modutilities.networking.client_server.NetworkPacket;
+import net.kroia.modutilities.networking.client_server.arrs.AsynchronousRequestResponseSystem;
 import net.kroia.modutilities.networking.client_server.arrs.GenericRequestPacket;
 import net.kroia.modutilities.networking.client_server.arrs.GenericResponsePacket;
 import net.kroia.modutilities.networking.client_server.streaming.GenericStreamPacket;
@@ -35,6 +38,10 @@ public class ModUtilitiesMod {
         DisplayNetworking.init();
         DiscordWebhooks.init();
         LuckPermsBridge.init();
+        // ARRS request timeouts (no-op unless RequestManager.ENABLE_REQUEST_FAILURES is on)
+        TickEvent.SERVER_POST.register(server -> AsynchronousRequestResponseSystem.tick(false));
+        if (Platform.getEnvironment() == Env.CLIENT)
+            ClientTickEvent.CLIENT_POST.register(mc -> AsynchronousRequestResponseSystem.tick(true));
         if (ModChecker.isModLoaded("tab")) {
             // TabPlaceholderBackend is only class-loaded inside this guard (soft dependency).
             LifecycleEvent.SERVER_STARTED.register(server -> {

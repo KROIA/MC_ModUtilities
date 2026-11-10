@@ -142,6 +142,8 @@ public class SlavePacketHandler extends SimpleChannelInboundHandler<Payload> {
      */
     @Override
     public void channelInactive(ChannelHandlerContext ctx) {
+        // Requests sent over this channel get no response any more (clean disconnect too).
+        net.kroia.modutilities.networking.client_server.arrs.AsynchronousRequestResponseSystem.onConnectionLost(mcServer, null);
         if(connector.isShuttingDown())
             return;
         warn("Lost connection to master - scheduling reconnect...");
