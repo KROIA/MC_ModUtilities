@@ -260,7 +260,7 @@ above this folder), the same as run_matrix.py.
   (`clean build 12/42: <running projects>`), and failed projects until the next run. Test results show stale afterwards (the next test run rebuilds dev jars).
 - **Topics...**: tree mod > category > suite from `<out>/topics.json` ("run once to discover topics" while it is
   empty) with each node's mode (`online`, `offline`, `off`, `mixed`; suites that need the game say
-  `(needs game)`). Click a node: a menu sets the mode of it and everything below (`offline` only where possible,
+  `(needs game)`; rows colored green / blue / gray / amber). Click a node: a menu sets the mode of it and everything below (`offline` only where possible,
   disabled as `offline (needs game)` when nothing below can). Saved at once to `<out>/test-selection.json` (as suite
   keys; patterns that match no listed suite are kept and shown below the hint) and used by every following run.
   **All on (full run)** empties the exclude list and keeps the modes; **All capable offline** / **All online** set

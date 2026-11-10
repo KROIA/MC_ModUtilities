@@ -610,7 +610,8 @@ class Gui:
                 if not tree.exists('/'.join(parts[:i])):
                     tree.insert('/'.join(parts[:i - 1]), 'end', iid='/'.join(parts[:i]), text=parts[i - 1], open=i == 1)
                     nodes.append('/'.join(parts[:i]))
-        tree.tag_configure('off', foreground='gray')
+        for mode, color in (('online', 'passed'), ('offline', 'dev'), ('off', 'none'), ('mixed', 'running')):
+            tree.tag_configure(mode, background=lighten(COLORS[color]), foreground='#707070' if mode == 'off' else 'black')
         hint = tk.Label(win, justify='left', anchor='w')
 
         def selection():
@@ -622,12 +623,13 @@ class Gui:
                 modes = {topic_mode(k, g, exclude, offline) for k, g in leaves.items() if rm.matches(k, [node])}
                 mode = modes.pop() if len(modes) == 1 else 'mixed'
                 tree.item(node, values=(mode + (' (needs game)' if leaves.get(node) else ''),),
-                          tags=('off',) if mode == 'off' else ())
+                          tags=(mode,))
             unknown = [p for p in exclude + offline if not any(rm.matches(k, [p]) for k in leaves)]
             hint.config(text='\n'.join(filter(None, [
                 'No topics yet: run once to discover topics.' if not leaves else
                 'Click a suite, category or mod to set its mode: online (in game), offline (JUnit, no game; only '
-                'suites that need no game) or off.\nSaved at once; used by every following run.',
+                'suites that need no game) or off.\nGreen = online, blue = offline, gray = off, amber = mixed. '
+                'Saved at once; used by every following run.',
                 unknown and 'Also in the file (not in the list): ' + ', '.join(unknown)])))
             self.show_partial()
 
