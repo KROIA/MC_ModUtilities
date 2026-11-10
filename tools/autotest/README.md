@@ -90,9 +90,16 @@ mod. A `*` segment matches any one segment: `stockmarket/*/BotStressTestSuite`. 
   JUnit XML into the project's **offline row** (`loader` `junit`, `config` `offline`: passed/failed/errors/skipped,
   `excludedSuites`, `failures`; `<out>/<project>/offline.json` for the GUI) and passes the in-game cells
   `modutilities.tests.offline` = exactly the suite keys that ran offline, so nothing runs twice and nothing is lost.
-  A project without an `OfflineTests.run(` caller in `common/src/test` (today BankSystem, StockMarket) gets
+  A project without an `OfflineTests.run(` caller in `common/src/test` gets
   `n/a: no offline tests` (ok) and runs all its suites in game; so does a project whose Gradle run produced no
   results (offline row: error). A Gradle failure without a failed test (compile error, timeout) is one error.
+- **Dependent setup** (BankSystem, StockMarket have it; see their `common/build.gradle` and `common/src/test`): a
+  `@TestFactory` calling `OfflineTests.run(<registration>)`; the test task forwards the three
+  `modutilities.tests.*` properties, inside `afterEvaluate { }` (Loom creates the mapped compile classpath only
+  then); `test.include '**/*Test.class'` so the class scan does not load the suites (in release mode their
+  `compileOnly` deps are missing); `compileTestJava`/`test` `onlyIf` the ModUtilities jar contains
+  `OfflineTests.class` (release jars have no `testing` package). Suites that touch `@ExpectPlatform`,
+  `UtilitiesPlatform`, registries or a server stay `needsGame() = true`.
 - **Summary**: every row of `summary.json` (and `cell.json`, `offline.json`) has `only` and `excluded` (the
   patterns of that run); the table ends with `test topics: PARTIAL: only ...; excluded ...` or
   `test topics: all (full run)`, plus `; offline (JUnit ...): <patterns>`. Offline topics count as run: "full" =
