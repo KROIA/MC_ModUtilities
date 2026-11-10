@@ -77,6 +77,12 @@ public class TestRegistry {
     public static final String EXCLUDE_PROPERTY = "modutilities.tests.exclude";
     /** If set, only suites matching one of these keys run; the rest count as excluded. Exclude applies on top. */
     public static final String INCLUDE_PROPERTY = "modutilities.tests.include";
+    /**
+     * Suites that run offline (JUnit, {@link OfflineTests}) instead of in game. Only suites with
+     * {@link TestSuite#needsGame()} == false are affected: a matching suite that needs the game still runs in game.
+     * Unset: {@link OfflineTests} runs every capable suite, the game runs every suite.
+     */
+    public static final String OFFLINE_PROPERTY = "modutilities.tests.offline";
 
     /** @return {@code <modid>/<Category>/<SuiteClass>}, the key the selection properties match. */
     public static String topicKey(TestSuite suite) {
@@ -90,6 +96,15 @@ public class TestRegistry {
     /** @param include, exclude comma separated patterns or null; a blank include means "everything". */
     public static boolean isExcluded(String key, String include, String exclude) {
         return (include != null && !include.isBlank() && !matches(key, include)) || (exclude != null && matches(key, exclude));
+    }
+
+    /** @return true if this suite is listed in {@link #OFFLINE_PROPERTY} and can run without the game. */
+    public static boolean isOffline(TestSuite suite) {
+        return isOffline(topicKey(suite), suite.needsGame(), System.getProperty(OFFLINE_PROPERTY));
+    }
+
+    public static boolean isOffline(String key, boolean needsGame, String offline) {
+        return !needsGame && offline != null && matches(key, offline);
     }
 
     /**

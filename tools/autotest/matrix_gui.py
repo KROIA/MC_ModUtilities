@@ -156,13 +156,25 @@ def plan_runs(cells):
     return [(ps, list(ls), list(cs)) for (ls, cs), ps in runs.items()]
 
 
-def toggle_topic(leaves, exclude, node):
-    """Exclude list after a click on a topic tree node (mod, mod/Category or suite key): every suite under it off
-    if all were on, else all on. Written as suite keys; keys that match no listed suite are kept as they are."""
-    under = {k for k in leaves if rm.matches(k, [node])}
-    off = {k for k in leaves if rm.excluded(k, [], exclude)}
-    off = off - under if off & under else off | under
-    return sorted(off) + [e for e in exclude if not any(rm.matches(k, [e]) for k in leaves)]
+MODES = ('online', 'offline', 'off')  # test-topic modes: in game, JUnit (needsGame() == false only), not run
+
+
+def topic_mode(key, needs_game, exclude, offline):
+    """Mode of one suite under a selection: off wins, offline only for a suite that needs no game."""
+    return 'off' if rm.matches(key, exclude) else 'offline' if not needs_game and rm.matches(key, offline) else 'online'
+
+
+def set_mode(leaves, exclude, offline, node, mode):
+    """(exclude, offline) after setting every suite under a topic tree node (mod, mod/Category or suite key) to mode.
+    leaves: {suite key: needsGame}. offline is applied only where possible (suites that need the game keep their
+    mode). Lists are written as suite keys; patterns that match no listed suite are kept as they are."""
+    modes = {k: topic_mode(k, g, exclude, offline) for k, g in leaves.items()}
+    for k, g in leaves.items():
+        if rm.matches(k, [node]) and not (mode == 'offline' and g):
+            modes[k] = mode
+    keep = lambda pats: [p for p in pats if not any(rm.matches(k, [p]) for k in leaves)]
+    return (sorted(k for k, m in modes.items() if m == 'off') + keep(exclude),
+            sorted(k for k, m in modes.items() if m == 'offline') + keep(offline))
 
 
 class Gui:
@@ -170,6 +182,7 @@ class Gui:
         self.root, self.out, self.queue, self.proc = root, out, [], None
         self.projects = {(m, v): find_project(rm.MODS_ROOT, folder, v) for m, folder in MODS for v in VERSIONS}
         self.labels, self.build_labels, self.row_labels, self.tip = {}, {}, {}, None
+        self.offline_labels = {}  # per row: the project's offline (JUnit) run, <out>/<project>/offline.json
         self.mod_on = {m: tk.BooleanVar(value=True) for m, _ in MODS if m != BANK}
         self.settings_file = os.path.join(out, 'gui-settings.json')
         self.settings = rm.read_json(self.settings_file) or {}
@@ -231,6 +244,8 @@ class Gui:
             self.col_heads[(l, c)].grid(row=1, column=1 + j, padx=1, pady=1)
             if c != 'build':
                 tk.Checkbutton(head, variable=self.col_on[(l, c)], command=self.save_columns).grid(row=2, column=1 + j)
+        tk.Label(head, text='junit', relief='groove').grid(row=0, column=1 + len(GRID), sticky='ew')
+        tk.Label(head, text='offline', width=8, relief='ridge').grid(row=1, column=1 + len(GRID), padx=1, pady=1)
         self.show_columns()
         # width=1: long text is clipped instead of widening the window; the tooltip shows all of it
         self.status = tk.Label(root, anchor='w', relief='sunken', width=1)
@@ -253,7 +268,7 @@ class Gui:
         for m, _ in MODS:
             # columnspan: the bold title must not widen column 0 (that would shift it against the header)
             tk.Label(grid, text=m + (' (results via StockMarket)' if m == BANK else ''),
-                     font=('TkDefaultFont', 10, 'bold'), anchor='w').grid(row=r, column=0, columnspan=len(GRID) + 1,
+                     font=('TkDefaultFont', 10, 'bold'), anchor='w').grid(row=r, column=0, columnspan=len(GRID) + 2,
                                                                           sticky='w')
             r += 1
             for v in VERSIONS:
@@ -276,6 +291,10 @@ class Gui:
                     lab.bind('<Button-3>', lambda e, x=(key, l, c): self.menu(e, x))
                     self.bind_tip(lab, lambda x=(key, l, c): self.cell_tip(*x))
                     self.labels[(key, l, c)] = lab
+                lab = tk.Label(grid, width=8, relief='ridge')
+                lab.grid(row=r, column=1 + len(GRID), padx=1, pady=1)
+                self.bind_tip(lab, lambda k=key: self.offline_tip(k))
+                self.offline_labels[key] = lab
                 r += 1
         self.tick()
 
@@ -356,6 +375,10 @@ class Gui:
             counts['stale' if stale else state] = counts.get('stale' if stale else state, 0) + 1
             if state in ('running', 'capturing'):
                 counts.setdefault('active', []).append(f'{state}: {os.path.basename(self.status_project(key))} {l} {c}')
+        for key, lab in self.offline_labels.items():
+            state, d = self.offline_info(key, running)
+            lab.config(text=cell_text(state, d) + ('~' if d.get('only') or d.get('excluded') else ''),
+                       bg=COLORS.get(state, COLORS['error']), fg='white' if state in ('n/a', 'failed') else 'black')
         for (key, l), lab in self.build_labels.items():
             state, b, jar, st, newer = build_status(self.out, self.projects[key], l, running)
             color = COLORS[state]
@@ -521,6 +544,7 @@ class Gui:
             if not messagebox.askokcancel('Clear results', 'Reset every cell to "not run"? (logs are kept)'):
                 return
             files = [f for f in glob.glob(os.path.join(self.out, '*', 'capture.json')) +
+                     glob.glob(os.path.join(self.out, '*', 'offline.json')) +
                      glob.glob(os.path.join(self.out, '*', '*', '*', 'cell.json'))
                      if os.path.relpath(f, self.out).split(os.sep)[0] != 'play']
         else:
@@ -563,55 +587,75 @@ class Gui:
             self.partial.pack_forget()
 
     def topics(self):
-        """Tree mod > category > suite from <out>/topics.json; a click toggles a node (all of its suites) in
-        <out>/test-selection.json."""
+        """Tree mod > category > suite from <out>/topics.json with each suite's mode: online (in game), offline
+        (JUnit, only suites with needsGame() == false) or off. Click a node: menu that sets the mode of it and
+        everything below. Saved at once to <out>/test-selection.json ("exclude" = off, "offline")."""
         if self.topic_win and self.topic_win.winfo_exists():
             self.topic_win.lift()
             return
         win = self.topic_win = tk.Toplevel(self.root)
         win.title('Test topics')
-        topics = rm.read_json(os.path.join(self.out, rm.TOPICS)) or {}
-        leaves = sorted(f'{m}/{s}' for m, ss in topics.items() for s in ss)
-        tree = ttk.Treeview(win, show='tree', height=min(30, max(5, len(leaves) + len(topics))))
-        tree.column('#0', width=420)
+        leaves = rm.read_topics(self.out)  # {modid/Category/Suite: needsGame}
+        tree = ttk.Treeview(win, columns=('mode',), height=min(30, max(5, len(leaves) + 3)))
+        tree.heading('#0', text='topic', anchor='w')
+        tree.heading('mode', text='mode', anchor='w')
+        tree.column('#0', width=380)
+        tree.column('mode', width=170)
         sb = tk.Scrollbar(win, orient='vertical', command=tree.yview)
         tree.config(yscrollcommand=sb.set)
-        for key in leaves:
+        nodes = []
+        for key in sorted(leaves):
             parts = key.split('/')
             for i in range(1, len(parts) + 1):
                 if not tree.exists('/'.join(parts[:i])):
-                    tree.insert('/'.join(parts[:i - 1]), 'end', iid='/'.join(parts[:i]), open=i == 1)
+                    tree.insert('/'.join(parts[:i - 1]), 'end', iid='/'.join(parts[:i]), text=parts[i - 1], open=i == 1)
+                    nodes.append('/'.join(parts[:i]))
         tree.tag_configure('off', foreground='gray')
         hint = tk.Label(win, justify='left', anchor='w')
 
+        def selection():
+            return rm.read_selection(self.selection_file), rm.read_selection(self.selection_file, 'offline')
+
         def refresh():
-            exclude = rm.read_selection(self.selection_file)
-            for node in [n for m in tree.get_children() for n in (m, *tree.get_children(m))] + leaves:
-                under = [k for k in leaves if rm.matches(k, [node])]
-                off = sum(rm.excluded(k, [], exclude) for k in under)
-                tree.item(node, text=f"{'☐' if off == len(under) else '☑' if not off else '▣'} {node.split('/')[-1]}",
-                          tags=('off',) if off == len(under) else ())
-            unknown = [e for e in exclude if not any(rm.matches(k, [e]) for k in leaves)]
+            exclude, offline = selection()
+            for node in nodes:
+                modes = {topic_mode(k, g, exclude, offline) for k, g in leaves.items() if rm.matches(k, [node])}
+                mode = modes.pop() if len(modes) == 1 else 'mixed'
+                tree.item(node, values=(mode + (' (needs game)' if leaves.get(node) else ''),),
+                          tags=('off',) if mode == 'off' else ())
+            unknown = [p for p in exclude + offline if not any(rm.matches(k, [p]) for k in leaves)]
             hint.config(text='\n'.join(filter(None, [
                 'No topics yet: run once to discover topics.' if not leaves else
-                'Click: switch a suite, category or mod on/off. Saved at once; used by every following run.',
-                unknown and 'Also off (not in the list): ' + ', '.join(unknown)])))
+                'Click a suite, category or mod to set its mode: online (in game), offline (JUnit, no game; only '
+                'suites that need no game) or off.\nSaved at once; used by every following run.',
+                unknown and 'Also in the file (not in the list): ' + ', '.join(unknown)])))
             self.show_partial()
 
-        def save(exclude):
-            rm.write_json(self.selection_file, {'exclude': exclude})
+        def save(exclude, offline):
+            rm.write_json(self.selection_file, {'exclude': exclude, 'offline': offline})
             refresh()
 
-        def click(e):
+        def menu(e):
             node = tree.identify_row(e.y)
-            if node and 'indicator' not in tree.identify_element(e.x, e.y):  # not the expand arrow
-                save(toggle_topic(leaves, rm.read_selection(self.selection_file), node))
+            if not node or 'indicator' in tree.identify_element(e.x, e.y):  # the expand arrow
+                return
+            capable = any(not g for k, g in leaves.items() if rm.matches(k, [node]))
+            m = tk.Menu(win, tearoff=0)
+            for mode in MODES:
+                ok = mode != 'offline' or capable
+                m.add_command(label=mode if ok else 'offline (needs game)', state='normal' if ok else 'disabled',
+                              command=lambda mo=mode: save(*set_mode(leaves, *selection(), node, mo)))
+            m.tk_popup(e.x_root, e.y_root)
 
-        tree.bind('<Button-1>', click)
+        tree.bind('<Button-1>', menu)
         hint.pack(side='top', fill='x', padx=4, pady=4)
         btns = tk.Frame(win)
         btns.pack(side='bottom', fill='x', padx=4, pady=4)
-        tk.Button(btns, text='All on (full run)', command=lambda: save([])).pack(side='left')
+        # All on: nothing off, offline modes kept (every topic runs, each in its mode)
+        tk.Button(btns, text='All on (full run)', command=lambda: save([], selection()[1])).pack(side='left')
+        tk.Button(btns, text='All capable offline',
+                  command=lambda: save(selection()[0], sorted(k for k, g in leaves.items() if not g))).pack(side='left')
+        tk.Button(btns, text='All online', command=lambda: save(selection()[0], [])).pack(side='left')
         tk.Button(btns, text='Close', command=win.destroy).pack(side='right')
         sb.pack(side='right', fill='y')
         tree.pack(side='left', fill='both', expand=True)
@@ -656,6 +700,27 @@ class Gui:
         if b.get('log'):
             lines.append(f"log: {b['log']}")
         return '\n'.join(lines + b.get('error', []) + ['right-click: Clean build'])
+
+    def offline_info(self, key, running):
+        """(state, offline.json dict) of the row's project (BankSystem rows: StockMarket's); 'none' = no offline run."""
+        p = self.status_project(key)
+        if not p:
+            return 'n/a', {}
+        d = read_json_cached(os.path.join(self.out, os.path.basename(p), 'offline.json')) or {}
+        state = d.get('state', 'none')
+        return ('interrupted' if state == 'running' and not running else state), d
+
+    def offline_tip(self, key):
+        state, d = self.offline_info(key, bool(self.running_pid()))
+        lines = [f'offline (JUnit, gradlew :common:test): {state}   {key[0]} {key[1]}']
+        if 'finished' in d:
+            lines += [f"passed {d['passed']}, failed {d['failed']}, errors {d['errors']}, skipped {d['skipped']}, "
+                      f"{d.get('seconds')} s, finished {d['finished']}", d.get('status', ''),
+                      f"test topics: {rm.selection_text(d.get('only'), d.get('excluded')) or 'all (full run)'}"]
+            if d.get('excludedSuites'):
+                lines.append('excluded: ' + ', '.join(d['excludedSuites']))
+            lines += d.get('failures', [])[:15]
+        return '\n'.join(lines + ['runs once per project in every test run while a topic is set offline (Topics...)'])
 
     def row_tip(self, key):
         p = self.status_project(key)

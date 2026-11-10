@@ -82,6 +82,10 @@ public class TestRunner {
                 log.append("EXCLUDED ").append(TestRegistry.topicKey(suite)).append('\n');
                 continue;
             }
+            if (TestRegistry.isOffline(suite)) { // runs in the JUnit run instead; AutoTest reports it as offline
+                log.append("OFFLINE ").append(TestRegistry.topicKey(suite)).append('\n');
+                continue;
+            }
             if (!category.canRunOn(isSlave)) {
                 totalSkipped += suite.getTestCount();
                 continue;

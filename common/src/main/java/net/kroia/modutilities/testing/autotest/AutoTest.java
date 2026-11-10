@@ -252,11 +252,15 @@ public final class AutoTest {
             suites.add(e.getKey(), tests);
         }
         // topics: every registered suite (run_matrix caches them in <out>/topics.json for the GUI's topic menu)
-        JsonArray skipped = new JsonArray(), excluded = new JsonArray(), topics = new JsonArray();
+        JsonArray skipped = new JsonArray(), excluded = new JsonArray(), offline = new JsonArray(), topics = new JsonArray();
         for (TestSuite suite : TestRegistry.getTestSuites(modId)) {
             String key = suite.getCategory().getName() + "/" + suite.getClass().getSimpleName();
-            topics.add(key);
+            JsonObject topic = new JsonObject();
+            topic.addProperty("key", key);
+            topic.addProperty("needsGame", suite.needsGame());
+            topics.add(topic);
             if (TestRegistry.isExcluded(suite)) excluded.add(key);
+            else if (TestRegistry.isOffline(suite)) offline.add(key);
             else if (!suite.getCategory().canRunOn(isSlave)) skipped.add(key);
         }
         mod.addProperty("passed", counts[0]);
@@ -265,6 +269,7 @@ public final class AutoTest {
         mod.addProperty("skipped", counts[3]);
         mod.add("skippedSuites", skipped);
         mod.add("excludedSuites", excluded);
+        mod.add("offlineSuites", offline); // left to the JUnit run (modutilities.tests.offline)
         mod.add("topics", topics);
         mod.add("suites", suites);
         for (int i = 0; i < counts.length; i++) total[i] += counts[i];

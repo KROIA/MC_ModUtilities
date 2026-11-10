@@ -29,6 +29,7 @@ import subprocess
 import sys
 import threading
 import time
+import xml.etree.ElementTree as ET
 import zipfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -44,9 +45,10 @@ MASTER_PORT, SLAVE_PORT, LINK_PORT = 25611, 25612, 25690
 LOCK = os.path.join(MODS_ROOT, 'autotest-out', 'running.lock')
 SECRET = 'autotest-secret'
 NO_WINDOW = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0  # no console pop-ups under the windowless GUI
-SELECTION = 'test-selection.json'  # <out>/: {"exclude": [topic keys]}, written by the GUI's Topics dialog
-TOPICS = 'topics.json'  # <out>/: {modid: [Category/SuiteClass, ...]} from the latest results of each mod
+SELECTION = 'test-selection.json'  # <out>/: {"exclude": [patterns], "offline": [patterns]}, the GUI's Topics dialog
+TOPICS = 'topics.json'  # <out>/: {modid: [{key: Category/SuiteClass, needsGame}]} from the latest results of each mod
 EXCLUDE_PROP, INCLUDE_PROP = 'modutilities.tests.exclude', 'modutilities.tests.include'  # TestRegistry
+OFFLINE_PROP = 'modutilities.tests.offline'
 
 
 # ---------------------------------------------------------------- launch capture
@@ -430,10 +432,12 @@ def client_crashed(inst):
 
 # ---------------------------------------------------------------- one matrix cell
 
-def run_cell(specs, loader, config, cell_dir, timeout, mods, world=None, play=None, lp=False, only=(), exclude=()):
+def run_cell(specs, loader, config, cell_dir, timeout, mods, world=None, play=None, lp=False, only=(), exclude=(),
+             offline=()):
     """Starts the instances of one configuration, waits for them, stops everything.
     lp: specs include LuckPerms; on NeoForge every instance gets LuckPerms as permission handler.
-    only/exclude: test-topic keys, passed to every instance as the TestRegistry include/exclude properties.
+    only/exclude: test-topic keys, passed to every instance as the TestRegistry include/exclude properties;
+    offline: the suite keys that already ran offline (run_offline), skipped in game.
     Returns (instances, tested, notes); every instance in `tested` is expected to have written results.json.
     world: template world copied fresh into every instance (client save / server world); None = new superflat.
     play=stop file: manual play, same instances and multi-server setup but no tests;
@@ -449,7 +453,7 @@ def run_cell(specs, loader, config, cell_dir, timeout, mods, world=None, play=No
     common = {'modutilities.autotest.timeout': timeout}
     if mods:
         common['modutilities.autotest.mods'] = mods
-    for prop, keys in ((INCLUDE_PROP, only), (EXCLUDE_PROP, exclude)):
+    for prop, keys in ((INCLUDE_PROP, only), (EXCLUDE_PROP, exclude), (OFFLINE_PROP, offline)):
         if keys:
             common[prop] = ','.join(keys)
     if play:
@@ -589,18 +593,21 @@ def excluded(key, only, exclude):
     return bool(only) and not matches(key, only) or matches(key, exclude)
 
 
-def read_selection(path):
-    """Exclude keys of a selection file ({"exclude": [...]}); [] if it is missing or broken."""
+def read_selection(path, field='exclude'):
+    """A pattern list ('exclude' or 'offline') of a selection file; [] if it is missing or broken."""
     data = read_json(path)
-    return [k.strip() for k in (data.get('exclude') or [] if isinstance(data, dict) else []) if k.strip()]
+    return [k.strip() for k in (data.get(field) or [] if isinstance(data, dict) else []) if k.strip()]
 
 
 def test_selection(args, out):
-    """(only, exclude) of a test run: the selection file (--selection, default <out>/test-selection.json) plus
-    --exclude; --all-tests and --only ignore the file, so neither silently loses a topic switched off in the GUI."""
-    use_file = not (args.all_tests or args.only)
-    exclude = (read_selection(args.selection or os.path.join(out, SELECTION)) if use_file else []) + (args.exclude or [])
-    return list(args.only or []), list(dict.fromkeys(exclude))
+    """(only, exclude, offline) of a test run from the selection file (--selection, default <out>/test-selection.json)
+    and the flags. exclude: the file's list unless --all-tests or --only (neither silently loses a topic switched off
+    in the GUI), plus --exclude. offline: the file's list plus --offline-tests; --no-offline-tests = everything in
+    game. --all-tests keeps the offline modes (every topic on, each in its mode)."""
+    path = args.selection or os.path.join(out, SELECTION)
+    exclude = ([] if args.all_tests or args.only else read_selection(path)) + (args.exclude or [])
+    offline = [] if args.no_offline_tests else read_selection(path, 'offline') + (args.offline_tests or [])
+    return list(args.only or []), list(dict.fromkeys(exclude)), list(dict.fromkeys(offline))
 
 
 def selection_text(only, exclude):
@@ -612,6 +619,12 @@ def selection_text(only, exclude):
 _topics_lock = threading.Lock()  # sp cells finish in pool threads
 
 
+def topic(t):
+    """A results.json/topics.json topic entry as (Category/SuiteClass, needsGame); old entries are plain keys
+    (needsGame unknown: True)."""
+    return (t['key'], t.get('needsGame', True)) if isinstance(t, dict) else (t, True)
+
+
 def merge_topics(out, results):
     """Updates <out>/topics.json from these results.json files: per mod, the suites it registered in its latest
     report (results.json 'topics', excluded suites included). The GUI's Topics dialog lists them."""
@@ -621,8 +634,90 @@ def merge_topics(out, results):
         for r in results:
             for mod, m in ((read_json(r) or {}).get('mods') or {}).items():
                 if 'topics' in m:
-                    topics[mod] = sorted(m['topics'])
+                    topics[mod] = [{'key': k, 'needsGame': g} for k, g in sorted(map(topic, m['topics']))]
         write_json(path, topics)
+
+
+def read_topics(out):
+    """<out>/topics.json as {modid/Category/SuiteClass: needsGame}."""
+    return {f'{m}/{k}': g for m, ts in (read_json(os.path.join(out, TOPICS)) or {}).items() for k, g in map(topic, ts)}
+
+
+# ---------------------------------------------------------------- offline (JUnit) tests
+
+def has_offline_tests(project):
+    """True if the project's common/src/test calls OfflineTests.run, i.e. `gradlew :common:test` runs suites."""
+    for f in glob.glob(os.path.join(project, 'common', 'src', 'test', '**', '*.java'), recursive=True):
+        with open(f, encoding='utf-8', errors='replace') as fh:
+            if 'OfflineTests.run(' in fh.read():
+                return True
+    return False
+
+
+def junit_results(xml_dir):
+    """Counts of Gradle's JUnit XML reports (TEST-*.xml) in xml_dir. OfflineTests names its tests
+    <modid>/<Category>/<SuiteClass>/<test>: 'suites' = the suite keys that ran, 'excludedSuites' = those with an
+    <excluded> entry (not counted), 'failures' = names of failed tests."""
+    row = {'passed': 0, 'failed': 0, 'errors': 0, 'skipped': 0, 'suites': [], 'excludedSuites': [], 'failures': []}
+    for f in sorted(glob.glob(os.path.join(xml_dir, 'TEST-*.xml'))):
+        try:
+            cases = list(ET.parse(f).getroot().iter('testcase'))
+        except (OSError, ET.ParseError):
+            row['errors'] += 1
+            continue
+        for tc in cases:
+            name = tc.get('name', '')
+            parts = name.split('/')
+            key = '/'.join(parts[:3]) if len(parts) > 3 else None
+            if parts[-1] == '<excluded>':
+                row['excludedSuites'].append(key)
+                continue
+            kind = next((k for t, k in (('failure', 'failed'), ('error', 'errors'), ('skipped', 'skipped'))
+                         if tc.find(t) is not None), 'passed')
+            row[kind] += 1
+            if kind in ('failed', 'errors'):
+                row['failures'].append(name)
+            if key and key not in row['suites']:
+                row['suites'].append(key)
+    return row
+
+
+def run_offline(args, name, project, pdir, log):
+    """The project's offline row: `gradlew :common:cleanTest :common:test` with the offline/include/exclude
+    properties runs the offline suites that need no game as JUnit tests. Writes <pdir>/offline.json (GUI) and returns
+    (summary row, suite keys that ran; the in-game cells skip exactly these). No OfflineTests caller in the project, or
+    no result: nothing ran, so nothing is skipped in game."""
+    status = os.path.join(pdir, 'offline.json')
+    xml_dir = os.path.join(project, 'common', 'build', 'test-results', 'test')
+    row = {'project': name, 'loader': 'junit', 'config': 'offline', 'dir': xml_dir, 'only': args.only,
+           'excluded': args.exclude, 'passed': 0, 'failed': 0, 'errors': 0, 'skipped': 0, 'seconds': 0}
+    if not has_offline_tests(project):
+        row.update(ok=True, status='n/a: no offline tests (all suites run in game)')
+        write_json(status, {**row, 'state': 'n/a', 'finished': now()})
+        return row, []
+    print(f'[{name}] offline tests (gradle :common:test) ...', flush=True)
+    write_json(status, {**row, 'state': 'running', 'started': now()})
+    t0 = time.time()
+    for f in glob.glob(os.path.join(xml_dir, 'TEST-*.xml')):
+        os.remove(f)  # never count an older run's reports
+    props = [f'-D{p}={",".join(v)}' for p, v in
+             ((OFFLINE_PROP, args.offline_topics), (INCLUDE_PROP, args.only), (EXCLUDE_PROP, args.exclude)) if v]
+    try:
+        rc = gradle(project, [':common:cleanTest', ':common:test', '-Penable_dev_features=true'] + props, args.offline,
+                    log)
+    except subprocess.TimeoutExpired:
+        rc = -1
+    r = junit_results(xml_dir)
+    ran = r.pop('suites')
+    if rc and not (r['failed'] or r['errors']):
+        r['errors'] += 1  # Gradle failed without a failed test: compile error, timeout
+    row.update(r, seconds=int(time.time() - t0), ok=not (r['failed'] or r['errors']),
+               status=f"junit: {len(ran)} suites offline" + (f", gradle rc {rc} (see gradle-capture.log)" if rc else ''))
+    state = 'passed' if row['ok'] else 'failed' if row['failed'] else 'error'
+    write_json(status, {**row, 'state': state, 'finished': now()})
+    print(f"[{name}] offline {'PASS' if row['ok'] else 'FAIL'} {row['passed']} passed, {row['failed']} failed, "
+          f"{row['errors']} errors, {row['skipped']} skipped  [{row['status']}]", flush=True)
+    return row, ran
 
 
 def pid_alive(pid):
@@ -752,6 +847,10 @@ def main():
                          'selection file')
     ap.add_argument('--only', nargs='+', metavar='KEY', help='run only these test topics; ignores the selection file')
     ap.add_argument('--all-tests', action='store_true', help='ignore the selection file (full run unless --exclude)')
+    ap.add_argument('--offline-tests', nargs='+', metavar='KEY',
+                    help='also run these test topics offline (JUnit) instead of in game, if they need no game')
+    ap.add_argument('--no-offline-tests', action='store_true',
+                    help="run every topic in game (ignores the selection file's offline list)")
     ap.add_argument('--selection', metavar='FILE', help=f'selection file (default <out>/{SELECTION})')
     ap.add_argument('--wait-lock', action='store_true',
                     help='if another run_matrix holds the port lock, wait until it ends instead of exiting')
@@ -759,7 +858,7 @@ def main():
 
     out = os.path.abspath(args.out)
     os.makedirs(out, exist_ok=True)
-    args.only, args.exclude = test_selection(args, out)
+    args.only, args.exclude, args.offline_topics = test_selection(args, out)
     projects = resolve_projects(args)
     if args.play:
         if args.play[0] not in LOADERS or args.play[1] not in CONFIGS or len(projects) != 1:
@@ -886,10 +985,10 @@ def clean_build(args, out, projects):
     sys.exit(1 if info['failed'] else 0)
 
 
-def test_cell(args, name, pdir, specs, jars, world_fp, loader, config):
+def test_cell(args, name, pdir, specs, jars, world_fp, loader, config, offline=()):
     """Runs one cell and writes its cell.json; returns its summary row. Thread-safe: own cell dir and instances.
     config: a CONFIGS entry, <config>-lp (that config with LuckPerms; specs = the LuckPerms launch specs) or
-    lp-removed (specs = (plain specs, LuckPerms specs), see run_removed)."""
+    lp-removed (specs = (plain specs, LuckPerms specs), see run_removed). offline: see run_cell."""
     cell = os.path.join(pdir, loader, config)
     print(f'[{name}] {loader} {config} ...', flush=True)
     t0 = time.time()
@@ -898,11 +997,11 @@ def test_cell(args, name, pdir, specs, jars, world_fp, loader, config):
     write_json(status, {'state': 'running', 'project': name, 'loader': loader, 'config': config,
                         'world': args.world, 'started': now()})
     if config == REMOVED:
-        row = run_removed(args, specs, loader, cell)
+        row = run_removed(args, specs, loader, cell, offline)
     else:
         lp = config.endswith(LP_SUFFIX)
         insts, tested, notes = run_cell(specs, loader, config.removesuffix(LP_SUFFIX), cell, args.timeout, args.mods,
-                                        args.world, lp=lp, only=args.only, exclude=args.exclude)
+                                        args.world, lp=lp, only=args.only, exclude=args.exclude, offline=offline)
         row = summarize(insts, tested, notes)
     merge_topics(os.path.dirname(pdir), glob.glob(os.path.join(cell, '*', 'results.json'))
                  + glob.glob(os.path.join(cell, 'phase*', '*', 'results.json')))
@@ -916,13 +1015,13 @@ def test_cell(args, name, pdir, specs, jars, world_fp, loader, config):
     return row
 
 
-def run_removed(args, specs, loader, cell):
+def run_removed(args, specs, loader, cell, offline=()):
     """"LuckPerms removed from a save": phase 1 runs mp WITH LuckPerms (tests record expectations in the world via
     LuckPermsPhase), phase 2 runs mp WITHOUT LuckPerms on a copy of phase 1's master world (LuckPermsRemovedTests and
     dependents' phase-2 checks). Instances in <cell>/phase1/, <cell>/phase2/. Returns the combined summary row."""
     plain, with_lp = specs
     rows, notes = [], []
-    sel = {'only': args.only, 'exclude': args.exclude}
+    sel = {'only': args.only, 'exclude': args.exclude, 'offline': offline}
     insts, tested, n = run_cell(with_lp, loader, 'mp', os.path.join(cell, 'phase1'), args.timeout, args.mods,
                                 args.world, lp=True, **sel)
     rows.append(summarize(insts, tested, n))
@@ -957,7 +1056,8 @@ def label_order(label):
 
 
 def run(args, out, projects):
-    """Per project (in order): dependency builds, build, launch capture, then its cells. Multi-server cells run one
+    """Per project (in order): dependency builds, build, offline (JUnit) tests if any topic is set offline, launch
+    capture, then its cells. Multi-server cells run one
     at a time (shared ports); sp cells (no ports, own game dir) go to a pool of args.test_jobs and run beside the
     following cells and projects, so sp cells of several projects overlap within one call."""
     agent = build_agent(out)
@@ -976,6 +1076,8 @@ def run(args, out, projects):
         cap = {'state': 'capturing', 'loaders': args.loaders, 'configs': args.configs, 'started': now()}
         write_json(os.path.join(pdir, 'capture.json'), cap)
         open(glog, 'w').close()
+        if os.path.exists(os.path.join(pdir, 'offline.json')):
+            os.remove(os.path.join(pdir, 'offline.json'))  # no offline row from an older run
         failed = build_deps(project, args.loaders, args.offline, glog, built, out)
         deps = dep_hashes(project, args.loaders)
         if failed:
@@ -1000,6 +1102,10 @@ def run(args, out, projects):
                     write_json(os.path.join(cell, 'cell.json'), {**row, 'state': 'error', 'finished': now()})
             continue
         jars = {l: jar_hashes(project, l) for l in args.loaders}
+        ran_offline = []
+        if args.offline_topics:
+            row, ran_offline = run_offline(args, name, project, pdir, glog)
+            rows.append(row)
         rc, specs = capture(project, args.loaders, agent, pdir, args.offline, glog) if need_plain else (0, {})
         lp_specs = {}
         if need_lp:
@@ -1012,7 +1118,7 @@ def run(args, out, projects):
         for loader in args.loaders:
             for config in labels:
                 cell_specs = (specs, lp_specs) if config == REMOVED else lp_specs if config.endswith(LP_SUFFIX) else specs
-                job = (name, pdir, cell_specs, jars[loader], world_fp, loader, config)
+                job = (name, pdir, cell_specs, jars[loader], world_fp, loader, config, ran_offline)
                 if config.removesuffix(LP_SUFFIX) == 'sp' and args.test_jobs > 1:  # no ports: runs beside everything else
                     pending.append(pool.submit(test_cell, args, *job))
                 else:
@@ -1020,7 +1126,8 @@ def run(args, out, projects):
     pool.shutdown(wait=True)
     rows += [f.result() for f in pending]  # re-raises a crashed cell
     names = [os.path.basename(p) for p in projects]
-    rows.sort(key=lambda r: (names.index(r['project']), LOADERS.index(r['loader']), label_order(r['config'])))
+    rows.sort(key=lambda r: (names.index(r['project']), (LOADERS.index(r['loader']), label_order(r['config']))
+                             if r['loader'] in LOADERS else (len(LOADERS), 0)))  # the offline row last
 
     with open(os.path.join(out, 'summary.json'), 'w', encoding='utf-8') as f:
         json.dump(rows, f, indent=2)
@@ -1031,7 +1138,8 @@ def run(args, out, projects):
     for r in rows:
         print(f"{r['project'][:34]:34} {r['loader']:9} {r['config']:10} {'OK' if r['ok'] else 'FAIL':6} "
               f"{r['passed']:>5} {r['failed']:>5} {r['errors']:>4} {r.get('skipped', 0):>5} {r['seconds']:>5}  {r['status']}")
-    print(f"\ntest topics: {selection_text(args.only, args.exclude) or 'all (full run)'}")
+    print(f"\ntest topics: {selection_text(args.only, args.exclude) or 'all (full run)'}"
+          + (f"; offline (JUnit, row 'junit offline'): {', '.join(args.offline_topics)}" if args.offline_topics else ''))
     print(f'logs and reports: {out}  (per cell: <project>/<loader>/<config>/<instance>/console.log, results.json,'
           f' logs/UnitTests/<mod>.log)')
     sys.exit(0 if rows and all(r['ok'] for r in rows) else 1)

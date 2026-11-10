@@ -48,8 +48,10 @@ Options:
 | `--world DIR` | new superflat | tests and `--play`: world folder (with `level.dat`) copied fresh into every instance of every cell: servers `<instance>/world`, singleplayer client `saves/play` (opened directly). The template is never modified. An older world is upgraded (the client confirms the backup/upgrade prompts by itself); a world newer than the cell's MC fails the cell (`world ... is from a newer Minecraft`) |
 | `--luckperms M` | `off` | LuckPerms dimension, see [LuckPerms](#luckperms). `off`: the plain cells (unchanged); `on`: `<config>-lp` cells only; `both`: plain + `-lp`; `removed`: only the two-phase `lp-removed` cell per loader; `all`: plain + `-lp` + `lp-removed` |
 | `--exclude KEY ...` | none | test topics not to run in this call, added to the selection file's list, see [Test topics](#test-topics) |
-| `--only KEY ...` | none | run only these test topics; ignores the selection file (`--exclude` still applies) |
-| `--all-tests` | off | ignore the selection file: full run (unless `--exclude`/`--only`). Use it for the pre-release run |
+| `--only KEY ...` | none | run only these test topics; ignores the selection file's exclude list (`--exclude` and the offline modes still apply) |
+| `--all-tests` | off | ignore the selection file's exclude list: every topic on, each in its mode (online/offline). Use it for the pre-release run |
+| `--offline-tests KEY ...` | none | also run these topics offline (JUnit) instead of in game, added to the selection file's offline list; only suites that need no game |
+| `--no-offline-tests` | off | run every topic in game (ignores the offline list and `--offline-tests`) |
 | `--selection FILE` | `<out>/test-selection.json` | another selection file |
 | `--wait-lock` | off | another run holds the port lock: wait (poll every 5 s) instead of exiting |
 
@@ -64,23 +66,41 @@ A topic is a test suite, key `<modid>/<Category>/<SuiteClass>`, e.g. `modutiliti
 or a prefix of it on `/` boundaries: `<modid>/<Category>` = every suite of that category, `<modid>` = the whole
 mod. A `*` segment matches any one segment: `stockmarket/*/BotStressTestSuite`. Exact, case-sensitive, no regex.
 
-- **Selection file** `<out>/test-selection.json` (same folder as `gui-settings.json`): `{"exclude": [patterns]}`.
-  An exclude list, so new suites run by default. The GUI's **Topics...** dialog writes it; edit it by hand or
-  from a script the same way. Every test run reads it (CLI and GUI runs alike); a missing file = full run.
+- **Modes**: every topic is `online` (in game, the default), `offline` (JUnit via `gradlew :common:test`, no game;
+  only suites whose `needsGame()` is false; such a suite can still run online) or `off` (not run).
+- **Selection file** `<out>/test-selection.json` (same folder as `gui-settings.json`):
+  `{"exclude": [patterns], "offline": [patterns]}`. `exclude` = off, `offline` = offline (off wins); everything
+  else is online, so new suites run in game by default. The GUI's **Topics...** dialog writes it; edit it by hand or
+  from a script the same way. Every test run reads it (CLI and GUI runs alike); a missing file = full run in game.
 - **Game side** (mod-agnostic, `TestRegistry`): system properties `modutilities.tests.exclude` and
   `modutilities.tests.include` (comma separated patterns). If include is set, only matching suites run; exclude
   applies on top. A deselected suite is not run (no setup/teardown, no counts); `results.json` lists it per mod in
   `excludedSuites` (not `skippedSuites`), the top level has `excludedSuites` = how many suites; the unit-test log
-  has an `EXCLUDED <key>` line. Every mod's `topics` lists all its registered suites, deselected ones included.
-  run_matrix passes both properties to every instance.
+  has an `EXCLUDED <key>` line. Every mod's `topics` lists all its registered suites, deselected ones included,
+  as `{"key": "<Category>/<SuiteClass>", "needsGame": bool}`. `modutilities.tests.offline` (patterns): a matching
+  suite that needs no game is skipped in game (log `OFFLINE <key>`, per mod `offlineSuites` in `results.json`, not
+  counted as excluded); a matching suite that needs the game still runs in game, so a wrong key never drops a suite.
+  run_matrix passes these properties to every instance.
 - **Topic list**: after each cell run_matrix copies each mod's `topics` into `<out>/topics.json`
-  (`{modid: [Category/SuiteClass, ...]}`, per mod the latest run's list). The GUI menu is built from it, so it is
-  empty until a mod ran once.
-- **Summary**: every row of `summary.json` (and `cell.json`) has `only` and `excluded` (the patterns of that run);
-  the table ends with `test topics: PARTIAL: only ...; excluded ...` or `test topics: all (full run)`.
-- **Offline** (`gradlew :common:test`): `OfflineTests` honours the same properties; `common/build.gradle`
-  forwards them: `gradlew :common:test -Dmodutilities.tests.exclude=modutilities/mu_gui`. A deselected suite shows
-  as one skipped `<Category>/<SuiteClass>/<excluded>` test.
+  (`{modid: [{"key", "needsGame"}]}`, per mod the latest run's list; the older list of plain keys still reads,
+  as needsGame). The GUI menu is built from it, so it is empty until a mod ran once.
+- **Offline run**: if the offline list is not empty, run_matrix runs per project, once per call, after its jar build
+  and before its cells: stale `common/build/test-results/test/TEST-*.xml` deleted, then `gradlew :common:cleanTest
+  :common:test -Penable_dev_features=true -Dmodutilities.tests.offline=<list>` (plus include/exclude). It parses the
+  JUnit XML into the project's **offline row** (`loader` `junit`, `config` `offline`: passed/failed/errors/skipped,
+  `excludedSuites`, `failures`; `<out>/<project>/offline.json` for the GUI) and passes the in-game cells
+  `modutilities.tests.offline` = exactly the suite keys that ran offline, so nothing runs twice and nothing is lost.
+  A project without an `OfflineTests.run(` caller in `common/src/test` (today BankSystem, StockMarket) gets
+  `n/a: no offline tests` (ok) and runs all its suites in game; so does a project whose Gradle run produced no
+  results (offline row: error). A Gradle failure without a failed test (compile error, timeout) is one error.
+- **Summary**: every row of `summary.json` (and `cell.json`, `offline.json`) has `only` and `excluded` (the
+  patterns of that run); the table ends with `test topics: PARTIAL: only ...; excluded ...` or
+  `test topics: all (full run)`, plus `; offline (JUnit ...): <patterns>`. Offline topics count as run: "full" =
+  nothing excluded and no `--only`.
+- **By hand** (`gradlew :common:test`): `OfflineTests` honours the same properties, `common/build.gradle` forwards
+  them: `gradlew :common:test -Dmodutilities.tests.exclude=modutilities/mu_gui`. Tests are named
+  `<modid>/<Category>/<SuiteClass>/<test>`; a deselected suite shows as one skipped `.../<excluded>` test. If
+  `modutilities.tests.offline` is set only the capable suites it matches run; unset = every capable suite.
 
 Workflow: run a new feature's suite on its own (`--only <key>`), then switch it off in **Topics...** (or add it to
 the file) to keep everyday runs fast. Before a release: **All on** (or `--all-tests`) and run everything; check
@@ -90,6 +110,8 @@ that the summary says `all (full run)`.
 python tools/autotest/run_matrix.py <project> --only stockmarket/*/BotStressTestSuite
 python tools/autotest/run_matrix.py <project> --exclude modutilities/mu_gui stockmarket
 python tools/autotest/run_matrix.py <project> --all-tests
+python tools/autotest/run_matrix.py <project> --offline-tests modutilities/mu_utilities
+python tools/autotest/run_matrix.py <project> --all-tests --no-offline-tests   (everything in game)
 ```
 
 ## LuckPerms
@@ -230,10 +252,17 @@ above this folder), the same as run_matrix.py.
   as `build_jobs` in `gui-settings.json`, default 4): MC versions built at once. The status bar shows the progress
   (`clean build 12/42: <running projects>`), and failed projects until the next run. Test results show stale afterwards (the next test run rebuilds dev jars).
 - **Topics...**: tree mod > category > suite from `<out>/topics.json` ("run once to discover topics" while it is
-  empty). Click a node to switch it (all of its suites) on or off (☑ on, ☐ off, ▣ mixed); saved at once to
-  `<out>/test-selection.json` (as suite keys; patterns that match no listed suite are kept and shown below the
-  hint) and used by every following run. **All on (full run)** empties the list. While the list is not empty the
-  main window shows a red **PARTIAL: n topics off** label (click: opens the dialog). See [Test topics](#test-topics).
+  empty) with each node's mode (`online`, `offline`, `off`, `mixed`; suites that need the game say
+  `(needs game)`). Click a node: a menu sets the mode of it and everything below (`offline` only where possible,
+  disabled as `offline (needs game)` when nothing below can). Saved at once to `<out>/test-selection.json` (as suite
+  keys; patterns that match no listed suite are kept and shown below the hint) and used by every following run.
+  **All on (full run)** empties the exclude list and keeps the modes; **All capable offline** / **All online** set
+  the offline list. While the exclude list is not empty the main window shows a red **PARTIAL: n topics off**
+  label (click: opens the dialog). See [Test topics](#test-topics).
+- **offline** column (after the loader columns, header `junit`): the project's offline row of its last test run
+  (`<out>/<project>/offline.json`; BankSystem rows: StockMarket's), colours as the test cells, `n/a` = no offline
+  tests in that project, `~` = partial. Hover: counts, excluded suites, failed tests. It runs with every test run of
+  the project while a topic is offline; **Clear results** clears it too.
 - **Stop**: a play session is stopped gracefully (`<out>/play/stop`); otherwise (or pressed again) it kills
   the active run_matrix (also one started from the command line) and its games.
 - Run/Play are refused while any run or play session holds the global `running.lock` (shared ports), also one
@@ -247,6 +276,7 @@ above this folder), the same as run_matrix.py.
 <mods root>/autotest-out/running.lock                       global port lock (for every --out)
 <out>/gui.lock, gui-run.log, gui-settings.json, clean-build.json
 <out>/test-selection.json, topics.json                         test-topic selection and topic list
+<out>/<project>/offline.json                                  offline (JUnit) row of the project's last test run
 <out>/play/play.json, play/<project>/<loader>/<config>/<instance>/   play sessions
 <out>/<project>/gradle-capture.log, clean-build.log, capture.json, build.json   build.json: last build per loader (GUI build column)
 <out>/<project>/<loader>/<config>/cell.json                   cell status (read by the GUI)

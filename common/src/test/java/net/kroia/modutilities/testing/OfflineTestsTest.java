@@ -33,5 +33,11 @@ class OfflineTestsTest {
         assertFalse(TestRegistry.isExcluded(key, "stockmarket/*/BotStressTestSuite", null), "included");
         assertTrue(TestRegistry.isExcluded(key, "modutilities", null), "not included");
         assertTrue(TestRegistry.isExcluded(key, "stockmarket", "stockmarket/Trading"), "exclude applies on top of include");
+        // offline: in game a suite is skipped only if it is listed AND can run without the game
+        assertTrue(TestRegistry.isOffline(key, false, "stockmarket/*/BotStressTestSuite"));
+        assertFalse(TestRegistry.isOffline(key, true, "stockmarket"), "needs the game: stays in game");
+        assertFalse(TestRegistry.isOffline(key, false, "modutilities"));
+        assertFalse(TestRegistry.isOffline(key, false, null));
+        assertFalse(TestRegistry.isOffline(key, false, ""));
     }
 }
