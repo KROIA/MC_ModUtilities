@@ -20,6 +20,10 @@ import java.util.function.Consumer;
  *       {@link #createRestartIndicator()} for the same marker on child rows.</li>
  *   <li>{@link #setLocked(boolean, Component)} makes the check box and the children
  *       read-only and shows the reason as header tooltip (e.g. on slave servers).</li>
+ *   <li>While expanded, the whole section (header + children) gets a darker background
+ *       so you can see which rows belong to it. Change it with
+ *       {@link #setBackgroundColor(int)} (default {@link #EXPANDED_BACKGROUND_COLOR}),
+ *       turn it off with {@code setEnableBackground(false)}.</li>
  * </ul>
  *
  * @apiNote The {@code gui/} package is client-only.
@@ -30,6 +34,14 @@ public class FeatureToggleSection extends ExpandablePanel {
     public static final int RESTART_INDICATOR_COLOR = 0xFFFFAA30;
     /** Title color while the section is locked. */
     public static final int LOCKED_TITLE_COLOR = 0xFF999999;
+    /**
+     * Default background behind an expanded section (header + children), see
+     * {@link #renderBackground()}. Same alpha as {@link #DEFAULT_NON_INTERACTIVE_OVERLAY_COLOR};
+     * its grey is halfway between that overlay's grey (0x30) and a list's default background
+     * ({@link #DEFAULT_BACKGROUND_COLOR}) as it shows on screen (~0x60), so it sits halfway
+     * between normal and greyed-out rows. Nested expanded sections stack a little darker.
+     */
+    public static final int EXPANDED_BACKGROUND_COLOR = 0x99484848;
 
     private static final Component RESTART_REQUIRED = Component.translatable("gui.modutilities.feature_section.restart_required");
     private static final Component RESTART_REQUIRED_TOOLTIP = Component.translatable("gui.modutilities.feature_section.restart_required.tooltip");
@@ -52,6 +64,8 @@ public class FeatureToggleSection extends ExpandablePanel {
     public FeatureToggleSection(String title, boolean initiallyExpanded) {
         super(title, initiallyExpanded);
         titleColor = getHeaderTextColor();
+        setBackgroundColor(EXPANDED_BACKGROUND_COLOR);
+        setEnableBackground(true);
 
         checkBox = new CheckBox("", checked -> {
             updateInteractivity();
@@ -150,6 +164,15 @@ public class FeatureToggleSection extends ExpandablePanel {
 
     private void updateInteractivity() {
         getContentArea().setInteractive(checkBox.isChecked() && !locked);
+    }
+
+    /** Draws the background only while expanded; it covers the section's bounds (header + children). */
+    @Override
+    protected void renderBackground() {
+        if (enableBackground && isExpanded())
+            renderBackgroundColor();
+        if (enableOutline)
+            renderOutline();
     }
 
     @Override
