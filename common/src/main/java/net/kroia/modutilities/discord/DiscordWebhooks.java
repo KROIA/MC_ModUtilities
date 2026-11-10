@@ -3,6 +3,7 @@ package net.kroia.modutilities.discord;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import dev.architectury.event.events.common.CommandRegistrationEvent;
 import dev.architectury.event.events.common.LifecycleEvent;
@@ -11,12 +12,16 @@ import dev.architectury.platform.Platform;
 import net.kroia.modutilities.JsonUtilities;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.PermissionCompat;
+import net.kroia.modutilities.networking.multi_server.IServerIdentity;
+import net.kroia.modutilities.networking.multi_server.MultiServerManager;
+import net.kroia.modutilities.networking.multi_server.ServerRole;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -72,11 +77,11 @@ import java.util.regex.Pattern;
  *
  * <h2>Security</h2>
  * Webhook URLs contain a secret token. They are never logged, never sent to clients and never shown by the
- * {@code /modutilities discord status} command; only webhook names appear in output.
+ * {@code discord status} command ({@link #command()}); only webhook names appear in output.
  *
  * <h2>Multi-server</h2>
- * This class does not know about master/slave servers. Callers must only post from the multi-server MASTER
- * (or a standalone server), otherwise every event is reported once per server.
+ * {@link #post} does not check the server role. Callers must only post from the multi-server MASTER
+ * (or a standalone server), otherwise every event is reported once per server. On a SLAVE the status says so.
  */
 public final class DiscordWebhooks {
     private DiscordWebhooks() {}
@@ -116,6 +121,8 @@ public final class DiscordWebhooks {
     private static Map<String, Map<String, Route>> routes = Map.of();
     private static Map<String, URI> webhooks = Map.of();
     private static Set<String> invalidWebhooks = Set.of();
+    /** modId -> one status line per registered type (state, minAmount, webhook names; never URLs). */
+    private static Map<String, List<String>> typeLines = Map.of();
     private static volatile boolean active;
 
     private static final ArrayBlockingQueue<Item> QUEUE = new ArrayBlockingQueue<>(MAX_QUEUE);
@@ -181,12 +188,16 @@ public final class DiscordWebhooks {
             return;
         loadWebhooks();
         Map<String, Map<String, Route>> newRoutes = new HashMap<>();
+        Map<String, List<String>> newLines = new HashMap<>();
         for (Map.Entry<String, List<String>> e : REGISTERED.entrySet()) {
-            Map<String, Route> modRoutes = loadMod(e.getKey(), e.getValue());
+            List<String> lines = new ArrayList<>();
+            Map<String, Route> modRoutes = loadMod(e.getKey(), e.getValue(), lines);
             if (!modRoutes.isEmpty())
                 newRoutes.put(e.getKey(), modRoutes);
+            newLines.put(e.getKey(), lines);
         }
         routes = newRoutes;
+        typeLines = newLines;
         active = !newRoutes.isEmpty();
         if (active && sender == null) {
             sender = new Thread(DiscordWebhooks::runSender, "ModUtilities-Discord");
@@ -200,22 +211,31 @@ public final class DiscordWebhooks {
         return active;
     }
 
+    /**
+     * The {@code discord reload|status} command node (permission {@link #PERMISSION}, default level 3). A mod attaches
+     * it under its own root, e.g. {@code Commands.literal("stockmarket").then(DiscordWebhooks.command())}. Every
+     * attachment reloads all config and shows the same overview of all registered mods.
+     */
+    public static LiteralArgumentBuilder<CommandSourceStack> command() {
+        return Commands.literal("discord")
+                .requires(src -> PermissionCompat.hasPermission(src, PERMISSION, 3))
+                .then(Commands.literal("reload").executes(ctx -> {
+                    reload();
+                    reply(ctx, "Discord config reloaded, " + (active ? "active" : "inactive"));
+                    return 1;
+                }))
+                .then(Commands.literal("status").executes(ctx -> {
+                    status().forEach(line -> reply(ctx, line));
+                    return 1;
+                }));
+    }
+
     /** Wires the lifecycle hook and the {@code /modutilities discord} command. Called once by ModUtilities. */
     public static void init() {
         PermissionCompat.registerNode(PERMISSION, 3);
         LifecycleEvent.SERVER_STOPPING.register(server -> shutdown());
         CommandRegistrationEvent.EVENT.register((dispatcher, registryAccess, environment) -> dispatcher.register(
-                Commands.literal("modutilities").then(Commands.literal("discord")
-                        .requires(src -> PermissionCompat.hasPermission(src, PERMISSION, 3))
-                        .then(Commands.literal("reload").executes(ctx -> {
-                            reload();
-                            reply(ctx, "Discord config reloaded, " + (active ? "active" : "inactive"));
-                            return 1;
-                        }))
-                        .then(Commands.literal("status").executes(ctx -> {
-                            status().forEach(line -> reply(ctx, line));
-                            return 1;
-                        })))));
+                Commands.literal("modutilities").then(command())));
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -252,8 +272,12 @@ public final class DiscordWebhooks {
         }
     }
 
-    private static synchronized List<String> status() {
+    /** Package-private for the dev test. Names only: never prints webhook URLs. */
+    static synchronized List<String> status() {
         List<String> lines = new ArrayList<>();
+        IServerIdentity identity = MultiServerManager.getIdentity();
+        if (identity != null && identity.role() == ServerRole.SLAVE)
+            lines.add("Discord posts are sent by the master server");
         lines.add("Discord: " + (active ? "active" : "inactive") + ", queue " + QUEUE.size() + ", dropped " + DROPPED.get());
         Set<String> names = new TreeSet<>(webhooks.keySet());
         names.addAll(invalidWebhooks);
@@ -262,6 +286,7 @@ public final class DiscordWebhooks {
         for (Map.Entry<String, List<String>> e : REGISTERED.entrySet()) {
             int enabled = routes.getOrDefault(e.getKey(), Map.of()).size();
             lines.add("  mod '" + e.getKey() + "': " + enabled + " of " + e.getValue().size() + " types enabled");
+            lines.addAll(typeLines.getOrDefault(e.getKey(), List.of()));
         }
         return lines;
     }
@@ -329,8 +354,11 @@ public final class DiscordWebhooks {
         return null;
     }
 
-    /** Loads/creates/merges {@code <modId>.json}; @return routes of enabled types with valid webhooks. */
-    private static Map<String, Route> loadMod(String modId, List<String> types) {
+    /**
+     * Loads/creates/merges {@code <modId>.json} and adds one status line per type to {@code statusLines}.
+     * @return routes of enabled types with valid webhooks
+     */
+    private static Map<String, Route> loadMod(String modId, List<String> types, List<String> statusLines) {
         Path file = dir().resolve(modId + ".json");
         boolean exists = Files.exists(file);
         JsonObject root = exists ? read(file) : new JsonObject();
@@ -372,11 +400,16 @@ public final class DiscordWebhooks {
         for (String type : types) {
             try {
                 JsonObject t = typesObj.getAsJsonObject(type);
-                if (!t.get("enabled").getAsBoolean())
-                    continue;
+                boolean enabled = t.get("enabled").getAsBoolean();
+                double minAmount = t.get("minAmount").getAsDouble();
+                List<String> configured = new ArrayList<>();
                 List<String> names = new ArrayList<>();
                 for (JsonElement n : t.getAsJsonArray("webhooks")) {
                     String name = n.getAsString();
+                    if (!configured.contains(name))
+                        configured.add(name);
+                    if (!enabled)
+                        continue;
                     if (webhooks.containsKey(name)) {
                         if (!names.contains(name))
                             names.add(name);
@@ -384,6 +417,9 @@ public final class DiscordWebhooks {
                         ModUtilitiesMod.LOGGER.warn("[Discord] Type '{}' of mod '{}' routes to unknown or invalid webhook '{}'", type, modId, name);
                     }
                 }
+                statusLines.add("    " + type + ": " + (!enabled ? "disabled" : names.isEmpty() ? "enabled, no valid webhook" : "enabled")
+                        + (minAmount > 0 ? ", min " + BigDecimal.valueOf(minAmount).stripTrailingZeros().toPlainString() : "")
+                        + (configured.isEmpty() ? "" : " -> " + String.join(", ", configured)));
                 if (names.isEmpty())
                     continue;
                 JsonObject template = selected.get(type) instanceof JsonObject o ? o
@@ -392,9 +428,10 @@ public final class DiscordWebhooks {
                 JsonElement color = t.has("color") ? t.get("color") : template.get("color");
                 JsonElement fields = t.has("fields") ? t.get("fields") : template.get("fields");
                 result.put(type, new Route(title, color == null ? null : color.getAsInt(), parseFields(fields),
-                        List.copyOf(names), t.get("minAmount").getAsDouble()));
+                        List.copyOf(names), minAmount));
             } catch (RuntimeException e) {
                 ModUtilitiesMod.LOGGER.warn("[Discord] Type '{}' in {}.json is malformed and stays disabled", type, modId);
+                statusLines.add("    " + type + ": malformed, disabled");
             }
         }
         return result;

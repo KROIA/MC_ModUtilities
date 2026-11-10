@@ -39,6 +39,7 @@ import java.util.stream.Stream;
  */
 public class DiscordTests extends TestSuite {
     private static final String MOD = "mu_discord_test";
+    private static final String OTHER_MOD = "mu_discord_test_other";
     private static final String HOOK_A = "https://discord.com/api/webhooks/1/token-a";
     private static final String HOOK_B = "https://canary.discord.com/api/webhooks/2/token-b";
 
@@ -64,6 +65,7 @@ public class DiscordTests extends TestSuite {
         addTest("batch_split_10_embeds", this::testBatchTen);
         addTest("batch_split_6000_chars", this::testBatchChars);
         addTest("rate_limit_retry_after", this::testRetryAfter);
+        addTest("status_overview_names_only", this::testStatus);
     }
 
     @Override
@@ -101,6 +103,7 @@ public class DiscordTests extends TestSuite {
             shutdown.setAccessible(true);
             shutdown.invoke(null);
             ((Map<?, ?>) field("REGISTERED").get(null)).remove(MOD);
+            ((Map<?, ?>) field("REGISTERED").get(null)).remove(OTHER_MOD);
             field("configDir").set(null, null);
             field("http").set(null, originalHttp);
             DiscordWebhooks.reload(); // restores the routes of real registered mods, if any
@@ -195,6 +198,38 @@ public class DiscordTests extends TestSuite {
         if (waitedMillis < 300)
             return fail("retry_after 300 ms not honored, waited " + waitedMillis + " ms");
         return pass("waited " + waitedMillis + " ms");
+    }
+
+    @SuppressWarnings("unchecked")
+    private TestResult testStatus() {
+        try {
+            DiscordWebhooks.register(OTHER_MOD, List.of("othertype"));
+            Method status = DiscordWebhooks.class.getDeclaredMethod("status");
+            status.setAccessible(true);
+            List<String> lines = (List<String>) status.invoke(null);
+            for (String line : lines) {
+                if (line.contains("http") || line.contains("token") || line.contains("/api/webhooks"))
+                    return fail("status shows a webhook URL: " + line);
+            }
+            List<String> expected = List.of(
+                    "  webhook 'bad': invalid",
+                    "  mod '" + MOD + "': 3 of 5 types enabled",
+                    "    render: enabled -> a",
+                    "    multi: enabled, min 100 -> a, b, bad",
+                    "    big: enabled -> b",
+                    "    off: disabled -> a",
+                    "    newtype: disabled",
+                    "  mod '" + OTHER_MOD + "': 0 of 1 types enabled",
+                    "    othertype: disabled");
+            for (String line : expected) {
+                if (!lines.contains(line))
+                    return fail("missing '" + line + "' in " + lines);
+            }
+            return assertTrue("type lines follow their mod header",
+                    lines.indexOf("    newtype: disabled") + 1 == lines.indexOf("  mod '" + OTHER_MOD + "': 0 of 1 types enabled"));
+        } catch (Exception e) {
+            return fail(e.toString());
+        }
     }
 
     // ---------------------------------------------------------------------------------------------
