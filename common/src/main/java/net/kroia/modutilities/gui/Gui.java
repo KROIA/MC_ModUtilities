@@ -78,6 +78,7 @@ public class Gui {
     protected Object font;
     protected SoundPlayer soundPlayer;
     protected int mousePosX, mousePosY;
+    private int screenWidth, screenHeight; // hosting screen size, same units as storeMousePos input; 0 = unknown
 
     private float requestedGuiScale = 1.0f; // Scale requested via setGuiScale, default is 1.0 (no scaling)
     private float guiScale = 1.0f; // Effective (pixel-snapped) scale used for rendering and input
@@ -779,6 +780,37 @@ public class Gui {
     {
         this.mousePosX = (int)(x*(double)invGuiScale);
         this.mousePosY = (int)(y*(double)invGuiScale);
+    }
+
+    /**
+     * Stores the hosting screen size (same units as {@link #storeMousePos(int, int)})
+     * so tooltips can stay inside it. Hosting screens call this every frame.
+     *
+     * @param width  the screen width
+     * @param height the screen height
+     */
+    public void storeScreenSize(int width, int height)
+    {
+        this.screenWidth = width;
+        this.screenHeight = height;
+    }
+
+    /**
+     * @return the hosting screen width in GUI element coordinates, or {@code 0}
+     *         if the host never reported it
+     */
+    public int getScreenWidth()
+    {
+        return (int)((float)screenWidth*invGuiScale);
+    }
+
+    /**
+     * @return the hosting screen height in GUI element coordinates, or {@code 0}
+     *         if the host never reported it
+     */
+    public int getScreenHeight()
+    {
+        return (int)((float)screenHeight*invGuiScale);
     }
 
     /**

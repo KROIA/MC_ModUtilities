@@ -58,6 +58,9 @@ public class GuiLogicTests extends TestSuite {
         // GuiElement.getAlignedBounds (static method)
         addTest("aligned_bounds_center", this::testAlignedBoundsCenter);
 
+        // Tooltip auto-side, clamping and wrapping (static helpers)
+        addTest("tooltip_side_clamp_wrap", this::testTooltipSideClampWrap);
+
         // Rectangle geometry
         addTest("rectangle_contains", this::testRectangleContains);
         addTest("rectangle_intersects", this::testRectangleIntersects);
@@ -331,6 +334,40 @@ public class GuiLogicTests extends TestSuite {
         return assertTrue("Center alignment of 20x10 in 100x100 should be at (40,45) (got "
                         + result.x + "," + result.y + ")",
                 result.x == 40 && result.y == 45);
+    }
+
+    private TestResult testTooltipSideClampWrap() {
+        // Auto side: left half -> open right (*_LEFT), right half -> open left (*_RIGHT), vertical part kept
+        GuiElement.Alignment a1 = GuiElement.autoSideAlignment(GuiElement.Alignment.TOP_RIGHT, 10, 100);
+        GuiElement.Alignment a2 = GuiElement.autoSideAlignment(GuiElement.Alignment.TOP_LEFT, 90, 100);
+        GuiElement.Alignment a3 = GuiElement.autoSideAlignment(GuiElement.Alignment.BOTTOM, 90, 100);
+        GuiElement.Alignment a4 = GuiElement.autoSideAlignment(GuiElement.Alignment.CENTER, 10, 100);
+        if (a1 != GuiElement.Alignment.TOP_LEFT || a2 != GuiElement.Alignment.TOP_RIGHT
+                || a3 != GuiElement.Alignment.BOTTOM_RIGHT || a4 != GuiElement.Alignment.LEFT)
+            return fail("autoSideAlignment wrong: " + a1 + ", " + a2 + ", " + a3 + ", " + a4);
+
+        // Clamp: 20x10 box + padding 2 overflowing bottom-right of a 100x50 area moves back inside
+        Rectangle r = new Rectangle(90, 45, 20, 10);
+        GuiElement.clampToArea(r, 2, 0, 0, 100, 50);
+        if (r.x != 78 || r.y != 38)
+            return fail("clampToArea bottom-right: expected (78,38), got (" + r.x + "," + r.y + ")");
+        // Overflowing top-left, area offset (element-local space)
+        r = new Rectangle(-50, -50, 20, 10);
+        GuiElement.clampToArea(r, 2, -30, -30, 100, 50);
+        if (r.x != -28 || r.y != -28)
+            return fail("clampToArea top-left: expected (-28,-28), got (" + r.x + "," + r.y + ")");
+        // Larger than the area: pinned to the top-left edge
+        r = new Rectangle(40, 40, 200, 100);
+        GuiElement.clampToArea(r, 2, 0, 0, 100, 50);
+        if (r.x != 2 || r.y != 2)
+            return fail("clampToArea oversized: expected (2,2), got (" + r.x + "," + r.y + ")");
+
+        // Wrap (width = char count): keeps '\n', breaks at spaces, splits over-long words
+        String wrapped = GuiElement.wrapText("aaa bbb ccc\ndd\nabcdefghij", 7, String::length);
+        String expected = "aaa bbb\nccc\ndd\nabcdefg\nhij";
+        if (!expected.equals(wrapped))
+            return fail("wrapText: expected [" + expected + "], got [" + wrapped + "]");
+        return pass("Tooltip auto side, clamping and wrapping work");
     }
 
     // ========================================================================

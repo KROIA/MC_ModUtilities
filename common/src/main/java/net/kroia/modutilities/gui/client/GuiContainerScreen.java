@@ -441,6 +441,7 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     //public void render(GuiGraphicsExtractor pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) { // mc>=26.1
         clientGraphics.setGraphics(pGuiGraphics);
         gui.storeMousePos(pMouseX, pMouseY);
+        gui.storeScreenSize(width, height);
         if(enableBackground) // mc<=1.21.5
             renderBackground(pGuiGraphics, pMouseX, pMouseY, pPartialTick); // mc<=1.21.5
         // mc>=1.21.6: Screen.renderWithTooltipAndSubtitles already called renderBackground (blur only once per frame)

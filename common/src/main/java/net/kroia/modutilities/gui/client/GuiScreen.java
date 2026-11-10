@@ -453,6 +453,7 @@ public abstract class GuiScreen extends Screen {
     //public void render(GuiGraphicsExtractor pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) { // mc>=26.1
         clientGraphics.setGraphics(pGuiGraphics);
         gui.storeMousePos(pMouseX,pMouseY);
+        gui.storeScreenSize(width, height);
         gui.setPartialTick(pPartialTick);
         if(enableBackground) // mc<=1.21.5
             this.renderBackground(pGuiGraphics, pMouseX, pMouseY, pPartialTick); // mc<=1.21.5
