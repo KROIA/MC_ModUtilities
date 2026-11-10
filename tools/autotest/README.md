@@ -208,6 +208,13 @@ above this folder), the same as run_matrix.py.
 <out>/<project>/<loader>/<config>/<instance>/logs/UnitTests/<mod>.log   human readable report
 ```
 
+## Known flakes
+
+- **Architectury Transformer race (NeoForge, mostly slave/multi-instance cells):** a client dies at startup with
+  `ClassCastException: HashMap$Node cannot be cast to HashMap$TreeNode` in `RuntimeFileAccess.modifyFile`
+  (several instances transform the shared dev jars at once). The runner detects the crash and aborts the cell
+  ("client crashed on startup, cell aborted"); re-run the cell. Not a mod bug.
+
 ## Running a single instance by hand
 
 The hook works in any dev run: add e.g. `-Dmodutilities.autotest=me -Dmodutilities.autotest.world=new`
