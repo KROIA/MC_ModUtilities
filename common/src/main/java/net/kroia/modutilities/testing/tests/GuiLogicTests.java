@@ -1,9 +1,12 @@
 package net.kroia.modutilities.testing.tests;
 
 import net.kroia.modutilities.gui.elements.CheckBox;
+import net.kroia.modutilities.gui.elements.DropDownMenu;
 import net.kroia.modutilities.gui.elements.EmptyButton;
+import net.kroia.modutilities.gui.elements.FeatureToggleSection;
 import net.kroia.modutilities.gui.elements.HorizontalListView;
 import net.kroia.modutilities.gui.elements.HorizontalSlider;
+import net.kroia.modutilities.gui.elements.Label;
 import net.kroia.modutilities.gui.elements.TabElement;
 import net.kroia.modutilities.gui.elements.TextBox;
 import net.kroia.modutilities.gui.elements.VerticalListView;
@@ -17,6 +20,7 @@ import net.kroia.modutilities.testing.TestCategory;
 import net.kroia.modutilities.testing.TestResult;
 import net.kroia.modutilities.testing.TestSuite;
 import net.kroia.modutilities.testing.categories.ModUtilitiesTestCategories;
+import net.minecraft.network.chat.Component;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -97,6 +101,96 @@ public class GuiLogicTests extends TestSuite {
 
         // Gui scale is snapped to whole screen pixels per GUI unit
         addTest("gui_scale_snapped_to_pixels", this::testGuiScaleSnappedToPixels);
+
+        // Task #107: open DropDownMenu options outside the parent bounds are hit, unless an enclosing ListView clips them
+        addTest("DropDownMenu_options_hitTest_ignoresNonClippingParents", this::testDropDownOptionsHitTest);
+
+        // Task #108: FeatureToggleSection restart marker with own (static) wording
+        addTest("FeatureToggleSection_restartMarkerText", this::testFeatureToggleRestartMarkerText);
+    }
+
+    private TestResult testDropDownOptionsHitTest() {
+        // Without an enclosing ListView: 20px row, the open list hangs below it
+        EmptyButton row = new EmptyButton(0, 0, 120, 20);
+        DropDownMenu menu = new DropDownMenu("menu");
+        menu.addOption("a");
+        menu.addOption("b");
+        row.addChild(menu);
+        net.kroia.modutilities.gui.Gui gui = new net.kroia.modutilities.gui.Gui();
+        gui.addElement(row);
+        row.init();
+        menu.setBounds(0, 0, 120, 20);
+        menu.expand();
+        GuiElement b = menu.getChilds().get(1);
+        Point pb = b.getGlobalPosition();
+        int bx = pb.x + b.getWidth() / 2, by = pb.y + b.getHeight() / 2;
+        if (by < 20)
+            return fail("precondition: option b should lie below the 20px row, centre y=" + by);
+        if (!b.isOver(bx, by))
+            return fail("option outside the (non-clipping) parent bounds is not hit at (" + bx + "," + by + ")");
+
+        // Inside a VerticalListView that ends below option a: a is visible, b is clipped by its scissor
+        VerticalListView outer = new VerticalListView(0, 0, 140, 200);
+        EmptyButton row2 = new EmptyButton(0, 0, 120, 20);
+        DropDownMenu menu2 = new DropDownMenu("menu");
+        menu2.addOption("a");
+        menu2.addOption("b");
+        row2.addChild(menu2);
+        outer.addChild(row2);
+        gui.addElement(outer);
+        outer.init();
+        menu2.setBounds(0, 0, 120, 20);
+        menu2.expand();
+        GuiElement a2 = menu2.getChilds().get(0);
+        GuiElement b2 = menu2.getChilds().get(1);
+        Point pa = a2.getGlobalPosition();
+        outer.setHeight(pa.y + a2.getHeight() - outer.getGlobalPosition().y);
+        int ax = pa.x + a2.getWidth() / 2, ay = pa.y + a2.getHeight() / 2;
+        Point pb2 = b2.getGlobalPosition();
+        int bx2 = pb2.x + b2.getWidth() / 2, by2 = pb2.y + b2.getHeight() / 2;
+        if (ay < row2.getGlobalPosition().y + row2.getHeight())
+            return fail("precondition: option a should lie below its row, centre y=" + ay);
+        if (!a2.isOver(ax, ay))
+            return fail("visible option outside its row (inside the ListView) is not hit at (" + ax + "," + ay + ")");
+        if (b2.isOver(bx2, by2))
+            return fail("option clipped by the enclosing ListView is hit at (" + bx2 + "," + by2 + ")");
+        return pass("DropDownMenu options are hit outside non-clipping parents, not where an enclosing ListView clips them");
+    }
+
+    private TestResult testFeatureToggleRestartMarkerText() {
+        class Probe extends FeatureToggleSection {
+            Probe() { super("title"); }
+            Label marker() {
+                for (GuiElement c : getHeaderButton().getChilds())
+                    if (c instanceof Label l && l.getTextColor() == RESTART_INDICATOR_COLOR)
+                        return l;
+                return null;
+            }
+        }
+        Probe section = new Probe();
+        Label marker = section.marker();
+        if (marker == null)
+            return fail("restart marker label not found in the header");
+        String defaultText = marker.getText();
+        String defaultTooltip = marker.getHoverTooltipSupplier().get();
+        if (section.isRestartRequired())
+            return fail("marker must be hidden by default");
+
+        section.setRestartRequired(true);
+        section.setRestartMarkerText(Component.literal("requires a restart"), Component.literal("read at startup only"));
+        if (!section.isRestartRequired() || !"requires a restart".equals(marker.getText())
+                || !"read at startup only".equals(marker.getHoverTooltipSupplier().get()))
+            return fail("static marker: got text [" + marker.getText() + "], tooltip [" + marker.getHoverTooltipSupplier().get() + "]");
+
+        // null keeps the current value
+        section.setRestartMarkerText(null, Component.literal("t2"));
+        if (!"requires a restart".equals(marker.getText()) || !"t2".equals(marker.getHoverTooltipSupplier().get()))
+            return fail("null text must keep the current text, got [" + marker.getText() + "]");
+
+        Probe untouched = new Probe();
+        if (!defaultText.equals(untouched.marker().getText()) || !defaultTooltip.equals(untouched.marker().getHoverTooltipSupplier().get()))
+            return fail("default marker wording changed");
+        return pass("restart marker text/tooltip settable, default wording kept");
     }
 
     private TestResult testGuiScaleSnappedToPixels() {

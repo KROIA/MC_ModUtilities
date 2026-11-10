@@ -16,7 +16,8 @@ import java.util.function.Consumer;
  *       is enabled; otherwise they stay visible but greyed out
  *       ({@link #setInteractive(boolean)}).</li>
  *   <li>{@link #setRestartRequired(boolean)} shows a "Restart required" marker in the
- *       header. Use {@link #createRestartIndicator()} for the same marker on child rows.</li>
+ *       header ({@link #setRestartMarkerText} changes its wording). Use
+ *       {@link #createRestartIndicator()} for the same marker on child rows.</li>
  *   <li>{@link #setLocked(boolean, Component)} makes the check box and the children
  *       read-only and shows the reason as header tooltip (e.g. on slave servers).</li>
  * </ul>
@@ -111,6 +112,22 @@ public class FeatureToggleSection extends ExpandablePanel {
 
     public boolean isRestartRequired() {
         return restartIndicator.isEnabled();
+    }
+
+    /**
+     * Replaces the restart marker's text and hover tooltip. The default tooltip says the
+     * value differs from the one active since server start; for a static marker (setting
+     * only read at startup) call {@code setRestartRequired(true)} and pass your own wording.
+     *
+     * @param text    marker text, or {@code null} to keep the current one
+     * @param tooltip hover tooltip, or {@code null} to keep the current one
+     */
+    public void setRestartMarkerText(Component text, Component tooltip) {
+        if (text != null)
+            restartIndicator.setText(text.getString());
+        if (tooltip != null)
+            restartIndicator.setHoverTooltipSupplier(tooltip::getString);
+        layoutChangedInternal();
     }
 
     /**

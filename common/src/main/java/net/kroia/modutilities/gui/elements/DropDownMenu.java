@@ -8,7 +8,6 @@ import net.kroia.modutilities.gui.layout.Layout;
 import net.kroia.modutilities.gui.layout.LayoutHorizontal;
 import net.kroia.modutilities.gui.layout.LayoutVertical;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.sounds.SoundEvents;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,34 +24,8 @@ import java.util.function.BiConsumer;
  */
 public class DropDownMenu extends GuiElement {
 
-    private class EmptyButtonChanged extends EmptyButton {
-        private final DropDownMenu parent;
-        public EmptyButtonChanged(DropDownMenu parent) {
-            super();
-            this.parent = parent;
-        }
-
-        @Override
-        protected boolean mouseClickedOverElement(int button)
-        {
-            return isClickable && triggerButton == button;
-        }
-        @Override
-        protected void mouseClicked(int button) {
-            if(!isMouseOverIgnoreParents())
-                return;
-            if(!isClickable || triggerButton != button)
-                return;
-
-            if(!isPressed) {
-                playLocalSound(SoundEvents.UI_BUTTON_CLICK.value(),0.5F);
-                if(onFallingEdge != null) {
-                    onFallingEdge.run();
-                }
-            }
-            isPressed = true;
-        }
-
+    /** Option row; marker type so {@link #getChilds()}/{@link #removeChild} can find the wrapped element. */
+    private static class EmptyButtonChanged extends EmptyButton {
     }
 
     private final ListView listView;
@@ -96,7 +69,24 @@ public class DropDownMenu extends GuiElement {
         button.addChild(arrowTextureDown);
 
 
-        listView = new VerticalListView();
+        listView = new VerticalListView() {
+            // The open list hangs below the menu, outside its parents' bounds. Plain parents don't
+            // clip it when drawn, only an enclosing ListView's scissor does: hit-test against that.
+            @Override
+            public boolean isOver(int globalPosX, int globalPosY) {
+                return isOverIgnoreParents(globalPosX, globalPosY)
+                        && isInsideEnclosingListView(DropDownMenu.this, globalPosX, globalPosY);
+            }
+            // Input dispatch gates on the parents' bounds too: re-seed it so isOver() above decides.
+            @Override
+            public boolean mouseClickedInternal(int button, boolean isOverParent) {
+                return super.mouseClickedInternal(button, true);
+            }
+            @Override
+            public boolean mouseScrolledInternal(double delta, boolean isOverParent) {
+                return super.mouseScrolledInternal(delta, true);
+            }
+        };
         Layout layout = new LayoutVertical();
         layout.stretchX = true;
         listView.setLayout(layout);
@@ -342,7 +332,7 @@ public class DropDownMenu extends GuiElement {
     {
         if(el == null)
             return;
-        EmptyButtonChanged optionButton = new EmptyButtonChanged(this);
+        EmptyButtonChanged optionButton = new EmptyButtonChanged();
         Layout layout = new LayoutHorizontal();
         layout.stretchX = true;
         optionButton.setLayout(layout);
@@ -448,5 +438,13 @@ public class DropDownMenu extends GuiElement {
     protected void mouseClicked(int button) {
         if(!isMouseOverIgnoreParents() && isExpanded)
             collapse();
+    }
+
+    /** {@code true} if no ListView encloses {@code el}, else whether the point is visible in the nearest one. */
+    private static boolean isInsideEnclosingListView(GuiElement el, int globalPosX, int globalPosY) {
+        for(GuiElement p = el.getParent(); p != null; p = p.getParent())
+            if(p instanceof ListView enclosing)
+                return enclosing.isOver(globalPosX, globalPosY);
+        return true;
     }
 }
