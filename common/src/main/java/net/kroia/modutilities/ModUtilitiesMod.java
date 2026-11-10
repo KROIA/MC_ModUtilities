@@ -16,6 +16,7 @@ import net.kroia.modutilities.networking.client_server.streaming.GenericStreamPa
 import net.kroia.modutilities.networking.client_server.streaming.StreamStartPacket;
 import net.kroia.modutilities.networking.client_server.streaming.StreamStopClientSenderPacket;
 import net.kroia.modutilities.networking.client_server.streaming.StreamStopServerSenderPacket;
+import net.kroia.modutilities.networking.multi_server.MultiServerManager;
 import net.kroia.modutilities.networking.multi_server.MultiServerPacketRegistry;
 import net.kroia.modutilities.permission.LuckPermsBridge;
 import net.kroia.modutilities.placeholder.TabPlaceholderBackend;
@@ -38,6 +39,7 @@ public class ModUtilitiesMod {
         DisplayNetworking.init();
         DiscordWebhooks.init();
         LuckPermsBridge.init();
+        MultiServerManager.init();
         // ARRS request timeouts (no-op unless RequestManager.ENABLE_REQUEST_FAILURES is on)
         TickEvent.SERVER_POST.register(server -> AsynchronousRequestResponseSystem.tick(false));
         if (Platform.getEnvironment() == Env.CLIENT)

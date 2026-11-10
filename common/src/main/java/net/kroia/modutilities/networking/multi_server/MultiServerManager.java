@@ -1,5 +1,7 @@
 package net.kroia.modutilities.networking.multi_server;
 
+import dev.architectury.event.events.common.LifecycleEvent;
+import dev.architectury.event.events.common.TickEvent;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.networking.multi_server.master.MasterTCPServer;
 import net.kroia.modutilities.networking.multi_server.slave.SlaveServerClient;
@@ -33,6 +35,11 @@ import java.util.function.Consumer;
 public class MultiServerManager
 {
     private static volatile MultiServerManager instance;
+
+    /** Identity of the running server; survives {@link #cleanup()}, reset on SERVER_STOPPED. */
+    private static volatile @Nullable ServerIdentity identity;
+    /** Running server, set on SERVER_STARTED, for resolving a STANDALONE identity on first access. */
+    private static volatile @Nullable MinecraftServer startedServer;
 
     private final @Nullable MasterTCPServer  tcpServer;
     private final @Nullable SlaveServerClient slaveClient;
@@ -69,6 +76,7 @@ public class MultiServerManager
             return false;
         }
         info("Create master on port: "+tcpPort);
+        resolveIdentity(mcServer, ServerRole.MASTER, null);
         MultiServerPacketRegistry.onCreate(mcServer);
         MasterTCPServer master = new MasterTCPServer(mcServer, sharedSecret, tcpPort,
                 onServerStartSuccess, onServerStartFailure,
@@ -103,6 +111,7 @@ public class MultiServerManager
             return false;
         }
         info("Create slave and connect to master:"+ masterHostIP+":"+masterHostTcpPort);
+        resolveIdentity(mcServer, ServerRole.SLAVE, slaveServerID);
         MultiServerPacketRegistry.onCreate(mcServer);
         SlaveServerClient slave = new SlaveServerClient(mcServer, sharedSecret, slaveServerID,  masterHostIP, masterHostTcpPort,
                 onConnectionAccepted,  onConnectionFailure, onConnectionLost, onDisconnect);
@@ -110,6 +119,39 @@ public class MultiServerManager
         return true;
     }
 
+
+    /**
+     * Returns this server's persisted identity (diagnostics only, never use it for authorization).
+     * Role and slave ID come from {@link #createMaster}/{@link #createSlave}; if neither was called
+     * the server is {@link ServerRole#STANDALONE}.
+     *
+     * @return The identity; non-null from SERVER_STARTED until SERVER_STOPPED.
+     */
+    public static @Nullable IServerIdentity getIdentity()
+    {
+        ServerIdentity id = identity;
+        MinecraftServer server = startedServer;
+        if(id == null && server != null)
+            id = resolveIdentity(server, ServerRole.STANDALONE, null);
+        return id;
+    }
+
+    /** Registers the identity lifecycle hooks. Called once by ModUtilities. */
+    public static void init()
+    {
+        LifecycleEvent.SERVER_STARTED.register(server -> startedServer = server);
+        // The first tick runs after every SERVER_STARTED handler had its chance to call createMaster/createSlave.
+        TickEvent.SERVER_POST.register(server -> { if(identity == null) getIdentity(); });
+        LifecycleEvent.SERVER_STOPPED.register(server -> { startedServer = null; identity = null; });
+    }
+
+    private static synchronized ServerIdentity resolveIdentity(MinecraftServer server, ServerRole role, @Nullable String slaveId)
+    {
+        ServerIdentity id = identity;
+        if(role == ServerRole.STANDALONE && id != null)
+            return id; // lost a race against createMaster/createSlave or another first access
+        return identity = ServerIdentity.load(ServerIdentity.file(server), role, slaveId);
+    }
 
     /**
      * Indicates whether a {@link MultiServerManager} singleton currently exists,

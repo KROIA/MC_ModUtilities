@@ -11,6 +11,8 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
 import net.kroia.modutilities.ModUtilitiesMod;
+import net.kroia.modutilities.networking.multi_server.IServerIdentity;
+import net.kroia.modutilities.networking.multi_server.MultiServerManager;
 import net.kroia.modutilities.networking.multi_server.MultiServerPacketRegistry;
 import net.kroia.modutilities.networking.multi_server.codec.PayloadDecoder;
 import net.kroia.modutilities.networking.multi_server.codec.PayloadEncoder;
@@ -58,8 +60,10 @@ public class SlaveServerClient {
         INVALID_SHARED_SECRET,
         /** Another slave is already registered with the same {@code serverId}. */
         SLAVE_ID_ALREADY_USED,
-        /** The slave runs a different Minecraft version than the master. Keep this constant last: the wire format is ordinal-based. */
-        MC_VERSION_MISMATCH
+        /** The slave runs a different Minecraft version than the master. */
+        MC_VERSION_MISMATCH,
+        /** The slave's server uid belongs to the master or another known slave (copied world). Keep this constant last: the wire format is ordinal-based. */
+        DUPLICATE_SERVER_UID
     }
 
 
@@ -182,7 +186,9 @@ public class SlaveServerClient {
 
                 info("Connected to master at "+masterHost+":" + masterPort);
                 // Immediately authenticate with the master
-                sendToMaster(new HandshakePayload(serverId, sharedSecret, HandshakePayload.localMcVersion()));
+                IServerIdentity identity = MultiServerManager.getIdentity();
+                sendToMaster(new HandshakePayload(serverId, sharedSecret, HandshakePayload.localMcVersion(),
+                        identity != null ? identity.serverUid() : null));
             } else {
                 connectionFailReason =  future.cause();
                 warn("Could not connect to master — retrying in 5s... Reason: "+connectionFailReason);
@@ -384,6 +390,15 @@ public class SlaveServerClient {
             }
             case ConnectionEstablishState.MC_VERSION_MISMATCH -> {
                 info("Can't connect to master. The master runs a different Minecraft version than this server ("+HandshakePayload.localMcVersion()+"). See the master log for its version.");
+                try {
+                    onConnectionFailed.accept(state);
+                }catch (Exception e) {
+                    error("Failed to call callback: onConnectionFailed. Reason: "+e.getMessage(),e);
+                }
+            }
+            case ConnectionEstablishState.DUPLICATE_SERVER_UID -> {
+                info("Can't connect to master. The master already knows this server's uid from another server (copied world?). "
+                        +"Delete data/ModUtilities/server_identity.json in the copied world to give it a new uid.");
                 try {
                     onConnectionFailed.accept(state);
                 }catch (Exception e) {

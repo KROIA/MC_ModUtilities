@@ -17,6 +17,8 @@ import net.kroia.modutilities.networking.client_server.arrs.RequestRegistry;
 import net.kroia.modutilities.networking.client_server.streaming.GenericStream;
 import net.kroia.modutilities.networking.client_server.streaming.StreamRegistry;
 import net.kroia.modutilities.networking.multi_server.MultiServerConfig;
+import net.kroia.modutilities.networking.multi_server.ServerIdentity;
+import net.kroia.modutilities.networking.multi_server.ServerRole;
 import net.kroia.modutilities.networking.multi_server.codec.PayloadDecoder;
 import net.kroia.modutilities.networking.multi_server.codec.PayloadEncoder;
 import net.kroia.modutilities.networking.multi_server.master.MasterPacketHandler;
@@ -30,12 +32,16 @@ import net.kroia.modutilities.testing.TestResult;
 import net.kroia.modutilities.testing.TestSuite;
 import net.kroia.modutilities.testing.categories.ModUtilitiesTestCategories;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
@@ -108,6 +114,13 @@ public class NetworkingTests extends TestSuite {
         // Multi-server handshake tests
         addTest("handshake_codec_roundtrip", this::testHandshakeCodecRoundtrip);
         addTest("handshake_mc_version_mismatch_rejected", this::testHandshakeMcVersionMismatchRejected);
+        addTest("handshake_missing_uid_decodes_null", this::testHandshakeMissingUidDecodesNull);
+
+        // M1 server identity
+        addTest("identity_file_roundtrip", this::testIdentityFileRoundtrip);
+        addTest("identity_corrupt_file_recovers", this::testIdentityCorruptFileRecovers);
+        addTest("identity_slave_id_change_regenerates_uid", this::testIdentitySlaveIdChangeRegeneratesUid);
+        addTest("identity_duplicate_uid_check", this::testIdentityDuplicateUidCheck);
 
         // M2 request failures
         addTest("request_timeout_outcome_unknown", this::testRequestTimeoutOutcomeUnknown);
@@ -485,7 +498,7 @@ public class NetworkingTests extends TestSuite {
     // ========================================================================
 
     private TestResult testHandshakeCodecRoundtrip() {
-        HandshakePayload sent = new HandshakePayload("server_a", "secret", "1.21.1");
+        HandshakePayload sent = new HandshakePayload("server_a", "secret", "1.21.1", UUID.randomUUID());
         EmbeddedChannel encoder = new EmbeddedChannel(new PayloadEncoder());
         encoder.writeOutbound(sent);
         ByteBuf encoded = encoder.readOutbound();
@@ -505,13 +518,13 @@ public class NetworkingTests extends TestSuite {
         }
         decoder.writeInbound(legacy);
         return assertEquals("Legacy handshake should decode with empty mcVersion",
-                new HandshakePayload("server_a", "secret", ""), decoder.readInbound());
+                new HandshakePayload("server_a", "secret", "", null), decoder.readInbound());
     }
 
     private TestResult testHandshakeMcVersionMismatchRejected() {
         MasterTCPServer master = new MasterTCPServer(null, "secret", 0, () -> {}, e -> {}, id -> {}, id -> {});
         EmbeddedChannel channel = new EmbeddedChannel(new MasterPacketHandler(null, master));
-        channel.writeInbound(new HandshakePayload("server_a", "secret", "0.0.0-other"));
+        channel.writeInbound(new HandshakePayload("server_a", "secret", "0.0.0-other", null));
         Object response = channel.readOutbound();
         if (!(response instanceof HandshakeResultPayload hr)
                 || hr.result() != SlaveServerClient.ConnectionEstablishState.MC_VERSION_MISMATCH)
@@ -519,6 +532,140 @@ public class NetworkingTests extends TestSuite {
         if (channel.isOpen())
             return fail("Channel should be closed after a version mismatch");
         return pass("Mismatched Minecraft version is rejected and the channel closed");
+    }
+
+    private TestResult testHandshakeMissingUidDecodesNull() {
+        EmbeddedChannel encoder = new EmbeddedChannel(new PayloadEncoder());
+        EmbeddedChannel decoder = new EmbeddedChannel(new PayloadDecoder());
+        UUID masterUid = UUID.randomUUID();
+        // Old slave (no uid) and old master (no masterUid): the trailing field is omitted and decodes as null.
+        List<Object> payloads = List.of(
+                new HandshakePayload("server_a", "secret", "1.21.1", null),
+                new HandshakeResultPayload(SlaveServerClient.ConnectionEstablishState.SUCCESS),
+                new HandshakeResultPayload(SlaveServerClient.ConnectionEstablishState.SUCCESS, masterUid));
+        for (Object sent : payloads) {
+            encoder.writeOutbound(sent);
+            decoder.writeInbound((ByteBuf) encoder.readOutbound());
+            Object decoded = decoder.readInbound();
+            if (!sent.equals(decoded))
+                return fail("Roundtrip failed: expected " + sent + ", got " + decoded);
+        }
+
+        // Fields appended by a newer peer are skipped, not decoded as the next packet.
+        ByteBuf future = Unpooled.buffer();
+        future.writeByte(PacketIds.HANDSHAKE_RESULT);
+        future.writeInt(SlaveServerClient.ConnectionEstablishState.SUCCESS.ordinal());
+        UUIDUtil.STREAM_CODEC.encode(future, masterUid);
+        future.writeLong(0L); // unknown future field
+        decoder.writeInbound(future);
+        if (!(decoder.readInbound() instanceof HandshakeResultPayload hr) || !masterUid.equals(hr.masterUid()))
+            return fail("Payload with an unknown trailing field did not decode");
+        return assertNull("Unknown trailing bytes must not decode as another packet", decoder.readInbound());
+    }
+
+    // ========================================================================
+    // Server identity tests
+    // ========================================================================
+
+    /** Runs {@code test} with an identity file path in a fresh temp directory, deleted afterwards. */
+    private TestResult withIdentityFile(java.util.function.Function<Path, TestResult> test) {
+        Path dir;
+        try { dir = Files.createTempDirectory("modutil_test_identity"); }
+        catch (IOException e) { return fail("Failed to create temp directory: " + e.getMessage()); }
+        try {
+            return test.apply(dir.resolve("data").resolve("ModUtilities").resolve("server_identity.json"));
+        } finally {
+            try (var walk = Files.walk(dir)) {
+                walk.sorted(Comparator.reverseOrder())
+                        .forEach(p -> { try { Files.deleteIfExists(p); } catch (IOException ignored) {} });
+            } catch (IOException ignored) {}
+        }
+    }
+
+    private TestResult testIdentityFileRoundtrip() {
+        return withIdentityFile(file -> {
+            ServerIdentity master = ServerIdentity.load(file, ServerRole.MASTER, null);
+            if (!Files.exists(file))
+                return fail("Identity file was not written");
+            UUID slaveUid = UUID.randomUUID();
+            master.onSlaveSeen("slave_a", slaveUid);
+            master.onSlaveSeen("slave_old", null);
+
+            ServerIdentity loaded = ServerIdentity.load(file, ServerRole.MASTER, null);
+            if (!master.serverUid().equals(loaded.serverUid()))
+                return fail("server_uid changed on reload");
+            if (loaded.role() != ServerRole.MASTER || loaded.slaveId() != null || loaded.masterUid() != null)
+                return fail("Unexpected master fields: " + loaded.role() + ", " + loaded.slaveId() + ", " + loaded.masterUid());
+            if (!slaveUid.equals(loaded.slaveUid("slave_a")))
+                return fail("known_slaves uid lost: " + loaded.slaveUid("slave_a"));
+            if (loaded.slaveUid("slave_old") != null || loaded.slaveUid("never_seen") != null)
+                return fail("Slave without uid / unknown slave should have a null uid");
+
+            Path slaveFile = file.resolveSibling("slave_identity.json");
+            ServerIdentity slave = ServerIdentity.load(slaveFile, ServerRole.SLAVE, "slave_a");
+            slave.setMasterUid(master.serverUid());
+            ServerIdentity slaveLoaded = ServerIdentity.load(slaveFile, ServerRole.SLAVE, "slave_a");
+            if (!slave.serverUid().equals(slaveLoaded.serverUid()) || !"slave_a".equals(slaveLoaded.slaveId()))
+                return fail("Slave identity changed on reload");
+            return assertEquals("master_uid persists on the slave", master.serverUid(), slaveLoaded.masterUid());
+        });
+    }
+
+    private TestResult testIdentityCorruptFileRecovers() {
+        return withIdentityFile(file -> {
+            for (String corrupt : new String[]{"{ not json", "{\"server_uid\":\"not-a-uuid\"}", ""}) {
+                try {
+                    Files.createDirectories(file.getParent());
+                    Files.writeString(file, corrupt);
+                } catch (IOException e) {
+                    return fail("Failed to write corrupt file: " + e.getMessage());
+                }
+                ServerIdentity recovered = ServerIdentity.load(file, ServerRole.STANDALONE, null);
+                UUID reloaded = ServerIdentity.load(file, ServerRole.STANDALONE, null).serverUid();
+                if (!recovered.serverUid().equals(reloaded))
+                    return fail("Identity recovered from '" + corrupt + "' was not persisted");
+            }
+            return pass("Corrupt identity files are replaced by a new, persisted identity");
+        });
+    }
+
+    private TestResult testIdentitySlaveIdChangeRegeneratesUid() {
+        return withIdentityFile(file -> {
+            UUID uid = ServerIdentity.load(file, ServerRole.SLAVE, "slave_a").serverUid();
+            if (!uid.equals(ServerIdentity.load(file, ServerRole.SLAVE, "slave_a").serverUid()))
+                return fail("Same slave_id must keep the uid");
+            // A STANDALONE resolve (e.g. first access before createSlave) keeps the uid and the stored slave_id.
+            ServerIdentity standalone = ServerIdentity.load(file, ServerRole.STANDALONE, null);
+            if (!uid.equals(standalone.serverUid()) || standalone.slaveId() != null)
+                return fail("STANDALONE must keep the uid and report no slave_id");
+            if (!uid.equals(ServerIdentity.load(file, ServerRole.SLAVE, "slave_a").serverUid()))
+                return fail("slave_a after a STANDALONE start must keep the uid");
+            UUID renamed = ServerIdentity.load(file, ServerRole.SLAVE, "slave_b").serverUid();
+            if (uid.equals(renamed))
+                return fail("A changed slave_id must regenerate the uid");
+            return assertEquals("The new uid is persisted", renamed, ServerIdentity.load(file, ServerRole.SLAVE, "slave_b").serverUid());
+        });
+    }
+
+    private TestResult testIdentityDuplicateUidCheck() {
+        return withIdentityFile(file -> {
+            ServerIdentity master = ServerIdentity.load(file, ServerRole.MASTER, null);
+            UUID uidA = UUID.randomUUID();
+            master.onSlaveSeen("slave_a", uidA);
+            if (!master.isDuplicateUid("slave_b", uidA))
+                return fail("Another slave reporting slave_a's uid must be a duplicate");
+            if (master.isDuplicateUid("slave_a", uidA))
+                return fail("A reconnect of slave_a must not be a duplicate");
+            if (!master.isDuplicateUid("slave_b", master.serverUid()))
+                return fail("A slave reporting the master's uid must be a duplicate");
+            if (master.isDuplicateUid("slave_b", UUID.randomUUID()))
+                return fail("A new uid must not be a duplicate");
+            if (master.isDuplicateUid("slave_b", null))
+                return fail("A slave without uid (older ModUtilities) must not be a duplicate");
+            // known_slaves is persisted, so the check also covers slaves that are offline.
+            return assertTrue("Duplicate check survives a reload",
+                    ServerIdentity.load(file, ServerRole.MASTER, null).isDuplicateUid("slave_b", uidA));
+        });
     }
 
     private TestResult testCodecObjectArrayRoundtrip() {

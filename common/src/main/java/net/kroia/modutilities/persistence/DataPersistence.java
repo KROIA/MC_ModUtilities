@@ -931,7 +931,8 @@ public class DataPersistence {
         }
         return true;
     }
-    private static void writeJsonAtomically(Path absolutePath, String json) throws IOException {
+    /** Writes {@code json} to {@code absolutePath} via {@link #writeAtomically}; the parent folder must exist. */
+    public static void writeJsonAtomically(Path absolutePath, String json) throws IOException {
         writeAtomically(absolutePath, tmp -> Files.writeString(tmp, json, StandardCharsets.UTF_8,
                 StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE, StandardOpenOption.SYNC));
     }

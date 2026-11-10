@@ -6,7 +6,9 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.networking.multi_server.ForwardPacketContext;
+import net.kroia.modutilities.networking.multi_server.MultiServerManager;
 import net.kroia.modutilities.networking.multi_server.MultiServerPacketRegistry;
+import net.kroia.modutilities.networking.multi_server.ServerIdentity;
 import net.kroia.modutilities.networking.multi_server.master.MasterTCPServer;
 import net.kroia.modutilities.networking.multi_server.payload.*;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -82,10 +84,13 @@ public class SlavePacketHandler extends SimpleChannelInboundHandler<Payload> {
                 switch(hp.result())
                 {
                     case SlaveServerClient.ConnectionEstablishState.SUCCESS:
+                        if (hp.masterUid() != null && MultiServerManager.getIdentity() instanceof ServerIdentity identity)
+                            identity.setMasterUid(hp.masterUid());
                         break;
                     case SlaveServerClient.ConnectionEstablishState.INVALID_SHARED_SECRET,
                          SlaveServerClient.ConnectionEstablishState.SLAVE_ID_ALREADY_USED,
-                         SlaveServerClient.ConnectionEstablishState.MC_VERSION_MISMATCH:
+                         SlaveServerClient.ConnectionEstablishState.MC_VERSION_MISMATCH,
+                         SlaveServerClient.ConnectionEstablishState.DUPLICATE_SERVER_UID:
                         ctx.close();
                         break;
                 }
