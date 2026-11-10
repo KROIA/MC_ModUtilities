@@ -24,6 +24,14 @@ public abstract class TestSuite {
     public void teardown() {
     }
 
+    /**
+     * False: this suite also runs offline in {@code gradlew :common:test} ({@link OfflineTests}), without a Minecraft
+     * server ({@link #getServer()} is null) and without a mod loader. Override only after it passed there.
+     */
+    public boolean needsGame() {
+        return true;
+    }
+
     protected void addTest(String name, Supplier<TestResult> test) {
         tests.put(name, test);
     }

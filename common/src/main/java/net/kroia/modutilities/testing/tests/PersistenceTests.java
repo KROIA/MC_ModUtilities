@@ -24,6 +24,11 @@ public class PersistenceTests extends TestSuite {
     }
 
     @Override
+    public boolean needsGame() {
+        return false; // passes offline in gradlew :common:test
+    }
+
+    @Override
     public void registerTests() {
         // NBTFileParser tests
         addTest("nbtfileparser_max_nbt_size", this::testNBTFileParserMaxNbtSize);
