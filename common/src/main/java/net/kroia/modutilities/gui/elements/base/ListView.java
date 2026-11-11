@@ -93,6 +93,8 @@ public abstract class ListView extends GuiElement{
     private static final int DEFAULT_SCROLLBAR_THICKNESS = 5;
 
     protected int scrollOffset = 0;
+    /** Last offset chosen by the user/API; survives clear + refill so content rebuilds keep the position. */
+    protected int requestedScrollOffset = 0;
     protected int allObjectSize = 0;
 
     protected int scrolSpeed = DEFAULT_SCROLL_SPEED;
@@ -195,6 +197,7 @@ public abstract class ListView extends GuiElement{
      */
     public void setScrollOffset(int offset) {
         this.scrollOffset = Math.max(Math.min(offset, allObjectSize - getContentDimension2()), 0);
+        this.requestedScrollOffset = this.scrollOffset;
         updateElementPositions();
         setScrollBarBounds();
     }
@@ -327,6 +330,15 @@ public abstract class ListView extends GuiElement{
     protected abstract void childsChanged();
 
     /**
+     * Re-derives {@link #scrollOffset} from {@link #requestedScrollOffset}, clamped to the
+     * current content size. Call after the content size changed (not after user scrolling).
+     */
+    protected void clampScrollOffset()
+    {
+        scrollOffset = Math.max(Math.min(requestedScrollOffset, allObjectSize - getContentDimension2()), 0);
+    }
+
+    /**
      * Handles scroll events while the mouse is inside the list view, advancing
      * or rewinding {@link #scrollOffset} by the configured scroll speed.
      *
@@ -343,6 +355,7 @@ public abstract class ListView extends GuiElement{
             scrollOffset-=scrolSpeed; // Scroll up
             if(scrollOffset < 0)
                 scrollOffset = 0;
+            requestedScrollOffset = scrollOffset;
             updateElementPositions();
             setScrollBarBounds();
             return true;
@@ -350,6 +363,7 @@ public abstract class ListView extends GuiElement{
             scrollOffset+=scrolSpeed; // Scroll down
             if(scrollOffset > allObjectSize - getContentDimension2())
                 scrollOffset = allObjectSize - getContentDimension2();
+            requestedScrollOffset = scrollOffset;
             updateElementPositions();
             setScrollBarBounds();
             return true;

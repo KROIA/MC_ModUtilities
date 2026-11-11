@@ -1,6 +1,7 @@
 package net.kroia.modutilities.gui;
 
 import net.kroia.modutilities.NbtCompat;
+import net.kroia.modutilities.gui.elements.DropDownMenu;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.elements.base.VertexBuffer;
 import net.kroia.modutilities.gui.geometry.Rectangle;
@@ -78,11 +79,13 @@ public class Gui {
     protected Object font;
     protected SoundPlayer soundPlayer;
     protected int mousePosX, mousePosY;
+    private int screenWidth, screenHeight; // hosting screen size, same units as storeMousePos input; 0 = unknown
 
     private float requestedGuiScale = 1.0f; // Scale requested via setGuiScale, default is 1.0 (no scaling)
     private float guiScale = 1.0f; // Effective (pixel-snapped) scale used for rendering and input
     private float invGuiScale = 1.0f; // Inverse of the effective scale
     private double displayScaleFactor = 1.0; // Minecraft GUI scale, set by hosting screen
+    private float baseGuiScale = 1.0f; // Host-wide factor (user "GUI scale" setting), multiplied with requestedGuiScale
     private int offscreenScissorScale = 0; // >0: use raw GL scissor with this scale instead of GuiGraphics
     private int offscreenFramebufferHeight = 0;
 
@@ -92,6 +95,30 @@ public class Gui {
     protected GuiElement focusedElement = null;
 
     private final List<GuiElement> elements = new ArrayList<>();
+    private DropDownMenu openDropDown = null; // expanded menu whose list receives clicks first
+
+    /**
+     * Registers or clears the expanded {@link DropDownMenu} whose open list gets clicks before
+     * any other element. Called by {@link DropDownMenu#setExpanded(boolean)}.
+     *
+     * @param menu the menu that expanded or collapsed
+     * @param open {@code true} if it expanded
+     */
+    public void setOpenDropDown(DropDownMenu menu, boolean open)
+    {
+        if(open)
+            openDropDown = menu;
+        else if(openDropDown == menu)
+            openDropDown = null;
+    }
+
+    /**
+     * @return the expanded {@link DropDownMenu} registered via {@link #setOpenDropDown}, or {@code null}
+     */
+    public DropDownMenu getOpenDropDown()
+    {
+        return openDropDown;
+    }
 
     private final List<GuiStructuralChange> structuralChanges = new ArrayList<>();
     private boolean trackStructuralChanges = false;
@@ -253,8 +280,78 @@ public class Gui {
         return (float)(pixels / displayScaleFactor);
     }
 
+    /**
+     * Window pixels per GUI unit for a library "GUI scale" setting:
+     * {@code 0} (auto) = {@code maxPixelScale}, {@code < 0} = {@code mcPixelScale} (follow Minecraft),
+     * {@code N > 0} = {@code min(N, maxPixelScale)}. Never less than 1.
+     *
+     * @param setting       the library GUI scale setting
+     * @param maxPixelScale the largest scale that still fits the window, i.e. what Minecraft's own
+     *                      "auto" GUI scale picks for it
+     * @param mcPixelScale  the Minecraft GUI scale
+     * @return window pixels per GUI unit
+     */
+    public static int pixelGuiScale(int setting, int maxPixelScale, int mcPixelScale) {
+        int max = Math.max(1, maxPixelScale);
+        if(setting < 0)
+            return Math.max(1, mcPixelScale);
+        return setting == 0 ? max : Math.min(setting, max);
+    }
+
+    /**
+     * Base factor that turns a library "GUI scale" setting into a factor relative to
+     * the Minecraft GUI scale: {@code pixelGuiScale(setting, maxPixelScale, -) / displayScaleFactor}.
+     * <p>
+     * {@code maxPixelScale} is the largest scale Minecraft's own "auto" GUI scale
+     * would pick for the window, so a large fixed scale on a small window never
+     * makes the screen smaller than vanilla screens are designed for.
+     *
+     * @param setting            {@code 0} = auto, the largest scale that fits the window;
+     *                           {@code < 0} = follow Minecraft (returns {@code 1.0});
+     *                           {@code N > 0} = N window pixels per GUI unit, capped to fit
+     * @param maxPixelScale      the largest scale that still fits the window ({@code >= 1})
+     * @param displayScaleFactor the Minecraft GUI scale (window pixels per GUI unit)
+     * @return the base factor to pass to {@link #setBaseGuiScale(float)}
+     */
+    public static float fixedBaseGuiScale(int setting, int maxPixelScale, double displayScaleFactor) {
+        if(setting < 0 || !(displayScaleFactor > 0.0))
+            return 1.0f;
+        return (float)(pixelGuiScale(setting, maxPixelScale, 1) / displayScaleFactor);
+    }
+
+    /**
+     * Steps a library "GUI scale" setting by {@code delta} pixels per GUI unit, starting
+     * from the scale it currently resolves to (see {@link #pixelGuiScale(int, int, int)}).
+     *
+     * @return the new fixed setting, clamped to {@code 1..maxPixelScale}
+     */
+    public static int stepGuiScaleSetting(int setting, int delta, int maxPixelScale, int mcPixelScale) {
+        int stepped = pixelGuiScale(setting, maxPixelScale, mcPixelScale) + delta;
+        return Math.max(1, Math.min(Math.max(1, maxPixelScale), stepped));
+    }
+
+    /**
+     * Sets the host-wide base factor that is multiplied with the value passed to
+     * {@link #setGuiScale(float)} before pixel snapping. Hosting screens use it for
+     * the user's library "GUI scale" setting (see {@link #fixedBaseGuiScale(int, int, double)});
+     * {@code 1.0} (default) keeps the Minecraft GUI scale.
+     *
+     * @param baseGuiScale the base factor; values {@code <= 0} are corrected to {@code 1.0}
+     */
+    public void setBaseGuiScale(float baseGuiScale) {
+        this.baseGuiScale = baseGuiScale > 0.0f ? baseGuiScale : 1.0f;
+        updateEffectiveGuiScale();
+    }
+
+    /**
+     * @return the host-wide base factor, see {@link #setBaseGuiScale(float)}
+     */
+    public float getBaseGuiScale() {
+        return baseGuiScale;
+    }
+
     private void updateEffectiveGuiScale() {
-        this.guiScale = snapGuiScale(requestedGuiScale, displayScaleFactor);
+        this.guiScale = snapGuiScale(requestedGuiScale * baseGuiScale, displayScaleFactor);
         this.invGuiScale = 1.0f / this.guiScale;
     }
 
@@ -711,6 +808,37 @@ public class Gui {
     }
 
     /**
+     * Stores the hosting screen size (same units as {@link #storeMousePos(int, int)})
+     * so tooltips can stay inside it. Hosting screens call this every frame.
+     *
+     * @param width  the screen width
+     * @param height the screen height
+     */
+    public void storeScreenSize(int width, int height)
+    {
+        this.screenWidth = width;
+        this.screenHeight = height;
+    }
+
+    /**
+     * @return the hosting screen width in GUI element coordinates, or {@code 0}
+     *         if the host never reported it
+     */
+    public int getScreenWidth()
+    {
+        return (int)((float)screenWidth*invGuiScale);
+    }
+
+    /**
+     * @return the hosting screen height in GUI element coordinates, or {@code 0}
+     *         if the host never reported it
+     */
+    public int getScreenHeight()
+    {
+        return (int)((float)screenHeight*invGuiScale);
+    }
+
+    /**
      * Moves the OS-level cursor to the given GUI-coordinate position, factoring
      * in both the display scale factor and this {@code Gui}'s additional scale.
      *
@@ -807,6 +935,16 @@ public class Gui {
     public boolean mouseClicked(double mouseX, double mouseY, int button)
     {
         storeMousePos(mouseX, mouseY);
+        // An open drop-down list overlays elements that may come earlier in dispatch order: it gets
+        // the click first, the rest only sees a click elsewhere (focus loss etc.).
+        // ponytail: only DropDownMenu is treated as an overlay; general z-ordered hit-testing is still open (task #107)
+        DropDownMenu open = openDropDown;
+        if(open != null && open.getRoot() == this && open.clickOpenList(button))
+        {
+            for(GuiElement element : elements)
+                element.mouseClickedInternal(button, false);
+            return true;
+        }
         for(GuiElement element : elements)
         {
             if(element.mouseClickedInternal(button, true))
