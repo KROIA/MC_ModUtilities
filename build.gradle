@@ -65,13 +65,18 @@ subprojects {
     // Dev-only code (sandbox, unit tests, autotest) is compiled only when gradle.properties has
     // enable_dev_features=true. Release builds do not compile it at all, so any release code that
     // still references it fails to compile instead of shipping test code. ModUtilitiesMod reaches it
-    // only through the reflective DevBootstrap entry point.
+    // only through the reflective DevBootstrap entry point. The sandbox demo blocks' blockstates and models
+    // (*_demo_*) go with it; the shared display_* parent models and textures stay.
     if (!(rootProject.findProperty('enable_dev_features') ?: 'false').toBoolean()) {
         sourceSets.main.java {
             exclude 'net/kroia/modutilities/testing/**'
             exclude 'net/kroia/modutilities/sandbox/**'
         }
+        sourceSets.main.resources.exclude 'assets/modutilities/**/*_demo_*'
     }
+
+    // GIMP source files (e.g. assets/modutilities/textures/gui/arrow_.xcf) must not ship in any jar.
+    sourceSets.main.resources.exclude '**/*.xcf'
 
     java {
         // Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
