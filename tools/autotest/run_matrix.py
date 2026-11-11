@@ -365,6 +365,10 @@ class Instance:
             else:
                 self.proc.kill()
             self.wait(10)
+        try:  # now, not at GC: a failed 'stop' write leaves it buffered and its flush on close fails (dead reader)
+            self.proc.stdin.close()
+        except OSError:
+            pass
         self.log.close()
 
 
