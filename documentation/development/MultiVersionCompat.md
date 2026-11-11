@@ -231,5 +231,5 @@ Rules:
 - [GuiScreen](../gui/GuiScreen.md) - Input/render extension points across versions
 - [Display Block System](../gui/DisplayBlock.md) - Registration example using `RegistryCompat`
 - [Stream System](../networking/StreamSystem.md) - `Tuple` return types
-- [Automated in-game tests](../../tools/autotest/README.md) - Running the test suites on every version
+- [Automated in-game tests](../../../../Tools/autotest/README.md) - Running the test suites on every version
 - [Documentation Index](../README.md)
