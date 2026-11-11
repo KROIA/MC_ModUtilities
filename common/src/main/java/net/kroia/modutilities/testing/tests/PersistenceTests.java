@@ -15,6 +15,7 @@ import net.minecraft.nbt.ListTag;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 
 public class PersistenceTests extends TestSuite {
 
@@ -45,6 +46,7 @@ public class PersistenceTests extends TestSuite {
         addTest("DataPersistence_chunkedSave_replacesAndCleansUp", this::testChunkedSaveReplacesAndCleansUp);
         addTest("DataPersistence_chunkedLoad_recoversOldFolder", this::testChunkedLoadRecoversOldFolder);
         addTest("DataPersistence_chunkedLoad_ignoresTempFolder", this::testChunkedLoadIgnoresTempFolder);
+        addTest("DataPersistence_chunked_dottedNamesRoundTrip", this::testChunkedDottedNamesRoundTrip);
 
         // Timer save/load regression tests (Issue #15)
         addTest("timer_save_load_preserves_isRunning", this::testTimerSaveLoadPreservesIsRunning);
@@ -209,6 +211,32 @@ public class PersistenceTests extends TestSuite {
         for (int i = 1; i < list.size(); i++)
             if (NbtCompat.getInt(NbtCompat.getCompound(list, i), "marker") != marker) return -1;
         return marker;
+    }
+
+    /** Task #137: dotted names keep their dots ("a.b" is not "a"); only a trailing ".nbt" is dropped. */
+    private TestResult testChunkedDottedNamesRoundTrip() {
+        Path dir;
+        try { dir = Files.createTempDirectory("modutil_test_dotted"); }
+        catch (IOException e) { return fail("Failed to create temp directory: " + e.getMessage()); }
+        try {
+            DataPersistence persistence = quietPersistence(dir);
+            if (!persistence.saveDataCompoundList(dir.resolve("a.b"), markerList(1, 2))) return fail("save a.b returned false");
+            if (!persistence.saveDataCompoundList(dir.resolve("a.nbt"), markerList(2, 3))) return fail("save a.nbt returned false");
+            if (!Files.isDirectory(dir.resolve("a.b")) || !Files.isDirectory(dir.resolve("a")))
+                return fail("Expected folders a.b and a");
+            if (markerOf(persistence.readDataCompoundList(dir.resolve("a.b"))) != 1) return fail("a.b did not read back its own data");
+            if (markerOf(persistence.readDataCompoundList(dir.resolve("a"))) != 2) return fail("a did not read back a.nbt data");
+
+            Path mapDir = dir.resolve("map");
+            if (!persistence.saveDataCompoundListMap(mapDir, Map.of("x.y", markerList(5, 1), "x", markerList(6, 1))))
+                return fail("map save returned false");
+            var map = persistence.readDataCompoundListMap(mapDir);
+            if (map.size() != 2 || markerOf(map.get("x.y")) != 5 || markerOf(map.get("x")) != 6)
+                return fail("Map should round-trip keys x.y and x, got " + map.keySet());
+            return pass("Dotted names round-trip");
+        } finally {
+            deleteTree(dir);
+        }
     }
 
     private static void deleteTree(Path dir) {

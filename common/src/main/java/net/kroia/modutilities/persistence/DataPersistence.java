@@ -59,6 +59,12 @@ public class DataPersistence {
     // until the new one is in place. Loaders never read ".tmp"; they read ".old" only when "<name>" is missing.
     static final String TEMP_SUFFIX = ".tmp";
     static final String OLD_SUFFIX = ".old";
+    // Chunked list names: only this extension is dropped from the name, so a dotted name like "a.b" stays "a.b"
+    static final String NBT_EXTENSION = ".nbt";
+
+    private static String stripSuffix(String name, String suffix) {
+        return name.endsWith(suffix) ? name.substring(0, name.length() - suffix.length()) : name;
+    }
 
     interface PathWriter {
         void write(Path path) throws IOException;
@@ -482,7 +488,7 @@ public class DataPersistence {
     /**
      * Saves a potentially oversized {@link ListTag} by splitting it into
      * multiple chunk files. The chunks are written into a sub-folder whose
-     * name is derived from {@code absolutePath} (extension stripped). The save is
+     * name is derived from {@code absolutePath} (a trailing {@code .nbt} stripped). The save is
      * crash-safe: chunks go to {@code <name>.tmp} first and replace the old folder
      * only after every chunk was written; on failure the old data stays in place.
      *
@@ -518,11 +524,7 @@ public class DataPersistence {
         }
 
 
-        String fileName = absolutePath.getFileName().toString();
-        if(fileName.lastIndexOf(".") != -1)
-        {
-            fileName = fileName.substring(0, fileName.lastIndexOf("."));
-        }
+        String fileName = stripSuffix(absolutePath.getFileName().toString(), NBT_EXTENSION);
         Path chunkFolderPath = absolutePath.getParent().resolve(fileName);
         Path tempFolderPath = chunkFolderPath.resolveSibling(fileName + TEMP_SUFFIX);
         Path oldFolderPath = chunkFolderPath.resolveSibling(fileName + OLD_SUFFIX);
@@ -651,7 +653,7 @@ public class DataPersistence {
     /**
      * Reads a chunked {@link ListTag} previously saved via
      * {@link #saveDataCompoundList(Path, ListTag)}. Locates the chunk folder
-     * derived from {@code absolutePath} (extension stripped), reads each
+     * derived from {@code absolutePath} (a trailing {@code .nbt} stripped), reads each
      * {@code .nbt} chunk in name order, and concatenates their contents.
      *
      * @param absolutePath the path used to derive the chunk folder name.
@@ -666,11 +668,7 @@ public class DataPersistence {
         ListTag dataOut;
 
         // Check if the path is a file or folder containing chunks
-        String fileName = absolutePath.getFileName().toString();
-        if(fileName.lastIndexOf(".") != -1)
-        {
-            fileName = fileName.substring(0, fileName.lastIndexOf("."));
-        }
+        String fileName = stripSuffix(absolutePath.getFileName().toString(), NBT_EXTENSION);
         Path folderPath = absolutePath.getParent().resolve(fileName);
         Path oldFolderPath = folderPath.resolveSibling(fileName + OLD_SUFFIX);
         if(!folderExists(folderPath) && folderExists(oldFolderPath)) {
@@ -792,10 +790,7 @@ public class DataPersistence {
             String fileName = folder.getFileName().toString();
             if(fileName.endsWith(TEMP_SUFFIX))
                 continue; // unfinished save, never data
-            if(fileName.lastIndexOf(".") != -1)
-            {
-                fileName = fileName.substring(0, fileName.lastIndexOf("."));
-            }
+            fileName = stripSuffix(fileName, OLD_SUFFIX);
             if(dataMap.containsKey(fileName))
                 continue; // "<name>" and "<name>.old" are the same entry
             Path absoluteListPath = absolutePath.resolve(fileName);
