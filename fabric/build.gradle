@@ -94,7 +94,8 @@ if ((findProperty('with_luckperms') ?: 'false').toBoolean()) {
         }
     }
     dependencies {
-        modLocalRuntime "maven.modrinth:luckperms:${rootProject.luckperms_fabric_version}"
+        modLocalRuntime "maven.modrinth:luckperms:${rootProject.luckperms_fabric_version}" // mc<=1.21.11
+        //localRuntime "maven.modrinth:luckperms:${rootProject.luckperms_fabric_version}" // mc>=26.1
     }
 }
 

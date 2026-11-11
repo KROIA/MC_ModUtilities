@@ -107,7 +107,8 @@ public class LuckPermsRemovedTests extends TestSuite {
         if (p == null || exp.get("player") == null || !p.getUUID().toString().equals(exp.get("player")))
             return pass("marker intact (phase-1 player not online, op level not compared)");
         return assertEquals("op level of the phase-1 player", exp.get("opLevel"),
-                String.valueOf(s.getProfilePermissions(p.getGameProfile())));
+                String.valueOf(s.getProfilePermissions(p.getGameProfile()))); // mc<=1.21.8
+                //String.valueOf(s.getProfilePermissions(p.nameAndId()))); // mc>=1.21.9
     }
 
     private @Nullable ServerPlayer player() {
