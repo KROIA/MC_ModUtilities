@@ -104,9 +104,7 @@ Comprehensive networking library for client-server communication.
 #### Testing
 - [Test Suite](testing/TestSuite.md) - In-game unit test framework (`TestSuite`, `TestRegistry`, `TestRunner`)
 - [Sandbox System](development/Sandbox.md) - Development sandbox with example blocks, screens and test commands
-- [Automated in-game tests](../../../Tools/autotest/README.md) - `run_matrix.py` / matrix GUI: runs every suite on Fabric and NeoForge in all server configurations
-  - [Adding a version](../../../Tools/autotest/ADDING_A_VERSION.md) - Adding a new Minecraft version to the test matrix
-  - [Design](../../../Tools/autotest/DESIGN.md) - How dev-only code is compiled out and how the harness works
+- [Automated runs](testing/TestSuite.md#automated-runs) - Running every suite unattended with `-Dmodutilities.autotest=<label>`
 
 Dev-only code (sandbox, unit tests, autotest) is only compiled with `enable_dev_features=true`; see [Test Suite](testing/TestSuite.md#dev-builds-and-release-builds).
 
@@ -120,7 +118,7 @@ Dev-only code (sandbox, unit tests, autotest) is only compiled with `enable_dev_
 - **Need to send data?** Check the [Networking Overview](networking/Networking.md)
 - **Building UIs?** See the [GUI Library Overview](gui/GuiLibrary.md) and [GuiScreen](gui/GuiScreen.md)
 - **Multi-server setup?** See [Multi-Server Networking](networking/MultiServerNetworking.md)
-- **Testing features?** Use the [Sandbox System](development/Sandbox.md), [Test Suite](testing/TestSuite.md) and [automated in-game tests](../../../Tools/autotest/README.md)
+- **Testing features?** Use the [Sandbox System](development/Sandbox.md) and [Test Suite](testing/TestSuite.md)
 - **Targeting several Minecraft versions?** See [Multi-Version Compatibility](development/MultiVersionCompat.md)
 
 ## Documentation Status
@@ -142,7 +140,7 @@ Legend:
 | Utility Classes | Complete | Helper functions API reference documented |
 | Sandbox System | Complete | Development testing framework documented |
 | Test Suite | Complete | Automated test suite documented |
-| Automated in-game tests | Complete | `Tools/autotest` harness documented (shared Tools folder next to the mods) |
+| Automated in-game tests | Complete | `AutoTest` hook documented in Test Suite |
 | Multi-Version Compatibility | Complete | Compat helpers and source toggles documented |
 | RecipeImageExporter | Complete | Short reference in Utility Classes |
 
