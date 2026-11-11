@@ -150,6 +150,9 @@ public class SlavePacketHandler extends SimpleChannelInboundHandler<Payload> {
     public void channelInactive(ChannelHandlerContext ctx) {
         // Requests sent over this channel get no response any more (clean disconnect too).
         net.kroia.modutilities.networking.client_server.arrs.AsynchronousRequestResponseSystem.onConnectionLost(mcServer, null);
+        // Streams redirected over this channel get no data or stop any more: stop them for their clients.
+        if(mcServer != null)
+            mcServer.execute(net.kroia.modutilities.networking.client_server.streaming.StreamSystem::onMasterLinkLost);
         if(connector.isShuttingDown())
             return;
         connector.onChannelInactive();

@@ -339,6 +339,19 @@ public class StreamSystem {
     /**
      * INTERNAL METHODE, DO NOT CALL THIS METHOD MANUALLY!
      *
+     * Called on the server thread when a slave's master link drops: stops every redirected stream,
+     * so their clients get the stop notification instead of waiting forever.
+     */
+    public static void onMasterLinkLost()
+    {
+        StreamManager manager = STREAM_MANAGER;
+        if(manager != null)
+            manager.stopRedirectedServerSenderStreams();
+    }
+
+    /**
+     * INTERNAL METHODE, DO NOT CALL THIS METHOD MANUALLY!
+     *
      * Handles a StreamStopClientSenderPacket on the server side.
      * @param packet The StreamStopClientSenderPacket to handle.
      */

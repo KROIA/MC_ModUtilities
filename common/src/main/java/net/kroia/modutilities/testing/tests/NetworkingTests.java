@@ -143,6 +143,7 @@ public class NetworkingTests extends TestSuite {
         // Slave with its master link down (simulated): routed traffic never runs locally
         addTest("slave_master_down_request_fails_fast", this::testSlaveMasterDownRequestFailsFast);
         addTest("slave_master_down_stream_refused", this::testSlaveMasterDownStreamRefused);
+        addTest("slave_master_lost_stops_redirected_stream", this::testSlaveMasterDownStopsRedirectedStream);
     }
 
     // ========================================================================
@@ -1254,6 +1255,58 @@ public class NetworkingTests extends TestSuite {
                 return assertFalse("master-routed stream must not start locally on a slave whose master is down", startedLocally.get());
             });
         } finally {
+            StreamSystem.unregister(stream);
+        }
+    }
+
+    /**
+     * A redirected stream already running when the master link drops: the slave must drop its holder and
+     * send the client a stop (client's stopped handler fires). The master never knows the test type and ignores the start.
+     */
+    private TestResult testSlaveMasterDownStopsRedirectedStream() {
+        // The client start loads net.minecraft.client.Minecraft, which a dedicated server cannot load.
+        if (dev.architectury.platform.Platform.getEnvironment() != dev.architectury.utils.Env.CLIENT)
+            return skip("dedicated server (no client classes)");
+        if (getServer() == null || getServer().isDedicatedServer() || getServer().getPlayerCount() == 0)
+            return skip("needs an integrated server with the client joined");
+        if (!MultiServerManager.isSlave()) return skip("not a slave");
+        if (!MultiServerManager.isRunning()) return skip("master link not up");
+        String type = "modutilities_test_master_lost_stream";
+        class RoutedStream extends GenericStream<String, String> {
+            @Override public GenericStream<String, String> copy() { return new RoutedStream(); }
+            @Override public String getStreamTypeID() { return type; }
+            @Override public boolean needsRoutingToMaster() { return true; }
+            @Override public void encodeContextData(RegistryFriendlyByteBuf buffer, String context) {}
+            @Override public String decodeContextData(RegistryFriendlyByteBuf buffer) { return ""; }
+            @Override public void encodeData(RegistryFriendlyByteBuf buffer, String data) {}
+            @Override public String decodeData(RegistryFriendlyByteBuf buffer) { return ""; }
+        }
+        RoutedStream stream = new RoutedStream();
+        if (StreamSystem.register(stream) == null)
+            return fail("test stream type already registered");
+        java.util.concurrent.atomic.AtomicBoolean stopped = new java.util.concurrent.atomic.AtomicBoolean();
+        UUID id = null;
+        try {
+            var manager = stream.getManager();
+            if (manager == null) return skip("stream system not set up");
+            try {
+                id = stream.startServerToClient("", d -> {}, () -> stopped.set(true));
+            } catch (RuntimeException e) {
+                return skip("client cannot start a stream (" + e + ")");
+            }
+            UUID streamID = id;
+            if (!pumpUntil(() -> manager.hasRedirectedServerSenderStream(streamID), 5_000))
+                return fail("slave must register a redirected holder for the master-routed stream");
+            return withMasterDown(() -> {
+                if (!pumpUntil(() -> stopped.get() && !manager.hasRedirectedServerSenderStream(streamID), 5_000))
+                    return fail("after link loss: holder removed=" + !manager.hasRedirectedServerSenderStream(streamID)
+                            + ", client stopped handler fired=" + stopped.get());
+                return pass("redirected stream stopped on link loss");
+            });
+        } finally {
+            if (id != null && !stopped.get()) {
+                try { StreamSystem.stopStream(id); } catch (RuntimeException ignored) {}
+            }
             StreamSystem.unregister(stream);
         }
     }
