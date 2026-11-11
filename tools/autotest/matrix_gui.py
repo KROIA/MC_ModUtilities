@@ -23,8 +23,8 @@ VERSIONS = ['1.21.1', '1.21.2', '1.21.3', '1.21.4', '1.21.5', '1.21.6', '1.21.7'
             '1.21.11', '26.1', '26.2', '26.3']
 MODS = [('ModUtilities', 'MC_ModUtilities'), ('BankSystem', 'BankSystem'), ('StockMarket', 'StockMarket')]
 BANK = 'BankSystem'  # no own test runs: its suites run in every StockMarket cell
-COLUMNS = [(l, c) for l in rm.LOADERS for c in rm.CONFIGS]
-GRID = [(l, c) for l in rm.LOADERS for c in ('build',) + rm.CONFIGS]  # on screen: a build column first per loader
+COLUMNS = [(l, c) for l in rm.LOADERS for c in rm.ALL_CONFIGS]
+GRID = [(l, c) for l in rm.LOADERS for c in ('build',) + rm.ALL_CONFIGS]  # on screen: a build column first per loader
 COLORS = {'none': '#c8c8c8', 'capturing': '#a8d8ff', 'running': '#ffc040', 'passed': '#60c060',
           'failed': '#e04040', 'error': '#e08030', 'interrupted': '#b090d0', 'n/a': '#505050', 'playing': '#40c8c8',
           'release': '#60c060', 'dev': '#80b0f0', 'FAIL': '#e04040', 'jar missing': '#e08030', 'jar': '#e0e0e0',
@@ -150,7 +150,7 @@ def plan_runs(cells):
     for p, loaders in by_project.items():
         groups = {}
         for l, cs in loaders.items():
-            groups.setdefault(tuple(c for c in rm.CONFIGS if c in cs), []).append(l)
+            groups.setdefault(tuple(c for c in rm.ALL_CONFIGS if c in cs), []).append(l)
         for cs, ls in groups.items():
             runs.setdefault((tuple(ls), cs), []).append(p)
     return [(ps, list(ls), list(cs)) for (ls, cs), ps in runs.items()]
@@ -238,11 +238,14 @@ class Gui:
             ll.grid(row=0, column=1 + n * i, columnspan=n, sticky='ew')
             ll.bind('<Button-3>', lambda e, l=l: self.toggle_loader(l))
         # Ticked test columns take part in Run all / Run not passed / row double-click (gui-settings columns_off).
-        off = self.settings.get('columns_off', [])
-        self.col_on = {(l, c): tk.BooleanVar(value=f'{l}/{c}' not in off) for l, c in COLUMNS}
+        # The opt-in -trusted columns start unticked (columns_on).
+        off, on = self.settings.get('columns_off', []), self.settings.get('columns_on', [])
+        self.col_on = {(l, c): tk.BooleanVar(value=f'{l}/{c}' in on if c not in rm.CONFIGS else f'{l}/{c}' not in off)
+                       for l, c in COLUMNS}
         self.col_heads = {}
         for j, (l, c) in enumerate(GRID):
-            self.col_heads[(l, c)] = tk.Label(head, text=c, width=8, relief='ridge')
+            # two lines for 'spslave\ntrusted': the column stays 8 wide
+            self.col_heads[(l, c)] = tk.Label(head, text=c.replace('-', '\n'), width=8, relief='ridge')
             self.col_heads[(l, c)].grid(row=1, column=1 + j, padx=1, pady=1)
             if c != 'build':
                 tk.Checkbutton(head, variable=self.col_on[(l, c)], command=self.save_columns).grid(row=2, column=1 + j)
@@ -431,6 +434,7 @@ class Gui:
 
     def save_columns(self):
         self.settings['columns_off'] = [f'{l}/{c}' for (l, c), v in self.col_on.items() if not v.get()]
+        self.settings['columns_on'] = [f'{l}/{c}' for (l, c), v in self.col_on.items() if v.get() and c not in rm.CONFIGS]
         rm.write_json(self.settings_file, self.settings)
         self.show_columns()
 

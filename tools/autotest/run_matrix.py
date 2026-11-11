@@ -34,7 +34,10 @@ import zipfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 MODS_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(HERE))))  # tools/autotest -> repo -> mod -> mods
-CONFIGS = ('sp', 'mp', 'slave', 'spslave')
+CONFIGS = ('sp', 'mp', 'slave', 'spslave')  # the default --configs
+TRUSTED_SUFFIX = '-trusted'  # <config>-trusted: that config with BankSystem trusting its slave (trustedSlave property)
+SLAVE_IDS = {'slave': 'autotest_slave', 'spslave': 'autotest_sp_slave'}  # slaveID of the slave instance per config
+ALL_CONFIGS = CONFIGS + tuple(c + TRUSTED_SUFFIX for c in SLAVE_IDS)  # opt-in extras only via --configs
 LOADERS = ('fabric', 'neoforge')
 LP_MODES = ('off', 'on', 'both', 'removed', 'all')  # --luckperms
 LP_SUFFIX = '-lp'  # cell label of a config run with LuckPerms, e.g. mp-lp
@@ -462,6 +465,9 @@ def run_cell(specs, loader, config, cell_dir, timeout, mods, world=None, play=No
             common[prop] = ','.join(keys)
     if play:
         common = {'modutilities.autotest.play': 'true'}
+    if config.endswith(TRUSTED_SUFFIX):  # every instance of the cell; BankSystem's master trusts this slave
+        config = config.removesuffix(TRUSTED_SUFFIX)
+        common['modutilities.autotest.trustedSlave'] = SLAVE_IDS[config]
     template = world
     d = lambda n: os.path.join(cell_dir, n)
     notes, servers, tested = [], [], []
@@ -522,7 +528,7 @@ def run_cell(specs, loader, config, cell_dir, timeout, mods, world=None, play=No
             master = server('master', MASTER_PORT, ms_master(), waitPlayer='false', waitSlaves=1, stop='false')
             tested = [master]
             if ready(master):
-                slave = server('slave', SLAVE_PORT, ms_slave('autotest_slave'), waitPlayer='true', stop='true',
+                slave = server('slave', SLAVE_PORT, ms_slave(SLAVE_IDS['slave']), waitPlayer='true', stop='true',
                                after=master.results)
                 tested.append(slave)
                 if ready(slave):
@@ -531,7 +537,7 @@ def run_cell(specs, loader, config, cell_dir, timeout, mods, world=None, play=No
             master = server('master', MASTER_PORT, ms_master(), waitPlayer='false', waitSlaves=1, stop='false')
             tested = [master]
             if ready(master):
-                cl = client(ms_slave('autotest_sp_slave'), world='new', after=master.results)
+                cl = client(ms_slave(SLAVE_IDS['spslave']), world='new', after=master.results)
                 tested.append(cl)
         # The client quits on its own once its world/server is done; its watchdog bounds this.
         # A server that died without a report, or a master that should stay up but exited, leaves the
@@ -826,7 +832,7 @@ def main():
     ap.add_argument('--root', help='folder holding mc_<version>_* project folders (with --versions)')
     ap.add_argument('--versions', nargs='*', help='versions to pick from --root')
     ap.add_argument('--loaders', nargs='*', default=list(LOADERS), choices=LOADERS)
-    ap.add_argument('--configs', nargs='*', default=list(CONFIGS), choices=CONFIGS)
+    ap.add_argument('--configs', nargs='*', default=list(CONFIGS), choices=ALL_CONFIGS)
     ap.add_argument('--timeout', type=int, default=900, help='per-instance watchdog, seconds')
     ap.add_argument('--luckperms', choices=LP_MODES, default='off',
                     help='off: plain cells; on: <config>-lp cells (LuckPerms in the dev runtime); both: plain + lp; '
@@ -865,8 +871,8 @@ def main():
     args.only, args.exclude, args.offline_topics = test_selection(args, out)
     projects = resolve_projects(args)
     if args.play:
-        if args.play[0] not in LOADERS or args.play[1] not in CONFIGS or len(projects) != 1:
-            ap.error(f'--play needs one project, a loader {LOADERS} and a config {CONFIGS}')
+        if args.play[0] not in LOADERS or args.play[1] not in ALL_CONFIGS or len(projects) != 1:
+            ap.error(f'--play needs one project, a loader {LOADERS} and a config {ALL_CONFIGS}')
     if args.world:
         args.world = os.path.normpath(os.path.abspath(args.world))
         if not os.path.isfile(os.path.join(args.world, 'level.dat')):
@@ -1056,7 +1062,7 @@ def cell_labels(configs, mode):
 
 
 def label_order(label):
-    return (CONFIGS + tuple(c + LP_SUFFIX for c in CONFIGS) + (REMOVED,)).index(label)
+    return (ALL_CONFIGS + tuple(c + LP_SUFFIX for c in ALL_CONFIGS) + (REMOVED,)).index(label)
 
 
 def run(args, out, projects):

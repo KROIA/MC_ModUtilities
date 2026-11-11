@@ -34,7 +34,7 @@ Options:
 | option | default | meaning |
 |---|---|---|
 | `--loaders` | `fabric neoforge` | loaders to test |
-| `--configs` | `sp mp slave spslave` | `sp` singleplayer; `mp` client on a master server; `slave` master + slave server, client on the slave; `spslave` master server + singleplayer world as its slave |
+| `--configs` | `sp mp slave spslave` | `sp` singleplayer; `mp` client on a master server; `slave` master + slave server, client on the slave; `spslave` master server + singleplayer world as its slave; opt-in (not in the default): `slave-trusted` / `spslave-trusted` = `slave` / `spslave` with BankSystem trusting the slave (`-Dmodutilities.autotest.trustedSlave=<slaveID>` on every instance) |
 | `--timeout` | `900` | per-instance watchdog (seconds) |
 | `--mods` | all | comma separated mod ids to test, e.g. `banksystem,stockmarket` |
 | `--out` | `<mods root>/autotest-out` | output folder (shared by every run, so the GUI shows CLI runs too) |

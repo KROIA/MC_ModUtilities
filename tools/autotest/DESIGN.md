@@ -145,6 +145,7 @@ only matter for dimensions the world lacks.
 | `mp` | master (`waitPlayer`) → client joins master | master |
 | `slave` | master (`waitSlaves=1`, no player, keeps running) → slave (`after=master results`, `waitPlayer`) → client joins slave | master, slave |
 | `spslave` | master (`waitSlaves=1`, no player) → client creates a world configured as slave (`after=master results`) | master, client |
+| `slave-trusted`, `spslave-trusted` | as `slave` / `spslave`, every instance with `-Dmodutilities.autotest.trustedSlave=<slaveID>` (BankSystem trusts that slave); opt-in, not in the default `--configs` | as base config |
 
 Shutdown: the client quits by itself (bounded by its watchdog, killed after timeout + 60 s). If a
 server exits without a report, or a master that must stay up exits, the cell is aborted at once
