@@ -27,4 +27,10 @@ public class ModUtilitiesTestCategories {
     public static final TestCategory UTILITIES = new TestCategory(
         "modutilities", "mu_utilities", "ColorUtilities, JsonUtilities, TimerMillis, and ItemUtilities helper tests",
         TestCategory.ServerType.BOTH, false);
+    public static final TestCategory LUCKPERMS = new TestCategory(
+        "modutilities", "mu_luckperms", "LuckPermsBridge with LuckPerms installed, and worlds after LuckPerms was removed",
+        TestCategory.ServerType.BOTH, true);
+    public static final TestCategory DISCORD = new TestCategory(
+        "modutilities", "mu_discord", "DiscordWebhooks config, rendering, batching and rate limits (fake HTTP)",
+        TestCategory.ServerType.BOTH, false);
 }

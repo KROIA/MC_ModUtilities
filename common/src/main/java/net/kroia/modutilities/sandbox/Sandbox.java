@@ -375,19 +375,7 @@ public class Sandbox {
             });
         }
 
-        if (TestRegistry.ENABLE_TESTS) {
-            TestRegistry.register(new EventTests());
-            if (UtilitiesPlatform.isClient()) {
-                TestRegistry.register(new CreativeTabTests());
-                TestRegistry.register(new GuiLogicTests());
-            }
-            TestRegistry.register(new ParserTests());
-            TestRegistry.register(new PersistenceTests());
-            TestRegistry.register(new SettingsTests());
-            TestRegistry.register(new NetworkingTests());
-            TestRegistry.register(new StreamingTests());
-            TestRegistry.register(new UtilityTests());
-        }
+        registerTests(true);
 
         CommandRegistrationEvent.EVENT.register((dispatcher, registryAccess, environment) -> {
             SandboxCommand.register(dispatcher);
@@ -400,4 +388,30 @@ public class Sandbox {
 
     }
 
+
+    /**
+     * Registers ModUtilities' test suites. {@code inGame = false} is the offline JUnit run ({@code OfflineTestsTest}):
+     * no client suites, and none whose constructor needs the mod loader.
+     */
+    public static void registerTests(boolean inGame)
+    {
+        if (!TestRegistry.ENABLE_TESTS) return;
+        TestRegistry.register(new EventTests());
+        if (inGame && UtilitiesPlatform.isClient()) {
+            TestRegistry.register(new CreativeTabTests());
+            TestRegistry.register(new GuiLogicTests());
+        }
+        TestRegistry.register(new ParserTests());
+        TestRegistry.register(new PersistenceTests());
+        TestRegistry.register(new SettingsTests());
+        TestRegistry.register(new NetworkingTests());
+        TestRegistry.register(new StreamingTests());
+        TestRegistry.register(new UtilityTests());
+        TestRegistry.register(new net.kroia.modutilities.testing.tests.MasterDownTests());
+        if (inGame) { // constructors reach LuckPermsBridge -> @ExpectPlatform ModChecker, which throws without a loader
+            TestRegistry.register(new net.kroia.modutilities.testing.tests.LuckPermsBridgeTests());
+            TestRegistry.register(new net.kroia.modutilities.testing.tests.LuckPermsRemovedTests());
+        }
+        TestRegistry.register(new net.kroia.modutilities.testing.tests.DiscordTests());
+    }
 }
