@@ -58,6 +58,6 @@ if (!(rootProject.findProperty('enable_dev_features') ?: 'false').toBoolean()) {
 test {
     useJUnitPlatform()
     workingDir = temporaryDir // Minecraft's log4j config writes logs/latest.log into the working directory
-    // test-topic selection (tools/autotest/README.md): gradlew :common:test -Dmodutilities.tests.exclude=<keys>
+    // test-topic selection (Tools/autotest/README.md): gradlew :common:test -Dmodutilities.tests.exclude=<keys>
     ['modutilities.tests.exclude', 'modutilities.tests.include', 'modutilities.tests.offline'].each { systemProperty it, System.getProperty(it, '') }
 }

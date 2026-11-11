@@ -29,7 +29,7 @@ The MC_ModUtilities Test Suite Framework provides **in-game unit testing** that 
 - **Be shared across multiple mods** (ModUtilities, BankSystem, StockMarket, and any future mod) through a single framework living in the `net.kroia.modutilities.testing` package.
 - **Filter tests by server role** in a master/slave multi-server setup, so master-only tests do not run on slave servers and vice versa.
 - **Stay out of release builds entirely**: the `testing` package is only compiled when the Gradle property `enable_dev_features` is `true` (see [Dev Builds and Release Builds](#dev-builds-and-release-builds)).
-- **Run automatically** on every Minecraft version, loader and server configuration through the [in-game autotest harness](../../tools/autotest/README.md).
+- **Run automatically** on every Minecraft version, loader and server configuration through the [in-game autotest harness](../../../../Tools/autotest/README.md).
 
 All test output is rendered as color-coded chat messages directly to the player who triggered the command, with green checkmarks for passing tests, red crosses for failures, and yellow exclamation marks for errors.
 
@@ -776,7 +776,7 @@ The `testing` API only exists in a ModUtilities jar built with `enable_dev_featu
 
 ### Automated runs
 
-The [autotest harness](../../tools/autotest/README.md) (`tools/autotest/run_matrix.py`, or the matrix GUI `matrix_gui.bat`) builds with `-Penable_dev_features=true`, starts real Fabric and NeoForge instances in singleplayer, multiplayer and multi-server configurations, runs every registered suite headless and prints a pass/fail table. See also [Adding a version](../../tools/autotest/ADDING_A_VERSION.md) and [Design](../../tools/autotest/DESIGN.md).
+The [autotest harness](../../../../Tools/autotest/README.md) (`Tools/autotest/run_matrix.py` in the shared Tools folder next to the mods, or the matrix GUI via `Autotest.bat` in the mods folder) builds with `-Penable_dev_features=true`, starts real Fabric and NeoForge instances in singleplayer, multiplayer and multi-server configurations, runs every registered suite headless and prints a pass/fail table. See also [Adding a version](../../../../Tools/autotest/ADDING_A_VERSION.md) and [Design](../../../../Tools/autotest/DESIGN.md).
 
 ---
 
