@@ -363,6 +363,21 @@ public class ExpandablePanel extends GuiElement {
         contentContainer.setEnableBackground(enabled);
     }
 
+    /** @return the clickable header row (for subclasses adding header widgets) */
+    protected EmptyButton getHeaderButton() {
+        return headerButton;
+    }
+
+    /** @return the header title label (for subclasses re-laying out the header) */
+    protected Label getTitleLabel() {
+        return titleLabel;
+    }
+
+    /** @return the container hosting the content children */
+    protected GuiElement getContentArea() {
+        return contentContainer;
+    }
+
     // ------------------------------------------------------------------
     // Child management (routed to the content container)
     // ------------------------------------------------------------------

@@ -3,6 +3,7 @@ package net.kroia.modutilities.neoforge;
 import dev.architectury.event.events.common.LifecycleEvent;
 import net.kroia.modutilities.UtilitiesPlatform;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.neoforge.common.NeoForge;
 import net.kroia.modutilities.ModUtilitiesMod;
 
 @Mod(ModUtilitiesMod.MOD_ID)
@@ -18,6 +19,7 @@ public final class ModUtilitiesNeoForge {
             ModUtilitiesMod.LOGGER.info("[NeoForgeSetup] SERVER_STOPPED");
             UtilitiesPlatformNeoForge.setServer(null);
         });
+        NeoForge.EVENT_BUS.addListener(PermissionCompatImpl::onGatherNodes);
 
 
 

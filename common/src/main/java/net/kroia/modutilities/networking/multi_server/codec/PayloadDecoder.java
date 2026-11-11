@@ -51,7 +51,8 @@ public class PayloadDecoder extends ByteToMessageDecoder {
             case PacketIds.HANDSHAKE -> new HandshakePayload(
                     readString(in),  // serverId
                     readString(in),  // token
-                    in.isReadable() ? readString(in) : "" // mcVersion, absent from older slaves
+                    in.isReadable() ? readString(in) : "", // mcVersion, absent from older slaves
+                    in.isReadable() ? UUIDUtil.STREAM_CODEC.decode(in) : null // serverUid, absent from older slaves
             );
             case PacketIds.HANDSHAKE_RESULT ->  HandshakeResultPayload.STREAM_CODEC.decode(in);
             case PacketIds.BROADCAST -> new BroadcastPayload(
@@ -70,6 +71,8 @@ public class PayloadDecoder extends ByteToMessageDecoder {
                     "Unknown hub packet ID: 0x" + Integer.toHexString(packetId));
         };
 
+        // One frame = one payload: drop fields appended by newer peers instead of decoding them as the next packet.
+        in.skipBytes(in.readableBytes());
         out.add(payload); // passes decoded object to the next pipeline handler
     }
 

@@ -7,7 +7,9 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.networking.multi_server.ForwardPacketContext;
+import net.kroia.modutilities.networking.multi_server.MultiServerManager;
 import net.kroia.modutilities.networking.multi_server.MultiServerPacketRegistry;
+import net.kroia.modutilities.networking.multi_server.ServerIdentity;
 import net.kroia.modutilities.networking.multi_server.payload.HandshakePayload;
 import net.kroia.modutilities.networking.multi_server.payload.ForwardPacketPayload;
 import net.kroia.modutilities.networking.multi_server.payload.HandshakeResultPayload;
@@ -81,7 +83,7 @@ public class MasterPacketHandler extends SimpleChannelInboundHandler<Payload> {
      * Dispatches an incoming {@link Payload} based on its concrete type.
      * <p>
      * Handles the slave handshake (validating the shared secret, rejecting a
-     * Minecraft version mismatch and duplicate slave IDs) and forwards data packets to the
+     * Minecraft version mismatch, duplicate slave IDs and duplicate server uids) and forwards data packets to the
      * {@link MultiServerPacketRegistry}. Unknown payload types are logged and ignored.
      *
      * @param ctx     The Netty channel handler context for this connection.
@@ -137,9 +139,29 @@ public class MasterPacketHandler extends SimpleChannelInboundHandler<Payload> {
                     ctx.close();
                     return;
                 }
+
+                // The uid is self-reported diagnostics: it can reject a copied world, but never grants anything.
+                ServerIdentity identity = MultiServerManager.getIdentity() instanceof ServerIdentity id ? id : null;
+                if (hs.serverUid() == null) {
+                    warn("Slave '"+hs.serverId()+"' ("+resolveRemoteAddress(ctx)+") sent no server uid (outdated ModUtilities); accepted without one.");
+                } else if (identity != null && identity.isDuplicateUid(hs.serverId(), hs.serverUid())) {
+                    HandshakeResultPayload response = new HandshakeResultPayload(SlaveServerClient.ConnectionEstablishState.DUPLICATE_SERVER_UID);
+                    warn("Rejected connection from '"+hs.serverId()+"' ("+resolveRemoteAddress(ctx)+") - "+response.result()
+                            +": server uid "+hs.serverUid()+" already belongs to this master or another slave (copied world?)");
+                    Channel channel = ctx.channel();
+                    if (channel != null && channel.isActive()) {
+                        channel.writeAndFlush(response);
+                    }
+                    ctx.close();
+                    return;
+                }
                 serverId = hs.serverId();
+                if (identity != null)
+                    identity.onSlaveSeen(serverId, hs.serverUid());
                 masterTCPServer.putChildConnection(serverId, ctx.channel());
-                masterTCPServer.sendToSlave(serverId, new HandshakeResultPayload(SlaveServerClient.ConnectionEstablishState.SUCCESS));
+                // Older slaves (no uid) get no trailing masterUid, which their decoder would misread.
+                masterTCPServer.sendToSlave(serverId, new HandshakeResultPayload(SlaveServerClient.ConnectionEstablishState.SUCCESS,
+                        hs.serverUid() != null && identity != null ? identity.serverUid() : null));
             }
             case ForwardPacketPayload bb -> {
                 if (serverId == null) {
