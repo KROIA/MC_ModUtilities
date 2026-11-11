@@ -13,7 +13,7 @@ import java.util.function.BiConsumer;
  * @param <IN>  The type of input data for the request.
  * @param <OUT> The type of output data for the request.
  * @apiNote {@code creationTimeMs} is consulted by
- *          {@link net.kroia.modutilities.networking.client_server.arrs.RequestManager#cleanupExpiredRequests(long)}
+ *          {@link net.kroia.modutilities.networking.client_server.arrs.RequestManager#cleanupExpiredRequests(boolean)}
  *          to expire abandoned entries.
  */
 public class ClientRequestHolder<IN, OUT>
