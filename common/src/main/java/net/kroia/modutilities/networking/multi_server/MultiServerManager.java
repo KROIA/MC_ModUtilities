@@ -1,5 +1,7 @@
 package net.kroia.modutilities.networking.multi_server;
 
+import dev.architectury.event.events.common.LifecycleEvent;
+import dev.architectury.event.events.common.TickEvent;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.networking.multi_server.master.MasterTCPServer;
 import net.kroia.modutilities.networking.multi_server.slave.SlaveServerClient;
@@ -33,6 +35,11 @@ import java.util.function.Consumer;
 public class MultiServerManager
 {
     private static volatile MultiServerManager instance;
+
+    /** Identity of the running server; survives {@link #cleanup()}, reset on SERVER_STOPPED. */
+    private static volatile @Nullable ServerIdentity identity;
+    /** Running server, set on SERVER_STARTED, for resolving a STANDALONE identity on first access. */
+    private static volatile @Nullable MinecraftServer startedServer;
 
     private final @Nullable MasterTCPServer  tcpServer;
     private final @Nullable SlaveServerClient slaveClient;
@@ -69,6 +76,7 @@ public class MultiServerManager
             return false;
         }
         info("Create master on port: "+tcpPort);
+        resolveIdentity(mcServer, ServerRole.MASTER, null);
         MultiServerPacketRegistry.onCreate(mcServer);
         MasterTCPServer master = new MasterTCPServer(mcServer, sharedSecret, tcpPort,
                 onServerStartSuccess, onServerStartFailure,
@@ -103,6 +111,7 @@ public class MultiServerManager
             return false;
         }
         info("Create slave and connect to master:"+ masterHostIP+":"+masterHostTcpPort);
+        resolveIdentity(mcServer, ServerRole.SLAVE, slaveServerID);
         MultiServerPacketRegistry.onCreate(mcServer);
         SlaveServerClient slave = new SlaveServerClient(mcServer, sharedSecret, slaveServerID,  masterHostIP, masterHostTcpPort,
                 onConnectionAccepted,  onConnectionFailure, onConnectionLost, onDisconnect);
@@ -110,6 +119,39 @@ public class MultiServerManager
         return true;
     }
 
+
+    /**
+     * Returns this server's persisted identity (diagnostics only, never use it for authorization).
+     * Role and slave ID come from {@link #createMaster}/{@link #createSlave}; if neither was called
+     * the server is {@link ServerRole#STANDALONE}.
+     *
+     * @return The identity; non-null from SERVER_STARTED until SERVER_STOPPED.
+     */
+    public static @Nullable IServerIdentity getIdentity()
+    {
+        ServerIdentity id = identity;
+        MinecraftServer server = startedServer;
+        if(id == null && server != null)
+            id = resolveIdentity(server, ServerRole.STANDALONE, null);
+        return id;
+    }
+
+    /** Registers the identity lifecycle hooks. Called once by ModUtilities. */
+    public static void init()
+    {
+        LifecycleEvent.SERVER_STARTED.register(server -> startedServer = server);
+        // The first tick runs after every SERVER_STARTED handler had its chance to call createMaster/createSlave.
+        TickEvent.SERVER_POST.register(server -> { if(identity == null) getIdentity(); });
+        LifecycleEvent.SERVER_STOPPED.register(server -> { startedServer = null; identity = null; });
+    }
+
+    private static synchronized ServerIdentity resolveIdentity(MinecraftServer server, ServerRole role, @Nullable String slaveId)
+    {
+        ServerIdentity id = identity;
+        if(role == ServerRole.STANDALONE && id != null)
+            return id; // lost a race against createMaster/createSlave or another first access
+        return identity = ServerIdentity.load(ServerIdentity.file(server), role, slaveId);
+    }
 
     /**
      * Indicates whether a {@link MultiServerManager} singleton currently exists,
@@ -336,7 +378,8 @@ public class MultiServerManager
 
     /**
      * Indicates whether the master TCP server is currently listening, or the slave
-     * has an active connection to its master.
+     * has an active connection to its master. Link state only: to decide whether traffic
+     * must go to the master, check the role ({@link #isSlave()}).
      *
      * @return {@code true} if the link is currently active.
      */
@@ -353,6 +396,37 @@ public class MultiServerManager
             assert instance.slaveClient != null;
             return instance.slaveClient.isConnected();
         }
+    }
+
+    /**
+     * <b>Test only.</b> Simulates "master down" on this slave: {@code true} closes the link and makes every
+     * reconnect attempt fail without dialling (the real connection-lost, disconnect-sweep and reconnect paths
+     * run); {@code false} lets the next scheduled attempt (within about 5 s) reconnect for real.
+     * Always reset it to {@code false} when the test ends.
+     * <p>
+     * No-op unless dev features are enabled ({@link ModUtilitiesMod#ENABLE_DEV_FEATURES}, which AutoTest
+     * requires) and this server is a slave.
+     *
+     * @param down {@code true} to take the master link down, {@code false} to let it reconnect
+     */
+    public static void setSimulatedMasterDown(boolean down)
+    {
+        MultiServerManager m = instance;
+        if(!ModUtilitiesMod.ENABLE_DEV_FEATURES || m == null || m.slaveClient == null)
+            return;
+        info("Simulated master " + (down ? "down" : "up"));
+        m.slaveClient.setSimulatedDown(down);
+    }
+
+    /**
+     * <b>Test only.</b>
+     *
+     * @return {@code true} while {@link #setSimulatedMasterDown} simulates "master down" on this slave
+     */
+    public static boolean isSimulatedMasterDown()
+    {
+        MultiServerManager m = instance;
+        return m != null && m.slaveClient != null && m.slaveClient.isSimulatedDown();
     }
 
     /**
@@ -562,17 +636,22 @@ public class MultiServerManager
         }
         if(!instance.slaveClient.isConnected())
         {
-            Throwable failReason = instance.slaveClient.getConnectionFailReason();
-            if(failReason != null)
+            // Expected while the master is down: every master-bound send lands here, so log at most every 30 s.
+            long now = System.currentTimeMillis();
+            if(now - lastNotConnectedLogMs >= NOT_CONNECTED_LOG_INTERVAL_MS)
             {
-                error("sendToMaster(packet): Failed to establish a connection to the Master during initialization. Reason: " + failReason);
+                lastNotConnectedLogMs = now;
+                Throwable failReason = instance.slaveClient.getConnectionFailReason();
+                error("sendToMaster(packet): Not connected to the master (not started yet, or link down and reconnecting); "
+                        + "master-bound packets are dropped until it is back. Logged at most every 30 s."
+                        + (failReason != null ? " Last connect failure: " + failReason : ""));
             }
-            else
-                error("sendToMaster(packet): The connection to the Master has not yet been established. Have you forgotten to call MultiServerManager.start()?");
             return false;
         }
         return true;
     }
+    private static final long NOT_CONNECTED_LOG_INTERVAL_MS = 30_000L;
+    private static volatile long lastNotConnectedLogMs = Long.MIN_VALUE / 2;
     private static boolean checkSendToSlave(String serverId)
     {
         if(instance == null)

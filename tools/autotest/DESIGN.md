@@ -53,10 +53,13 @@ Server side (dedicated or integrated), every server tick until done:
    the link (ModUtilities alone; BankSystem creates it at `SERVER_STARTED`), create it from the config.
 2. Readiness, re-checked every tick, no sleeps:
    - `waitPlayer` (default true): a player is online;
-   - slave: `MultiServerManager.isSlave() && isRunning()` (link to master up);
+   - slave: `MultiServerManager.isSlave() && isRunning()` (link to master up), unless `waitLink=false`;
    - master: `getConnectedSlaveIDs().size() >= waitSlaves`;
    - `after=<file>`: file exists (used to run the slave after the master's run).
    All conditions must then hold for 40 ticks (settle) before the run starts.
+   Tick sampling: from the tick on which only the `after` file is missing (without `after`: the settle) until the
+   run starts, the time between consecutive `SERVER_POST` ticks (50 ms = on time) is recorded; `results.json` gets
+   `ticks`, `maxTickMs`, `avgTickMs`, tests read `AutoTest.tickStats()`.
 3. Run every mod's suites that `canRunOn(isSlave)` with the first online player (or none), on the
    server thread, like the `/x test` command does. The run is queued as a server task (not run inside
    the `SERVER_POST` tick event): tests that register event listeners would otherwise make
@@ -145,6 +148,8 @@ only matter for dimensions the world lacks.
 | `mp` | master (`waitPlayer`) → client joins master | master |
 | `slave` | master (`waitSlaves=1`, no player, keeps running) → slave (`after=master results`, `waitPlayer`) → client joins slave | master, slave |
 | `spslave` | master (`waitSlaves=1`, no player) → client creates a world configured as slave (`after=master results`) | master, client |
+| `slave-masterdown` | master (`waitPlayer`, never runs tests) → slave (`waitPlayer`, `waitLink=false`, `after=<cell>/master_killed`) → once the slave logs `Master accepts connection`, client joins slave → on the slave's AutoTest join log (` set to creative`) run_matrix kills the master, waits `--masterdown-seconds`, writes `master_killed` → slave runs with the master down; every instance `-Dmodutilities.autotest.masterDown=true` (`AutoTest.isMasterDown()`, `MasterDownTests`). The killed master is exempt from the early-exit check; opt-in | slave |
+| `slave-trusted`, `spslave-trusted` | as `slave` / `spslave`, every instance with `-Dmodutilities.autotest.trustedSlave=<slaveID>` (BankSystem trusts that slave); opt-in, not in the default `--configs` | as base config |
 
 Shutdown: the client quits by itself (bounded by its watchdog, killed after timeout + 60 s). If a
 server exits without a report, or a master that must stay up exits, the cell is aborted at once
@@ -161,9 +166,10 @@ Exit code 0 only if every cell passed.
 All JSON is written atomically (tmp + `os.replace`); the GUI only polls files (every 2 s), so runs
 started from the command line show up the same way.
 
-- `<out>/running.lock`: pid of the active run_matrix; written at start, removed in `finally`. A lock
-  whose pid is alive makes a second run exit (ports are shared); a dead pid is a stale lock and is
-  overwritten. Liveness: `OpenProcess` + `GetExitCodeProcess` via ctypes (Windows), `kill(pid, 0)` elsewhere.
+- `<mods root>/autotest-out/running.lock` (`run_matrix.LOCK`, the default out's lock for every `--out`): pid
+  of the active run_matrix; written at start, removed in `finally` if it is still ours. A lock whose pid is
+  alive makes a second run exit, whatever its `--out` (ports are shared), or wait with `--wait-lock`; a dead
+  pid is a stale lock and is overwritten. Liveness: `OpenProcess` + `GetExitCodeProcess` via ctypes (Windows), `kill(pid, 0)` elsewhere.
 - `<out>/<project>/capture.json`: `{state: capturing, loaders, configs, started}` during Gradle, then
   `state: done` with `rc` and `finished`.
 - `<out>/<project>/<loader>/<config>/cell.json`: `{state: running, project, loader, config, world, started}`
