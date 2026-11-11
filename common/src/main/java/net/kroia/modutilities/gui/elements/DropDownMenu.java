@@ -2,6 +2,7 @@ package net.kroia.modutilities.gui.elements;
 
 import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.ModUtilitiesMod;
+import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.elements.base.ListView;
 import net.kroia.modutilities.gui.layout.Layout;
@@ -21,11 +22,20 @@ import java.util.function.BiConsumer;
  * Options are added with {@link #addOption(String)} or by passing arbitrary {@link GuiElement}s to
  * {@link #addChild(GuiElement)}. The currently selected option index is tracked and reported
  * to the {@link BiConsumer} registered via {@link #setOnOptionSelected(BiConsumer)}.
+ * <p>
+ * Selecting an option collapses the menu, shows the option's text in the label (for options
+ * added with {@link #addOption(String)}) and highlights that row the next time the menu opens.
+ * The callback runs afterwards, so it may set a fixed label text or re-open the menu.
  */
 public class DropDownMenu extends GuiElement {
 
     /** Option row; marker type so {@link #getChilds()}/{@link #removeChild} can find the wrapped element. */
     private static class EmptyButtonChanged extends EmptyButton {
+        private final int idleColor = getBackgroundColor();
+        /** Highlights the selected row with the row's own pressed color. */
+        void setSelected(boolean selected) {
+            setBackgroundColor(selected ? getPressedColor() : idleColor);
+        }
     }
 
     private final ListView listView;
@@ -78,9 +88,11 @@ public class DropDownMenu extends GuiElement {
                         && isInsideEnclosingListView(DropDownMenu.this, globalPosX, globalPosY);
             }
             // Input dispatch gates on the parents' bounds too: re-seed it so isOver() above decides.
+            // Not for clicks when the Gui tracks this menu: Gui.mouseClicked() already delivered them first.
             @Override
             public boolean mouseClickedInternal(int button, boolean isOverParent) {
-                return super.mouseClickedInternal(button, true);
+                Gui root = getRoot();
+                return super.mouseClickedInternal(button, isOverParent || root == null || root.getOpenDropDown() != DropDownMenu.this);
             }
             @Override
             public boolean mouseScrolledInternal(double delta, boolean isOverParent) {
@@ -163,6 +175,7 @@ public class DropDownMenu extends GuiElement {
 
     /**
      * Sets the callback invoked when the user picks an option from the list.
+     * It runs after the menu has collapsed and updated its label.
      * @param optionSelected callback receiving (index, option element), or {@code null} to clear
      */
     public void setOnOptionSelected(BiConsumer<Integer, GuiElement> optionSelected)
@@ -206,14 +219,20 @@ public class DropDownMenu extends GuiElement {
     /**
      * Expands or collapses the option list.
      * Calling with the current state is a no-op.
+     * While expanded, the selected option row is highlighted and clicks on the open list
+     * are delivered to it before any other element (see {@link Gui#mouseClicked(double, double, int)}).
      * @param expanded {@code true} to expand, {@code false} to collapse
      */
     public void setExpanded(boolean expanded) {
         if(expanded == isExpanded)
             return;
         isExpanded = expanded;
+        Gui root = getRoot();
+        if(root != null)
+            root.setOpenDropDown(this, expanded);
         if(isExpanded)
         {
+            updateSelectionHighlight();
             super.setZ(expandedZPos);
             expandedHeight = Math.min(listView.getSizeHintHeight(), maxExpandedHeight);
             unexpandedHeight = getHeight();
@@ -316,15 +335,18 @@ public class DropDownMenu extends GuiElement {
     /**
      * Adds a new option using a centered text label.
      * For custom option elements use {@link #addChild(GuiElement)}.
+     * When this option is selected, its text is shown in the collapsed menu.
      * @param label the option's display text
+     * @return the created option label, e.g. to attach a tooltip
      */
-    public void addOption(String label)
+    public Label addOption(String label)
     {
         Label optionLabel = new Label(label);
         // Height must be set before addChild, which wraps the label in a button sized to this height
         optionLabel.setHeight(20);
         optionLabel.setAlignment(Alignment.CENTER);
         addChild(optionLabel);
+        return optionLabel;
     }
 
     @Override
@@ -389,41 +411,56 @@ public class DropDownMenu extends GuiElement {
         return childElements;
     }
 
+    /**
+     * Selects the option: label shows a {@link Label} option's text, the menu collapses, then the
+     * callback runs, so it can still override the label ({@link #setLabelText}) or re-open ({@link #expand}).
+     */
     private void onOptionClicked(GuiElement option)
     {
-        if(optionSelected == null)
+        int index = listView.getChilds().indexOf(option);
+        List<GuiElement> optionChilds = option.getChilds();
+        if(index == -1 || optionChilds.isEmpty())
             return;
-        int index = -1;
-        List<GuiElement> childs = listView.getChilds();
-        for(int i=0; i<childs.size(); i++)
-        {
-            GuiElement child = childs.get(i);
-            if(child == option)
-            {
-                index = i;
-                break;
-            }
-        }
-        if(index != -1)
-        {
-            // Notify listeners about the selection
-            List<GuiElement> childs_ = option.getChilds();
-            if (childs_.isEmpty()) {
-                return;
-            }
-            GuiElement el = childs_.get(0);
-            int oldIndex = selectedIndex;
-            selectedIndex = index;
-            if (oldIndex != selectedIndex) markDirty();
+        GuiElement el = optionChilds.get(0);
+        if (selectedIndex != index) markDirty();
+        selectedIndex = index;
+        if(el instanceof Label optionLabel)
+            setLabelText(optionLabel.getText());
+        updateSelectionHighlight();
+        collapse();
+        if(optionSelected != null)
             optionSelected.accept(index, el);
-        }
+    }
+
+    private void updateSelectionHighlight()
+    {
+        List<GuiElement> rows = listView.getChilds();
+        for(int i=0; i<rows.size(); i++)
+            if(rows.get(i) instanceof EmptyButtonChanged row)
+                row.setSelected(i == selectedIndex);
+    }
+
+    /**
+     * Delivers the current click to the open option list if the mouse is over it.
+     * Called by {@link Gui#mouseClicked(double, double, int)} before the regular dispatch, so an
+     * element underneath the open list never receives the click. Not meant to be called directly.
+     * @param button the mouse button
+     * @return {@code true} if the mouse is over the open list (the click is consumed)
+     */
+    public boolean clickOpenList(int button)
+    {
+        if(!isExpanded || !listView.isMouseOver())
+            return false;
+        listView.mouseClickedInternal(button, true);
+        return true;
     }
     /**
      * @return the index of the currently selected option, or {@code -1} if no option is selected
      */
     public int getSelectedIndex() { return selectedIndex;}
     /**
-     * Programmatically selects the option at the given index, firing the selection callback.
+     * Programmatically selects the option at the given index, as if the user clicked it:
+     * updates the label for text options, collapses the menu and fires the selection callback.
      * Out-of-range indices are silently ignored.
      * @param index the option index to select
      */

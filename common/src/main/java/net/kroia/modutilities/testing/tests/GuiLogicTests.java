@@ -105,6 +105,9 @@ public class GuiLogicTests extends TestSuite {
         // Task #107: open DropDownMenu options outside the parent bounds are hit, unless an enclosing ListView clips them
         addTest("DropDownMenu_options_hitTest_ignoresNonClippingParents", this::testDropDownOptionsHitTest);
 
+        // Task #134: picking an option collapses, shows its text, highlights it; the click does not reach elements underneath
+        addTest("DropDownMenu_select_collapsesAndConsumesClick", this::testDropDownSelectCollapsesAndConsumesClick);
+
         // Task #108: FeatureToggleSection restart marker with own (static) wording
         addTest("FeatureToggleSection_restartMarkerText", this::testFeatureToggleRestartMarkerText);
     }
@@ -155,6 +158,40 @@ public class GuiLogicTests extends TestSuite {
         if (b2.isOver(bx2, by2))
             return fail("option clipped by the enclosing ListView is hit at (" + bx2 + "," + by2 + ")");
         return pass("DropDownMenu options are hit outside non-clipping parents, not where an enclosing ListView clips them");
+    }
+
+    private TestResult testDropDownSelectCollapsesAndConsumesClick() {
+        net.kroia.modutilities.gui.Gui gui = new net.kroia.modutilities.gui.Gui();
+        // Added first: dispatched before the menu, lies under its open list
+        EmptyButton under = new EmptyButton(0, 20, 120, 100);
+        gui.addElement(under);
+        under.init();
+        AtomicInteger picked = new AtomicInteger(-1);
+        DropDownMenu menu = new DropDownMenu("menu", (i, el) -> picked.set(i));
+        menu.addOption("a");
+        Label b = menu.addOption("b");
+        if (menu.getChilds().get(1) != b)
+            return fail("addOption should return the created option label");
+        gui.addElement(menu);
+        menu.init();
+        menu.setBounds(0, 0, 120, 20);
+        menu.expand();
+        Point pb = b.getGlobalPosition();
+        gui.mouseClicked(pb.x + b.getWidth() / 2.0, pb.y + b.getHeight() / 2.0, 0);
+        if (under.getClickCount() != 0)
+            return fail("click on an open option also clicked the element underneath");
+        if (picked.get() != 1 || menu.getSelectedIndex() != 1)
+            return fail("option b not selected, callback index=" + picked.get() + " selectedIndex=" + menu.getSelectedIndex());
+        if (menu.isExpanded())
+            return fail("menu should collapse after selecting an option");
+        if (!"b".equals(menu.getLabelText()))
+            return fail("collapsed label should show the picked option, was '" + menu.getLabelText() + "'");
+        menu.expand();
+        EmptyButton rowA = (EmptyButton) menu.getChilds().get(0).getParent();
+        EmptyButton rowB = (EmptyButton) b.getParent();
+        if (rowB.getBackgroundColor() != rowB.getPressedColor() || rowA.getBackgroundColor() == rowA.getPressedColor())
+            return fail("re-opened menu should highlight only the selected row");
+        return pass("selecting an option collapses the menu, shows and highlights it, and consumes the click");
     }
 
     private TestResult testFeatureToggleRestartMarkerText() {

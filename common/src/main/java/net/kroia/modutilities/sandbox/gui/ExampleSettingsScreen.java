@@ -93,8 +93,10 @@ public class ExampleSettingsScreen extends GuiScreen {
 
         difficultyDropDown = new DropDownMenu(DIFFICULTY_OPTIONS[difficultyIndex], this::onDropdownMenuSelected);
         for (String option : DIFFICULTY_OPTIONS) {
-            difficultyDropDown.addOption(option);
+            difficultyDropDown.addOption(option).setHoverTooltipSupplier(() -> "Set difficulty to " + option);
         }
+        // Selecting collapses the menu, shows the option's text and highlights its row when re-opened
+        difficultyDropDown.setSelectedIndex(difficultyIndex);
         addElement(difficultyDropDown);
 
         // Collapsible "Advanced" section holding extra option rows.
@@ -146,8 +148,6 @@ public class ExampleSettingsScreen extends GuiScreen {
 
     private void onDropdownMenuSelected(Integer index, GuiElement guiElement) {
         difficultyIndex = index;
-        difficultyDropDown.setLabelText(DIFFICULTY_OPTIONS[index]);
-        difficultyDropDown.collapse();
     }
 
     public static void open() {

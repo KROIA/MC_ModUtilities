@@ -1,6 +1,7 @@
 package net.kroia.modutilities.gui;
 
 import net.kroia.modutilities.NbtCompat;
+import net.kroia.modutilities.gui.elements.DropDownMenu;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.elements.base.VertexBuffer;
 import net.kroia.modutilities.gui.geometry.Rectangle;
@@ -94,6 +95,30 @@ public class Gui {
     protected GuiElement focusedElement = null;
 
     private final List<GuiElement> elements = new ArrayList<>();
+    private DropDownMenu openDropDown = null; // expanded menu whose list receives clicks first
+
+    /**
+     * Registers or clears the expanded {@link DropDownMenu} whose open list gets clicks before
+     * any other element. Called by {@link DropDownMenu#setExpanded(boolean)}.
+     *
+     * @param menu the menu that expanded or collapsed
+     * @param open {@code true} if it expanded
+     */
+    public void setOpenDropDown(DropDownMenu menu, boolean open)
+    {
+        if(open)
+            openDropDown = menu;
+        else if(openDropDown == menu)
+            openDropDown = null;
+    }
+
+    /**
+     * @return the expanded {@link DropDownMenu} registered via {@link #setOpenDropDown}, or {@code null}
+     */
+    public DropDownMenu getOpenDropDown()
+    {
+        return openDropDown;
+    }
 
     private final List<GuiStructuralChange> structuralChanges = new ArrayList<>();
     private boolean trackStructuralChanges = false;
@@ -910,6 +935,16 @@ public class Gui {
     public boolean mouseClicked(double mouseX, double mouseY, int button)
     {
         storeMousePos(mouseX, mouseY);
+        // An open drop-down list overlays elements that may come earlier in dispatch order: it gets
+        // the click first, the rest only sees a click elsewhere (focus loss etc.).
+        // ponytail: only DropDownMenu is treated as an overlay; general z-ordered hit-testing is still open (task #107)
+        DropDownMenu open = openDropDown;
+        if(open != null && open.getRoot() == this && open.clickOpenList(button))
+        {
+            for(GuiElement element : elements)
+                element.mouseClickedInternal(button, false);
+            return true;
+        }
         for(GuiElement element : elements)
         {
             if(element.mouseClickedInternal(button, true))
