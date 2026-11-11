@@ -13,6 +13,9 @@ import java.util.UUID;
  * <p>
  * Instances are constructed by the framework when a {@code ForwardPacketPayload}
  * is unwrapped, and handed to the matching {@link ForwardPacketHandler}.
+ * <p>
+ * Only {@link #senderServerID} is authenticated; {@link #senderPlayerUUID} is
+ * asserted by the sender and not verified (see its Javadoc).
  *
  * @apiNote
  * All fields are immutable. Because handlers are invoked on the Netty event
@@ -42,6 +45,13 @@ public class ForwardPacketContext
     /**
      * UUID of the player that originated the packet, if any. May be {@code null} for
      * server-initiated packets.
+     * <p>
+     * <b>Security:</b> this UUID is <b>asserted by the sending slave</b> and is <b>not</b>
+     * verified by the master; any slave holding the shared secret can claim any player.
+     * ModUtilities has no player-level authentication between servers. Handlers that move
+     * value, perform admin actions or return another player's data must not trust it from
+     * slaves the mod treats as untrusted, and should gate such paths per function
+     * (e.g. BankSystem's {@code isBlockedForUntrustedSlave}).
      *
      * @apiNote
      * The corresponding {@code ServerPlayer} instance is generally NOT available on the

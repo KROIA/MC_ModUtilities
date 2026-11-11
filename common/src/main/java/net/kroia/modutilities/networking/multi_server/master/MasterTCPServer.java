@@ -317,6 +317,7 @@ public class MasterTCPServer {
     void removeChildConnection(String serverId) {
         if(CHILD_SERVERS.remove(serverId) != null) {
             info("Child server '" + serverId + "' disconnected.");
+            net.kroia.modutilities.networking.client_server.arrs.AsynchronousRequestResponseSystem.onConnectionLost(mcServer, serverId);
             onSlaveDisconnected.accept(serverId);
         }
     }

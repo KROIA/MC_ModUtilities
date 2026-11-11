@@ -82,7 +82,7 @@ public class VerticalListView extends ListView {
             maxPos = Math.max(maxPos, child.getBottom());
         }
         allObjectSize = maxPos-minPos;
-        scrollOffset = Math.max(Math.min(scrollOffset, allObjectSize - getContentDimension2()), 0);
+        clampScrollOffset();
     }
     @Override
     protected void setScrollBarBounds()
@@ -104,14 +104,14 @@ public class VerticalListView extends ListView {
     public void addChild(GuiElement el)
     {
         allObjectSize += el.getHeight();
-        scrollOffset = Math.max(Math.min(scrollOffset, allObjectSize - getContentDimension2()), 0);
+        clampScrollOffset();
         super.addChild(el);
     }
     @Override
     public void removeChild(GuiElement el)
     {
         allObjectSize -= el.getHeight();
-        scrollOffset = Math.max(Math.min(scrollOffset, allObjectSize - getContentDimension2()), 0);
+        clampScrollOffset();
         super.removeChild(el);
     }
     @Override
@@ -134,6 +134,7 @@ public class VerticalListView extends ListView {
         scrollbarDragStartMouse = getMouseY();
 
         scrollOffset = Math.max(Math.min(scrollOffset + delta, allObjectSize - getContentDimension2()), 0);
+        requestedScrollOffset = scrollOffset;
         updateElementPositions();
         setScrollBarBounds();
     }

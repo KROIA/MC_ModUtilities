@@ -1,0 +1,7 @@
+{
+  "gui.modutilities.feature_section.restart_required": "⟳ 需要重启",
+  "gui.modutilities.feature_section.restart_required.tooltip": "此值与服务器启动时生效的值不同。\n它已保存，但需要\n重启服务器后才会生效。",
+  "gui.modutilities.feature_section.master_only": "仅在主服务器上运行",
+  "gui.modutilities.feature_section.expand": "点击显示设置",
+  "gui.modutilities.feature_section.collapse": "点击隐藏设置"
+}
