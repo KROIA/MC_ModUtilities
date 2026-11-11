@@ -81,7 +81,7 @@ public class HorizontalListView extends ListView {
             maxPos = Math.max(maxPos, child.getRight());
         }
         allObjectSize = maxPos-minPos;
-        scrollOffset = Math.max(Math.min(scrollOffset, allObjectSize - getContentDimension2()), 0);
+        clampScrollOffset();
     }
 
     @Override
@@ -103,14 +103,14 @@ public class HorizontalListView extends ListView {
     public void addChild(GuiElement el)
     {
         allObjectSize += el.getWidth();
-        scrollOffset = Math.max(Math.min(scrollOffset, allObjectSize - getContentDimension2()), 0);
+        clampScrollOffset();
         super.addChild(el);
     }
     @Override
     public void removeChild(GuiElement el)
     {
         allObjectSize -= el.getWidth();
-        scrollOffset = Math.max(Math.min(scrollOffset, allObjectSize - getContentDimension2()), 0);
+        clampScrollOffset();
         super.removeChild(el);
     }
     @Override
@@ -138,6 +138,7 @@ public class HorizontalListView extends ListView {
         scrollbarDragStartMouse = getMouseX();
 
         scrollOffset = Math.max(Math.min(scrollOffset + delta, allObjectSize - getContentDimension2()), 0);
+        requestedScrollOffset = scrollOffset;
         updateElementPositions();
         setScrollBarBounds();
     }

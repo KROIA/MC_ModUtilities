@@ -49,6 +49,10 @@ dependencies {
     }
 
     common(project(path: ':common', configuration: 'namedElements')) { transitive false }
+
+    // fabric-permissions-api, bundled (see fabric/build.gradle)
+    modImplementation "me.lucko:fabric-permissions-api:${rootProject.fabric_permissions_api_version}"
+    include "me.lucko:fabric-permissions-api:${rootProject.fabric_permissions_api_version}"
     shadowBundle project(path: ':common', configuration: 'transformProductionQuilt')
 }
 

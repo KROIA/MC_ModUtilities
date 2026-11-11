@@ -5,5 +5,10 @@
   "gui.modutilities.items": "Items",
   "block.modutilities.display_demo_block": "Display Demo Block",
   "block.modutilities.display_demo_perf_block": "Display Demo Block (Perf)",
-  "block.modutilities.display_demo_panel_block": "Display Panel (Demo)"
+  "block.modutilities.display_demo_panel_block": "Display Panel (Demo)",
+  "gui.modutilities.feature_section.restart_required": "⟳ Restart required",
+  "gui.modutilities.feature_section.restart_required.tooltip": "This value differs from the one active since server start.\nIt is saved, but only takes effect\nafter the server has been restarted.",
+  "gui.modutilities.feature_section.master_only": "Runs on the master server only",
+  "gui.modutilities.feature_section.expand": "Click to show settings",
+  "gui.modutilities.feature_section.collapse": "Click to hide settings"
 }
