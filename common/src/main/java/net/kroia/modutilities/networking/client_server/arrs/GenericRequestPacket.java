@@ -88,6 +88,15 @@ public final class GenericRequestPacket extends NetworkPacket
         return request.needsRoutingToMaster();
     }
     @Override
+    protected void routeToMaster(NetworkManager.PacketContext context) {
+        var request = AsynchronousRequestResponseSystem.getRegisteredRequest(requestTypeID);
+        if (request == null) {
+            releaseData();
+            return; // No factory found for this request type
+        }
+        request.getManager().forwardRequestToMaster(request, this, context.getPlayer().getUUID());
+    }
+    @Override
     protected void handleOnMaster(ForwardPacketContext context) {
         var request = AsynchronousRequestResponseSystem.getRegisteredRequest(requestTypeID);
         if (request == null) {

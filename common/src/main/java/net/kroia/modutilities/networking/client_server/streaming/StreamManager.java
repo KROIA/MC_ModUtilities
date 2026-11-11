@@ -631,6 +631,27 @@ public class StreamManager {
     /**
      * INTERNAL METHODE, DO NOT CALL THIS METHOD MANUALLY!
      *
+     * Stops every redirected stream (slave lost its master link): removes the holders and sends each
+     * client the normal stop, like a refused start. Call on the server thread.
+     */
+    public void stopRedirectedServerSenderStreams()
+    {
+        for(UUID streamID : redirectedServerSenderStreams.keySet()) // ConcurrentHashMap: removal while iterating is safe
+            handlePacketOnServer(new StreamStopServerSenderPacket(streamID));
+    }
+
+    /**
+     * @param streamID the stream ID
+     * @return whether a redirected (master-routed) stream with this ID is registered on this slave
+     */
+    public boolean hasRedirectedServerSenderStream(UUID streamID)
+    {
+        return redirectedServerSenderStreams.containsKey(streamID);
+    }
+
+    /**
+     * INTERNAL METHODE, DO NOT CALL THIS METHOD MANUALLY!
+     *
      * Handles the stream stop packet on the server side.
      * This method is called when a StreamStopClientSenderPacket is received on the server side.
      * @param packet The StreamStopClientSenderPacket that was received.

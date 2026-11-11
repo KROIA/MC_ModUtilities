@@ -23,6 +23,11 @@ public class ParserTests extends TestSuite {
     }
 
     @Override
+    public boolean needsGame() {
+        return false; // passes offline in gradlew :common:test
+    }
+
+    @Override
     public void registerTests() {
         // Round-trip tests: each NBT numeric type must survive nbt -> json -> nbt
         addTest("itemstack_parser_byte_roundtrip", this::testByteRoundtrip);
