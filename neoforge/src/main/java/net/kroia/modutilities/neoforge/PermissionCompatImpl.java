@@ -3,7 +3,6 @@ package net.kroia.modutilities.neoforge;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.PermissionCompat;
 import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.server.permission.PermissionAPI;
 import net.neoforged.neoforge.server.permission.events.PermissionGatherEvent;
@@ -55,7 +54,7 @@ public class PermissionCompatImpl {
 
     /** @return the registered node, or null if the level check should be used instead */
     private static PermissionNode<Boolean> activeNode(String node) {
-        ResourceLocation handler = PermissionAPI.getActivePermissionHandler();
+        var handler = PermissionAPI.getActivePermissionHandler();
         if (handler == null || handler.equals(DefaultPermissionHandler.IDENTIFIER))
             return null; // no permission mod: identical to the plain level check
         return nodes.get(node);

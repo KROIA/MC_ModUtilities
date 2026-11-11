@@ -268,7 +268,8 @@ public class LuckPermsBridgeTests extends TestSuite {
         if (p != null) {
             LuckPermsPhase.record(server, "modutilities", "player", p.getUUID().toString());
             LuckPermsPhase.record(server, "modutilities", "opLevel",
-                    String.valueOf(server.getProfilePermissions(p.getGameProfile())));
+                    String.valueOf(server.getProfilePermissions(p.getGameProfile()))); // mc<=1.21.8
+                    //String.valueOf(server.getProfilePermissions(p.nameAndId()))); // mc>=1.21.9
         }
         return assertEquals("phase file readable", "phase1", LuckPermsPhase.expected(server, "modutilities", "marker"));
     }
