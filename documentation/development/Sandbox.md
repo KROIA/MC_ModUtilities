@@ -33,7 +33,7 @@ All Sandbox-related code is located in:
 common/src/main/java/net/kroia/modutilities/sandbox/
 ```
 
-The Sandbox also registers the ModUtilities [test suites](../testing/TestSuite.md) and the `/modutilities test` command. To run all suites automatically on every loader and server configuration, use the [in-game autotest harness](../../../../Tools/autotest/README.md).
+The Sandbox also registers the ModUtilities [test suites](../testing/TestSuite.md) and the `/modutilities test` command. To run all suites unattended, start the game with `-Dmodutilities.autotest=<label>` (see [Automated runs](../testing/TestSuite.md#automated-runs)).
 
 ## Available Test Components
 
@@ -185,4 +185,4 @@ public static void init()
 - [GUI Library](../gui/GuiLibrary.md)
 - [Streaming System](../networking/StreamSystem.md)
 - [Test Suite](../testing/TestSuite.md)
-- [Automated in-game tests](../../../../Tools/autotest/README.md)
+- [Automated runs](../testing/TestSuite.md#automated-runs)

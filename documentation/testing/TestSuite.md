@@ -29,7 +29,7 @@ The MC_ModUtilities Test Suite Framework provides **in-game unit testing** that 
 - **Be shared across multiple mods** (ModUtilities, BankSystem, StockMarket, and any future mod) through a single framework living in the `net.kroia.modutilities.testing` package.
 - **Filter tests by server role** in a master/slave multi-server setup, so master-only tests do not run on slave servers and vice versa.
 - **Stay out of release builds entirely**: the `testing` package is only compiled when the Gradle property `enable_dev_features` is `true` (see [Dev Builds and Release Builds](#dev-builds-and-release-builds)).
-- **Run automatically** on every Minecraft version, loader and server configuration through the [in-game autotest harness](../../../../Tools/autotest/README.md).
+- **Run automatically** without a player: start the game with `-Dmodutilities.autotest=<label>` (see [Automated runs](#automated-runs)).
 
 All test output is rendered as color-coded chat messages directly to the player who triggered the command, with green checkmarks for passing tests, red crosses for failures, and yellow exclamation marks for errors.
 
@@ -330,11 +330,11 @@ public TestRunner(String modName, String modId, boolean isSlave, @Nullable Minec
 | `runAll(@Nullable ServerPlayer player)` | Run all registered test suites that are eligible for the current server type. Skips suites whose category `canRunOn(isSlave)` returns `false`. |
 | `runCategory(@Nullable ServerPlayer player, String categoryName)` | Run only suites matching the given category name. Reports an error if the category is unknown or not eligible. |
 | `listCategories(ServerPlayer player)` | Print all known categories to chat, showing test counts. Ineligible categories are shown with strikethrough text and a reason. |
-| `getResults()` | Per-suite results of every suite run so far, keyed by `category/SuiteClass`. Used by the autotest harness for machine-readable reports. |
+| `getResults()` | Per-suite results of every suite run so far, keyed by `category/SuiteClass`. Used by the `AutoTest` hook for its JSON report. |
 
 **Headless runs and failure reporting:**
 
-- `player` may be `null`: the run is headless (no chat output) and all results are still collected in `getResults()` and written to `logs/UnitTests/<modId>.log`. The autotest harness runs suites this way.
+- `player` may be `null`: the run is headless (no chat output) and all results are still collected in `getResults()` and written to `logs/UnitTests/<modId>.log`. The `AutoTest` hook runs suites this way.
 - If a suite's `setup()` or `teardown()` throws, the failure is recorded as an `ERROR` result named `<setup>` / `<teardown>` instead of being lost. `teardown()` always runs (from a `finally` block), also after a failed `setup()`, and `Throwable`s (not just `Exception`s) are caught.
 
 #### Chat Output Format
@@ -746,7 +746,7 @@ enable_dev_features = false
 
 When it is not `true`, the root `build.gradle` excludes `net/kroia/modutilities/testing/**` and `net/kroia/modutilities/sandbox/**` from compilation in every module. Any release class that still references dev code fails to compile instead of silently shipping test code.
 
-For a dev build, either set the property to `true` locally or pass it on the command line (the autotest harness always does this):
+For a dev build, either set the property to `true` locally or pass it on the command line:
 
 ```
 ./gradlew build -Penable_dev_features=true
@@ -776,7 +776,7 @@ The `testing` API only exists in a ModUtilities jar built with `enable_dev_featu
 
 ### Automated runs
 
-The [autotest harness](../../../../Tools/autotest/README.md) (`Tools/autotest/run_matrix.py` in the shared Tools folder next to the mods, or the matrix GUI via `Autotest.bat` in the mods folder) builds with `-Penable_dev_features=true`, starts real Fabric and NeoForge instances in singleplayer, multiplayer and multi-server configurations, runs every registered suite headless and prints a pass/fail table. See also [Adding a version](../../../../Tools/autotest/ADDING_A_VERSION.md) and [Design](../../../../Tools/autotest/DESIGN.md).
+In a dev build, `-Dmodutilities.autotest=<label>` (JVM argument of a client or server) runs every registered suite headless once the server is ready, writes a JSON report (`-Dmodutilities.autotest.results=<path>`, default `autotest-results.json`) and stops a dedicated server afterwards. Further `modutilities.autotest.*` properties (wait for a player, slaves or the master link, `mods` to run, `timeout`) are listed in the `AutoTest` class doc. `-Dmodutilities.tests.exclude` / `.include` / `.offline` select suites by `<modid>/<Category>/<Suite>` prefix keys, also for `gradlew :common:test`.
 
 ---
 
