@@ -15,12 +15,18 @@ import net.minecraft.nbt.ListTag;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 
 public class PersistenceTests extends TestSuite {
 
     @Override
     public TestCategory getCategory() {
         return ModUtilitiesTestCategories.PERSISTENCE;
+    }
+
+    @Override
+    public boolean needsGame() {
+        return false; // passes offline in gradlew :common:test
     }
 
     @Override
@@ -35,6 +41,12 @@ public class PersistenceTests extends TestSuite {
 
         // Regression tests
         addTest("DataPersistence_saveDataCompoundList_manyElements", this::testSaveDataCompoundListManyElements);
+
+        // Crash-safe chunked save
+        addTest("DataPersistence_chunkedSave_replacesAndCleansUp", this::testChunkedSaveReplacesAndCleansUp);
+        addTest("DataPersistence_chunkedLoad_recoversOldFolder", this::testChunkedLoadRecoversOldFolder);
+        addTest("DataPersistence_chunkedLoad_ignoresTempFolder", this::testChunkedLoadIgnoresTempFolder);
+        addTest("DataPersistence_chunked_dottedNamesRoundTrip", this::testChunkedDottedNamesRoundTrip);
 
         // Timer save/load regression tests (Issue #15)
         addTest("timer_save_load_preserves_isRunning", this::testTimerSaveLoadPreservesIsRunning);
@@ -166,6 +178,159 @@ public class PersistenceTests extends TestSuite {
                             });
                 }
             } catch (IOException ignored) {}
+        }
+    }
+
+    // ========================================================================
+    // Crash-safe chunked save
+    // ========================================================================
+
+    private static DataPersistence quietPersistence(Path dir) {
+        DataPersistence persistence = new DataPersistence(
+                DataPersistence.JsonFormat.COMPACT, DataPersistence.NbtFormat.UNCOMPRESSED, Path.of(""));
+        persistence.setLevelSavePath(dir);
+        persistence.debugLogger = null;
+        persistence.warnLogger = null;
+        return persistence;
+    }
+
+    private static ListTag markerList(int marker, int count) {
+        ListTag list = new ListTag();
+        for (int i = 0; i < count; i++) {
+            CompoundTag entry = new CompoundTag();
+            entry.putInt("marker", marker);
+            list.add(entry);
+        }
+        return list;
+    }
+
+    /** -1 if the list is empty or mixed, else the common marker. */
+    private static int markerOf(ListTag list) {
+        if (list.isEmpty()) return -1;
+        int marker = NbtCompat.getInt(NbtCompat.getCompound(list, 0), "marker");
+        for (int i = 1; i < list.size(); i++)
+            if (NbtCompat.getInt(NbtCompat.getCompound(list, i), "marker") != marker) return -1;
+        return marker;
+    }
+
+    /** Task #137: dotted names keep their dots ("a.b" is not "a"); only a trailing ".nbt" is dropped. */
+    private TestResult testChunkedDottedNamesRoundTrip() {
+        Path dir;
+        try { dir = Files.createTempDirectory("modutil_test_dotted"); }
+        catch (IOException e) { return fail("Failed to create temp directory: " + e.getMessage()); }
+        try {
+            DataPersistence persistence = quietPersistence(dir);
+            if (!persistence.saveDataCompoundList(dir.resolve("a.b"), markerList(1, 2))) return fail("save a.b returned false");
+            if (!persistence.saveDataCompoundList(dir.resolve("a.nbt"), markerList(2, 3))) return fail("save a.nbt returned false");
+            if (!Files.isDirectory(dir.resolve("a.b")) || !Files.isDirectory(dir.resolve("a")))
+                return fail("Expected folders a.b and a");
+            if (markerOf(persistence.readDataCompoundList(dir.resolve("a.b"))) != 1) return fail("a.b did not read back its own data");
+            if (markerOf(persistence.readDataCompoundList(dir.resolve("a"))) != 2) return fail("a did not read back a.nbt data");
+
+            Path mapDir = dir.resolve("map");
+            if (!persistence.saveDataCompoundListMap(mapDir, Map.of("x.y", markerList(5, 1), "x", markerList(6, 1))))
+                return fail("map save returned false");
+            var map = persistence.readDataCompoundListMap(mapDir);
+            if (map.size() != 2 || markerOf(map.get("x.y")) != 5 || markerOf(map.get("x")) != 6)
+                return fail("Map should round-trip keys x.y and x, got " + map.keySet());
+            return pass("Dotted names round-trip");
+        } finally {
+            deleteTree(dir);
+        }
+    }
+
+    private static void deleteTree(Path dir) {
+        try (var walk = Files.walk(dir)) {
+            walk.sorted(java.util.Comparator.reverseOrder())
+                    .forEach(p -> { try { Files.deleteIfExists(p); } catch (IOException ignored) {} });
+        } catch (IOException ignored) {}
+    }
+
+    /** A second save replaces the data and leaves no list.tmp / list.old folders or chunk .tmp files. */
+    private TestResult testChunkedSaveReplacesAndCleansUp() {
+        Path dir;
+        try { dir = Files.createTempDirectory("modutil_test_swap"); }
+        catch (IOException e) { return fail("Failed to create temp directory: " + e.getMessage()); }
+        try {
+            DataPersistence persistence = quietPersistence(dir);
+            Path file = dir.resolve("list.nbt");
+            if (!persistence.saveDataCompoundList(file, markerList(1, 20))) return fail("first save returned false");
+            if (!persistence.saveDataCompoundList(file, markerList(2, 5))) return fail("second save returned false");
+
+            ListTag loaded = persistence.readDataCompoundList(file);
+            if (loaded.size() != 5 || markerOf(loaded) != 2)
+                return fail("Expected 5 entries with marker 2, got " + loaded.size() + " / marker " + markerOf(loaded));
+            if (Files.exists(dir.resolve("list.tmp")) || Files.exists(dir.resolve("list.old")))
+                return fail("list.tmp or list.old left behind");
+            try (var files = Files.list(dir.resolve("list"))) {
+                if (files.anyMatch(p -> !p.getFileName().toString().endsWith(".nbt")))
+                    return fail("non-chunk file left in list/");
+            }
+            return pass("Chunked save replaced the data and cleaned up");
+        } catch (IOException e) {
+            return fail("I/O error: " + e.getMessage());
+        } finally {
+            deleteTree(dir);
+        }
+    }
+
+    /** Crash between "list -> list.old" and "list.tmp -> list": only list.old exists, load must return it. */
+    private TestResult testChunkedLoadRecoversOldFolder() {
+        Path dir;
+        try { dir = Files.createTempDirectory("modutil_test_recover"); }
+        catch (IOException e) { return fail("Failed to create temp directory: " + e.getMessage()); }
+        try {
+            DataPersistence persistence = quietPersistence(dir);
+            Path file = dir.resolve("list.nbt");
+            Path mapDir = dir.resolve("map");
+            if (!persistence.saveDataCompoundList(file, markerList(7, 3))) return fail("save returned false");
+            if (!persistence.saveDataCompoundList(mapDir.resolve("entry"), markerList(7, 3))) return fail("map save returned false");
+            Files.move(dir.resolve("list"), dir.resolve("list.old"));
+            Files.move(mapDir.resolve("entry"), mapDir.resolve("entry.old"));
+
+            ListTag loaded = persistence.readDataCompoundList(file);
+            if (loaded.size() != 3 || markerOf(loaded) != 7)
+                return fail("Expected old data (3 x marker 7), got " + loaded.size() + " / marker " + markerOf(loaded));
+            var map = persistence.readDataCompoundListMap(mapDir);
+            if (map.size() != 1 || !map.containsKey("entry") || markerOf(map.get("entry")) != 7)
+                return fail("Map load should return old data under key 'entry', got " + map.keySet());
+
+            // The next save restores and then replaces it cleanly
+            if (!persistence.saveDataCompoundList(file, markerList(8, 2))) return fail("save after crash returned false");
+            if (Files.exists(dir.resolve("list.old"))) return fail("list.old left behind after save");
+            return assertEquals("Save after crash writes new data", 8, markerOf(persistence.readDataCompoundList(file)));
+        } catch (IOException e) {
+            return fail("I/O error: " + e.getMessage());
+        } finally {
+            deleteTree(dir);
+        }
+    }
+
+    /** Crash while writing list.tmp: load ignores it (also in a list map) and returns the live data. */
+    private TestResult testChunkedLoadIgnoresTempFolder() {
+        Path dir;
+        try { dir = Files.createTempDirectory("modutil_test_stale"); }
+        catch (IOException e) { return fail("Failed to create temp directory: " + e.getMessage()); }
+        try {
+            DataPersistence persistence = quietPersistence(dir);
+            Path file = dir.resolve("list.nbt");
+            if (!persistence.saveDataCompoundList(file, markerList(3, 4))) return fail("save returned false");
+            if (!persistence.saveDataCompoundList(dir.resolve("other.nbt"), markerList(9, 6))) return fail("save returned false");
+            Files.move(dir.resolve("other"), dir.resolve("list.tmp")); // stale half-written save
+
+            ListTag loaded = persistence.readDataCompoundList(file);
+            if (loaded.size() != 4 || markerOf(loaded) != 3)
+                return fail("Expected live data (4 x marker 3), got " + loaded.size() + " / marker " + markerOf(loaded));
+            var map = persistence.readDataCompoundListMap(dir);
+            if (map.size() != 1 || markerOf(map.get("list")) != 3)
+                return fail("Map load should only see 'list' with live data, got " + map.keySet());
+
+            if (!persistence.saveDataCompoundList(file, markerList(4, 1))) return fail("next save returned false");
+            return assertFalse("Next save removes the stale temp folder", Files.exists(dir.resolve("list.tmp")));
+        } catch (IOException e) {
+            return fail("I/O error: " + e.getMessage());
+        } finally {
+            deleteTree(dir);
         }
     }
 

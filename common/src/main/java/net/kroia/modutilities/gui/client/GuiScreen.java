@@ -84,7 +84,7 @@ public abstract class GuiScreen extends Screen {
         gui.setGraphicsBackend(clientGraphics);
         gui.setInputProvider(new ClientInputProvider(InputCompat.windowHandle()));
         gui.setFont(Minecraft.getInstance().font);
-        gui.setDisplayScaleFactor(Minecraft.getInstance().getWindow().getGuiScale());
+        ClientGuiSettings.applyTo(gui);
         gui.setSoundPlayer((sound, volume, pitch) -> playLocalSound(sound, volume, pitch));
         clientGraphics.setFont(Minecraft.getInstance().font);
 
@@ -241,7 +241,7 @@ public abstract class GuiScreen extends Screen {
     public final void init() {
         super.init();
         // Re-inject display scale (may have changed on resize)
-        gui.setDisplayScaleFactor(Minecraft.getInstance().getWindow().getGuiScale());
+        ClientGuiSettings.applyTo(gui);
         gui.init();
         updateLayout(gui);
         applyJeiOverlayHide();
@@ -453,6 +453,7 @@ public abstract class GuiScreen extends Screen {
     //public void render(GuiGraphicsExtractor pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) { // mc>=26.1
         clientGraphics.setGraphics(pGuiGraphics);
         gui.storeMousePos(pMouseX,pMouseY);
+        gui.storeScreenSize(width, height);
         gui.setPartialTick(pPartialTick);
         //if(enableBackground) // mc<=1.21.5
             //this.renderBackground(pGuiGraphics, pMouseX, pMouseY, pPartialTick); // mc<=1.21.5
@@ -464,6 +465,7 @@ public abstract class GuiScreen extends Screen {
             gui.renderTooltip();
         if(enableGizmos)
             gui.renderGizmos();
+        ClientGuiSettings.renderFeedback(clientGraphics, width);
     }
 
     // mc>=26.1: Screen renders through extractBackground/extractRenderState; forward to the methods above so
@@ -651,6 +653,11 @@ public abstract class GuiScreen extends Screen {
             }
         }
 
+        // Library GUI scale shortcuts (Ctrl + '+' / '-' / '0'); never while a text box has focus
+        if(gui.getFocusedElement() == null && ClientGuiSettings.handleScaleKey(keyCode)) {
+            rebuildWidgets(); // same path as a window resize: init() re-applies the scale and re-lays out
+            return true;
+        }
         boolean ret = gui.keyPressed(keyCode, scanCode, modifiers);
         if(ret)
             return true;

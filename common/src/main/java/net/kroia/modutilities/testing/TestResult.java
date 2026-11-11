@@ -7,7 +7,9 @@ public class TestResult {
     public enum Status {
         PASS,
         FAIL,
-        ERROR
+        ERROR,
+        /** Precondition not met (e.g. optional mod absent): neither pass nor fail. Message = reason. */
+        SKIP
     }
 
     private final String testName;
@@ -38,6 +40,10 @@ public class TestResult {
 
     public static TestResult error(String testName, String message) {
         return new TestResult(testName, Status.ERROR, message, null, null);
+    }
+
+    public static TestResult skip(String testName, String reason) {
+        return new TestResult(testName, Status.SKIP, reason, null, null);
     }
 
     public String getTestName() {

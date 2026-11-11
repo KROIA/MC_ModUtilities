@@ -49,6 +49,14 @@ public abstract class GenericRequest<IN, OUT>
      */
     public boolean needsRoutingToMaster() { return false; }
 
+    /**
+     * @return how long the requester waits for a response before the future fails with a
+     *         {@link RequestOutcomeUnknownException}. Default {@link RequestManager#DEFAULT_TIMEOUT_MS} (30 s).
+     * @apiNote Override for requests that legitimately take longer. Only used while
+     *          {@link RequestManager#ENABLE_REQUEST_FAILURES} is on.
+     */
+    public long getTimeoutMs() { return RequestManager.DEFAULT_TIMEOUT_MS; }
+
 
     /**
      * Handles the request on the client side.
@@ -167,7 +175,11 @@ public abstract class GenericRequest<IN, OUT>
      *
      * @param input           The input to send to the server.
      *
-     * @return                CompletableFuture object containing the response data
+     * @return                CompletableFuture object containing the response data;
+     *                        {@code null} if no buffer could be created (not in a world, nothing sent).
+     *                        Fails with {@link RequestOutcomeUnknownException} on timeout
+     *                        (only while {@link RequestManager#ENABLE_REQUEST_FAILURES} is on).
+     *                        Never fails with {@link RequestNotSentException} (client sends are not checked).
      *
      * @apiNote
      * This methode can be called manually on the clientside only (when the client is the requestor).
@@ -192,7 +204,18 @@ public abstract class GenericRequest<IN, OUT>
      * Intended for use on a slave server in a multi-server topology.
      *
      * @param input The input to send to the master server.
-     * @return A future that completes with the response data produced by the master.
+     * @return A future that completes with the response data produced by the master. Other outcomes:
+     *         <ul>
+     *             <li>completes with {@code null}: no server buffer could be created (server not running); nothing was sent.</li>
+     *             <li>fails with {@link RequestOutcomeUnknownException} (a {@link java.util.concurrent.TimeoutException}):
+     *                 the request was sent, then timed out ({@link #getTimeoutMs()}) or the connection was lost.
+     *                 The master may have applied it: do not refund or retry blindly, ask for the status.</li>
+     *             <li>fails with {@link RequestNotSentException}: the request was never sent (not connected);
+     *                 refunding is safe. Treat any other exception like an unknown outcome.</li>
+     *         </ul>
+     *         The two failure cases only happen while {@link RequestManager#ENABLE_REQUEST_FAILURES} is on;
+     *         otherwise such a future never completes. Futures complete on the server thread.
+     *         {@code CompletableFuture} callbacks may wrap the cause in a {@link java.util.concurrent.CompletionException}.
      * @throws IllegalStateException If the {@link RequestManager} has not been set
      *                               (i.e. the ARRS has not been initialized via
      *                               {@link AsynchronousRequestResponseSystem#setup} or
@@ -219,7 +242,10 @@ public abstract class GenericRequest<IN, OUT>
      *
      * @param slaveID The identifier of the target slave server.
      * @param input   The input to send to the slave server.
-     * @return A future that completes with the response data produced by the slave.
+     * @return A future that completes with the response data produced by the slave. Other outcomes are the
+     *         same as for {@link #sendRequestToMaster(Object)}: {@code null} = not sent (no buffer);
+     *         {@link RequestOutcomeUnknownException} = sent, then timeout or slave disconnect (slave may have
+     *         applied it); {@link RequestNotSentException} = never sent (slave not connected), refunding is safe.
      * @throws IllegalStateException If the {@link RequestManager} has not been set
      *                               (i.e. the ARRS has not been initialized via
      *                               {@link AsynchronousRequestResponseSystem#setup} or

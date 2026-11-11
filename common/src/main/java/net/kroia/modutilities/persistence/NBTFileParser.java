@@ -178,12 +178,11 @@ public class NBTFileParser {
         }
 
 
-        File file = new File(absolutePath.toUri());
         try {
             if (nbtFormat == NbtFormat.COMPRESSED)
-                NbtIo.writeCompressed(data, file.toPath());
+                DataPersistence.writeAtomically(absolutePath, tmp -> NbtIo.writeCompressed(data, tmp));
             else
-                NbtIo.write(data, file.toPath());
+                DataPersistence.writeAtomically(absolutePath, tmp -> NbtIo.write(data, tmp));
         } catch(Exception e)
         {
             error("Failed to save data to file: " + absolutePath, e);
