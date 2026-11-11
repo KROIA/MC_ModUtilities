@@ -378,7 +378,8 @@ public class MultiServerManager
 
     /**
      * Indicates whether the master TCP server is currently listening, or the slave
-     * has an active connection to its master.
+     * has an active connection to its master. Link state only: to decide whether traffic
+     * must go to the master, check the role ({@link #isSlave()}).
      *
      * @return {@code true} if the link is currently active.
      */
@@ -395,6 +396,37 @@ public class MultiServerManager
             assert instance.slaveClient != null;
             return instance.slaveClient.isConnected();
         }
+    }
+
+    /**
+     * <b>Test only.</b> Simulates "master down" on this slave: {@code true} closes the link and makes every
+     * reconnect attempt fail without dialling (the real connection-lost, disconnect-sweep and reconnect paths
+     * run); {@code false} lets the next scheduled attempt (within about 5 s) reconnect for real.
+     * Always reset it to {@code false} when the test ends.
+     * <p>
+     * No-op unless dev features are enabled ({@link ModUtilitiesMod#ENABLE_DEV_FEATURES}, which AutoTest
+     * requires) and this server is a slave.
+     *
+     * @param down {@code true} to take the master link down, {@code false} to let it reconnect
+     */
+    public static void setSimulatedMasterDown(boolean down)
+    {
+        MultiServerManager m = instance;
+        if(!ModUtilitiesMod.ENABLE_DEV_FEATURES || m == null || m.slaveClient == null)
+            return;
+        info("Simulated master " + (down ? "down" : "up"));
+        m.slaveClient.setSimulatedDown(down);
+    }
+
+    /**
+     * <b>Test only.</b>
+     *
+     * @return {@code true} while {@link #setSimulatedMasterDown} simulates "master down" on this slave
+     */
+    public static boolean isSimulatedMasterDown()
+    {
+        MultiServerManager m = instance;
+        return m != null && m.slaveClient != null && m.slaveClient.isSimulatedDown();
     }
 
     /**
@@ -604,17 +636,22 @@ public class MultiServerManager
         }
         if(!instance.slaveClient.isConnected())
         {
-            Throwable failReason = instance.slaveClient.getConnectionFailReason();
-            if(failReason != null)
+            // Expected while the master is down: every master-bound send lands here, so log at most every 30 s.
+            long now = System.currentTimeMillis();
+            if(now - lastNotConnectedLogMs >= NOT_CONNECTED_LOG_INTERVAL_MS)
             {
-                error("sendToMaster(packet): Failed to establish a connection to the Master during initialization. Reason: " + failReason);
+                lastNotConnectedLogMs = now;
+                Throwable failReason = instance.slaveClient.getConnectionFailReason();
+                error("sendToMaster(packet): Not connected to the master (not started yet, or link down and reconnecting); "
+                        + "master-bound packets are dropped until it is back. Logged at most every 30 s."
+                        + (failReason != null ? " Last connect failure: " + failReason : ""));
             }
-            else
-                error("sendToMaster(packet): The connection to the Master has not yet been established. Have you forgotten to call MultiServerManager.start()?");
             return false;
         }
         return true;
     }
+    private static final long NOT_CONNECTED_LOG_INTERVAL_MS = 30_000L;
+    private static volatile long lastNotConnectedLogMs = Long.MIN_VALUE / 2;
     private static boolean checkSendToSlave(String serverId)
     {
         if(instance == null)

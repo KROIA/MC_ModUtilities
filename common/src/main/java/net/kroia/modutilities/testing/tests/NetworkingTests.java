@@ -8,7 +8,11 @@ import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.handler.codec.DecoderException;
 import net.kroia.modutilities.networking.ExtraCodecUtils;
 import net.kroia.modutilities.networking.NetworkPacketManager;
+import net.kroia.modutilities.networking.client_server.arrs.AsynchronousRequestResponseSystem;
 import net.kroia.modutilities.networking.client_server.arrs.GenericRequest;
+import net.kroia.modutilities.networking.client_server.streaming.StreamStartPacket;
+import net.kroia.modutilities.networking.client_server.streaming.StreamSystem;
+import net.kroia.modutilities.networking.multi_server.MultiServerManager;
 import net.kroia.modutilities.networking.client_server.NetworkPacket;
 import net.kroia.modutilities.networking.client_server.arrs.GenericRequestPacket;
 import net.kroia.modutilities.networking.client_server.arrs.GenericResponsePacket;
@@ -135,6 +139,10 @@ public class NetworkingTests extends TestSuite {
         addTest("request_forward_link_lost_replies_client", this::testForwardLinkLostRepliesClient);
         addTest("request_forward_relayed_reply_untracks", this::testForwardRelayedReplyUntracks);
         addTest("request_forward_failures_off", this::testForwardFailuresOff);
+
+        // Slave with its master link down (simulated): routed traffic never runs locally
+        addTest("slave_master_down_request_fails_fast", this::testSlaveMasterDownRequestFailsFast);
+        addTest("slave_master_down_stream_refused", this::testSlaveMasterDownStreamRefused);
     }
 
     // ========================================================================
@@ -1138,6 +1146,116 @@ public class NetworkingTests extends TestSuite {
             m.forwardRequestToMaster(createDummyRequest("m2_off"), new GenericRequestPacket("m2_off", buf), UUID.randomUUID());
             return assertEquals("switch off: forwarded requests are not tracked", 0, m.failRequestsOnConnectionLost(null, Long.MAX_VALUE));
         });
+    }
+
+    // ------------------------------------------------------------------------
+    // Slave with its master link down (MultiServerManager.setSimulatedMasterDown)
+    // ------------------------------------------------------------------------
+
+    /**
+     * Runs {@code body} on a slave whose master link is taken down (simulated), then brings it back up and
+     * waits for the reconnect. The switch is always reset; a failed reconnect fails the test.
+     */
+    private TestResult withMasterDown(java.util.function.Supplier<TestResult> body) {
+        if (!MultiServerManager.isSlave()) return skip("not a slave");
+        if (!MultiServerManager.isRunning()) return skip("master link not up");
+        TestResult result;
+        try {
+            MultiServerManager.setSimulatedMasterDown(true);
+            if (!MultiServerManager.isSimulatedMasterDown())
+                result = skip("simulated master down unavailable (dev features off)");
+            else if (!pumpUntil(() -> !MultiServerManager.isRunning(), 5_000))
+                result = fail("link must go down after setSimulatedMasterDown(true)");
+            else
+                result = body.get();
+        } finally {
+            MultiServerManager.setSimulatedMasterDown(false);
+        }
+        if (!pumpUntil(MultiServerManager::isRunning, 15_000))
+            return fail("link must reconnect after setSimulatedMasterDown(false)");
+        return result;
+    }
+
+    /** Client request through the real packet path: the slave must refuse it at once, never run it locally. */
+    private TestResult testSlaveMasterDownRequestFailsFast() {
+        // The client send loads net.minecraft.client.Minecraft, which a dedicated server cannot load.
+        if (dev.architectury.platform.Platform.getEnvironment() != dev.architectury.utils.Env.CLIENT)
+            return skip("dedicated server (no client classes)");
+        if (getServer() == null || getServer().isDedicatedServer() || getServer().getPlayerCount() == 0)
+            return skip("needs an integrated server with the client joined");
+        java.util.concurrent.atomic.AtomicBoolean ranLocally = new java.util.concurrent.atomic.AtomicBoolean();
+        GenericRequest<String, String> req = new GenericRequest<>() {
+            @Override public String getRequestTypeID() { return "modutilities_test_master_down_request"; }
+            @Override public boolean needsRoutingToMaster() { return true; }
+            @Override public CompletableFuture<String> handleOnServer(String input, net.minecraft.server.level.ServerPlayer sender) {
+                ranLocally.set(true);
+                return CompletableFuture.completedFuture("local");
+            }
+            @Override public void encodeInput(RegistryFriendlyByteBuf buf, String input) { buf.writeUtf(input); }
+            @Override public void encodeOutput(RegistryFriendlyByteBuf buf, String output) { buf.writeUtf(output); }
+            @Override public String decodeInput(RegistryFriendlyByteBuf buf) { return buf.readUtf(); }
+            @Override public String decodeOutput(RegistryFriendlyByteBuf buf) { return buf.readUtf(); }
+        };
+        boolean oldFailures = RequestManager.ENABLE_REQUEST_FAILURES;
+        if (AsynchronousRequestResponseSystem.register(req) == null)
+            return fail("test request type already registered");
+        try {
+            if (req.getManager() == null) return skip("ARRS not set up");
+            RequestManager.ENABLE_REQUEST_FAILURES = true;
+            return withMasterDown(() -> {
+                CompletableFuture<String> f;
+                try {
+                    f = AsynchronousRequestResponseSystem.sendRequestToServer(req, "x");
+                } catch (RuntimeException e) {
+                    return skip("client cannot send (" + e + ")");
+                }
+                if (f.isDone() && !f.isCompletedExceptionally()) return skip("no client buffer (no client world)");
+                if (!pumpUntil(f::isDone, 5_000))
+                    return fail("client request must fail at once while the master is down, still pending after 5 s");
+                if (ranLocally.get()) return fail("master-routed request handler ran locally on the slave");
+                Throwable cause = causeOf(f);
+                return assertTrue("client must fail with RequestNotSentException, got " + cause, cause instanceof RequestNotSentException);
+            });
+        } finally {
+            RequestManager.ENABLE_REQUEST_FAILURES = oldFailures;
+            AsynchronousRequestResponseSystem.unregister(req);
+        }
+    }
+
+    /** A master-routed stream start on a slave whose master is down must not start a local stream. */
+    private TestResult testSlaveMasterDownStreamRefused() {
+        if (net.kroia.modutilities.UtilitiesPlatform.createRegistryFriendlyByteBufServerSide() == null)
+            return skip("no server buffer (server not running)");
+        java.util.concurrent.atomic.AtomicBoolean startedLocally = new java.util.concurrent.atomic.AtomicBoolean();
+        String type = "modutilities_test_master_down_stream";
+        class RoutedStream extends GenericStream<String, String> {
+            @Override public GenericStream<String, String> copy() { return new RoutedStream(); }
+            @Override public String getStreamTypeID() { return type; }
+            @Override public boolean needsRoutingToMaster() { return true; }
+            @Override public void onStartStreamSendingOnSever() { startedLocally.set(true); }
+            @Override public void encodeContextData(RegistryFriendlyByteBuf buffer, String context) {}
+            @Override public String decodeContextData(RegistryFriendlyByteBuf buffer) { return ""; }
+            @Override public void encodeData(RegistryFriendlyByteBuf buffer, String data) {}
+            @Override public String decodeData(RegistryFriendlyByteBuf buffer) { return ""; }
+        }
+        RoutedStream stream = new RoutedStream();
+        if (StreamSystem.register(stream) == null)
+            return fail("test stream type already registered");
+        try {
+            if (stream.getManager() == null) return skip("stream system not set up");
+            return withMasterDown(() -> {
+                RegistryFriendlyByteBuf buf = net.kroia.modutilities.UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
+                StreamStartPacket packet = new StreamStartPacket(type, buf);
+                try {
+                    StreamSystem.handlePacket(packet, null, UUID.randomUUID());
+                } finally {
+                    if (buf.refCnt() > 0) buf.release();
+                }
+                return assertFalse("master-routed stream must not start locally on a slave whose master is down", startedLocally.get());
+            });
+        } finally {
+            StreamSystem.unregister(stream);
+        }
     }
 
     // ========================================================================

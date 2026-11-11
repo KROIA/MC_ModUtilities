@@ -37,16 +37,10 @@ public abstract class NetworkPacket implements CustomPacketPayload {
 
         @Override
         public void handleServer(NetworkPacket packet, NetworkManager.PacketContext context) {
-            if(MultiServerManager.isRunning() && MultiServerManager.isSlave())
-            {
-                if(packet.needsRoutingToMaster())
-                {
-                    //ModUtilitiesMod.LOGGER.info("[NetworkPacket] Redirecting packet: "+packet.type()+" to master");
-                    packet.routeToMaster(context);
-                }
-                else
-                    packet.handleOnServer(context);
-            }
+            // Route by role, not link state: a slave never handles master-routed packets itself.
+            // While the link is down the send is refused and the packet dropped (see routeToMaster).
+            if(MultiServerManager.isSlave() && packet.needsRoutingToMaster())
+                packet.routeToMaster(context);
             else
                 packet.handleOnServer(context);
         }
@@ -119,7 +113,8 @@ public abstract class NetworkPacket implements CustomPacketPayload {
 
     /**
      * Forwards this packet from a slave server to the master (only called when {@link #needsRoutingToMaster()}
-     * is {@code true}). Override to react to a refused send, e.g. to answer the client.
+     * is {@code true}). Called on every slave, also while its master link is down: the default send is then
+     * refused and the packet dropped (rate-limited log). Override to react to a refused send, e.g. to answer the client.
      *
      * @param context the Architectury packet context of the sending player.
      */

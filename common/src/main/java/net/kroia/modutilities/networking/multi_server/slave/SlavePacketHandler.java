@@ -140,7 +140,8 @@ public class SlavePacketHandler extends SimpleChannelInboundHandler<Payload> {
      * Called by Netty when the underlying channel becomes inactive.
      * <p>
      * If the owning {@link SlaveServerClient} is not shutting down, schedules a
-     * reconnect attempt; otherwise the inactivity is treated as part of an
+     * reconnect attempt and reports an established link's loss once via
+     * {@code onConnectionLost}; otherwise the inactivity is treated as part of an
      * orderly disconnect and ignored.
      *
      * @param ctx The Netty channel context whose channel just went inactive.
@@ -151,8 +152,7 @@ public class SlavePacketHandler extends SimpleChannelInboundHandler<Payload> {
         net.kroia.modutilities.networking.client_server.arrs.AsynchronousRequestResponseSystem.onConnectionLost(mcServer, null);
         if(connector.isShuttingDown())
             return;
-        warn("Lost connection to master - scheduling reconnect...");
-        connector.scheduleReconnect();
+        connector.onChannelInactive();
     }
 
     /**

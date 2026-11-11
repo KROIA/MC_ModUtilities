@@ -244,7 +244,8 @@ public class StreamSystem {
      * Handles a StreamStartPacket on the server side. If the stream type is not registered
      * (mod version mismatch), a warning is logged and the packet is ignored. If the stream
      * needs routing to the master server and this node is a slave, the start request is
-     * forwarded to the master via the MultiServerManager; otherwise a new server-sender
+     * forwarded to the master via the MultiServerManager (if the master link is down, the stream is
+     * refused and the client receives a stop packet); otherwise a new server-sender
      * stream is started locally.
      *
      * @param packet           The StreamStartPacket to handle.
@@ -262,7 +263,8 @@ public class StreamSystem {
             ModUtilitiesMod.LOGGER.warn("[StreamSystem] Received StreamStartPacket for unregistered stream type '" + StreamType + "' (mod version mismatch?), ignoring");
             return;
         }
-        if(MultiServerManager.isRunning() && MultiServerManager.isSlave() && stream.needsRoutingToMaster())
+        // Route by role, not link state: a slave never runs a master-routed stream itself.
+        if(MultiServerManager.isSlave() && stream.needsRoutingToMaster())
         {
             // Save the buffer position before the redirected holder consumes the context
             // data, then restore it so the forwarded packet retains the full context for
@@ -272,7 +274,11 @@ public class StreamSystem {
             STREAM_MANAGER.startRedirectedServerSenderStream(stream, streamID, buf, targetPlayerUUID);
             buf.readerIndex(savedReaderIndex);
             ModUtilitiesMod.LOGGER.info("[StreamSystem] Redirecting packet: "+packet.streamTypeID+" to master");
-            MultiServerManager.sendToMaster(targetPlayerUUID,  packet);
+            if(!MultiServerManager.sendToMaster(targetPlayerUUID,  packet))
+            {
+                // Master unreachable: refuse the stream; the client gets the normal stop notification.
+                STREAM_MANAGER.handlePacketOnServer(new StreamStopServerSenderPacket(streamID));
+            }
         }
         else {
             STREAM_MANAGER.startServerSenderStream(stream, streamID, slaveServerID, buf, targetPlayerUUID);

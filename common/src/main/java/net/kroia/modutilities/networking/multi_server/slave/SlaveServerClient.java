@@ -24,6 +24,7 @@ import net.minecraft.server.MinecraftServer;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.UUID;
@@ -75,8 +76,12 @@ public class SlaveServerClient {
     private final MinecraftServer  mcServer;
 
     private final NioEventLoopGroup group;
-    private Channel channel;
+    private volatile Channel channel;
     private volatile boolean shuttingDown = false;
+    /** Test-only: while set, the master is treated as unreachable (see {@link #setSimulatedDown}). */
+    private volatile boolean simulatedDown = false;
+    /** True between an accepted handshake and the loss of that channel; reports each drop once. */
+    private volatile boolean linkEstablished = false;
 
     private @Nullable Throwable connectionFailReason = null;
 
@@ -140,6 +145,10 @@ public class SlaveServerClient {
     {
         if (shuttingDown)
             return;
+        if (simulatedDown) {
+            connectFailed(new ConnectException("simulated master down"));
+            return;
+        }
         info("Connecting to " + masterHost + ":" + masterPort);
 
         SlaveServerClient client = this;
@@ -166,7 +175,9 @@ public class SlaveServerClient {
                 });
 
         bootstrap.connect(masterHost, masterPort).addListener((ChannelFuture future) -> {
-            if (future.isSuccess()) {
+            if (future.isSuccess() && simulatedDown) {
+                future.channel().close(); // went down while dialling; channelInactive schedules the retry
+            } else if (future.isSuccess()) {
                 channel = future.channel();
                 connectionFailReason = null;
 
@@ -190,12 +201,52 @@ public class SlaveServerClient {
                 sendToMaster(new HandshakePayload(serverId, sharedSecret, HandshakePayload.localMcVersion(),
                         identity != null ? identity.serverUid() : null));
             } else {
-                connectionFailReason =  future.cause();
-                warn("Could not connect to master — retrying in 5s... Reason: "+connectionFailReason);
-                scheduleReconnect();
-                onConnectionLost.accept(connectionFailReason);
+                connectFailed(future.cause());
             }
         });
+    }
+
+    private void connectFailed(Throwable cause) {
+        connectionFailReason = cause;
+        warn("Could not connect to master — retrying in 5s... Reason: "+cause);
+        scheduleReconnect();
+        onConnectionLost.accept(cause);
+    }
+
+    /**
+     * Called by {@link SlavePacketHandler} when the channel to the master went inactive while not
+     * shutting down: schedules a reconnect and, if the master had accepted this link, reports the
+     * loss once via {@code onConnectionLost} (Netty thread).
+     */
+    void onChannelInactive() {
+        warn("Lost connection to master - scheduling reconnect...");
+        scheduleReconnect();
+        if (!linkEstablished)
+            return; // never accepted (e.g. rejected handshake): onConnectionFailed already reported it
+        linkEstablished = false;
+        try {
+            onConnectionLost.accept(new IOException("Connection to master lost"));
+        } catch (Exception e) {
+            error("Failed to call callback: onConnectionLost. Reason: "+e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Test only: simulates an unreachable master. {@code true} closes the live channel (the regular
+     * channelInactive, disconnect sweep and reconnect path runs) and makes every reconnect attempt fail
+     * with a {@link ConnectException} without dialling; {@code false} lets the next scheduled attempt
+     * reconnect for real. Use {@code MultiServerManager.setSimulatedMasterDown}.
+     */
+    public void setSimulatedDown(boolean down) {
+        simulatedDown = down;
+        Channel ch = channel;
+        if (down && ch != null)
+            ch.close();
+    }
+
+    /** @return whether {@link #setSimulatedDown} currently simulates an unreachable master */
+    public boolean isSimulatedDown() {
+        return simulatedDown;
     }
 
     /**
@@ -311,7 +362,8 @@ public class SlaveServerClient {
         if (channel != null && channel.isActive()) {
             channel.writeAndFlush(payload).addListener(f -> {
                 if (!f.isSuccess()) {
-                    error("Failed to send "+payload.getClass().getSimpleName()+" to master", f.cause());
+                    // Usually a write racing the channel close; the disconnect path handles the rest.
+                    warn("Failed to send "+payload.getClass().getSimpleName()+" to master: "+f.cause());
                 }
             });
         } else {
@@ -366,6 +418,7 @@ public class SlaveServerClient {
         {
             case ConnectionEstablishState.SUCCESS ->  {
                 info("Master accepts connection");
+                linkEstablished = true;
                 try {
                     onConnectionAccepted.run();
                 }catch (Exception e) {
