@@ -43,6 +43,9 @@ public final class InputConstants {
     public static final int KEY_F6            = com.mojang.blaze3d.platform.InputConstants.KEY_F6;
 
     public static final int KEY_KP_ENTER      = com.mojang.blaze3d.platform.InputConstants.KEY_NUMPADENTER;
+    // Numpad '-': Minecraft's InputConstants has no name for it.
+    public static final int KEY_KP_SUBTRACT   = org.lwjgl.glfw.GLFW.GLFW_KEY_KP_SUBTRACT; // mc<=26.2
+    //public static final int KEY_KP_SUBTRACT   = org.lwjgl.sdl.SDLScancode.SDL_SCANCODE_KP_MINUS; // mc>=26.3
 
     public static final int KEY_LEFT_SHIFT    = com.mojang.blaze3d.platform.InputConstants.KEY_LSHIFT;
     public static final int KEY_LEFT_CONTROL  = com.mojang.blaze3d.platform.InputConstants.KEY_LCONTROL;
