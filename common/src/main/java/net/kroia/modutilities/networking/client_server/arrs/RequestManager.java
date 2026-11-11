@@ -53,6 +53,7 @@ public class RequestManager {
     private final Map<UUID, ServerRequestHolder<?,?>> pendingServerRequests = new java.util.concurrent.ConcurrentHashMap<>();
     private final Map<UUID, ServerRequestHolder<?,?>> pendingServerServerRequests = new java.util.concurrent.ConcurrentHashMap<>();
     private final Map<UUID, ClientRequestHolder<?,?>> pendingClientRequests = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<UUID, ForwardedRequest> forwardedClientRequests = new java.util.concurrent.ConcurrentHashMap<>();
 
 
     /**
@@ -137,9 +138,55 @@ public class RequestManager {
         UUID requestId = requestPacket.getRequestID();
 
         pendingServerServerRequests.put(requestId, requestData);
-        if(!sendToMaster(requestPacket))
+        if(!sendToMaster(null, requestPacket))
             failNotSent(requestId, requestData);
         return requestData.responseFuture;
+    }
+
+    /**
+     * Slave only: forwards a client's request to the master. While {@link #ENABLE_REQUEST_FAILURES} is on,
+     * a refused send is answered to the client at once ({@link RequestNotSentException} there), and a sent
+     * request is tracked until the master's response is relayed, so a lost master link fails it on the
+     * client right away ({@link RequestOutcomeUnknownException}, see {@link #failRequestsOnConnectionLost}).
+     * Call on the server thread.
+     *
+     * @param request    the registered request type of {@code packet}
+     * @param packet     the client's request packet
+     * @param playerUUID the client that sent it
+     */
+    public void forwardRequestToMaster(GenericRequest<?, ?> request, GenericRequestPacket packet, UUID playerUUID) {
+        boolean sent;
+        try {
+            sent = sendToMaster(playerUUID, packet);
+        } catch (RuntimeException e) {
+            error("forwardRequestToMaster: " + e.getMessage(), e);
+            sent = false;
+        }
+        if(!ENABLE_REQUEST_FAILURES)
+            return; // old behaviour: the client waits
+        if(sent)
+            forwardedClientRequests.put(packet.getRequestID(),
+                    new ForwardedRequest(playerUUID, packet.getRequestTypeID(), request.getTimeoutMs(), System.currentTimeMillis()));
+        else
+            sendFailureToClient(playerUUID, packet.getRequestID(), packet.getRequestTypeID(), GenericResponsePacket.STATUS_NOT_SENT);
+    }
+
+    /** A client request this slave forwarded to the master, awaiting the master's response. */
+    private record ForwardedRequest(UUID playerUUID, String requestTypeID, long timeoutMs, long creationTimeMs) {}
+
+    private void sendFailureToClient(UUID playerUUID, UUID requestID, String requestTypeID, byte status) {
+        RegistryFriendlyByteBuf empty = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
+        if(empty == null)
+            return; // server gone, so is the client
+        sendToClient(playerUUID, new GenericResponsePacket(requestID, requestTypeID, empty, status));
+    }
+
+    /** Sends a response to a player on this server, if online; protected so tests can capture it. */
+    protected void sendToClient(UUID playerUUID, GenericResponsePacket packet) {
+        MinecraftServer server = UtilitiesPlatform.getServer();
+        ServerPlayer player = server == null ? null : server.getPlayerList().getPlayer(playerUUID);
+        if(player != null)
+            networkManager.sendToClient(player, packet);
     }
     /**
      * Sends a request from the master server to a specific slave server and tracks the pending response.
@@ -177,8 +224,8 @@ public class RequestManager {
     }
 
     /** Sends to the master; protected so tests can simulate the link. @return false if the send was refused */
-    protected boolean sendToMaster(GenericRequestPacket packet) {
-        return MultiServerManager.sendToMaster(packet);
+    protected boolean sendToMaster(@Nullable UUID senderPlayerUUID, GenericRequestPacket packet) {
+        return MultiServerManager.sendToMaster(senderPlayerUUID, packet);
     }
 
     /** Sends to a slave; protected so tests can simulate the link. @return false if the send was refused */
@@ -280,19 +327,35 @@ public class RequestManager {
             return failPending(pendingServerRequests, h -> now - h.creationTimeMs > h.request.getTimeoutMs(), "timed out");
         // Server-to-client requests are unused and have no future: just drop old ones.
         pendingClientRequests.values().removeIf(h -> now - h.creationTimeMs > DEFAULT_TIMEOUT_MS);
+        // Forwarded client requests: the client times out on its own, just stop tracking.
+        forwardedClientRequests.values().removeIf(f -> now - f.creationTimeMs() > f.timeoutMs());
         return failPending(pendingServerServerRequests, h -> now - h.creationTimeMs > h.request.getTimeoutMs(), "timed out");
     }
 
     /**
      * Disconnect sweep: fails the master/slave requests sent over a lost connection with a
-     * {@link RequestOutcomeUnknownException}. Call on the server thread.
+     * {@link RequestOutcomeUnknownException}. On a slave, client requests forwarded to the master are
+     * answered to their clients with {@link GenericResponsePacket#STATUS_OUTCOME_UNKNOWN} as well.
+     * Call on the server thread.
      *
      * @param slaveID      on the master: the slave that disconnected; on a slave: {@code null} (master lost)
      * @param disconnectMs when the connection was lost; requests created later are kept
-     * @return number of failed requests
+     * @return number of failed requests (including forwarded client requests)
      */
     public int failRequestsOnConnectionLost(@Nullable String slaveID, long disconnectMs) {
-        return failPending(pendingServerServerRequests,
+        int failed = 0;
+        if(slaveID == null) {
+            for (var it = forwardedClientRequests.entrySet().iterator(); it.hasNext(); ) {
+                var entry = it.next();
+                ForwardedRequest f = entry.getValue();
+                if (f.creationTimeMs() > disconnectMs)
+                    continue;
+                it.remove();
+                sendFailureToClient(f.playerUUID(), entry.getKey(), f.requestTypeID(), GenericResponsePacket.STATUS_OUTCOME_UNKNOWN);
+                failed++;
+            }
+        }
+        return failed + failPending(pendingServerServerRequests,
                 h -> h.creationTimeMs <= disconnectMs && Objects.equals(slaveID, h.targetSlaveID), "connection lost");
     }
 
@@ -326,7 +389,13 @@ public class RequestManager {
         if(requestData == null)
             return;
 
-        requestData.processResponse(responsePacket.getData());
+        switch (responsePacket.getStatus()) {
+            case GenericResponsePacket.STATUS_NOT_SENT -> requestData.responseFuture.completeExceptionally(new RequestNotSentException(
+                    "ARRS request not forwarded to the master: " + requestData.request.getRequestTypeID()));
+            case GenericResponsePacket.STATUS_OUTCOME_UNKNOWN -> requestData.responseFuture.completeExceptionally(new RequestOutcomeUnknownException(
+                    "ARRS request connection lost, outcome unknown: " + requestData.request.getRequestTypeID() + " " + requestId));
+            default -> requestData.processResponse(responsePacket.getData());
+        }
     }
 
 
@@ -383,6 +452,7 @@ public class RequestManager {
         ServerRequestHolder<?, ?> requestData = pendingServerServerRequests.remove(requestId);
         if(requestData == null)
         {
+            forwardedClientRequests.remove(requestId);
             // Forward the response to the client
             var request = AsynchronousRequestResponseSystem.getRegisteredRequest(responsePacket.getRequestTypeID());
             if (request == null) {

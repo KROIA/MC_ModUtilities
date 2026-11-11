@@ -9,7 +9,10 @@ import io.netty.handler.codec.DecoderException;
 import net.kroia.modutilities.networking.ExtraCodecUtils;
 import net.kroia.modutilities.networking.NetworkPacketManager;
 import net.kroia.modutilities.networking.client_server.arrs.GenericRequest;
+import net.kroia.modutilities.networking.client_server.NetworkPacket;
 import net.kroia.modutilities.networking.client_server.arrs.GenericRequestPacket;
+import net.kroia.modutilities.networking.client_server.arrs.GenericResponsePacket;
+import net.kroia.modutilities.networking.multi_server.ForwardPacketContext;
 import net.kroia.modutilities.networking.client_server.arrs.RequestManager;
 import net.kroia.modutilities.networking.client_server.arrs.RequestNotSentException;
 import net.kroia.modutilities.networking.client_server.arrs.RequestOutcomeUnknownException;
@@ -128,6 +131,10 @@ public class NetworkingTests extends TestSuite {
         addTest("request_not_sent_plain_failure", this::testRequestNotSentPlainFailure);
         addTest("request_failures_off_by_default", this::testRequestFailuresOffByDefault);
         addTest("request_disconnect_sweep", this::testRequestDisconnectSweep);
+        addTest("request_forward_not_sent_replies_client", this::testForwardNotSentRepliesClient);
+        addTest("request_forward_link_lost_replies_client", this::testForwardLinkLostRepliesClient);
+        addTest("request_forward_relayed_reply_untracks", this::testForwardRelayedReplyUntracks);
+        addTest("request_forward_failures_off", this::testForwardFailuresOff);
     }
 
     // ========================================================================
@@ -944,7 +951,7 @@ public class NetworkingTests extends TestSuite {
                 @Override public void setupServerServerPackets() {}
             };
             return body.apply(new RequestManager(npm) {
-                @Override protected boolean sendToMaster(GenericRequestPacket packet) { return sendResult; }
+                @Override protected boolean sendToMaster(UUID senderPlayerUUID, GenericRequestPacket packet) { return sendResult; }
                 @Override protected boolean sendToSlave(String slaveID, GenericRequestPacket packet) { return sendResult; }
             });
         } finally {
@@ -1033,6 +1040,100 @@ public class NetworkingTests extends TestSuite {
             if (!(causeOf(toMaster) instanceof RequestOutcomeUnknownException))
                 return fail("master disconnect must fail requests to the master");
             return assertFalse("master disconnect must not touch master-to-slave requests", toB.isDone());
+        });
+    }
+
+    // ------------------------------------------------------------------------
+    // Client requests forwarded by a slave (client -> slave -> master)
+    // ------------------------------------------------------------------------
+
+    /** A test manager whose server sends are captured into {@code toServer}. */
+    private static NetworkPacketManager capturingNetworkManager(List<NetworkPacket> toServer) {
+        return new NetworkPacketManager("modutilities_test") {
+            @Override public void setupClientReceiverPackets() {}
+            @Override public void setupServerReceiverPackets() {}
+            @Override public void setupServerServerPackets() {}
+            @Override public void sendToServer(NetworkPacket packet) { toServer.add(packet); }
+        };
+    }
+
+    /**
+     * Client sends a request, the slave forwards it (send returns {@code sendResult}), optionally loses the
+     * master link, and its reply to the client must fail the client's future with {@code expected}.
+     */
+    private TestResult forwardScenario(boolean sendResult, boolean loseLink, byte expectedStatus, Class<? extends Throwable> expected) {
+        boolean old = RequestManager.ENABLE_REQUEST_FAILURES;
+        RequestManager.ENABLE_REQUEST_FAILURES = true;
+        try {
+            if (net.kroia.modutilities.UtilitiesPlatform.createRegistryFriendlyByteBufServerSide() == null)
+                return skip("no server buffer (server not running)");
+            List<NetworkPacket> toServer = new ArrayList<>();
+            RequestManager client = new RequestManager(capturingNetworkManager(toServer));
+            GenericRequest<String, String> req = createDummyRequest("m2_forward");
+            CompletableFuture<String> f = client.sendRequestToServer(req, "x");
+            if (toServer.isEmpty()) return skip("no client buffer (no client world)");
+
+            UUID player = UUID.randomUUID();
+            List<UUID> replyTargets = new ArrayList<>();
+            List<GenericResponsePacket> replies = new ArrayList<>();
+            RequestManager slave = new RequestManager(capturingNetworkManager(new ArrayList<>())) {
+                @Override protected boolean sendToMaster(UUID senderPlayerUUID, GenericRequestPacket packet) {
+                    if (!sendResult) throw new IllegalStateException("simulated: not connected");
+                    return true;
+                }
+                @Override protected void sendToClient(UUID playerUUID, GenericResponsePacket packet) {
+                    replyTargets.add(playerUUID);
+                    replies.add(packet);
+                }
+            };
+            slave.forwardRequestToMaster(req, (GenericRequestPacket) toServer.get(0), player);
+            if (loseLink) {
+                if (!replies.isEmpty()) return fail("a sent request must not be answered before the link drops");
+                if (slave.failRequestsOnConnectionLost(null, System.currentTimeMillis()) != 1)
+                    return fail("master link loss must fail the forwarded client request");
+                if (slave.failRequestsOnConnectionLost(null, Long.MAX_VALUE) != 0)
+                    return fail("failed forwarded request must no longer be tracked");
+            }
+            if (replies.size() != 1) return fail("slave must answer the client once, got " + replies.size());
+            if (!player.equals(replyTargets.get(0))) return fail("reply must go to the requesting player");
+            if (replies.get(0).getStatus() != expectedStatus)
+                return fail("expected status " + expectedStatus + ", got " + replies.get(0).getStatus());
+            client.processResponseOnClient(replies.get(0));
+            Throwable cause = causeOf(f);
+            return assertTrue("client must fail with " + expected.getSimpleName() + " at once, got " + cause, expected.isInstance(cause));
+        } finally {
+            RequestManager.ENABLE_REQUEST_FAILURES = old;
+        }
+    }
+
+    private TestResult testForwardNotSentRepliesClient() {
+        return forwardScenario(false, false, GenericResponsePacket.STATUS_NOT_SENT, RequestNotSentException.class);
+    }
+
+    private TestResult testForwardLinkLostRepliesClient() {
+        return forwardScenario(true, true, GenericResponsePacket.STATUS_OUTCOME_UNKNOWN, RequestOutcomeUnknownException.class);
+    }
+
+    private TestResult testForwardRelayedReplyUntracks() {
+        return withFailures(true, true, m -> {
+            RegistryFriendlyByteBuf buf = net.kroia.modutilities.UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
+            if (buf == null) return skip("no server buffer (server not running)");
+            GenericRequestPacket packet = new GenericRequestPacket("m2_relay", buf);
+            UUID player = UUID.randomUUID();
+            m.forwardRequestToMaster(createDummyRequest("m2_relay"), packet, player);
+            // The master's response is relayed (type unregistered here, so it is not sent on).
+            m.processResponseOnSlave(new GenericResponsePacket(packet.getRequestID(), "m2_relay", buf),
+                    new ForwardPacketContext(null, "master", player));
+            return assertEquals("relayed request must no longer be tracked", 0, m.failRequestsOnConnectionLost(null, Long.MAX_VALUE));
+        });
+    }
+
+    private TestResult testForwardFailuresOff() {
+        return withFailures(false, false, m -> {
+            RegistryFriendlyByteBuf buf = net.kroia.modutilities.UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
+            if (buf == null) return skip("no server buffer (server not running)");
+            m.forwardRequestToMaster(createDummyRequest("m2_off"), new GenericRequestPacket("m2_off", buf), UUID.randomUUID());
+            return assertEquals("switch off: forwarded requests are not tracked", 0, m.failRequestsOnConnectionLost(null, Long.MAX_VALUE));
         });
     }
 

@@ -42,7 +42,7 @@ public abstract class NetworkPacket implements CustomPacketPayload {
                 if(packet.needsRoutingToMaster())
                 {
                     //ModUtilitiesMod.LOGGER.info("[NetworkPacket] Redirecting packet: "+packet.type()+" to master");
-                    MultiServerManager.sendToMaster(context.getPlayer().getUUID(),  packet);
+                    packet.routeToMaster(context);
                 }
                 else
                     packet.handleOnServer(context);
@@ -116,6 +116,16 @@ public abstract class NetworkPacket implements CustomPacketPayload {
      *         to handle it on whichever server originally received it.
      */
     protected boolean needsRoutingToMaster() { return false; }
+
+    /**
+     * Forwards this packet from a slave server to the master (only called when {@link #needsRoutingToMaster()}
+     * is {@code true}). Override to react to a refused send, e.g. to answer the client.
+     *
+     * @param context the Architectury packet context of the sending player.
+     */
+    protected void routeToMaster(NetworkManager.PacketContext context) {
+        MultiServerManager.sendToMaster(context.getPlayer().getUUID(), this);
+    }
 
     /**
      * Handles this packet after it has been forwarded to the master server in a multi-server setup.
