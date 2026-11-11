@@ -37,7 +37,8 @@ MODS_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(HERE
 CONFIGS = ('sp', 'mp', 'slave', 'spslave')  # the default --configs
 TRUSTED_SUFFIX = '-trusted'  # <config>-trusted: that config with BankSystem trusting its slave (trustedSlave property)
 SLAVE_IDS = {'slave': 'autotest_slave', 'spslave': 'autotest_sp_slave'}  # slaveID of the slave instance per config
-ALL_CONFIGS = CONFIGS + tuple(c + TRUSTED_SUFFIX for c in SLAVE_IDS)  # opt-in extras only via --configs
+MASTERDOWN = 'slave-masterdown'  # slave + client on it; the master is killed before the slave's tests run
+ALL_CONFIGS = CONFIGS + tuple(c + TRUSTED_SUFFIX for c in SLAVE_IDS) + (MASTERDOWN,)  # opt-in extras only via --configs
 LOADERS = ('fabric', 'neoforge')
 LP_MODES = ('off', 'on', 'both', 'removed', 'all')  # --luckperms
 LP_SUFFIX = '-lp'  # cell label of a config run with LuckPerms, e.g. mp-lp
@@ -256,6 +257,20 @@ def file_sha256(path):
     return _hashes[key]
 
 
+def release_jars(jars):
+    """The existing jars without test classes (no testing/ package: a release build, enable_dev_features=false).
+    Missing or unreadable jars are left to the other checks."""
+    bad = []
+    for j in jars:
+        try:
+            with zipfile.ZipFile(j) as z:
+                if not any('/testing/' in n and n.endswith('.class') for n in z.namelist()):
+                    bad.append(j)
+        except (OSError, zipfile.BadZipFile):
+            pass
+    return bad
+
+
 def jar_hashes(project, loader):
     return {j: file_sha256(j) for j in mod_jars(project, loader)}
 
@@ -440,7 +455,7 @@ def client_crashed(inst):
 # ---------------------------------------------------------------- one matrix cell
 
 def run_cell(specs, loader, config, cell_dir, timeout, mods, world=None, play=None, lp=False, only=(), exclude=(),
-             offline=()):
+             offline=(), masterdown=30):
     """Starts the instances of one configuration, waits for them, stops everything.
     lp: specs include LuckPerms; on NeoForge every instance gets LuckPerms as permission handler.
     only/exclude: test-topic keys, passed to every instance as the TestRegistry include/exclude properties;
@@ -448,7 +463,8 @@ def run_cell(specs, loader, config, cell_dir, timeout, mods, world=None, play=No
     Returns (instances, tested, notes); every instance in `tested` is expected to have written results.json.
     world: template world copied fresh into every instance (client save / server world); None = new superflat.
     play=stop file: manual play, same instances and multi-server setup but no tests;
-    runs until the client is closed, a server exits or the stop file appears."""
+    runs until the client is closed, a server exits or the stop file appears.
+    masterdown: seconds the slave-masterdown cell keeps the master down before the slave's tests start."""
     client_spec, server_spec = specs.get((loader, 'runClient')), specs.get((loader, 'runServer'))
     if not client_spec or not server_spec:
         return [], [], ['launch spec missing (see gradle-capture.log)']
@@ -468,6 +484,8 @@ def run_cell(specs, loader, config, cell_dir, timeout, mods, world=None, play=No
     if config.endswith(TRUSTED_SUFFIX):  # every instance of the cell; BankSystem's master trusts this slave
         config = config.removesuffix(TRUSTED_SUFFIX)
         common['modutilities.autotest.trustedSlave'] = SLAVE_IDS[config]
+    if config == MASTERDOWN and not play:
+        common['modutilities.autotest.masterDown'] = 'true'  # suites branch on it (AutoTest.isMasterDown)
     template = world
     d = lambda n: os.path.join(cell_dir, n)
     notes, servers, tested = [], [], []
@@ -539,11 +557,32 @@ def run_cell(specs, loader, config, cell_dir, timeout, mods, world=None, play=No
             if ready(master):
                 cl = client(ms_slave(SLAVE_IDS['spslave']), world='new', after=master.results)
                 tested.append(cl)
+        elif config == MASTERDOWN:
+            # The master never runs tests (waits for a player that never comes) and is killed once the client is on
+            # the slave; the slave runs its suites after the master_killed file, i.e. with the master down.
+            master = server('master', MASTER_PORT, ms_master(), waitPlayer='true', stop='false')
+            if ready(master):
+                slave = server('slave', SLAVE_PORT, ms_slave(SLAVE_IDS['slave']), waitPlayer='true', waitLink='false',
+                               stop='true', after=d('master_killed'))
+                tested = [slave]
+                if ready(slave):
+                    if wait_until(lambda: slave.log_has('Master accepts connection'), 120, slave, master):
+                        cl = client(ms_off(), connect=f'127.0.0.1:{SLAVE_PORT}')
+                    else:
+                        notes.append('slave never linked to the master')
+                if cl and not play:
+                    if wait_until(lambda: slave.log_has(' set to creative'), 600, slave, cl):  # AutoTest's join log
+                        master.kill()
+                        master.killed = True  # not broken(): this exit is the scenario
+                        wait_until(lambda: False, masterdown, slave, cl)  # sleeps; ends early if one dies
+                        write(d('master_killed'), now())
+                    else:
+                        notes.append('client never joined the slave')
         # The client quits on its own once its world/server is done; its watchdog bounds this.
         # A server that died without a report, or a master that should stay up but exited, leaves the
         # others waiting for a link or a file that never comes: end the cell at once instead.
         def broken():
-            return [s.name for s in servers if not s.alive() and
+            return [s.name for s in servers if not s.alive() and not getattr(s, 'killed', False) and
                     (not os.path.exists(s.results) or s.props.get('modutilities.autotest.stop') != 'true')]
         if play and cl:
             wait_until(lambda: not cl.alive() or client_crashed(cl) or any(not s.alive() for s in servers)
@@ -862,6 +901,8 @@ def main():
     ap.add_argument('--no-offline-tests', action='store_true',
                     help="run every topic in game (ignores the selection file's offline list)")
     ap.add_argument('--selection', metavar='FILE', help=f'selection file (default <out>/{SELECTION})')
+    ap.add_argument('--masterdown-seconds', type=int, default=30,
+                    help=f'{MASTERDOWN} cell: seconds the master stays down before the slave tests (5 s reconnects)')
     ap.add_argument('--wait-lock', action='store_true',
                     help='if another run_matrix holds the port lock, wait until it ends instead of exiting')
     args = ap.parse_args()
@@ -1011,7 +1052,8 @@ def test_cell(args, name, pdir, specs, jars, world_fp, loader, config, offline=(
     else:
         lp = config.endswith(LP_SUFFIX)
         insts, tested, notes = run_cell(specs, loader, config.removesuffix(LP_SUFFIX), cell, args.timeout, args.mods,
-                                        args.world, lp=lp, only=args.only, exclude=args.exclude, offline=offline)
+                                        args.world, lp=lp, only=args.only, exclude=args.exclude, offline=offline,
+                                        masterdown=args.masterdown_seconds)
         row = summarize(insts, tested, notes)
     merge_topics(os.path.dirname(pdir), glob.glob(os.path.join(cell, '*', 'results.json'))
                  + glob.glob(os.path.join(cell, 'phase*', '*', 'results.json')))
@@ -1099,6 +1141,16 @@ def run(args, out, projects):
             key = os.path.normcase(project)
             rc = built[key] = built[key] if key in built else build(project, args.loaders, args.offline, glog, out)
             reason = f'build failed (rc {rc}, see gradle-capture.log)'
+            bad = release_jars([j for l in args.loaders for j in mod_jars(project, l)]) if rc == 0 else []
+            if bad:  # a release build replaced a jar: the cells would silently run without that mod's tests
+                rc, reason = -1, '; '.join(f'release jar without tests: {j}' for j in bad) +                     '; rebuild with -Penable_dev_features=true'
+                for j in bad:  # <owner>/<loader>/build/libs/<jar>: the owner's build cell shows it like a build error
+                    owner, ldr = j.split(os.sep)[-5:-3]
+                    path = os.path.join(out, owner, 'build.json')
+                    b = read_json(path) or {}
+                    write_json(path, {**b, ldr: {'started': now(), 'rc': None, **(b.get(ldr) or {}), 'kind': 'release',
+                                                 'failed': True, 'finished': now(),
+                                                 'error': [f'release jar without tests: {j}']}})
         if rc != 0:
             write_json(os.path.join(pdir, 'capture.json'), {**cap, 'state': 'done', 'rc': rc, 'finished': now()})
             print(f'[{name}] {reason}', flush=True)

@@ -25,7 +25,11 @@ Per project it first builds the loaders' mod jars (`gradlew :common:build :<load
 compile against its plain/`-dev` jar via `flatDir`),
 so the tested code and the jars are the same; a failed build marks the project's cells as error. Before that it
 builds the `flatDir` dependency projects the same way (ModUtilities, then BankSystem; each once per call, also
-in `--play`), so a dependent mod never runs against stale dependency jars.
+in `--play`), so a dependent mod never runs against stale dependency jars. After the builds it opens the project's and
+every `flatDir` dependency jar of the tested loaders: a jar without `net/kroia/<mod>/testing/` classes (a release
+build, e.g. from a release Clean build) stops that project before any instance starts (`release jar without tests:
+<path>; rebuild with -Penable_dev_features=true`; its cells error, the jar owner's build cell shows `FAIL`).
+`--play` and `--clean-build` do not check.
 Tests run in a fresh superflat world, or with `--world` in a fresh copy of that world (place blocks there to
 test such cases; the same world is used for every MC version).
 
@@ -34,7 +38,7 @@ Options:
 | option | default | meaning |
 |---|---|---|
 | `--loaders` | `fabric neoforge` | loaders to test |
-| `--configs` | `sp mp slave spslave` | `sp` singleplayer; `mp` client on a master server; `slave` master + slave server, client on the slave; `spslave` master server + singleplayer world as its slave; opt-in (not in the default): `slave-trusted` / `spslave-trusted` = `slave` / `spslave` with BankSystem trusting the slave (`-Dmodutilities.autotest.trustedSlave=<slaveID>` on every instance) |
+| `--configs` | `sp mp slave spslave` | `sp` singleplayer; `mp` client on a master server; `slave` master + slave server, client on the slave; `spslave` master server + singleplayer world as its slave; opt-in (not in the default): `slave-trusted` / `spslave-trusted` = `slave` / `spslave` with BankSystem trusting the slave (`-Dmodutilities.autotest.trustedSlave=<slaveID>` on every instance); `slave-masterdown` = master + slave, client on the slave, then the master is killed and the slave runs its tests with the master down (`-Dmodutilities.autotest.masterDown=true` on every instance; see DESIGN.md) |
 | `--timeout` | `900` | per-instance watchdog (seconds) |
 | `--mods` | all | comma separated mod ids to test, e.g. `banksystem,stockmarket` |
 | `--out` | `<mods root>/autotest-out` | output folder (shared by every run, so the GUI shows CLI runs too) |
@@ -53,6 +57,7 @@ Options:
 | `--offline-tests KEY ...` | none | also run these topics offline (JUnit) instead of in game, added to the selection file's offline list; only suites that need no game |
 | `--no-offline-tests` | off | run every topic in game (ignores the offline list and `--offline-tests`) |
 | `--selection FILE` | `<out>/test-selection.json` | another selection file |
+| `--masterdown-seconds N` | `30` | `slave-masterdown`: seconds between killing the master and the slave's tests (several 5 s reconnect attempts) |
 | `--wait-lock` | off | another run holds the port lock: wait (poll every 5 s) instead of exiting |
 
 Exit code 0 when every cell passed. Only one run at a time, whatever its `--out`: every run (tests, `--play`,
@@ -257,7 +262,8 @@ above this folder), the same as run_matrix.py.
   combobox next to it picks the kind, `release` or `dev` (saved as `build_kind`, default `release`; also used by
   the right-click **Clean build**). **build jobs** (1-14, saved
   as `build_jobs` in `gui-settings.json`, default 4): MC versions built at once. The status bar shows the progress
-  (`clean build 12/42: <running projects>`), and failed projects until the next run. Test results show stale afterwards (the next test run rebuilds dev jars).
+  (`clean build 12/42: <running projects>`), and failed projects until the next run. Before it starts, a
+  confirmation lists the repos (per mod: root folder and MC versions) and the kind. Test results show stale afterwards (the next test run rebuilds dev jars).
 - **Topics...**: tree mod > category > suite from `<out>/topics.json` ("run once to discover topics" while it is
   empty) with each node's mode (`online`, `offline`, `off`, `mixed`; suites that need the game say
   `(needs game)`; rows colored green / blue / gray / amber). Click a node: a menu sets the mode of it and everything below (`offline` only where possible,

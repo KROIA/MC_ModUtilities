@@ -407,6 +407,7 @@ public class Sandbox {
         TestRegistry.register(new NetworkingTests());
         TestRegistry.register(new StreamingTests());
         TestRegistry.register(new UtilityTests());
+        TestRegistry.register(new net.kroia.modutilities.testing.tests.MasterDownTests());
         if (inGame) { // constructors reach LuckPermsBridge -> @ExpectPlatform ModChecker, which throws without a loader
             TestRegistry.register(new net.kroia.modutilities.testing.tests.LuckPermsBridgeTests());
             TestRegistry.register(new net.kroia.modutilities.testing.tests.LuckPermsRemovedTests());

@@ -53,10 +53,13 @@ Server side (dedicated or integrated), every server tick until done:
    the link (ModUtilities alone; BankSystem creates it at `SERVER_STARTED`), create it from the config.
 2. Readiness, re-checked every tick, no sleeps:
    - `waitPlayer` (default true): a player is online;
-   - slave: `MultiServerManager.isSlave() && isRunning()` (link to master up);
+   - slave: `MultiServerManager.isSlave() && isRunning()` (link to master up), unless `waitLink=false`;
    - master: `getConnectedSlaveIDs().size() >= waitSlaves`;
    - `after=<file>`: file exists (used to run the slave after the master's run).
    All conditions must then hold for 40 ticks (settle) before the run starts.
+   Tick sampling: from the tick on which only the `after` file is missing (without `after`: the settle) until the
+   run starts, the time between consecutive `SERVER_POST` ticks (50 ms = on time) is recorded; `results.json` gets
+   `ticks`, `maxTickMs`, `avgTickMs`, tests read `AutoTest.tickStats()`.
 3. Run every mod's suites that `canRunOn(isSlave)` with the first online player (or none), on the
    server thread, like the `/x test` command does. The run is queued as a server task (not run inside
    the `SERVER_POST` tick event): tests that register event listeners would otherwise make
@@ -145,6 +148,7 @@ only matter for dimensions the world lacks.
 | `mp` | master (`waitPlayer`) → client joins master | master |
 | `slave` | master (`waitSlaves=1`, no player, keeps running) → slave (`after=master results`, `waitPlayer`) → client joins slave | master, slave |
 | `spslave` | master (`waitSlaves=1`, no player) → client creates a world configured as slave (`after=master results`) | master, client |
+| `slave-masterdown` | master (`waitPlayer`, never runs tests) → slave (`waitPlayer`, `waitLink=false`, `after=<cell>/master_killed`) → once the slave logs `Master accepts connection`, client joins slave → on the slave's AutoTest join log (` set to creative`) run_matrix kills the master, waits `--masterdown-seconds`, writes `master_killed` → slave runs with the master down; every instance `-Dmodutilities.autotest.masterDown=true` (`AutoTest.isMasterDown()`, `MasterDownTests`). The killed master is exempt from the early-exit check; opt-in | slave |
 | `slave-trusted`, `spslave-trusted` | as `slave` / `spslave`, every instance with `-Dmodutilities.autotest.trustedSlave=<slaveID>` (BankSystem trusts that slave); opt-in, not in the default `--configs` | as base config |
 
 Shutdown: the client quits by itself (bounded by its watchdog, killed after timeout + 60 s). If a

@@ -245,7 +245,8 @@ class Gui:
         self.col_heads = {}
         for j, (l, c) in enumerate(GRID):
             # two lines for 'spslave\ntrusted': the column stays 8 wide
-            self.col_heads[(l, c)] = tk.Label(head, text=c.replace('-', '\n'), width=8, relief='ridge')
+            self.col_heads[(l, c)] = tk.Label(head, text=c.replace('-', '\n').replace('masterdown', 'mstrdown'),
+                                              width=8, relief='ridge')
             self.col_heads[(l, c)].grid(row=1, column=1 + j, padx=1, pady=1)
             if c != 'build':
                 tk.Checkbutton(head, variable=self.col_on[(l, c)], command=self.save_columns).grid(row=2, column=1 + j)
@@ -483,8 +484,10 @@ class Gui:
     def clean_build(self, project=None):
         """Clean build (kind from the combobox) of one project, or of every project (dependencies first)."""
         kind = self.build_kind.get()
+        found = {m: [v for v in VERSIONS if self.projects[(m, v)]] for m, _ in MODS}
         what = os.path.basename(project) if project else \
-            'every version, in order ModUtilities -> BankSystem -> StockMarket (takes long)'
+            'these repos, per version in this order (takes long):\n' + '\n'.join(
+                f"{m} ({os.path.dirname(self.projects[(m, vs[0])])}): {', '.join(vs)}" for m, vs in found.items() if vs)
         note = ('release: no dev features. Test results show stale afterwards (the jars change; the next test run '
                 'rebuilds dev jars).' if kind == 'release' else 'dev: dev features on, the jars include the tests.')
         if self.busy():
