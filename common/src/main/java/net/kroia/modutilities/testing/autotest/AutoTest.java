@@ -49,7 +49,9 @@ import java.util.concurrent.CompletableFuture;
  *       {@code <results>.client.json} next to it</li>
  *   <li>{@code waitPlayer} wait for a player to join before running (default true)</li>
  *   <li>{@code waitSlaves} master: wait for this many connected slaves (default 0)</li>
+ *   <li>{@code waitLink} slave: wait for the link to the master (default true; false for the slave-masterdown cell)</li>
  *   <li>{@code after} wait until this file exists (sequencing between instances)</li>
+ *   <li>{@code masterDown} the slave-masterdown cell: the master was killed before the tests, see {@link #isMasterDown()}</li>
  *   <li>{@code stop} dedicated server: stop after the report is written (default true)</li>
  *   <li>{@code timeout} watchdog in seconds; on expiry a timeout report is written and the JVM halts (default 900)</li>
  *   <li>{@code mods} comma separated mod ids to run (default: all mods with registered suites)</li>
@@ -57,6 +59,10 @@ import java.util.concurrent.CompletableFuture;
  *   <li>{@code play} manual play (run_matrix.py --play): only the multi-server link and the client's
  *       connect/world are set up; no tests, no report, no auto-stop, no watchdog</li>
  * </ul>
+ * Server tick sampling: the time between consecutive server ticks (50 ms = on time) is recorded from the tick on which
+ * only the {@code after} file is still missing (or the settle phase, without {@code after}) until the suites start;
+ * the report header gets {@code ticks}, {@code maxTickMs} and {@code avgTickMs}, tests read {@link #tickStats()}.
+ * <p>
  * The multi-server role comes from the instance's {@code config/modutilities/MultiServerConfig.json}. If that
  * config is enabled but no mod created the link by the first server tick (ModUtilities running
  * alone), AutoTest creates it itself.
@@ -69,7 +75,10 @@ public final class AutoTest {
     static final Path RESULTS = Paths.get(System.getProperty(P + ".results", "autotest-results.json")).toAbsolutePath();
     private static final boolean WAIT_PLAYER = Boolean.parseBoolean(System.getProperty(P + ".waitPlayer", "true"));
     private static final int WAIT_SLAVES = Integer.getInteger(P + ".waitSlaves", 0);
+    private static final boolean WAIT_LINK = Boolean.parseBoolean(System.getProperty(P + ".waitLink", "true"));
     private static final @Nullable String AFTER = System.getProperty(P + ".after");
+    private static final String WAITING_AFTER = "file " + AFTER;
+    private static final boolean MASTER_DOWN = Boolean.getBoolean(P + ".masterDown");
     private static final boolean STOP = Boolean.parseBoolean(System.getProperty(P + ".stop", "true"));
     private static final long TIMEOUT_SECONDS = Long.getLong(P + ".timeout", 900L);
     private static final @Nullable String MODS = System.getProperty(P + ".mods");
@@ -86,6 +95,20 @@ public final class AutoTest {
     private static String waitingFor = "server start";
     private static boolean ownsMultiServer;
     private static boolean started;
+    private static long lastTickNanos, maxTickNanos, sumTickNanos;
+    private static int sampledTicks;
+
+    /** Server tick intervals sampled before the suites started (see the class doc); zero ticks if none yet. */
+    public record TickStats(int ticks, double maxTickMs, double avgTickMs) {}
+
+    public static TickStats tickStats() {
+        return new TickStats(sampledTicks, maxTickNanos / 1e6, sampledTicks == 0 ? 0 : sumTickNanos / 1e6 / sampledTicks);
+    }
+
+    /** @return true in the slave-masterdown cell (run_matrix.py): the master was killed before this slave's tests. */
+    public static boolean isMasterDown() {
+        return MASTER_DOWN;
+    }
 
     public static boolean isEnabled() {
         return LABEL != null;
@@ -150,6 +173,7 @@ public final class AutoTest {
         if (PLAY) return;
 
         String waiting = waitingFor(server);
+        sampleTick(waiting == null || WAITING_AFTER.equals(waiting));
         if (waiting != null) {
             if (!waiting.equals(waitingFor)) ModUtilitiesMod.LOGGER.info("[AutoTest] waiting for {}", waiting);
             waitingFor = waiting;
@@ -165,14 +189,25 @@ public final class AutoTest {
         CompletableFuture.runAsync(() -> server.execute(() -> run(server)));
     }
 
+    private static void sampleTick(boolean sampling) {
+        long now = System.nanoTime();
+        if (sampling && lastTickNanos != 0) {
+            long dt = now - lastTickNanos;
+            sampledTicks++;
+            sumTickNanos += dt;
+            maxTickNanos = Math.max(maxTickNanos, dt);
+        }
+        lastTickNanos = sampling ? now : 0;
+    }
+
     private static @Nullable String waitingFor(MinecraftServer server) {
         if (WAIT_PLAYER && server.getPlayerList().getPlayers().isEmpty()) return "a player";
         MultiServerConfig cfg = MultiServerConfig.get();
-        if (cfg.enable && !cfg.isMaster && !(MultiServerManager.isSlave() && MultiServerManager.isRunning()))
+        if (WAIT_LINK && cfg.enable && !cfg.isMaster && !(MultiServerManager.isSlave() && MultiServerManager.isRunning()))
             return "the link to the master";
         if (cfg.enable && cfg.isMaster && MultiServerManager.getConnectedSlaveIDs().size() < WAIT_SLAVES)
             return WAIT_SLAVES + " connected slave(s)";
-        if (AFTER != null && !Files.exists(Paths.get(AFTER))) return "file " + AFTER;
+        if (AFTER != null && !Files.exists(Paths.get(AFTER))) return WAITING_AFTER; // last: starts the tick sampling
         return null;
     }
 
@@ -203,7 +238,7 @@ public final class AutoTest {
                 String modId = suite.getCategory().getModId();
                 if (filter == null || filter.contains(modId)) modIds.add(modId);
             }
-            int[] total = new int[3];
+            int[] total = new int[5]; // passed, failed, errors, skipped, excluded suites
             JsonObject mods = new JsonObject();
             for (String modId : modIds) {
                 ModUtilitiesMod.LOGGER.info("[AutoTest] running {} tests (slave={})", modId, isSlave);
@@ -215,6 +250,8 @@ public final class AutoTest {
             report.addProperty("passed", total[0]);
             report.addProperty("failed", total[1]);
             report.addProperty("errors", total[2]);
+            report.addProperty("skipped", total[3]);
+            report.addProperty("excludedSuites", total[4]); // suites, not tests: see each mod's excludedSuites
         } catch (Throwable t) {
             ModUtilitiesMod.LOGGER.error("[AutoTest] run aborted", t);
             report.addProperty("status", "error");
@@ -230,7 +267,7 @@ public final class AutoTest {
 
     private static JsonObject modReport(String modId, boolean isSlave, Map<String, List<TestResult>> results, int[] total) {
         JsonObject mod = new JsonObject();
-        int[] counts = new int[3];
+        int[] counts = new int[4]; // by TestResult.Status ordinal: PASS, FAIL, ERROR, SKIP
         JsonObject suites = new JsonObject();
         for (Map.Entry<String, List<TestResult>> e : results.entrySet()) {
             JsonArray tests = new JsonArray();
@@ -246,16 +283,29 @@ public final class AutoTest {
             }
             suites.add(e.getKey(), tests);
         }
-        JsonArray skipped = new JsonArray();
+        // topics: every registered suite (run_matrix caches them in <out>/topics.json for the GUI's topic menu)
+        JsonArray skipped = new JsonArray(), excluded = new JsonArray(), offline = new JsonArray(), topics = new JsonArray();
         for (TestSuite suite : TestRegistry.getTestSuites(modId)) {
-            if (!suite.getCategory().canRunOn(isSlave)) skipped.add(suite.getCategory().getName() + "/" + suite.getClass().getSimpleName());
+            String key = suite.getCategory().getName() + "/" + suite.getClass().getSimpleName();
+            JsonObject topic = new JsonObject();
+            topic.addProperty("key", key);
+            topic.addProperty("needsGame", suite.needsGame());
+            topics.add(topic);
+            if (TestRegistry.isExcluded(suite)) excluded.add(key);
+            else if (TestRegistry.isOffline(suite)) offline.add(key);
+            else if (!suite.getCategory().canRunOn(isSlave)) skipped.add(key);
         }
         mod.addProperty("passed", counts[0]);
         mod.addProperty("failed", counts[1]);
         mod.addProperty("errors", counts[2]);
+        mod.addProperty("skipped", counts[3]);
         mod.add("skippedSuites", skipped);
+        mod.add("excludedSuites", excluded);
+        mod.add("offlineSuites", offline); // left to the JUnit run (modutilities.tests.offline)
+        mod.add("topics", topics);
         mod.add("suites", suites);
-        for (int i = 0; i < 3; i++) total[i] += counts[i];
+        for (int i = 0; i < counts.length; i++) total[i] += counts[i];
+        total[4] += excluded.size();
         return mod;
     }
 
@@ -265,6 +315,10 @@ public final class AutoTest {
         o.addProperty("status", status);
         o.addProperty("role", MultiServerManager.isSlave() ? "slave" : MultiServerManager.isMaster() ? "master" : "standalone");
         o.addProperty("durationMs", System.currentTimeMillis() - START_MILLIS);
+        TickStats t = tickStats();
+        o.addProperty("ticks", t.ticks());
+        o.addProperty("maxTickMs", t.maxTickMs());
+        o.addProperty("avgTickMs", t.avgTickMs());
         return o;
     }
 
