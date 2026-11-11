@@ -3,6 +3,7 @@ architectury {
 }
 
 repositories {
+    mavenCentral()
     maven {
         // Jared's maven hosts JEI since January 2023.
         name = "Jared's maven"
@@ -31,4 +32,32 @@ dependencies {
     // NEZNAMY TAB API - compileOnly soft dependency. TabPlaceholderBackend is only
     // class-loaded when the "tab" mod is present (see ModUtilitiesMod.init).
     compileOnly 'com.github.NEZNAMY:TAB-API:5.5.0'
+
+    // LuckPerms API (Maven Central) - compileOnly soft dependency, never bundled. Plain Java API, so no
+    // remapping. Only LuckPermsBridge.Lp references it, and that class loads only when LuckPerms is present.
+    compileOnly "net.luckperms:api:${rootProject.luckperms_api_version}"
+
+    // Offline unit tests (Task #98): testing.OfflineTests maps TestSuites to JUnit DynamicTests. compileOnly in main
+    // because that class ships in dev jars for dependent mods; they bring JUnit themselves on their test classpath.
+    compileOnly "org.junit.jupiter:junit-jupiter-api:5.10.2"
+    testImplementation "org.junit.jupiter:junit-jupiter:5.10.2"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher:1.10.2"
+}
+
+// `gradlew :common:test` runs the TestSuites that need no game (TestSuite.needsGame() == false).
+// Release mode (enable_dev_features=false) keeps testing/** and sandbox/** out of main, so the test source set compiles
+// them itself; the include patterns also cover src/test/java, whose classes therefore live in the testing package.
+if (!(rootProject.findProperty('enable_dev_features') ?: 'false').toBoolean()) {
+    sourceSets.test.java {
+        srcDir 'src/main/java'
+        include 'net/kroia/modutilities/testing/**', 'net/kroia/modutilities/sandbox/**'
+    }
+    configurations.testCompileOnly.extendsFrom configurations.compileOnly // LuckPerms/JEI/TAB APIs the tests import
+}
+
+test {
+    useJUnitPlatform()
+    workingDir = temporaryDir // Minecraft's log4j config writes logs/latest.log into the working directory
+    // test-topic selection (tools/autotest/README.md): gradlew :common:test -Dmodutilities.tests.exclude=<keys>
+    ['modutilities.tests.exclude', 'modutilities.tests.include', 'modutilities.tests.offline'].each { systemProperty it, System.getProperty(it, '') }
 }

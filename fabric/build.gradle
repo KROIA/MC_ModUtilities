@@ -71,10 +71,32 @@ dependencies {
     //modRuntimeOnly("mezz.jei:jei-${rootProject.jei_minecraft_version}-fabric:${rootProject.jei_version}") // mc>=1.21.7 mc<=1.21.11
     runtimeOnly("mezz.jei:jei-${rootProject.jei_minecraft_version}-fabric:${rootProject.jei_version}") // mc>=26.1
 
+    // fabric-permissions-api (LuckPerms etc. hook into it) - bundled via jar-in-jar so node checks always resolve;
+    // Fabric Loader dedupes it against copies shipped by other mods.
+    //modImplementation "me.lucko:fabric-permissions-api:${rootProject.fabric_permissions_api_version}" // mc<=1.21.11
+    //include "me.lucko:fabric-permissions-api:${rootProject.fabric_permissions_api_version}" // mc<=1.21.11
+    implementation "me.lucko:fabric-permissions-api:${rootProject.fabric_permissions_api_version}" // mc>=26.1
+    include "me.lucko:fabric-permissions-api:${rootProject.fabric_permissions_api_version}" // mc>=26.1
+
     // Patbox Text Placeholder API - compile-only soft dependency, never bundled.
     // PlaceholderApiBackend is only class-loaded when "placeholder-api" is present.
     //modCompileOnly("eu.pb4:placeholder-api:${rootProject.placeholder_api_version}") { transitive = false } // mc<=1.21.11
     compileOnly("eu.pb4:placeholder-api:${rootProject.placeholder_api_version}") { transitive = false } // mc>=26.1
+}
+
+// Opt-in LuckPerms for dev runs (runClient/runServer, tools/autotest --luckperms): -Pwith_luckperms=true.
+// modLocalRuntime: dev runtime only, never in the mod jar or the published POM/Gradle module metadata.
+if ((findProperty('with_luckperms') ?: 'false').toBoolean()) {
+    repositories {
+        maven {
+            url = 'https://api.modrinth.com/maven'
+            content { includeGroup 'maven.modrinth' }
+        }
+    }
+    dependencies {
+        //modLocalRuntime "maven.modrinth:luckperms:${rootProject.luckperms_fabric_version}" // mc<=1.21.11
+        localRuntime "maven.modrinth:luckperms:${rootProject.luckperms_fabric_version}" // mc>=26.1
+    }
 }
 
 processResources {

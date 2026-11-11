@@ -20,6 +20,11 @@ public class UtilityTests extends TestSuite {
     }
 
     @Override
+    public boolean needsGame() {
+        return false; // passes offline in gradlew :common:test
+    }
+
+    @Override
     public void registerTests() {
         // ColorUtilities tests
         addTest("color_getRed", this::testColorGetRed);

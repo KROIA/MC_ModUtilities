@@ -2,8 +2,10 @@ package net.kroia.modutilities.networking.client_server.arrs;
 
 import net.kroia.modutilities.networking.NetworkPacketManager;
 import net.kroia.modutilities.networking.multi_server.ForwardPacketContext;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -252,6 +254,37 @@ public class AsynchronousRequestResponseSystem {
     public static void processResponseOnServer(@NotNull GenericResponsePacket responsePacket,@NotNull ServerPlayer player)
     {
         REQUEST_MANAGER.processResponseOnServer(responsePacket, player);
+    }
+
+    private static int serverTicks, clientTicks;
+
+    /**
+     * Called by ModUtilities every server tick ({@code clientSide = false}) and client tick ({@code true});
+     * runs {@link RequestManager#cleanupExpiredRequests(boolean)} every 20 ticks while
+     * {@link RequestManager#ENABLE_REQUEST_FAILURES} is on.
+     */
+    public static void tick(boolean clientSide)
+    {
+        RequestManager manager = REQUEST_MANAGER;
+        if(!RequestManager.ENABLE_REQUEST_FAILURES || manager == null)
+            return;
+        if((clientSide ? ++clientTicks : ++serverTicks) % 20 == 0)
+            manager.cleanupExpiredRequests(clientSide);
+    }
+
+    /**
+     * Called by the multi-server layer (any thread) when a master/slave connection is lost:
+     * fails the requests sent over it on the server thread (see {@link RequestManager#failRequestsOnConnectionLost}).
+     *
+     * @param slaveID on the master: the disconnected slave; on a slave: {@code null}
+     */
+    public static void onConnectionLost(MinecraftServer server, @Nullable String slaveID)
+    {
+        RequestManager manager = REQUEST_MANAGER;
+        if(!RequestManager.ENABLE_REQUEST_FAILURES || manager == null || server == null)
+            return;
+        long disconnectMs = System.currentTimeMillis();
+        server.execute(() -> manager.failRequestsOnConnectionLost(slaveID, disconnectMs));
     }
 
     private static void checkManagerExists()
