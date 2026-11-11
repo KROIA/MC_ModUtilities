@@ -110,7 +110,8 @@ public final class ClientGuiSettings extends ModSettings {
             case InputConstants.KEY_EQUALS, InputConstants.KEY_ADD, InputConstants.KEY_RBRACKET ->
                     next = Gui.stepGuiScaleSetting(current, 1, max, mcScale);
             case InputConstants.KEY_MINUS, InputConstants.KEY_SLASH,
-                 org.lwjgl.glfw.GLFW.GLFW_KEY_KP_SUBTRACT -> // numpad '-': InputConstants has no name for it
+                 org.lwjgl.glfw.GLFW.GLFW_KEY_KP_SUBTRACT -> // mc<=26.2 (numpad '-': InputConstants has no name for it)
+                 //net.kroia.modutilities.gui.InputConstants.KEY_KP_SUBTRACT -> // mc>=26.3 (numpad '-', SDL3 scancode)
                     next = Gui.stepGuiScaleSetting(current, -1, max, mcScale);
             case InputConstants.KEY_0, InputConstants.KEY_NUMPAD0 -> next = current == 0 ? -1 : 0;
             default -> { return false; }

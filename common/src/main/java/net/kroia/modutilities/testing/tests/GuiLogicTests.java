@@ -177,7 +177,7 @@ public class GuiLogicTests extends TestSuite {
         menu.setBounds(0, 0, 120, 20);
         menu.expand();
         Point pb = b.getGlobalPosition();
-        gui.mouseClicked(pb.x + b.getWidth() / 2.0, pb.y + b.getHeight() / 2.0, 0);
+        gui.mouseClicked(pb.x + b.getWidth() / 2.0, pb.y + b.getHeight() / 2.0, net.kroia.modutilities.gui.InputConstants.MOUSE_BUTTON_LEFT);
         if (under.getClickCount() != 0)
             return fail("click on an open option also clicked the element underneath");
         if (picked.get() != 1 || menu.getSelectedIndex() != 1)
