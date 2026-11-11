@@ -1067,6 +1067,9 @@ public class NetworkingTests extends TestSuite {
         try {
             if (net.kroia.modutilities.UtilitiesPlatform.createRegistryFriendlyByteBufServerSide() == null)
                 return skip("no server buffer (server not running)");
+            // The client send builds its buffer from net.minecraft.client.Minecraft, which a dedicated server cannot load.
+            if (dev.architectury.platform.Platform.getEnvironment() != dev.architectury.utils.Env.CLIENT)
+                return skip("dedicated server (no client classes)");
             List<NetworkPacket> toServer = new ArrayList<>();
             RequestManager client = new RequestManager(capturingNetworkManager(toServer));
             GenericRequest<String, String> req = createDummyRequest("m2_forward");
