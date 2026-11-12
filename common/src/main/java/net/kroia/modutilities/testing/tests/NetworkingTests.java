@@ -1328,6 +1328,9 @@ public class NetworkingTests extends TestSuite {
         GenericRequest<String, String> echo = SimulatedMasterHang.ECHO;
         RequestManager m = echo.getManager();
         if (m == null) return skip("ARRS not set up");
+        // the hang drops every master request JVM-wide: let other mods' post-connect requests finish first
+        if (!pumpUntil(() -> m.getPendingServerServerRequestsCount() == 0, 10_000))
+            return skip("slave still has pending master requests");
         boolean oldFailures = RequestManager.ENABLE_REQUEST_FAILURES;
         RequestManager.ENABLE_REQUEST_FAILURES = true;
         try {

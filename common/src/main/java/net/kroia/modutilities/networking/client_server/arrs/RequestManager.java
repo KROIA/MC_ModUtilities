@@ -282,6 +282,11 @@ public class RequestManager {
         return pendingServerRequests.size();
     }
 
+    /** Number of pending server-to-server requests (on a slave: requests to the master awaiting a response). */
+    public int getPendingServerServerRequestsCount() {
+        return pendingServerServerRequests.size();
+    }
+
     /**
      * Gets the number of requests that have been sent to the client but have not yet received a response.
      * @return The number of pending client requests.
