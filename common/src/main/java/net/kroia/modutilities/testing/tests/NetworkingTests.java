@@ -34,6 +34,7 @@ import net.kroia.modutilities.networking.multi_server.payload.HandshakePayload;
 import net.kroia.modutilities.networking.multi_server.payload.HandshakeResultPayload;
 import net.kroia.modutilities.networking.multi_server.payload.PacketIds;
 import net.kroia.modutilities.networking.multi_server.slave.SlaveServerClient;
+import net.kroia.modutilities.testing.SimulatedMasterHang;
 import net.kroia.modutilities.testing.TestCategory;
 import net.kroia.modutilities.testing.TestResult;
 import net.kroia.modutilities.testing.TestSuite;
@@ -144,6 +145,8 @@ public class NetworkingTests extends TestSuite {
         addTest("slave_master_down_request_fails_fast", this::testSlaveMasterDownRequestFailsFast);
         addTest("slave_master_down_stream_refused", this::testSlaveMasterDownStreamRefused);
         addTest("slave_master_lost_stops_redirected_stream", this::testSlaveMasterDownStopsRedirectedStream);
+        // Slave whose master hangs (link up, requests unanswered; SimulatedMasterHang)
+        addTest("slave_master_hang_request_times_out", this::testSlaveMasterHangRequestTimesOut);
     }
 
     // ========================================================================
@@ -1308,6 +1311,49 @@ public class NetworkingTests extends TestSuite {
                 try { StreamSystem.stopStream(id); } catch (RuntimeException ignored) {}
             }
             StreamSystem.unregister(stream);
+        }
+    }
+
+    // ------------------------------------------------------------------------
+    // Slave whose master hangs (SimulatedMasterHang)
+    // ------------------------------------------------------------------------
+
+    /**
+     * Hang on: the echo request (2 s timeout) is not refused, then times out with RequestOutcomeUnknownException
+     * while the link stays up. Hang off: the master answers the next one. The hang is always switched off.
+     */
+    private TestResult testSlaveMasterHangRequestTimesOut() {
+        if (!MultiServerManager.isSlave()) return skip("not a slave");
+        if (!MultiServerManager.isRunning()) return skip("master link not up");
+        GenericRequest<String, String> echo = SimulatedMasterHang.ECHO;
+        RequestManager m = echo.getManager();
+        if (m == null) return skip("ARRS not set up");
+        boolean oldFailures = RequestManager.ENABLE_REQUEST_FAILURES;
+        RequestManager.ENABLE_REQUEST_FAILURES = true;
+        try {
+            CompletableFuture<String> hung;
+            try {
+                SimulatedMasterHang.set(true);
+                hung = echo.sendRequestToMaster("hang");
+                if (hung.isDone() && !hung.isCompletedExceptionally()) return skip("no server buffer (server not running)");
+                if (hung.isDone()) return fail("hung request must look sent, got " + causeOf(hung));
+                // pump runs queued tasks, not ticks: sweep once past the timeout like the 20-tick cleanup does
+                pump(echo.getTimeoutMs() + 500);
+                if (hung.isDone()) return fail("hung request answered before its timeout");
+                m.cleanupExpiredRequests(false);
+            } finally {
+                SimulatedMasterHang.set(false);
+            }
+            if (!(causeOf(hung) instanceof RequestOutcomeUnknownException))
+                return fail("hung request must fail with RequestOutcomeUnknownException, got " + causeOf(hung));
+            if (!MultiServerManager.isRunning()) return fail("master link must stay up while the master hangs");
+
+            CompletableFuture<String> after = echo.sendRequestToMaster("ping");
+            if (!pumpUntil(after::isDone, 10_000)) return fail("request after the hang must be answered, still pending after 10 s");
+            if (after.isCompletedExceptionally()) return fail("request after the hang failed: " + causeOf(after));
+            return assertEquals("master must echo the input after the hang", "ping", after.join());
+        } finally {
+            RequestManager.ENABLE_REQUEST_FAILURES = oldFailures;
         }
     }
 

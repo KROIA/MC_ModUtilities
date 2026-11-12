@@ -225,6 +225,10 @@ public class RequestManager {
 
     /** Sends to the master; protected so tests can simulate the link. @return false if the send was refused */
     protected boolean sendToMaster(@Nullable UUID senderPlayerUUID, GenericRequestPacket packet) {
+        // Dev builds only: testing.SimulatedMasterHang (master hangs) drops the request but reports it sent while the
+        // link is up, so it times out. Release code cannot reference testing/**, hence the property name.
+        if(ModUtilitiesMod.ENABLE_DEV_FEATURES && Boolean.getBoolean("modutilities.dev.simulatedMasterHang"))
+            return MultiServerManager.isRunning();
         return MultiServerManager.sendToMaster(senderPlayerUUID, packet);
     }
 
