@@ -147,6 +147,9 @@ public class NetworkingTests extends TestSuite {
         addTest("slave_master_lost_stops_redirected_stream", this::testSlaveMasterDownStopsRedirectedStream);
         // Slave whose master hangs (link up, requests unanswered; SimulatedMasterHang)
         addTest("slave_master_hang_request_times_out", this::testSlaveMasterHangRequestTimesOut);
+
+        // Server-to-client capture seam (NetworkPacketManager.sendToClientListener)
+        addTest("send_to_client_captured", this::testSendToClientCaptured);
     }
 
     // ========================================================================
@@ -1060,6 +1063,30 @@ public class NetworkingTests extends TestSuite {
     // ------------------------------------------------------------------------
 
     /** A test manager whose server sends are captured into {@code toServer}. */
+    /** A packet sent to the online player through a manager must reach the capture seam with that player. */
+    private TestResult testSendToClientCaptured() {
+        net.minecraft.server.MinecraftServer server = getServer();
+        List<net.minecraft.server.level.ServerPlayer> players = server == null ? List.of() : server.getPlayerList().getPlayers();
+        if (players.isEmpty()) return skip("no online player");
+        net.minecraft.server.level.ServerPlayer player = players.get(0);
+        RegistryFriendlyByteBuf empty = net.kroia.modutilities.UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
+        if (empty == null) return skip("no server buffer (server not running)");
+        // Same packet as RequestManager's failure reply; the client ignores the unknown request ID.
+        GenericResponsePacket packet = new GenericResponsePacket(UUID.randomUUID(), "modutilities_test_capture", empty,
+                GenericResponsePacket.STATUS_NOT_SENT);
+        List<UUID> receivers = Collections.synchronizedList(new ArrayList<>());
+        var old = NetworkPacketManager.sendToClientListener;
+        NetworkPacketManager.sendToClientListener = (p, pk) -> {
+            if (pk == packet) receivers.add(p.getUUID());
+        };
+        try {
+            capturingNetworkManager(new ArrayList<>()).sendToClient(player, packet);
+        } finally {
+            NetworkPacketManager.sendToClientListener = old;
+        }
+        return assertEquals("packet must be captured once, for the receiving player", List.of(player.getUUID()), List.copyOf(receivers));
+    }
+
     private static NetworkPacketManager capturingNetworkManager(List<NetworkPacket> toServer) {
         return new NetworkPacketManager("modutilities_test") {
             @Override public void setupClientReceiverPackets() {}
