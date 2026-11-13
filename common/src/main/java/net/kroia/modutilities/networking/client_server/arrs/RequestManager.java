@@ -476,7 +476,17 @@ public class RequestManager {
                 ServerPlayer targetPlayer = server.getPlayerList().getPlayer(context.senderPlayerUUID);
                 if(targetPlayer == null)
                     return;
-                request.getManager().getNetworkManager().sendToClient(targetPlayer, responsePacket);
+                GenericResponsePacket relay = responsePacket;
+                if (responsePacket.getStatus() == GenericResponsePacket.STATUS_OK) {
+                    RegistryFriendlyByteBuf data = responsePacket.getData();
+                    int readerIndex = data.readerIndex();
+                    RegistryFriendlyByteBuf transformed = request.transformResponseOnSlave(data, context.senderPlayerUUID);
+                    if (transformed == data)
+                        data.readerIndex(readerIndex); // the hook may have decoded it; relay all of it
+                    else
+                        relay = new GenericResponsePacket(requestId, responsePacket.getRequestTypeID(), transformed);
+                }
+                request.getManager().getNetworkManager().sendToClient(targetPlayer, relay);
             }
             catch (Exception e) {
                 // Handle any exceptions that may occur during decoding/encoding
