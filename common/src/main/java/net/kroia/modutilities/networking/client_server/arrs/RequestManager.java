@@ -225,6 +225,10 @@ public class RequestManager {
 
     /** Sends to the master; protected so tests can simulate the link. @return false if the send was refused */
     protected boolean sendToMaster(@Nullable UUID senderPlayerUUID, GenericRequestPacket packet) {
+        // Dev builds only: testing.SimulatedMasterHang (master hangs) drops the request but reports it sent while the
+        // link is up, so it times out. Release code cannot reference testing/**, hence the property name.
+        if(ModUtilitiesMod.ENABLE_DEV_FEATURES && Boolean.getBoolean("modutilities.dev.simulatedMasterHang"))
+            return MultiServerManager.isRunning();
         return MultiServerManager.sendToMaster(senderPlayerUUID, packet);
     }
 
@@ -276,6 +280,11 @@ public class RequestManager {
      */
     public int getPendingServerRequestsCount() {
         return pendingServerRequests.size();
+    }
+
+    /** Number of pending server-to-server requests (on a slave: requests to the master awaiting a response). */
+    public int getPendingServerServerRequestsCount() {
+        return pendingServerServerRequests.size();
     }
 
     /**
@@ -467,7 +476,17 @@ public class RequestManager {
                 ServerPlayer targetPlayer = server.getPlayerList().getPlayer(context.senderPlayerUUID);
                 if(targetPlayer == null)
                     return;
-                request.getManager().getNetworkManager().sendToClient(targetPlayer, responsePacket);
+                GenericResponsePacket relay = responsePacket;
+                if (responsePacket.getStatus() == GenericResponsePacket.STATUS_OK) {
+                    RegistryFriendlyByteBuf data = responsePacket.getData();
+                    int readerIndex = data.readerIndex();
+                    RegistryFriendlyByteBuf transformed = request.transformResponseOnSlave(data, context.senderPlayerUUID);
+                    if (transformed == data)
+                        data.readerIndex(readerIndex); // the hook may have decoded it; relay all of it
+                    else
+                        relay = new GenericResponsePacket(requestId, responsePacket.getRequestTypeID(), transformed);
+                }
+                request.getManager().getNetworkManager().sendToClient(targetPlayer, relay);
             }
             catch (Exception e) {
                 // Handle any exceptions that may occur during decoding/encoding

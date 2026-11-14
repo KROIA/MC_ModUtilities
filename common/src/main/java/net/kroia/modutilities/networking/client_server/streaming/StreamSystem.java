@@ -273,7 +273,7 @@ public class StreamSystem {
             int savedReaderIndex = buf.readerIndex();
             STREAM_MANAGER.startRedirectedServerSenderStream(stream, streamID, buf, targetPlayerUUID);
             buf.readerIndex(savedReaderIndex);
-            ModUtilitiesMod.LOGGER.info("[StreamSystem] Redirecting packet: "+packet.streamTypeID+" to master");
+            ModUtilitiesMod.LOGGER.debug("[StreamSystem] Redirecting packet: "+packet.streamTypeID+" to master");
             if(!MultiServerManager.sendToMaster(targetPlayerUUID,  packet))
             {
                 // Master unreachable: refuse the stream; the client gets the normal stop notification.

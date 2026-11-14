@@ -76,5 +76,15 @@ public class MyElement extends GuiElement {
 ---
 ### Customisation
 - `setScrollbarBackgroundColor(color)`
-- `setScrollbarThickness(thickness)` 
+- `setScrollbarThickness(thickness)`
+
+---
+### Scroll position
+The list keeps its scroll position when you clear it and add the elements again, for example when you rebuild the content
+after new data arrived. The last offset set by the user or by `setScrollOffset(int)` is remembered and clamped to the new
+content size, so the list does not jump back to the top.
+
+Subclasses that change the content size themselves call the protected `clampScrollOffset()` afterwards; it derives the
+current offset from the remembered one (`requestedScrollOffset`).
+
 

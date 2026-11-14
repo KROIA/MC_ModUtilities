@@ -11,6 +11,7 @@ This is the most important class for the Gui Library, each element which is visi
   - [User interactions](#user-interactions)
     - [Mouse events](#mouse-events)
     - [Key press events](#key-press-events)
+    - [Non-interactive elements](#non-interactive-elements)
   - [Tooltips](#tooltips)
   - [Retrieve positioning data](#retrieve-positioning-data)
     - [Mouse position](#mouse-position)
@@ -340,6 +341,18 @@ You can overwrite the following methods to receive key press events:
 
 - `charTyped(char codePoint, int modifiers)`
   > Return true if the event was consumed, otherwise false 
+
+##### Non-interactive elements
+`setInteractive(false)` greys out an element and its whole subtree while keeping it visible:
+- Mouse and keyboard input is no longer passed to the branch.
+- A dimming overlay (`GuiElement.DEFAULT_NON_INTERACTIVE_OVERLAY_COLOR`, default `0x99303030`) is drawn on top.
+- Hover tooltips keep working, so you can explain why the element is locked.
+
+Unlike `setEnabled(false)`, the element still renders and takes part in layout. `isInteractive()` returns the current state.
+``` Java
+saveButton.setInteractive(hasPermission);
+saveButton.setHoverTooltipSupplier(() -> hasPermission ? null : "You need admin rights");
+```
 ---
 #### Tooltips
 Call `drawTooltip(...)` to draw a tooltip, there are many different implementations for this method.<br>
@@ -353,6 +366,22 @@ You can create a tooltip the following way:
 - You can specify the position-layout of the tooltip.
   That means you can specify the position of the tooltip in respect to the given location and layout.
 - A full custom tooltip object can be passed: `TooltipData`.
+
+Text tooltips are kept inside the screen, padding included. A tooltip larger than the screen is pinned to the top-left corner.
+
+Two more options exist on `TooltipData` and on the hover tooltip settings (`getHoverTooltipData()` / `setHoverTooltipData(...)`):
+- `autoSide` (default `false`): the horizontal side follows the mouse. In the left half of the screen the tooltip opens to
+  the right of the cursor, in the right half to the left. The vertical part of the alignment is kept.
+- `maxWidthFraction` (default `0`, off): when `> 0`, the text is word-wrapped so the tooltip is at most this fraction of
+  the screen width. Existing `'\n'` line breaks are kept, and words longer than a line are split.
+
+``` Java
+GuiElement.HoverTooltipData hover = element.getHoverTooltipData();
+hover.autoSide = true;
+hover.maxWidthFraction = 0.4f;
+```
+The static helpers `GuiElement.autoSideAlignment(...)`, `GuiElement.clampToArea(...)` and `GuiElement.wrapText(...)`
+implement these rules and can be used for custom tooltips.
 
 
 This image shows how the Alignment for the tooltip works:

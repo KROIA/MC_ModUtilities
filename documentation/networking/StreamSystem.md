@@ -45,11 +45,11 @@ Save the returned instance in a static member.
 You can find an example here: [NetworkManager](NetworkManager.md#stream-system-usage)
 
 ``` Java
-public class MyExampleModNetworking extends NetworkManager {
+public class MyExampleModNetworking extends NetworkPacketManager {
     ... // Instance blabla
 
     // Creating and registring a Streaming object
-    public static SineStream SIN_STREAM = (SinusStream) StreamSystem.register(new SinusStream());
+    public static SineStream SINE_STREAM = (SineStream) StreamSystem.register(new SineStream());
 
     ... // Packet registration blabla
 }
@@ -109,6 +109,12 @@ public class ExampleScreen extends GuiScreen {
 }
 
 ```
+
+When a slave loses its master link, every stream it relays from the master to a client is stopped. The client is told
+through the stream's normal stop handler, like a refused start, so it does not wait forever.
+
+If `StreamSystem.setup()` runs again (for example on an integrated-server restart), the previous stream manager is shut down
+and its streams are dropped, not moved to the new manager.
 
 ---
 ### Listing active streams

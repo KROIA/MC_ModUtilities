@@ -11,7 +11,8 @@ The compat helpers below hide these differences. Code in dependent mods (BankSys
 | [`RegistryCompat`](#registrycompat) | `net.kroia.modutilities` | common | Block/item properties, block entity types |
 | [`NbtCompat`](#nbtcompat) | `net.kroia.modutilities` | common | `CompoundTag` / `ListTag` reads, UUIDs, `ValueInput`/`ValueOutput` |
 | [`PlayerCompat`](#playercompat) | `net.kroia.modutilities` | common | `GameProfile` name/id, messages, dropping items |
-| [`PermissionCompat`](#permissioncompat) | `net.kroia.modutilities` | common | Op-level permission checks |
+| [`PermissionCompat`](#permissioncompat) | `net.kroia.modutilities` | common | Op-level and permission-node checks |
+| [`LuckPermsBridge`](#luckpermsbridge) | `net.kroia.modutilities.permission` | common | Optional: write LuckPerms nodes and listen for changes |
 | [`Tuple`](#tuple) | `net.kroia.modutilities` | common | Replacement for `net.minecraft.util.Tuple` |
 | [`InputCompat`](#inputcompat) | `net.kroia.modutilities.gui.client` | client | Modifier keys, key/mouse state, key mappings, cursor |
 | [`ClientCompat`](#clientcompat) | `net.kroia.modutilities.gui.client` | client | Current screen, main render target |
@@ -130,6 +131,81 @@ MC 1.21.11 replaced the numeric permission levels (`CommandSourceStack.hasPermis
 dispatcher.register(Commands.literal("mymod")
         .requires(source -> PermissionCompat.hasPermission(source, 2))
         .executes(ctx -> 1));
+```
+
+### Permission nodes
+
+A command can also check a named permission node, so server owners can grant it with a permission mod
+(for example LuckPerms). Without a permission mod, a node check behaves exactly like the level check with `fallbackLevel`.
+
+| Method | Description |
+|---|---|
+| `registerNode(String node, int fallbackLevel)` | Declares a node. Call it during mod init, before the server starts (required for NeoForge, which collects nodes once per server start). Registering a node again overwrites its fallback level |
+| `getRegisteredNodes()` | Read-only map of all registered nodes and their fallback levels |
+| `hasPermission(CommandSourceStack source, String node, int fallbackLevel)` | `true` if the source has the node; without a permission mod, or for a non-player source, `true` if it has at least `fallbackLevel` |
+| `hasPermission(ServerPlayer player, String node, int fallbackLevel)` | `true` if the player has the node; without a permission mod, `true` if the player has at least `fallbackLevel` |
+
+Node names are lowercase, dot-separated and start with your mod ID. Pass the same fallback level to `registerNode` and `hasPermission`.
+
+```java
+// Mod init, before the server starts:
+PermissionCompat.registerNode("mymod.admin.command.backup", 2);
+
+// Command:
+dispatcher.register(Commands.literal("mymod")
+        .then(Commands.literal("backup")
+                .requires(src -> PermissionCompat.hasPermission(src, "mymod.admin.command.backup", 2))
+                .executes(ctx -> 1)));
+```
+
+- Fabric and Quilt use the bundled fabric-permissions-api; NeoForge uses its PermissionAPI.
+- A node is only resolved for a player who is online on this server.
+- The console, command blocks and other non-player sources always use the level check.
+- On NeoForge, a node that was not registered (or was registered after the server started) also falls back to the level check.
+
+### LuckPermsBridge
+
+`net.kroia.modutilities.permission.LuckPermsBridge` mirrors a per-player flag that your mod stores itself (for example an
+admin flag) into a LuckPerms node and back. `PermissionCompat` can only read nodes; this class writes them through the
+LuckPerms API. LuckPerms is optional: without it, every method is a no-op and returns `false` or an empty result.
+
+| Method | Description |
+|---|---|
+| `isAvailable()` | `true` if LuckPerms is installed and its API is up (it comes up while the server starts) |
+| `setNode(UUID player, String node, boolean value)` | Persists the node for the player, online or offline, and pushes the change to other servers through LuckPerms' messaging service (if configured). Returns `CompletableFuture<Boolean>`: `true` once saved, `false` if LuckPerms is missing or the update failed (logged). Writes for the same player run in call order |
+| `getEffective(UUID player, String node)` | The player's effective value (user node, groups, wildcards; unset = `false`), also for offline players. Returns `CompletableFuture<Optional<Boolean>>`, empty if LuckPerms is missing or the lookup failed. Runs after the player's pending `setNode` writes. Completes on a LuckPerms thread |
+| `addNodeChangeListener(String node, BiConsumer<UUID, Boolean> listener)` | Calls `listener(player, effectiveValue)` on the server thread whenever LuckPerms changes the player's effective value of the node. Can be called at any time, also from server-start handlers, and stays registered for later server starts |
+
+What `setNode` does:
+- `true` sets the node to `true` in the global context, replacing a global `false` entry. If the user already has a global `true`, nothing changes.
+- `false` **removes** the user's global entry instead of adding `node=false`, so grants from groups keep working.
+  This means a player who inherits the node from a group keeps it. Check with `getEffective` afterwards if that matters.
+
+What the listener receives:
+- The effective value. It fires for local edits (commands, web editor, API), for edits on another server once LuckPerms syncs
+  the user here, and for group edits (re-checked for online players).
+- The first observation of a player in a server session only fires if the node is defined (`true` or `false`), so an unset
+  node never wipes flags that existed before LuckPerms was installed.
+
+```java
+// Mod init or server start: LuckPerms -> your flag
+LuckPermsBridge.addNodeChangeListener("mymod.admin", (uuid, admin) -> {
+    // Server thread. Write the flag directly, never through the path that calls setNode.
+    // Your own setNode also ends up here; the flag already has that value, so this is a no-op.
+    if (data.isAdmin(uuid) != admin)
+        data.setAdminFlagOnly(uuid, admin);
+});
+
+// "/mymod deop <player>": your flag -> LuckPerms
+data.setAdminFlagOnly(uuid, false);
+LuckPermsBridge.setNode(uuid, "mymod.admin", false)
+        .thenCompose(ok -> LuckPermsBridge.getEffective(uuid, "mymod.admin"))
+        .thenAccept(v -> server.execute(() -> {
+            if (v.equals(Optional.of(true))) {
+                data.setAdminFlagOnly(uuid, true);
+                source.sendFailure(Component.literal("Player is still admin through a LuckPerms group"));
+            }
+        }));
 ```
 
 ---

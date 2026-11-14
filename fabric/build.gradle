@@ -82,6 +82,10 @@ dependencies {
     // PlaceholderApiBackend is only class-loaded when "placeholder-api" is present.
     modCompileOnly("eu.pb4:placeholder-api:${rootProject.placeholder_api_version}") { transitive = false } // mc<=1.21.11
     //compileOnly("eu.pb4:placeholder-api:${rootProject.placeholder_api_version}") { transitive = false } // mc>=26.1
+    // ...and on the dev runtime (runClient/runServer) so PlaceholderApiTests can resolve through it. Always on: unlike
+    // LuckPerms it changes nothing unless text is parsed. modLocalRuntime: never in the jar or the published metadata.
+    modLocalRuntime("eu.pb4:placeholder-api:${rootProject.placeholder_api_version}") { transitive = false } // mc<=1.21.11
+    //localRuntime("eu.pb4:placeholder-api:${rootProject.placeholder_api_version}") { transitive = false } // mc>=26.1
 }
 
 // Opt-in LuckPerms for dev runs (runClient/runServer): -Pwith_luckperms=true.
