@@ -80,6 +80,7 @@ Comprehensive networking library for client-server communication.
 
 #### Persistence
 - [Persistence System](systems/Persistence.md) - NBT storage and data archives
+- [Data Migration](systems/DataMigration.md) - Per-mod save data version, ordered upgrade steps and backup zip
 
 #### Events
 - [Event System](systems/Events.md) - Signal and DataEvent classes
@@ -142,6 +143,7 @@ Legend:
 | Networking (Multi-Server) | Complete | TCP Master/Slave system documented |
 | Settings Library | Complete | JSON parser system documented |
 | Persistence System | Complete | NBT and archive system documented |
+| Data Migration | Complete | Data version, steps, backup and crash safety documented |
 | Event System | Complete | Signal and DataEvent documented |
 | Placeholders | Complete | Registry, TAB and Placeholder API backends documented |
 | Discord Webhooks | Complete | API, templates, config and delivery documented |
