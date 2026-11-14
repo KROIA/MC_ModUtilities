@@ -23,6 +23,9 @@ It is a **required dependency** of BankSystem and StockMarket: install it alongs
   - PlayerUtilities: Client and server player utilities
   - JsonUtilities: JSON parsing and serialization
 - **GUI Layout System**: Flexible layout managers for GUI components
+- **Placeholders**: Shared placeholder registry bridged to TAB and Placeholder API ([documentation](documentation/systems/Placeholders.md))
+- **Discord Webhooks**: Optional Discord webhook output for server events ([documentation](documentation/systems/DiscordWebhooks.md))
+- **Permissions**: Permission-node checks through the platform permission APIs and an optional LuckPerms bridge ([documentation](documentation/development/MultiVersionCompat.md#permission-nodes))
 
 ## Requirements
 

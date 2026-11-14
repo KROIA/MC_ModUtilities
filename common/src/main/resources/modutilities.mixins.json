@@ -9,7 +9,8 @@
     "MinecraftAccessor",
     "GuiRendererWindowMixin",
     "GuiRendererScaledItemsMixin",
-    "FabricSpecialGuiElementRegistryMixin"
+    "FabricSpecialGuiElementRegistryMixin",
+    "MouseHandlerMixin"
   ],
   "mixins": [
     "BlockEntityTypeInvoker"

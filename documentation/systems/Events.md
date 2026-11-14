@@ -77,6 +77,11 @@ onPlayerJoin.setListenerRemainingCallCount(listener, 5);
 int remaining = onPlayerJoin.getListenerRemainingCallCount(listener);
 ```
 
+> [!NOTE]
+> Adding a listener instance that is already registered does nothing, and its remaining call count is kept.
+> Listeners are compared by identity: a lambda or method reference created anew on each call is a new instance,
+> so keep the instance in a field if you add it more than once or want to remove it later.
+
 ### API Reference
 
 | Method | Description |
@@ -178,7 +183,7 @@ onBlockChange.notifyListeners(new BlockChangeData(pos, old, newBlock));
 | Method | Description |
 |--------|-------------|
 | `addListener(Consumer<T> listener)` | Add a listener with unlimited calls |
-| `addListener(Consumer<T> listener, int maxCalls)` | Add a listener with limited calls |
+| `addListener(Consumer<T> listener, int maxCalls)` | Add a listener with limited calls (an already registered instance is ignored, as for `Signal`) |
 | `removeListener(Consumer<T> listener)` | Remove a specific listener |
 | `removeListeners()` | Clear all listeners |
 | `notifyListeners(T value)` | Trigger all listeners with data |
