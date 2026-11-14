@@ -18,11 +18,9 @@ public final class ModUtilitiesFabric implements ModInitializer {
         // Run our common setup.
         UtilitiesPlatform.setPlatform(new UtilitiesPlatformFabric());
         ServerLifecycleEvents.SERVER_STARTING.register(server -> {
-            ModUtilitiesMod.LOGGER.info("[FabricSetup] SERVER_STARTING");
             UtilitiesPlatformFabric.setServer(server);
         });
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
-            ModUtilitiesMod.LOGGER.info("[FabricSetup] SERVER_STOPPED");
             UtilitiesPlatformFabric.setServer(null);
         });
 
