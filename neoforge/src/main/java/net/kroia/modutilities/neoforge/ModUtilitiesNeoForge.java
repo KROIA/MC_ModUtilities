@@ -12,11 +12,9 @@ public final class ModUtilitiesNeoForge {
 
         UtilitiesPlatform.setPlatform(new UtilitiesPlatformNeoForge());
         LifecycleEvent.SERVER_STARTING.register(server -> {
-            ModUtilitiesMod.LOGGER.info("[NeoForgeSetup] SERVER_STARTING");
             UtilitiesPlatformNeoForge.setServer(server);
         });
         LifecycleEvent.SERVER_STOPPED.register(server -> {
-            ModUtilitiesMod.LOGGER.info("[NeoForgeSetup] SERVER_STOPPED");
             UtilitiesPlatformNeoForge.setServer(null);
         });
         NeoForge.EVENT_BUS.addListener(PermissionCompatImpl::onGatherNodes);

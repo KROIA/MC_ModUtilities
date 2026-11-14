@@ -16,6 +16,7 @@ import net.kroia.modutilities.networking.client_server.streaming.StreamSystem;
 import net.kroia.modutilities.setting.parser.ItemStackJsonParser;
 import net.kroia.modutilities.testing.TestCommandRegistration;
 import net.kroia.modutilities.testing.TestRegistry;
+import net.kroia.modutilities.testing.TestSuite;
 import net.kroia.modutilities.testing.tests.CreativeTabTests;
 import net.kroia.modutilities.testing.tests.EventTests;
 import net.kroia.modutilities.testing.tests.GuiLogicTests;
@@ -413,5 +414,14 @@ public class Sandbox {
             TestRegistry.register(new net.kroia.modutilities.testing.tests.LuckPermsRemovedTests());
         }
         TestRegistry.register(new net.kroia.modutilities.testing.tests.DiscordTests());
+        if (inGame) { // fabric source set only (Patbox Placeholder API); absent on NeoForge
+            try {
+                TestRegistry.register((TestSuite) Class.forName("net.kroia.modutilities.testing.fabric.PlaceholderApiTests")
+                        .getDeclaredConstructor().newInstance());
+            } catch (ClassNotFoundException ignored) {
+            } catch (ReflectiveOperationException e) {
+                ModUtilitiesMod.LOGGER.error("PlaceholderApiTests failed to load", e);
+            }
+        }
     }
 }

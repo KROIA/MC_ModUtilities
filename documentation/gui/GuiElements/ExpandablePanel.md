@@ -72,6 +72,15 @@ void setContentBackgroundColor(int color)          // Set the content area backg
 void setContentBackgroundEnabled(boolean enabled)  // Toggle the content background fill (off by default)
 ```
 
+### For Subclasses
+```java
+protected EmptyButton getHeaderButton()            // The clickable header row; add extra header elements to it
+protected Label getTitleLabel()                    // The header title label; reposition it in layoutChanged()
+protected GuiElement getContentArea()              // The container that holds the content children
+```
+A subclass that adds elements to the header should override `layoutChanged()`, call `super.layoutChanged()` and then
+place its own elements. See [FeatureToggleSection](FeatureToggleSection.md) for an example.
+
 ## Styling
 
 The panel frame draws an outline only (transparent fill) so the header and content provide the visuals. The header behaves like a button and exposes idle, hover and pressed colors, while the content background is disabled by default and must be turned on explicitly.

@@ -35,7 +35,7 @@ void setCustomLabelElement(GuiElement element)     // Use custom element as labe
 
 ### Options Management
 ```java
-void addOption(String label)                       // Add a text option
+Label addOption(String label)                      // Add a text option, returns its Label (e.g. for a tooltip)
 void addChild(GuiElement element)                  // Add a custom option element
 void removeChild(GuiElement element)               // Remove an option
 void clearOptions()                                // Remove all options
@@ -58,7 +58,7 @@ int getUnexpandedHeight()                          // Get height when collapsed
 ```java
 void setOnOptionSelected(BiConsumer<Integer, GuiElement> callback)   // Set selection callback
 int getSelectedIndex()                             // Get index of selected option
-void setSelectedIndex(int index)                   // Programmatically select an option
+void setSelectedIndex(int index)                   // Select an option as if it was clicked
 ```
 
 ### Z-Position Control
@@ -67,6 +67,13 @@ void setExpandedZPos(float z)                      // Set Z position when expand
 float getExpandedZPos()                            // Get expanded Z position
 void setZ(float z)                                 // Set default Z position
 ```
+
+When the user picks an option, the menu shows the option's text in the collapsed label (for options added with
+`addOption`), collapses, and then runs the selection callback. `setSelectedIndex(index)` does the same as a click,
+including the callback; out-of-range indices are ignored. When the menu is opened again, the selected option is highlighted.
+
+> **Breaking change (2.2.0):** `addOption(String)` returns the created `Label` instead of `void`.
+> Source code that ignores the result compiles unchanged; recompile against the new version.
 
 ## Styling
 
@@ -196,6 +203,8 @@ menu.addOption("German");
 int savedLanguage = config.getLanguageIndex();
 menu.setSelectedIndex(savedLanguage);
 ```
+`setSelectedIndex` fires the selection callback. Call it before `setOnOptionSelected` if restoring a saved value should not
+trigger the callback.
 
 ### Dynamic Options
 ```java
@@ -275,5 +284,7 @@ menu.setOnOptionSelected((index, element) -> {
 - Options are wrapped in internal `EmptyButtonChanged` elements for click detection
 - The expand button shows arrow icons from mod textures (`arrow_down.png`, `arrow_up.png`)
 - Clicking outside the expanded menu automatically collapses it
+- The open list gets hover, tooltips, mouse-wheel scrolling and scrollbar dragging even where it hangs outside its parents' bounds.
+  Clicks on it never reach elements underneath (the `Gui` delivers them to the open list first via `clickOpenList`, which is not meant to be called directly)
 - The menu changes its Z position when expanded to render above other elements
 - Internal layout is automatically recalculated when options are added or removed
