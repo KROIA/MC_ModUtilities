@@ -19,10 +19,10 @@ public class UtilitiesPlatformFabric implements PlatformAbstraction {
         minecraftServer = server;
         if(minecraftServer != null)
         {
-            ModUtilitiesMod.LOGGER.info("[FabricSetup] SERVER INSTANCE SET");
+            ModUtilitiesMod.LOGGER.debug("[FabricSetup] SERVER INSTANCE SET");
         }
         else {
-            ModUtilitiesMod.LOGGER.info("[FabricSetup] SERVER INSTANCE CLEARED");
+            ModUtilitiesMod.LOGGER.debug("[FabricSetup] SERVER INSTANCE CLEARED");
         }
     }
     @Override

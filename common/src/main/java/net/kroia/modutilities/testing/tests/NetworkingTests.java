@@ -34,6 +34,7 @@ import net.kroia.modutilities.networking.multi_server.payload.HandshakePayload;
 import net.kroia.modutilities.networking.multi_server.payload.HandshakeResultPayload;
 import net.kroia.modutilities.networking.multi_server.payload.PacketIds;
 import net.kroia.modutilities.networking.multi_server.slave.SlaveServerClient;
+import net.kroia.modutilities.testing.SimulatedMasterHang;
 import net.kroia.modutilities.testing.TestCategory;
 import net.kroia.modutilities.testing.TestResult;
 import net.kroia.modutilities.testing.TestSuite;
@@ -144,6 +145,11 @@ public class NetworkingTests extends TestSuite {
         addTest("slave_master_down_request_fails_fast", this::testSlaveMasterDownRequestFailsFast);
         addTest("slave_master_down_stream_refused", this::testSlaveMasterDownStreamRefused);
         addTest("slave_master_lost_stops_redirected_stream", this::testSlaveMasterDownStopsRedirectedStream);
+        // Slave whose master hangs (link up, requests unanswered; SimulatedMasterHang)
+        addTest("slave_master_hang_request_times_out", this::testSlaveMasterHangRequestTimesOut);
+
+        // Server-to-client capture seam (NetworkPacketManager.sendToClientListener)
+        addTest("send_to_client_captured", this::testSendToClientCaptured);
     }
 
     // ========================================================================
@@ -1057,6 +1063,30 @@ public class NetworkingTests extends TestSuite {
     // ------------------------------------------------------------------------
 
     /** A test manager whose server sends are captured into {@code toServer}. */
+    /** A packet sent to the online player through a manager must reach the capture seam with that player. */
+    private TestResult testSendToClientCaptured() {
+        net.minecraft.server.MinecraftServer server = getServer();
+        List<net.minecraft.server.level.ServerPlayer> players = server == null ? List.of() : server.getPlayerList().getPlayers();
+        if (players.isEmpty()) return skip("no online player");
+        net.minecraft.server.level.ServerPlayer player = players.get(0);
+        RegistryFriendlyByteBuf empty = net.kroia.modutilities.UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
+        if (empty == null) return skip("no server buffer (server not running)");
+        // Same packet as RequestManager's failure reply; the client ignores the unknown request ID.
+        GenericResponsePacket packet = new GenericResponsePacket(UUID.randomUUID(), "modutilities_test_capture", empty,
+                GenericResponsePacket.STATUS_NOT_SENT);
+        List<UUID> receivers = Collections.synchronizedList(new ArrayList<>());
+        var old = NetworkPacketManager.sendToClientListener;
+        NetworkPacketManager.sendToClientListener = (p, pk) -> {
+            if (pk == packet) receivers.add(p.getUUID());
+        };
+        try {
+            capturingNetworkManager(new ArrayList<>()).sendToClient(player, packet);
+        } finally {
+            NetworkPacketManager.sendToClientListener = old;
+        }
+        return assertEquals("packet must be captured once, for the receiving player", List.of(player.getUUID()), List.copyOf(receivers));
+    }
+
     private static NetworkPacketManager capturingNetworkManager(List<NetworkPacket> toServer) {
         return new NetworkPacketManager("modutilities_test") {
             @Override public void setupClientReceiverPackets() {}
@@ -1308,6 +1338,52 @@ public class NetworkingTests extends TestSuite {
                 try { StreamSystem.stopStream(id); } catch (RuntimeException ignored) {}
             }
             StreamSystem.unregister(stream);
+        }
+    }
+
+    // ------------------------------------------------------------------------
+    // Slave whose master hangs (SimulatedMasterHang)
+    // ------------------------------------------------------------------------
+
+    /**
+     * Hang on: the echo request (2 s timeout) is not refused, then times out with RequestOutcomeUnknownException
+     * while the link stays up. Hang off: the master answers the next one. The hang is always switched off.
+     */
+    private TestResult testSlaveMasterHangRequestTimesOut() {
+        if (!MultiServerManager.isSlave()) return skip("not a slave");
+        if (!MultiServerManager.isRunning()) return skip("master link not up");
+        GenericRequest<String, String> echo = SimulatedMasterHang.ECHO;
+        RequestManager m = echo.getManager();
+        if (m == null) return skip("ARRS not set up");
+        // the hang drops every master request JVM-wide: let other mods' post-connect requests finish first
+        if (!pumpUntil(() -> m.getPendingServerServerRequestsCount() == 0, 10_000))
+            return skip("slave still has pending master requests");
+        boolean oldFailures = RequestManager.ENABLE_REQUEST_FAILURES;
+        RequestManager.ENABLE_REQUEST_FAILURES = true;
+        try {
+            CompletableFuture<String> hung;
+            try {
+                SimulatedMasterHang.set(true);
+                hung = echo.sendRequestToMaster("hang");
+                if (hung.isDone() && !hung.isCompletedExceptionally()) return skip("no server buffer (server not running)");
+                if (hung.isDone()) return fail("hung request must look sent, got " + causeOf(hung));
+                // pump runs queued tasks, not ticks: sweep once past the timeout like the 20-tick cleanup does
+                pump(echo.getTimeoutMs() + 500);
+                if (hung.isDone()) return fail("hung request answered before its timeout");
+                m.cleanupExpiredRequests(false);
+            } finally {
+                SimulatedMasterHang.set(false);
+            }
+            if (!(causeOf(hung) instanceof RequestOutcomeUnknownException))
+                return fail("hung request must fail with RequestOutcomeUnknownException, got " + causeOf(hung));
+            if (!MultiServerManager.isRunning()) return fail("master link must stay up while the master hangs");
+
+            CompletableFuture<String> after = echo.sendRequestToMaster("ping");
+            if (!pumpUntil(after::isDone, 10_000)) return fail("request after the hang must be answered, still pending after 10 s");
+            if (after.isCompletedExceptionally()) return fail("request after the hang failed: " + causeOf(after));
+            return assertEquals("master must echo the input after the hang", "ping", after.join());
+        } finally {
+            RequestManager.ENABLE_REQUEST_FAILURES = oldFailures;
         }
     }
 
