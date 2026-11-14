@@ -12,12 +12,14 @@
    - [TestRunner](#testrunner)
    - [TestRegistry](#testregistry)
    - [TestCommandRegistration](#testcommandregistration)
+   - [LuckPermsPhase](#luckpermsphase)
 5. [Writing Tests](#writing-tests)
 6. [Defining Categories](#defining-categories)
 7. [Integrating in Your Mod](#integrating-in-your-mod)
 8. [Commands](#commands)
 9. [Dev Builds and Release Builds](#dev-builds-and-release-builds)
-10. [ModUtilities Internal Tests](#modutilities-internal-tests)
+10. [Offline Tests (JUnit)](#offline-tests-junit)
+11. [ModUtilities Internal Tests](#modutilities-internal-tests)
 
 ---
 
@@ -188,6 +190,7 @@ An immutable value object representing the outcome of a single test.
 | `PASS`  | The test assertion succeeded.                      |
 | `FAIL`  | The test assertion did not hold.                   |
 | `ERROR` | An unexpected exception occurred during execution. |
+| `SKIP`  | The test did not run because a precondition is missing (e.g. an optional mod). Counted as skipped, not failed. |
 
 #### Static Factory Methods
 
@@ -197,13 +200,14 @@ An immutable value object representing the outcome of a single test.
 | `TestResult.fail(String testName, @Nullable String message)` | Create a failure with a message only. |
 | `TestResult.fail(String testName, @Nullable String message, String expected, String actual)` | Create a failure with expected/actual values for diff display. |
 | `TestResult.error(String testName, String message)` | Create an error result (uncaught exception, setup failure, etc.). |
+| `TestResult.skip(String testName, String reason)` | Create a skipped result. Inside a suite, use the protected `skip(reason)` helper. |
 
 #### Instance Methods
 
 | Method | Return Type | Description |
 |--------|-------------|-------------|
 | `getTestName()` | `String` | The name of the test. |
-| `getStatus()` | `Status` | `PASS`, `FAIL`, or `ERROR`. |
+| `getStatus()` | `Status` | `PASS`, `FAIL`, `ERROR` or `SKIP`. |
 | `passed()` | `boolean` | Convenience: `true` if status is `PASS`. |
 | `getMessage()` | `@Nullable String` | Descriptive message (present on all statuses). |
 | `getExpected()` | `@Nullable String` | Expected value string (only on assertion failures). |
@@ -280,13 +284,18 @@ Abstract base class that all test suites extend. Provides test registration, lif
 |--------|-------------|
 | `void setup()` | Called before any test in the suite runs. Use for shared initialization. |
 | `void teardown()` | Called after all tests in the suite complete. Use for cleanup. |
+| `boolean needsGame()` | Default `true`. Return `false` if the suite also runs without Minecraft, in the [offline JUnit run](#offline-tests-junit). Override it only after the suite passed there. |
 
 #### Protected Methods
 
 | Method | Description |
 |--------|-------------|
 | `addTest(String name, Supplier<TestResult> test)` | Register a named test. Call this inside `registerTests()`. |
-| `@Nullable MinecraftServer getServer()` | Access the server instance (available after `setServer()` is called by the runner). |
+| `@Nullable MinecraftServer getServer()` | Access the server instance (available after `setServer()` is called by the runner). `null` in the offline run. |
+| `TestResult skip(String reason)` | Return this from a test whose precondition is missing (e.g. an optional mod is not installed). |
+| `<T> T await(CompletableFuture<T> future, long timeoutMillis)` | Waits for the future and returns its result. On the server thread it keeps running queued server tasks meanwhile, so work the future needs on the server thread cannot deadlock against the waiting test. Throws `IllegalStateException` on timeout; a failed future rethrows its cause wrapped. |
+| `boolean pumpUntil(BooleanSupplier done, long timeoutMillis)` | Runs queued server tasks until `done` is true or the timeout passed. Returns `done` at the end. |
+| `void pump(long millis)` | Runs queued server tasks for `millis`, so async callbacks that hop to the server thread can arrive. |
 
 #### Public Methods
 
@@ -327,7 +336,7 @@ public TestRunner(String modName, String modId, boolean isSlave, @Nullable Minec
 
 | Method | Description |
 |--------|-------------|
-| `runAll(@Nullable ServerPlayer player)` | Run all registered test suites that are eligible for the current server type. Skips suites whose category `canRunOn(isSlave)` returns `false`. |
+| `runAll(@Nullable ServerPlayer player)` | Run all registered test suites that are eligible for the current server type. Skips suites whose category `canRunOn(isSlave)` returns `false`, suites deselected by the [test selection](#test-selection) and suites that run in the offline run instead. |
 | `runCategory(@Nullable ServerPlayer player, String categoryName)` | Run only suites matching the given category name. Reports an error if the category is unknown or not eligible. |
 | `listCategories(ServerPlayer player)` | Print all known categories to chat, showing test counts. Ineligible categories are shown with strikethrough text and a reason. |
 | `getResults()` | Per-suite results of every suite run so far, keyed by `category/SuiteClass`. Used by the `AutoTest` hook for its JSON report. |
@@ -343,7 +352,8 @@ public TestRunner(String modName, String modId, boolean isSlave, @Nullable Minec
   - `  ✓ test_name` (green) for passing tests.
   - `  ✗ test_name` (red) for failures, followed by `Expected: X Got: Y` if available.
   - `  ! test_name` (yellow) for errors, followed by the error message.
-- **Per-suite summaries** show `category_name: N/M passed, F failed, E errors`.
+  - `  - test_name (skipped: reason)` (dark gray) for skipped tests.
+- **Per-suite summaries** show `category_name: N/M passed, F failed, E errors`, plus `S skipped` if any test was skipped.
 - **Final summary** shows total counts across all suites.
 
 ---
@@ -361,6 +371,9 @@ Static registry that holds all test suites across all mods. Also contains the ma
 | Field | Type | Description |
 |-------|------|-------------|
 | `ENABLE_TESTS` | `public static final boolean` | Legacy switch, always `true`. Release builds exclude the whole `testing` package instead; see [Dev Builds and Release Builds](#dev-builds-and-release-builds). |
+| `EXCLUDE_PROPERTY` | `String` | `"modutilities.tests.exclude"`, see [Test selection](#test-selection). |
+| `INCLUDE_PROPERTY` | `String` | `"modutilities.tests.include"`, see [Test selection](#test-selection). |
+| `OFFLINE_PROPERTY` | `String` | `"modutilities.tests.offline"`, see [Test selection](#test-selection). |
 
 #### Static Methods
 
@@ -370,6 +383,9 @@ Static registry that holds all test suites across all mods. Also contains the ma
 | `getTestSuites()` | `List<TestSuite>` | Unmodifiable list of all registered suites. |
 | `getAvailableCategories(boolean isSlave)` | `List<String>` | Distinct category names whose `canRunOn(isSlave)` returns `true`. Used for command tab-completion. |
 | `clear()` | `void` | Remove all registered suites. Useful for test reloading scenarios. |
+| `topicKey(TestSuite suite)` | `String` | `<modid>/<Category>/<SuiteClass>`, the key the selection properties match. |
+| `isExcluded(TestSuite suite)` | `boolean` | `true` if the include/exclude properties deselect the suite. |
+| `isOffline(TestSuite suite)` | `boolean` | `true` if the suite has `needsGame() == false` and matches the offline property. |
 
 ---
 
@@ -397,6 +413,32 @@ This single call registers three sub-commands under `/<commandRoot> test`. It is
 All commands require **permission level 2** (operator).
 
 The `category` argument provides **tab-completion** by querying `TestRegistry.getAvailableCategories(isSlave)`.
+
+---
+
+### LuckPermsPhase
+
+```
+net.kroia.modutilities.testing.LuckPermsPhase
+```
+
+Helper for testing a world after LuckPerms was removed from it. The scenario has two phases on the same world:
+
+1. **Phase 1, with LuckPerms:** tests `record(...)` what must survive, e.g. "player X has the admin flag".
+2. **Phase 2, the same world without LuckPerms** (`isPhase2(server)`): tests read the values back with `expected(...)` /
+   `expectations(...)` and check that the mod still works and the state is intact.
+
+| Method | Description |
+|--------|-------------|
+| `FILE` | `"testing/luckperms_phase1.json"`, the phase file relative to the world folder. |
+| `file(MinecraftServer)` | Absolute path of the phase file. |
+| `phase1Exists(MinecraftServer)` | `true` if the world has a phase file. |
+| `isPhase2(MinecraftServer)` | `true` if the world has a phase file and LuckPerms is not installed. |
+| `record(MinecraftServer, String modId, String key, String value)` | Stores the value for the mod. Writes only while LuckPerms is available and returns `false` otherwise, so runs without LuckPerms never create the file. A key recorded again overwrites the old value. |
+| `expected(MinecraftServer, String modId, String key)` | The recorded value, or `null`. |
+| `expectations(MinecraftServer, String modId)` | Everything the mod recorded (empty if nothing). |
+
+The file layout is `{"mods": {"<modId>": {"<key>": "<value>", ...}}}`; keys and values are plain strings.
 
 ---
 
@@ -776,7 +818,49 @@ The `testing` API only exists in a ModUtilities jar built with `enable_dev_featu
 
 ### Automated runs
 
-In a dev build, `-Dmodutilities.autotest=<label>` (JVM argument of a client or server) runs every registered suite headless once the server is ready, writes a JSON report (`-Dmodutilities.autotest.results=<path>`, default `autotest-results.json`) and stops a dedicated server afterwards. Further `modutilities.autotest.*` properties (wait for a player, slaves or the master link, `mods` to run, `timeout`) are listed in the `AutoTest` class doc. `-Dmodutilities.tests.exclude` / `.include` / `.offline` select suites by `<modid>/<Category>/<Suite>` prefix keys, also for `gradlew :common:test`.
+In a dev build, `-Dmodutilities.autotest=<label>` (JVM argument of a client or server) runs every registered suite headless once the server is ready, writes a JSON report (`-Dmodutilities.autotest.results=<path>`, default `autotest-results.json`) and stops a dedicated server afterwards. Further `modutilities.autotest.*` properties (wait for a player, slaves or the master link, `mods` to run, `timeout`) are listed in the `AutoTest` class doc. `-Dmodutilities.tests.exclude` / `.include` / `.offline` select suites by `<modid>/<Category>/<Suite>` prefix keys, also for `gradlew :common:test` (see [Test selection](#test-selection)).
+
+---
+
+## Offline Tests (JUnit)
+
+Suites that need no running game can also run as plain JUnit tests in `gradlew :common:test`, which is much faster.
+Mark such a suite with `needsGame()` returning `false`, then add one `@TestFactory` to your mod's `common/src/test`:
+
+```java
+class MyModOfflineTests {
+    @TestFactory
+    Stream<DynamicTest> offline() {
+        return OfflineTests.run(() -> MyModTestRegistration.register());
+    }
+}
+```
+
+`OfflineTests.run(registerSuites)` calls your registration (the same call your mod's init makes) and returns one JUnit test
+per suite test, in the same order as in game:
+- The tests are named `<modid>/<category>/<SuiteClass>/<test>`, plus `.../<setup>` and `.../<teardown>`.
+- `teardown()` always runs. The tests of a suite are skipped when its `setup()` failed.
+- `SKIP` results become JUnit skips; `FAIL` and `ERROR` become failures.
+- `getServer()` returns `null`.
+
+There is no game bootstrap and no mod loader. A suite that touches registries (items, `ItemStack`, registry codecs) calls
+`SharedConstants.tryDetectVersion(); Bootstrap.bootStrap();` in its `setup()`; in game that call does nothing.
+Code that reaches `@ExpectPlatform` methods (for example `ModChecker` or Architectury's `Platform`) or `UtilitiesPlatform`
+fails offline, so such suites must keep `needsGame()` at `true`.
+
+### Test selection
+
+Three system properties select suites, in game (`-D` JVM argument) and in the offline run (`gradlew :common:test -D...`):
+
+| Property | Effect |
+|----------|--------|
+| `modutilities.tests.include` | If set, only matching suites run; the rest count as excluded. |
+| `modutilities.tests.exclude` | Matching suites do not run. Applied on top of `include`. |
+| `modutilities.tests.offline` | Matching suites with `needsGame() == false` run in the offline run instead of in game. Unset: the offline run runs every capable suite, and the game runs every suite. |
+
+Each value is a comma-separated list of keys `<modid>`, `<modid>/<Category>` or `<modid>/<Category>/<SuiteClass>`.
+A key matches as a prefix by `/` segments, and a `*` segment matches any one segment (for example `mymod/*/MySuite`).
+No regular expressions. In the offline run, an excluded suite shows up as one skipped `.../<excluded>` test.
 
 ---
 
@@ -796,6 +880,11 @@ Defined in `net.kroia.modutilities.testing.categories.ModUtilitiesTestCategories
 | `mu_persistence` | `MASTER_ONLY` | No | NBT/JSON persistence tests |
 | `mu_events` | `BOTH` | No | DataEvent and Signal tests |
 | `mu_multi_server` | `BOTH` | Yes | Master/slave communication tests |
+| `mu_gui` | `BOTH` | No | GUI element logic tests |
+| `mu_utilities` | `BOTH` | No | ColorUtilities, JsonUtilities, TimerMillis and ItemUtilities helper tests |
+| `mu_luckperms` | `BOTH` | Yes | LuckPermsBridge with LuckPerms installed, and worlds after LuckPerms was removed |
+| `mu_discord` | `BOTH` | No | DiscordWebhooks config, rendering, batching and rate limits (fake HTTP) |
+| `mu_placeholder` | `BOTH` | Yes | PlaceholderRegistry resolved through Placeholder API (Fabric) |
 
 ### EventTests Coverage
 

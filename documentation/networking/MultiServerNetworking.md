@@ -92,6 +92,9 @@ All slave-to-slave communication flows through the master server.
 - `sendToMaster()` - Send packet to master (slave only)
 - `sendToSlave()` - Send packet to specific slave (master only)
 - `broadcastToSlaves()` - Broadcast to all slaves (master only)
+- `isSlave()` / `isMaster()` - The configured role of this server
+- `isRunning()` - Link state only: the master is listening, or the slave is connected. To decide whether traffic must go to the master, check the role with `isSlave()`, not `isRunning()`
+- `getIdentity()` - This server's persisted identity, see [Server Identity](#7-server-identity)
 
 ### 2. MultiServerConfig
 
@@ -131,16 +134,17 @@ All TCP communication uses typed payload objects:
 Sent by slave to authenticate with master.
 - `serverId` - Unique identifier for the slave
 - `token` - Shared secret for authentication
-- `mcVersion` - Minecraft version of the slave (empty when sent by an older ModUtilities)
+- `mcVersion` - Minecraft version of the slave (empty when sent by an older ModUtilities). `HandshakePayload.localMcVersion()` returns the local value
+- `serverUid` - The slave's [server uid](#7-server-identity) (nullable; `null` when sent by an older ModUtilities)
 
 #### HandshakeResultPayload
 Master's response to handshake.
-- `result` - Connection state: `SUCCESS`, `INVALID_SHARED_SECRET`, `SLAVE_ID_ALREADY_USED`, `MC_VERSION_MISMATCH`
+- `result` - Connection state: `SUCCESS`, `INVALID_SHARED_SECRET`, `SLAVE_ID_ALREADY_USED`, `MC_VERSION_MISMATCH`, `DUPLICATE_SERVER_UID`
+- `masterUid` - The master's server uid (nullable). The one-argument constructor `HandshakeResultPayload(result)` leaves it `null`
 
 #### ForwardPacketPayload
 Wraps Minecraft CustomPacketPayload for cross-server transmission.
 - `senderPlayerUUID` - UUID of player who sent packet (nullable)
-- `senderServerID` - ID of originating server
 - `packetType` - ResourceLocation identifying packet type
 - `data` - Serialized packet data
 
@@ -193,8 +197,55 @@ public interface ForwardPacketHandler<T extends CustomPacketPayload> {
 Context information provided when handling forwarded packets:
 
 - `channelContext` - Netty channel context
-- `senderServerID` - ID of server that sent the packet
+- `senderServerID` - ID of server that sent the packet. The master takes it from the authenticated connection; on a slave it is always `"master"`
 - `senderPlayerUUID` - UUID of player who sent packet (if applicable)
+
+> [!WARNING]
+> `senderPlayerUUID` is asserted by the sending slave and is **not** verified by the master. Any slave that knows the
+> shared secret can claim any player. Only `senderServerID` is authenticated. Handlers that move value, run admin actions
+> or return another player's data must not trust the UUID from slaves your mod treats as untrusted.
+> The matching `ServerPlayer` is usually not available, because the player is logged in on another server.
+
+### 7. Server Identity
+
+Every server keeps a persisted identity for diagnostics. Get it with `MultiServerManager.getIdentity()`; it is non-null
+from `SERVER_STARTED` until `SERVER_STOPPED`.
+
+```java
+IServerIdentity id = MultiServerManager.getIdentity();
+if (id != null) {
+    UUID self = id.serverUid();          // random id of this server
+    ServerRole role = id.role();         // STANDALONE, MASTER or SLAVE
+    String slaveId = id.slaveId();       // configured slave name on a slave, otherwise null
+    UUID master = id.masterUid();        // on a slave: the master's uid after the handshake, otherwise null
+    UUID slave = id.slaveUid("slave_a"); // on the master: last known uid of that slave, or null
+}
+```
+
+- The identity is stored in `<world>/data/ModUtilities/server_identity.json`. It is written atomically and only when it changes.
+- The uid changes only when the slave ID changes or the file is deleted. A corrupt file starts a new identity.
+- The role comes from `createMaster` / `createSlave`. If neither was called, the server is `STANDALONE`.
+- The uids are self-reported over the wire. Use them for diagnostics only, **never for authorization**.
+
+During the handshake the master rejects a slave whose uid belongs to the master itself or to another known slave, with
+`DUPLICATE_SERVER_UID`. This catches a world that was copied to a second server. A reconnect under the same slave ID is
+allowed, and a slave without a uid (older ModUtilities) is accepted with a warning.
+
+### 8. Master Link Loss
+
+When a slave loses its master link:
+- Client packets and requests that need the master are not handled on the slave. The send is refused and the packet is dropped
+  (see [Routing to the master server](NetworkPacket.md#routing-to-the-master-server)).
+- With `RequestManager.ENABLE_REQUEST_FAILURES` on, pending requests fail (see [Request failures](ARRS.md#request-failures)).
+- Streams the slave relays from the master are stopped.
+- The `onConnectionLost` callback of `createSlave` fires once when an established link drops, as well as on failed connection attempts.
+- The slave keeps retrying. The "not connected" error is logged at most every 30 s. The reconnect warning is logged on the
+  first failure, then once a minute with the number of attempts.
+
+`MultiServerManager.setSimulatedMasterDown(boolean)` is a hook for your own tests. On a slave with dev features enabled,
+`true` closes the link and makes every reconnect attempt fail without dialling, so the real connection-lost and reconnect paths run.
+`false` lets the next attempt (within about 5 s) reconnect. `isSimulatedMasterDown()` returns the current value.
+It does nothing on other servers. Always reset it to `false` when the test ends.
 
 ---
 
@@ -273,7 +324,8 @@ public class MyModEvents {
    - Shared secret matches
    - Minecraft version equals the master's (checked only after the secret)
    - Slave ID is unique (not already connected)
-4. Master sends `HandshakeResultPayload` with result
+   - Server uid does not belong to the master or another known slave
+4. Master sends `HandshakeResultPayload` with result and its own server uid
 5. If successful, connection is established
 6. If failed, connection is closed
 
@@ -283,12 +335,13 @@ Slave                          Master
   ├──── TCP Connect ────────────>│
   │                              │
   ├──── HandshakePayload ───────>│
-  │ (slaveID, token, mcVersion)  │
+  │ (slaveID, token, mcVersion,  │
+  │  serverUid)                  │
   │                              │
   │                       [Validate]
   │                              │
   │<──── HandshakeResultPayload ─┤
-  │     (SUCCESS)                │
+  │     (SUCCESS, masterUid)     │
   │                              │
   │<════ Connection Ready ══════>│
 ```
@@ -377,6 +430,12 @@ public class SlaveServerSetup {
                         break;
                     case SLAVE_ID_ALREADY_USED:
                         ModLogger.error("Slave ID '" + config.slaveID + "' is already in use");
+                        break;
+                    case MC_VERSION_MISMATCH:
+                        ModLogger.error("Master runs a different Minecraft version");
+                        break;
+                    case DUPLICATE_SERVER_UID:
+                        ModLogger.error("Server uid already known to the master (copied world?)");
                         break;
                     default:
                         ModLogger.error("Connection failed: " + state);
@@ -678,9 +737,9 @@ public class CrossServerPlayerTracker {
 
 | Payload Type | Direction | Purpose | Fields |
 |-------------|-----------|---------|--------|
-| `HandshakePayload` | Slave → Master | Initial authentication | `serverId`, `token`, `mcVersion` |
-| `HandshakeResultPayload` | Master → Slave | Authentication result | `result` (enum) |
-| `ForwardPacketPayload` | Bidirectional | Wrap and forward custom packets | `senderPlayerUUID`, `senderServerID`, `packetType`, `data` |
+| `HandshakePayload` | Slave → Master | Initial authentication | `serverId`, `token`, `mcVersion`, `serverUid` |
+| `HandshakeResultPayload` | Master → Slave | Authentication result | `result` (enum), `masterUid` |
+| `ForwardPacketPayload` | Bidirectional | Wrap and forward custom packets | `senderPlayerUUID`, `packetType`, `data` |
 | `BroadcastPayload` | Master → Slaves | Simple broadcast message | `senderName`, `fromServer`, `message` |
 | `ManualDisconnectionPayload` | Master → Slave | Graceful disconnect | `reason` |
 
@@ -850,11 +909,7 @@ String sharedSecret = UUID.randomUUID().toString() + UUID.randomUUID().toString(
 
 ```java
 public static void safeSend(CustomPacketPayload packet) {
-    if (!MultiServerManager.isRunning()) {
-        ModLogger.warn("Cannot send packet: MultiServerManager not running");
-        return;
-    }
-    
+    // Decide by role: a slave whose link is down must still not handle the packet itself.
     if (MultiServerManager.isSlave()) {
         boolean sent = MultiServerManager.sendToMaster(packet);
         if (!sent) {
@@ -992,7 +1047,15 @@ telnet <master-ip> 25575
 - Run the master and all slaves on the same Minecraft version; the master log names both versions
 - Update ModUtilities on the slave (older versions do not send their Minecraft version)
 
-#### 5. Packets Not Being Received
+#### 5. Duplicate Server Uid
+
+**Problem**: `DUPLICATE_SERVER_UID` error.
+
+**Solutions**:
+- The slave's world was most likely copied from the master or another slave, so both have the same server uid
+- On the copied server, stop it, delete `data/ModUtilities/server_identity.json` in its world folder and start it again; a new uid is created
+
+#### 6. Packets Not Being Received
 
 **Problem**: Packets sent but not received on other side.
 
@@ -1009,7 +1072,7 @@ ModLogger.info("Packet registered: " +
     MultiServerPacketRegistry.isRegistered(packet.type().id()));
 ```
 
-#### 6. Reconnection Loop
+#### 7. Reconnection Loop
 
 **Problem**: Slave continuously disconnects and reconnects.
 
@@ -1019,7 +1082,7 @@ ModLogger.info("Packet registered: " +
 - Review logs for error patterns
 - Ensure handlers don't throw unhandled exceptions
 
-#### 7. Master Server Won't Start
+#### 8. Master Server Won't Start
 
 **Problem**: Master server fails to bind to port.
 
@@ -1109,6 +1172,7 @@ public class MultiServerCommands {
 - `SlaveServerClient` - Slave client implementation
 - `MultiServerPacketRegistry` - Packet registration
 - `ForwardPacketHandler` - Packet handler interface
+- `IServerIdentity` / `ServerRole` - Server identity
 
 ### Example Projects
 Look for usage examples in the mod's test or example code demonstrating multi-server setups.
@@ -1116,4 +1180,4 @@ Look for usage examples in the mod's test or example code demonstrating multi-se
 ---
 
 **Version**: 1.21.1
-**Last Updated**: 2026-05-05
+**Last Updated**: 2026-11-14

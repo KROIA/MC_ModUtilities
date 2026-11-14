@@ -29,6 +29,7 @@ The GUI library provides a modern, component-based system for creating user inte
 - [DropDownMenu](gui/GuiElements/DropDownMenu.md) - Drop-down selection menus
 - [EmptyButton](gui/GuiElements/EmptyButton.md) - Unstyled button base
 - [ExpandablePanel](gui/GuiElements/ExpandablePanel.md) - Collapsible container with a clickable header
+- [FeatureToggleSection](gui/GuiElements/FeatureToggleSection.md) - Expandable settings section with an on/off check box, restart marker and lock
 - [Frame](gui/GuiElements/Frame.md) - Bordered frame container
 - [HorizontalSlider](gui/GuiElements/HorizontalSlider.md) - Horizontal slider control
 - [InventoryView](gui/GuiElements/InventoryView.md) - Player/container inventory display
@@ -86,6 +87,12 @@ Comprehensive networking library for client-server communication.
 #### Placeholders
 - [Placeholders](systems/Placeholders.md) - Shared placeholder registry bridged to TAB and Placeholder API
 
+#### Discord Webhooks
+- [Discord Webhooks](systems/DiscordWebhooks.md) - Optional Discord webhook output for server events
+
+#### Permissions
+- [Permission nodes and LuckPermsBridge](development/MultiVersionCompat.md#permission-nodes) - Node checks through the platform permission APIs, optional LuckPerms write/notify bridge
+
 #### Utility Classes
 - [Utility Classes Reference](systems/Utilities.md)
   - ItemUtilities
@@ -130,13 +137,15 @@ Legend:
 
 | System | Status | Notes |
 |--------|--------|-------|
-| GUI Library | Complete | 19 component docs, layout, 5 use cases, display block |
+| GUI Library | Complete | 20 component docs, layout, 5 use cases, display block |
 | Networking (Client-Server) | Complete | All major features documented |
 | Networking (Multi-Server) | Complete | TCP Master/Slave system documented |
 | Settings Library | Complete | JSON parser system documented |
 | Persistence System | Complete | NBT and archive system documented |
 | Event System | Complete | Signal and DataEvent documented |
 | Placeholders | Complete | Registry, TAB and Placeholder API backends documented |
+| Discord Webhooks | Complete | API, templates, config and delivery documented |
+| Permissions | Complete | Permission nodes and LuckPermsBridge in Multi-Version Compatibility |
 | Utility Classes | Complete | Helper functions API reference documented |
 | Sandbox System | Complete | Development testing framework documented |
 | Test Suite | Complete | Automated test suite documented |
