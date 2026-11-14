@@ -17,6 +17,8 @@ This can also be done in the opposite direction.
 - [Create requests](#create-requests)
 - [Register requests](#register-requests)
 - [Sending requests](#sending-requests)
+- [Master/slave requests](#masterslave-requests)
+- [Request failures](#request-failures)
 
 
 ---
@@ -61,7 +63,7 @@ It lets create different [Request](ARRSGenericRequest.md) classes that represent
 
 Let's say we already have a request defined and registered in our network manager class. 
 ``` Java
-public class MyExampleModNetworking extends NetworkManager {
+public class MyExampleModNetworking extends NetworkPacketManager {
     ... // Instance blabla
 
     // Creating and registring a "Asynchronous Request Response System" (ARRS) Request object
@@ -72,6 +74,7 @@ public class MyExampleModNetworking extends NetworkManager {
 
         setupClientReceiverPackets();
         setupServerReceiverPackets();
+        setupServerServerPackets();
 
         // Setup the ARRS
         this.setupARRS(); 
@@ -106,9 +109,10 @@ With that we could just do something like:
 public static void visualizeNames() // Callable only on client side 
 {
     int dummy = 0; // dummy input data which gets sent to the server
-    MyExampleModNetworking.getInstance().GET_PLAYER_NAMES_REQUEST.sendRequestToServer(dummy, (receivedPlayerList) -> {
+    MyExampleModNetworking.GET_PLAYER_NAMES_REQUEST.sendRequestToServer(dummy).thenAccept(receivedPlayerList -> {
             // This section gets called when the responce was received (asynchronous)
-            visualizeList(receivedPlayerList);
+            if (receivedPlayerList != null)
+                visualizeList(receivedPlayerList);
             // Further process the list or something...
         });
 
@@ -133,7 +137,7 @@ Register each request class once by calling the `AsynchronousRequestResponseSyst
 Save the returned instance in a static member.
 
 ``` Java
-public class MyExampleModNetworking extends NetworkManager {
+public class MyExampleModNetworking extends NetworkPacketManager {
     ... // Instance blabla
 
     // Creating and registring a "Asynchronous Request Response System" (ARRS) Request object
@@ -146,50 +150,89 @@ public class MyExampleModNetworking extends NetworkManager {
 
 ---
 ### Sending requests
-Sending a request from the **Server** to the **Client** can be done the following ways:
+Sending a request returns a `CompletableFuture` that completes with the response.
+
+Sending a request from the **Client** to the **Server**:
 ``` Java
-ServerPlayer receiver = ...;
 int inputData = 5;
-MyExampleModNetworking.TEST_REQUEST.sendRequestToClient(inputData, receiver, (outputData, player) -> {
-            System.out.println("Response received from client: " + outputData);
-        });
+CompletableFuture<String> future = MyExampleModNetworking.TEST_REQUEST.sendRequestToServer(inputData);
+future.thenAccept(outputData -> System.out.println("Response received from server: " + outputData));
 ```
 
-
 ``` Java
-ServerPlayer receiver = ...;
 int inputData = 5;
-AsynchronousRequestResponseSystem.sendRequestToClient(
+CompletableFuture<String> future = AsynchronousRequestResponseSystem.sendRequestToServer(
                 MyExampleModNetworking.TEST_REQUEST,
-                inputData,
-                receiver,
-                (outputData, player) -> {
-                    System.out.println("Response received from client: " + outputData);
-                }
-        );
+                inputData);
 ```
+Both variants have the same effect. If no buffer could be created (for example while the client is not in a world),
+nothing is sent and the returned future is already completed with `null`, so check the response for `null`.
 
-Both variants have the same effect.
-
-Sending a request from the **Client** to the **Server** can be done the following ways:
+---
+### Master/slave requests
+In a [multi-server setup](MultiServerNetworking.md), servers can send requests to each other:
 ``` Java
-int inputData = 5;
-MyExampleModNetworking.TEST_REQUEST.sendRequestToServer(inputData, (outputData) -> {
-            System.out.println("Response received from server: " + outputData);
-        });
+// On a slave
+CompletableFuture<String> fromMaster = MyExampleModNetworking.TEST_REQUEST.sendRequestToMaster(inputData);
+// On the master
+CompletableFuture<String> fromSlave = MyExampleModNetworking.TEST_REQUEST.sendRequestToSlave("slave_1", inputData);
 ```
+The receiver handles them in `handleOnMasterServer(input, slaveID, playerSender)` or `handleOnSlaveServer(input, playerSender)`.
+If no server buffer could be created (server not running), nothing is sent and the future is already completed with `null`.
+The futures complete on the server thread.
 
+A client request whose class overrides `needsRoutingToMaster()` to return `true` is forwarded by a slave to the master.
+The master's response is relayed back to the client. The slave can filter it on the way with
+[`transformResponseOnSlave`](ARRSGenericRequest.md#transformresponseonslave).
 
+---
+### Request failures
+By default a request that never gets a response stays pending forever, and its future never completes.
+Set the switch below to let such requests fail instead:
 ``` Java
-int inputData = 5;
-AsynchronousRequestResponseSystem.sendRequestToServer(
-                MyExampleModNetworking.TEST_REQUEST,
-                inputData,
-                (outputData) -> {
-                    System.out.println("Response received from server: " + outputData);
-                }
-        );
+RequestManager.ENABLE_REQUEST_FAILURES = true;
 ```
-Again both variants have the same effect.
+The switch is off by default. It is JVM-wide and covers every mod that uses the ARRS, so turn it on only when every
+caller that moves value (money, items) on failure can tell the two failure types below apart.
+
+While it is on:
+- Pending requests time out. The sweep runs every 20 server and client ticks. The timeout comes from
+  [`getTimeoutMs()`](ARRSGenericRequest.md#gettimeoutms) (default `RequestManager.DEFAULT_TIMEOUT_MS`, 30 s).
+- A master/slave send that is refused (link not connected) fails at once.
+- When a master/slave connection is lost, the requests sent over it fail.
+- Client requests that a slave forwards to the master fail on the client as well (see below).
+
+A future can fail with two exceptions (both in `net.kroia.modutilities.networking.client_server.arrs`):
+
+| Exception | Meaning | What to do |
+|-----------|---------|------------|
+| `RequestNotSentException` (extends `IllegalStateException`) | The request was never sent, e.g. the target server was not connected. | Safe to refund or retry. |
+| `RequestOutcomeUnknownException` (extends `TimeoutException`) | The request was sent, then it timed out or the connection was lost. The receiver may have applied it. | Do not refund or retry blindly. Ask the receiver for the current state first. |
+
+Treat any other exception like an unknown outcome. `CompletableFuture` callbacks may wrap the cause in a
+`CompletionException`, so unwrap it before you check the type:
+``` Java
+MyExampleModNetworking.TRANSFER_REQUEST.sendRequestToMaster(input).whenComplete((result, error) -> {
+    Throwable cause = error instanceof CompletionException ? error.getCause() : error;
+    if (cause instanceof RequestNotSentException) {
+        refund();                 // never reached the master
+    } else if (cause != null) {
+        markPending();            // outcome unknown, check the state later
+    } else if (result == null) {
+        refund();                 // no buffer, nothing was sent
+    } else {
+        onSuccess(result);
+    }
+});
+```
+On the client, `sendRequestToServer` fails with `RequestOutcomeUnknownException` on timeout. The client's own send
+is not checked. For a request that a slave forwards to the master, the client gets `RequestNotSentException` if the
+slave could not forward it, and `RequestOutcomeUnknownException` if the slave lost the master link after forwarding it.
+
+On the wire, `GenericResponsePacket` carries a status byte: `STATUS_OK` (0), `STATUS_NOT_SENT` (1) and
+`STATUS_OUTCOME_UNKNOWN` (2). A slave uses it to pass a failed forward on to the client, which maps it to the matching exception.
+
+`RequestManager.cleanupExpiredRequests(boolean clientSide)` fails the expired requests on one side and returns their number.
+It replaces the former `cleanupExpiredRequests(long maxAgeMs)`. The library calls it from its tick, so you normally do not need it.
 
 ---

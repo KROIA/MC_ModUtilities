@@ -24,6 +24,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiConsumer;
+import java.util.function.Supplier;
 
 /**
  * Optional write/notify bridge to LuckPerms, for mirroring a mod's own persisted per-player flag (e.g. an admin flag)
@@ -78,7 +79,8 @@ public final class LuckPermsBridge {
     /**
      * Persists {@code node} for the player in LuckPerms, online or offline, and pushes the change to other servers
      * through LuckPerms' messaging service (if configured). {@code value=false} removes the user's global node entry
-     * (see class docs). Writes for the same player are applied one after another, in call order.
+     * (see class docs). Writes and {@link #getEffective} lookups for the same player run one after another, in call
+     * order.
      *
      * @return completes with true once saved; false if LuckPerms is absent or the update failed (logged)
      */
@@ -171,24 +173,32 @@ public final class LuckPermsBridge {
             }
         }
 
-        // player -> tail of that player's queued setNode writes
-        static final Map<UUID, CompletableFuture<Boolean>> WRITES = new ConcurrentHashMap<>();
+        // player -> tail of that player's queued reads and writes
+        static final Map<UUID, CompletableFuture<?>> QUEUE = new ConcurrentHashMap<>();
 
         /**
-         * modifyUser = load from storage + edit + save. Two overlapping calls for one player race: the second load
-         * reads storage before the first save landed and resets the live user to the old state (effective value
-         * dips, listeners fire, a write-back listener loops). So writes per player run one after another.
+         * Runs {@code job} after every job queued before it for this player. modifyUser = load from storage + edit +
+         * save, and an offline read's loadUser reloads the same live User from storage. Any overlap for one player
+         * loses data: a second load resets the live user before the first save landed (effective value dips, a
+         * write-back listener loops), or wipes the in-flight edit so modifyUser saves nothing. So reads and writes
+         * per player run strictly one after another.
          */
-        static CompletableFuture<Boolean> setNode(UUID player, String node, boolean value) {
-            CompletableFuture<Boolean> mine = new CompletableFuture<>();
-            CompletableFuture<Boolean> prev = WRITES.put(player, mine);
-            (prev == null ? CompletableFuture.completedFuture(true) : prev)
-                    .thenCompose(ignored -> write(player, node, value))
-                    .whenComplete((ok, t) -> {
-                        WRITES.remove(player, mine);
-                        mine.complete(ok != null && ok);
+        private static <T> CompletableFuture<T> enqueue(UUID player, Supplier<CompletableFuture<T>> job) {
+            CompletableFuture<T> mine = new CompletableFuture<>();
+            CompletableFuture<?> prev = QUEUE.put(player, mine);
+            (prev == null ? CompletableFuture.completedFuture(null) : prev)
+                    .handle((x, t) -> null) // a failed predecessor must not block the queue
+                    .thenCompose(ignored -> job.get())
+                    .whenComplete((v, t) -> {
+                        QUEUE.remove(player, mine);
+                        if (t != null) mine.completeExceptionally(t);
+                        else mine.complete(v);
                     });
             return mine;
+        }
+
+        static CompletableFuture<Boolean> setNode(UUID player, String node, boolean value) {
+            return enqueue(player, () -> write(player, node, value)).handle((ok, t) -> ok != null && ok);
         }
 
         private static CompletableFuture<Boolean> write(UUID player, String node, boolean value) {
@@ -223,10 +233,8 @@ public final class LuckPermsBridge {
         }
 
         static CompletableFuture<Optional<Boolean>> getEffective(UUID player, String node) {
-            // after this player's queued setNode writes, so the read sees them
-            CompletableFuture<Boolean> pending = WRITES.get(player);
-            return (pending == null ? CompletableFuture.completedFuture(true) : pending)
-                    .thenCompose(ignored -> read(player, node))
+            // queued behind this player's earlier writes (so it sees them) and ahead of later ones (see enqueue)
+            return enqueue(player, () -> read(player, node))
                     .exceptionally(t -> {
                         ModUtilitiesMod.LOGGER.error("[LuckPerms] Failed to look up {} for {}", node, player, t);
                         return Optional.empty();
