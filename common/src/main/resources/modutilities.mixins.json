@@ -12,6 +12,9 @@
   "mixins": [
     "BlockEntityTypeInvoker"
   ],
+  "server": [
+    "DedicatedServerMixin"
+  ],
   "injectors": {
     "defaultRequire": 1
   }
