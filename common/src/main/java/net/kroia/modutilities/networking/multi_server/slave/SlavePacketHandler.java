@@ -80,7 +80,7 @@ public class SlavePacketHandler extends SimpleChannelInboundHandler<Payload> {
         switch (payload) {
             case HandshakeResultPayload hp ->
             {
-                info("HandshakeResultPayload received from master '"+hp.result()+"'");
+                ModUtilitiesMod.LOGGER.debug("[SlavePacketHandler]: HandshakeResultPayload received from master '"+hp.result()+"'");
                 switch(hp.result())
                 {
                     case SlaveServerClient.ConnectionEstablishState.SUCCESS:

@@ -100,7 +100,7 @@ public class MasterPacketHandler extends SimpleChannelInboundHandler<Payload> {
 
             // ── Handshake: child server identifies itself ─────────────────────
             case HandshakePayload hs -> {
-                info("HandshakePayload request received for server '"+hs.serverId()+"'.");
+                debug("HandshakePayload request received for server '"+hs.serverId()+"'.");
                 if (!java.security.MessageDigest.isEqual(
                         hs.token().getBytes(java.nio.charset.StandardCharsets.UTF_8),
                         masterTCPServer.getSharedSecret().getBytes(java.nio.charset.StandardCharsets.UTF_8))) {

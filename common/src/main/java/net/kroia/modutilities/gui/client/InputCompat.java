@@ -97,8 +97,22 @@ public final class InputCompat {
         //return (org.lwjgl.sdl.SDLMouse.SDL_GetMouseState((java.nio.FloatBuffer) null, null) & (1 << (button - 1))) != 0; // mc>=26.3
     }
 
-    /** Moves the mouse cursor to the given window position (in window coordinates). */
+    /**
+     * Under an unattended autotest run the user keeps working in other windows, so the test client must never
+     * move or grab the OS cursor. Not in play mode: a human plays there. Reads the AutoTest properties
+     * ({@code modutilities.autotest}, {@code .play}) directly: release builds do not compile the testing package.
+     */
+    private static final boolean SUPPRESS_CURSOR = System.getProperty("modutilities.autotest") != null
+            && !Boolean.getBoolean("modutilities.autotest.play");
+
+    /** @return {@code true} if the game must leave the OS cursor alone (see {@link #SUPPRESS_CURSOR}) */
+    public static boolean suppressCursor() {
+        return SUPPRESS_CURSOR;
+    }
+
+    /** Moves the mouse cursor to the given window position (in window coordinates). No-op under autotest. */
     public static void setCursorPos(double x, double y) {
+        if (SUPPRESS_CURSOR) return;
         org.lwjgl.glfw.GLFW.glfwSetCursorPos(windowHandle(), x, y); // mc<=26.2
         //org.lwjgl.sdl.SDLMouse.SDL_WarpMouseInWindow(windowHandle(), (float) x, (float) y); // mc>=26.3
     }

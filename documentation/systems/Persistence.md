@@ -37,6 +37,20 @@ Minecraft has a 2MB limit for NBT data. The persistence system automatically:
 - Manages chunk folders and file naming
 - Reconstructs data from chunks on load
 
+### Crash-Safe Saves
+
+Saves never leave a half-written file behind:
+- A single NBT or JSON file is written to `<file>.tmp` first and then renamed over the old file
+  (`saveDataCompound`, `saveAsJson`, `saveJson`, `NBTFileParser.saveDataCompound`).
+- `saveDataCompoundList` writes all chunks to a `<name>.tmp` folder. Only after every chunk was written, the old
+  `<name>` folder is renamed to `<name>.old`, the new folder takes its place and `<name>.old` is deleted.
+  If the save fails, the old data stays in place.
+- On load, `<name>.old` is read when `<name>` is missing (a crash during the swap). `.tmp` folders and files are ignored.
+- Only a trailing `.nbt` is stripped from a path to get the chunk folder name, so names with dots such as `a.b` work.
+
+Use `DataPersistence.writeJsonAtomically(Path path, String json)` to write your own JSON text the same way.
+The parent folder must exist; it throws an `IOException` on failure.
+
 ---
 
 ## Basic Usage
@@ -475,6 +489,7 @@ public class RobustPersistence {
 | `boolean saveDataCompoundList(Path path, ListTag list)` | Save with auto-chunking |
 | `ListTag readDataCompoundList(Path path)` | Load from chunked files |
 | `boolean saveAsJson(Object o, Path path)` | Export to JSON |
+| `static void writeJsonAtomically(Path path, String json)` | Write JSON text crash-safe via a `.tmp` file; the parent folder must exist. Throws `IOException` |
 | `<T> T loadFromJson(Path path, Type type)` | Import from JSON |
 | `boolean fileExists(Path path)` | Check if file exists |
 | `boolean folderExists(Path path)` | Check if folder exists |

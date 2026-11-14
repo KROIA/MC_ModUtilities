@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.time.LocalTime;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -84,6 +85,10 @@ public class SlaveServerClient {
     private volatile boolean linkEstablished = false;
 
     private @Nullable Throwable connectionFailReason = null;
+    /** Failed connect attempts since the last successful connect, and when the first of them failed (retry warning throttle). */
+    private volatile int failedAttempts = 0;
+    private volatile LocalTime firstFailTime;
+    private volatile long lastFailWarnMillis = 0;
 
     private final Runnable onConnectionAccepted;
     private final Consumer<ConnectionEstablishState> onConnectionFailed;
@@ -149,7 +154,7 @@ public class SlaveServerClient {
             connectFailed(new ConnectException("simulated master down"));
             return;
         }
-        info("Connecting to " + masterHost + ":" + masterPort);
+        ModUtilitiesMod.LOGGER.debug("[SlaveServerClient]: Connecting to " + masterHost + ":" + masterPort); // per reconnect attempt
 
         SlaveServerClient client = this;
         Consumer<SlaveServerClient.ConnectionEstablishState> onConnectionSuccess = this::onConnectionEstablishedResult;
@@ -196,6 +201,9 @@ public class SlaveServerClient {
                 }
 
                 info("Connected to master at "+masterHost+":" + masterPort);
+                if (failedAttempts > 0)
+                    info("Connected to master after " + failedAttempts + " attempts");
+                failedAttempts = 0;
                 // Immediately authenticate with the master
                 IServerIdentity identity = MultiServerManager.getIdentity();
                 sendToMaster(new HandshakePayload(serverId, sharedSecret, HandshakePayload.localMcVersion(),
@@ -208,7 +216,15 @@ public class SlaveServerClient {
 
     private void connectFailed(Throwable cause) {
         connectionFailReason = cause;
-        warn("Could not connect to master — retrying in 5s... Reason: "+cause);
+        // Throttled: warn on the first failed attempt, then at most once a minute while the master stays unreachable.
+        long now = System.currentTimeMillis();
+        if (failedAttempts++ == 0)
+            firstFailTime = LocalTime.now().withNano(0);
+        if (failedAttempts == 1 || now - lastFailWarnMillis >= 60_000) {
+            lastFailWarnMillis = now;
+            warn("Could not connect to master at " + masterHost + ":" + masterPort + ", still retrying ("
+                    + failedAttempts + " attempts since " + firstFailTime + "). Reason: " + cause);
+        }
         scheduleReconnect();
         onConnectionLost.accept(cause);
     }

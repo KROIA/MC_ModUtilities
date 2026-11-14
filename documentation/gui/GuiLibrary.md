@@ -121,6 +121,7 @@ import net.kroia.modutilities.gui.client.InventoryView;
   - [ItemSelectionView](GuiElements/ItemSelectionView.md) - Item selection grid
   - [TabElement](GuiElements/TabElement.md) - Tabbed container
   - [ExpandablePanel](GuiElements/ExpandablePanel.md) - Collapsible container with a header
+  - [FeatureToggleSection](GuiElements/FeatureToggleSection.md) - Expandable settings section with an on/off check box in the header
 
 ## Architecture
 

@@ -137,6 +137,36 @@ The requested value is snapped so that one GUI unit is a whole number of screen 
 
 On 1.21.6+ items drawn under a custom scale stay crisp: they are rendered into an extra item atlas at the snapped pixel density instead of being resampled from vanilla's atlas.
 
+#### Library GUI scale setting (players)
+Library screens (`GuiScreen`, `GuiContainerScreen`) have their own GUI scale setting on the client, stored in
+`config/modutilities/ClientConfig.json`:
+```json
+{ "gui": { "guiScale": 0 } }
+```
+| Value | Effect |
+|---|---|
+| `0` (default) | Auto: ignore Minecraft's GUI scale and use the largest scale that fits the window (what Minecraft's own "auto" picks). Screens keep their size whatever the player's GUI scale is, and adapt when the window is resized |
+| `-1` | Follow Minecraft's GUI scale |
+| `N > 0` | N window pixels per GUI unit, capped to fit the window |
+
+In every library screen, **Ctrl + `+` / `-`** (numpad keys too) step the scale, and **Ctrl + `0`** switches to auto
+(pressed again: follow Minecraft). The shortcuts are ignored while a text box is focused. The change applies live, is saved
+to the file, and a hint such as "GUI scale: Auto (4)" is shown for 2 seconds. The setting is also available in code as
+`ClientGuiSettings.get().gui.guiScale` (client only).
+
+The screen's own `setGuiScale(...)` is multiplied on top of this setting before snapping. Internally the hosting screen passes
+the setting to the `Gui` as a base factor:
+
+| Method | Description |
+|---|---|
+| `Gui.setBaseGuiScale(float)` / `getBaseGuiScale()` | Host-wide factor multiplied with the `setGuiScale` value before pixel snapping. `1.0` (default) keeps the Minecraft GUI scale; values `<= 0` become `1.0` |
+| `Gui.snapGuiScale(float requested, double mcGuiScale)` | The snapping rule above, as a static helper |
+| `Gui.pixelGuiScale(int setting, int maxPixelScale, int mcPixelScale)` | Window pixels per GUI unit for a setting value (never less than 1) |
+| `Gui.fixedBaseGuiScale(int setting, int maxPixelScale, double mcGuiScale)` | The base factor for a setting value (`1.0` for "follow Minecraft") |
+| `Gui.stepGuiScaleSetting(int setting, int delta, int maxPixelScale, int mcPixelScale)` | The setting after stepping by `delta` pixels per unit, clamped to `1..maxPixelScale` |
+
+You only need these helpers if you host a `Gui` in your own screen class.
+
 ### Debuging
 There are multiple debug keys defined which can help finding bugs in layouting or drawing stuff.
 - **F3**: 

@@ -33,4 +33,7 @@ public class ModUtilitiesTestCategories {
     public static final TestCategory DISCORD = new TestCategory(
         "modutilities", "mu_discord", "DiscordWebhooks config, rendering, batching and rate limits (fake HTTP)",
         TestCategory.ServerType.BOTH, false);
+    public static final TestCategory PLACEHOLDER = new TestCategory(
+        "modutilities", "mu_placeholder", "PlaceholderRegistry resolved through Placeholder API (Fabric)",
+        TestCategory.ServerType.BOTH, true);
 }
