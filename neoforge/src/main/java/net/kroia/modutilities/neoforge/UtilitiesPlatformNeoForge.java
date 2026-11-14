@@ -19,10 +19,10 @@ public class UtilitiesPlatformNeoForge implements PlatformAbstraction {
         minecraftServer = server;
         if(minecraftServer != null)
         {
-            ModUtilitiesMod.LOGGER.info("[NeoForgeSetup] SERVER INSTANCE SET");
+            ModUtilitiesMod.LOGGER.debug("[NeoForgeSetup] SERVER INSTANCE SET");
         }
         else {
-            ModUtilitiesMod.LOGGER.info("[NeoForgeSetup] SERVER INSTANCE CLEARED");
+            ModUtilitiesMod.LOGGER.debug("[NeoForgeSetup] SERVER INSTANCE CLEARED");
         }
     }
     @Override
