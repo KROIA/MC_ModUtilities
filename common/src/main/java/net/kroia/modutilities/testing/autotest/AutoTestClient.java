@@ -107,8 +107,9 @@ final class AutoTestClient {
     }
 
     /**
-     * Opens the chat screen, a non-pausing screen that frees the cursor: with pauseOnLostFocus:false nothing else
-     * releases the mouse grab while the user works in another window. Not the inventory: in creative that is the
+     * Opens the chat screen, mainly to keep a non-pausing screen open: the mouse grab itself is already suppressed
+     * under autotest (MouseHandlerMixin, InputCompat.suppressCursor), outside play mode. In play mode it frees the
+     * cursor: with pauseOnLostFocus:false nothing else releases the grab. Not the inventory: in creative that is the
      * creative inventory, which reads the shared CreativeModeTabs lists on the client thread and would race with
      * the creative-tab tests rebuilding them on the integrated server. Waits for the player and never replaces an
      * open screen.

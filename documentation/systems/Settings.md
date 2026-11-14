@@ -151,6 +151,9 @@ healthSetting.addListener(newValue -> {
 healthSetting.set(150); // Prints: "Health changed to: 150"
 ```
 
+Adding a listener instance that is already registered does nothing. Listeners are compared by identity, so a lambda
+created anew on each call is a new instance; keep it in a field if you add it more than once or remove it later.
+
 ### Custom JSON Parsers
 
 For complex types that need special serialization:

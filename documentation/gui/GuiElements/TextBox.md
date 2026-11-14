@@ -30,7 +30,9 @@ TextBox(int x, int y, int width)
 ```java
 void setText(String text)           // Set the text content
 String getText()                    // Get the current text
-void setText(double value)          // Set text from double value
+void setText(double value)          // Set text from double value, at most 4 decimals, trailing zeros stripped
+void setText(double value, int maxDecimalPlaces) // Rounded half-up to at most maxDecimalPlaces, trailing zeros stripped
+void setText(double value, String format)        // String.format with Locale.ROOT, e.g. "%.2f"
 void setText(int value)             // Set text from int value
 void setText(long value)            // Set text from long value
 double getDouble()                  // Parse text as double
@@ -38,7 +40,12 @@ int getInt()                        // Parse text as int
 long getLong()                      // Parse text as long
 ```
 
-### Input Validation
+#`setText(double)` rounds to `TextBox.DEFAULT_DECIMAL_PLACES` (4) decimal places and strips trailing zeros, so `0.3f` shows
+as `0.3` instead of `0.30000001192092896`, and `5.0` shows as `5`. `setText(double, int)` does the same with your own number
+of decimal places and never uses an exponent; NaN and infinite values fall back to `String.valueOf(double)`.
+`setText(double, String)` always uses `.` as the decimal separator, whatever the system locale is.
+
+## Input Validation
 ```java
 void setMatchRegex(String matchRegex)    // Set regex pattern for allowed input
 String getMatchRegex()                   // Get current regex pattern
@@ -120,7 +127,9 @@ textBox.setMatchRegex("^[a-zA-Z0-9._%+-]*@?[a-zA-Z0-9.-]*\\.?[a-zA-Z]*$");
 
 ## Keyboard Shortcuts
 
-The TextBox supports standard text editing shortcuts:
+The TextBox supports standard text editing shortcuts. Ctrl+A/C/X/V follow the printed letters of the keyboard layout
+(`InputConstants.shortcutKey`), like vanilla's edit box. A focused text box starts OS text input, which Minecraft 26.3+
+needs to deliver typed characters.
 
 - **Ctrl+A** - Select all text
 - **Ctrl+C** - Copy selected text to clipboard

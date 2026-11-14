@@ -24,10 +24,15 @@ public class MasterDownTests extends TestSuite {
             if (MultiServerManager.isRunning())
                 return fail("MultiServerManager.isRunning() with the master down");
             AutoTest.TickStats t = AutoTest.tickStats();
+            String nums = String.format("ticks %d, max %.1f ms, avg %.1f ms", t.ticks(), t.maxTickMs(), t.avgTickMs());
             if (t.ticks() == 0)
                 return fail("no server ticks sampled while the master was down");
-            // ponytail: no tick threshold yet; the numbers are reported until a limit is agreed
-            return pass(String.format("ticks %d, max %.1f ms, avg %.1f ms", t.ticks(), t.maxTickMs(), t.avgTickMs()));
+            // Same limits as BankSystem's SlaveMasterDownTests; every cell so far stayed below max 85 ms, avg 50 ms.
+            if (t.maxTickMs() >= 250)
+                return fail("tick spike with the master down: " + nums);
+            if (t.avgTickMs() >= 60)
+                return fail("server lagging with the master down: " + nums);
+            return pass(nums);
         });
     }
 }

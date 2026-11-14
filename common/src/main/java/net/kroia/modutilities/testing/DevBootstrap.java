@@ -18,5 +18,6 @@ public final class DevBootstrap {
     public static void init() {
         Sandbox.init();
         AutoTest.init();
+        SimulatedMasterHang.init();
     }
 }
