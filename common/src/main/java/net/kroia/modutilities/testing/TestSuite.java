@@ -94,8 +94,8 @@ public abstract class TestSuite {
         long end = System.nanoTime() + timeoutMillis * 1_000_000L;
         MinecraftServer s = server;
         if (s != null && s.isSameThread()) {
-            s.managedBlock(() -> done.getAsBoolean() || System.nanoTime() > end); // mc<=1.21.8
-            //s.managedBlock(() -> { s.packetProcessor().processQueuedPackets(); return done.getAsBoolean() || System.nanoTime() > end; }); // mc>=1.21.9 (incoming packets wait in packetProcessor, which managedBlock does not drain)
+            //s.managedBlock(() -> done.getAsBoolean() || System.nanoTime() > end); // mc<=1.21.8
+            s.managedBlock(() -> { s.packetProcessor().processQueuedPackets(); return done.getAsBoolean() || System.nanoTime() > end; }); // mc>=1.21.9 (incoming packets wait in packetProcessor, which managedBlock does not drain)
         } else {
             while (!done.getAsBoolean() && System.nanoTime() < end) {
                 try {
