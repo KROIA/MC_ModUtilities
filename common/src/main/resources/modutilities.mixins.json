@@ -11,6 +11,9 @@
   ],
   "mixins": [
   ],
+  "server": [
+    "DedicatedServerMixin"
+  ],
   "injectors": {
     "defaultRequire": 1
   }
