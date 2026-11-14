@@ -2,7 +2,7 @@ package net.kroia.modutilities.testing.fabric;
 
 import eu.pb4.placeholders.api.PlaceholderContext;
 import eu.pb4.placeholders.api.Placeholders;
-//import eu.pb4.placeholders.api.ServerPlaceholderContext; // mc>=26.1 (Placeholder API 3)
+import eu.pb4.placeholders.api.ServerPlaceholderContext; // mc>=26.1 (Placeholder API 3)
 import net.fabricmc.loader.api.FabricLoader;
 import net.kroia.modutilities.placeholder.PlaceholderRegistry;
 import net.kroia.modutilities.testing.TestCategory;
@@ -72,10 +72,10 @@ public class PlaceholderApiTests extends TestSuite {
     /** All Patbox references; only class-loaded once a test saw "placeholder-api" loaded. */
     private static final class Api {
         static String parse(String text, MinecraftServer server, ServerPlayer player) {
-            PlaceholderContext ctx = player != null ? PlaceholderContext.of(player) : PlaceholderContext.of(server); // mc<=1.21.11
-            return Placeholders.parseText(Component.literal(text), ctx).getString(); // mc<=1.21.11
-            //ServerPlaceholderContext ctx = player != null ? ServerPlaceholderContext.of(player) : ServerPlaceholderContext.of(server); // mc>=26.1 (Placeholder API 3)
-            //return Placeholders.SERVER_PLACEHOLDER_PARSER.parseComponent(text, ctx.asParserContext()).getString(); // mc>=26.1 (Placeholder API 3)
+            //PlaceholderContext ctx = player != null ? PlaceholderContext.of(player) : PlaceholderContext.of(server); // mc<=1.21.11
+            //return Placeholders.parseText(Component.literal(text), ctx).getString(); // mc<=1.21.11
+            ServerPlaceholderContext ctx = player != null ? ServerPlaceholderContext.of(player) : ServerPlaceholderContext.of(server); // mc>=26.1 (Placeholder API 3)
+            return Placeholders.SERVER_PLACEHOLDER_PARSER.parseComponent(text, ctx.asParserContext()).getString(); // mc>=26.1 (Placeholder API 3)
         }
     }
 }
