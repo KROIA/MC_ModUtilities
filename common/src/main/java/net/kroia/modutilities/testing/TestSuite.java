@@ -84,12 +84,18 @@ public abstract class TestSuite {
         return future.join();
     }
 
-    /** Runs queued server tasks until {@code done} is true or the timeout passed; @return {@code done} at the end. */
+    /**
+     * Runs queued server tasks until {@code done} is true or the timeout passed. From MC 1.21.9 on it also
+     * handles queued incoming packets, so client requests are answered while the test waits.
+     *
+     * @return {@code done} at the end
+     */
     protected boolean pumpUntil(BooleanSupplier done, long timeoutMillis) {
         long end = System.nanoTime() + timeoutMillis * 1_000_000L;
         MinecraftServer s = server;
         if (s != null && s.isSameThread()) {
-            s.managedBlock(() -> done.getAsBoolean() || System.nanoTime() > end);
+            s.managedBlock(() -> done.getAsBoolean() || System.nanoTime() > end); // mc<=1.21.8
+            //s.managedBlock(() -> { s.packetProcessor().processQueuedPackets(); return done.getAsBoolean() || System.nanoTime() > end; }); // mc>=1.21.9 (incoming packets wait in packetProcessor, which managedBlock does not drain)
         } else {
             while (!done.getAsBoolean() && System.nanoTime() < end) {
                 try {
