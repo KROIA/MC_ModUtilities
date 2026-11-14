@@ -57,6 +57,20 @@ public abstract class GenericRequest<IN, OUT>
      */
     public long getTimeoutMs() { return RequestManager.DEFAULT_TIMEOUT_MS; }
 
+    /**
+     * Lets a slave change the master's response before relaying it to the client that sent the request,
+     * e.g. to drop entries this slave cannot resolve. Called on a slave only, for client requests it forwarded
+     * to the master ({@link #needsRoutingToMaster()}), and only for regular responses (not for failures).
+     *
+     * @param response     The master's encoded output; read it with {@link #decodeOutput}. Do not release it.
+     * @param playerSender The UUID of the player the response is relayed to.
+     * @return The buffer to relay: {@code response} itself to relay it unchanged (its reader index is reset),
+     *         or a new buffer, e.g. from {@code UtilitiesPlatform.createRegistryFriendlyByteBufServerSide()},
+     *         holding the filtered output written with {@link #encodeOutput}.
+     * @apiNote Default: relays the master's bytes unchanged, without decoding them.
+     */
+    public RegistryFriendlyByteBuf transformResponseOnSlave(RegistryFriendlyByteBuf response, UUID playerSender) { return response; }
+
 
     /**
      * Handles the request on the client side.
