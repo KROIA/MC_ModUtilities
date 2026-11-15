@@ -460,6 +460,7 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
         if(enableGizmos)
             gui.renderGizmos();
         ClientGuiSettings.renderFeedback(clientGraphics, width);
+        net.kroia.modutilities.gui.ScreenNotice.render(clientGraphics, clientGraphics.getFont(), width, height);
     }
 
 

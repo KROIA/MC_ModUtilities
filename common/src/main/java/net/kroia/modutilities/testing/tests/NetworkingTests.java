@@ -6,7 +6,10 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.handler.codec.DecoderException;
+import net.kroia.modutilities.gui.ScreenNoticePacket;
 import net.kroia.modutilities.networking.ExtraCodecUtils;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 import net.kroia.modutilities.networking.NetworkPacketManager;
 import net.kroia.modutilities.networking.client_server.arrs.AsynchronousRequestResponseSystem;
 import net.kroia.modutilities.networking.client_server.arrs.GenericRequest;
@@ -118,6 +121,7 @@ public class NetworkingTests extends TestSuite {
         addTest("codec_nullable_absent", this::testCodecNullableAbsent);
         addTest("codec_jsonElement_roundtrip", this::testCodecJsonElementRoundtrip);
         addTest("codec_friendlyByteBuf_roundtrip", this::testCodecFriendlyByteBufRoundtrip);
+        addTest("screen_notice_packet_roundtrip", this::testScreenNoticePacketRoundtrip);
 
         // Multi-server handshake tests
         addTest("handshake_codec_roundtrip", this::testHandshakeCodecRoundtrip);
@@ -917,6 +921,21 @@ public class NetworkingTests extends TestSuite {
                 return fail("JsonElement roundtrip failed: expected " + original + ", got " + decoded);
             }
             return pass("JsonElement codec roundtrip preserves structure and values");
+        } finally {
+            buf.release();
+        }
+    }
+
+    /** A translatable, styled notice reaches the client unresolved, so the client translates it. */
+    private TestResult testScreenNoticePacketRoundtrip() {
+        Component sent = Component.translatable("modutilities.test.notice", "arg").withStyle(ChatFormatting.RED);
+        RegistryFriendlyByteBuf buf = createBuf();
+        try {
+            ScreenNoticePacket.STREAM_CODEC.encode(buf, new ScreenNoticePacket(sent));
+            Component received = ScreenNoticePacket.STREAM_CODEC.decode(buf).getMessage();
+            if (!sent.equals(received))
+                return fail("expected " + sent + ", got " + received);
+            return pass("translatable component survives the screen notice packet");
         } finally {
             buf.release();
         }

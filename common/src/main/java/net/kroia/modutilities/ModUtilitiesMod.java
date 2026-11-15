@@ -7,6 +7,7 @@ import dev.architectury.networking.NetworkManager;
 import dev.architectury.platform.Platform;
 import dev.architectury.utils.Env;
 import net.kroia.modutilities.discord.DiscordWebhooks;
+import net.kroia.modutilities.gui.ScreenNoticePacket;
 import net.kroia.modutilities.gui.display.DisplayNetworking;
 import net.kroia.modutilities.networking.client_server.NetworkPacket;
 import net.kroia.modutilities.networking.client_server.arrs.AsynchronousRequestResponseSystem;
@@ -118,6 +119,14 @@ public class ModUtilitiesMod {
         // ARRS — MultiServer forwarding
         MultiServerPacketRegistry.register(GenericRequestPacket.TYPE, GenericRequestPacket.STREAM_CODEC);
         MultiServerPacketRegistry.register(GenericResponsePacket.TYPE, GenericResponsePacket.STREAM_CODEC);
+
+        // Screen notice (S2C only, sent by the server the player is on; never forwarded)
+        if (isClient) {
+            NetworkManager.registerReceiver(NetworkManager.Side.S2C, ScreenNoticePacket.TYPE,
+                    ScreenNoticePacket.STREAM_CODEC, NetworkPacket.HANDLER::handleClient);
+        } else {
+            NetworkManager.registerS2CPayloadType(ScreenNoticePacket.TYPE, ScreenNoticePacket.STREAM_CODEC);
+        }
     }
 
     private static boolean devClassesPresent() {
