@@ -36,6 +36,7 @@ public final class DevBootstrap {
     public static void init() {
         Sandbox.init();
         SimulatedMasterHang.init();
+        if (Platform.getEnvironment() == Env.CLIENT) ModUtilitiesGuiLocator.register(); // client classes: never on a dedicated server
         if (AutoTest.isEnabled()) initAutoTest();
     }
 

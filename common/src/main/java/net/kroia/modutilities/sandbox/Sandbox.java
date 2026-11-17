@@ -401,6 +401,7 @@ public class Sandbox {
         if (inGame && UtilitiesPlatform.isClient()) {
             TestRegistry.register(new CreativeTabTests());
             TestRegistry.register(new GuiLogicTests());
+            TestRegistry.register(new net.kroia.modutilities.testing.tests.GuiLocatorTests());
         }
         TestRegistry.register(new ParserTests());
         TestRegistry.register(new PersistenceTests());
