@@ -38,9 +38,9 @@ import net.kroia.modutilities.networking.multi_server.payload.HandshakeResultPay
 import net.kroia.modutilities.networking.multi_server.payload.PacketIds;
 import net.kroia.modutilities.networking.multi_server.slave.SlaveServerClient;
 import net.kroia.modutilities.testing.SimulatedMasterHang;
-import net.kroia.modutilities.testing.TestCategory;
-import net.kroia.modutilities.testing.TestResult;
-import net.kroia.modutilities.testing.TestSuite;
+import net.kroia.testkit.TestCategory;
+import net.kroia.testkit.TestResult;
+import net.kroia.testkit.TestSuite;
 import net.kroia.modutilities.testing.categories.ModUtilitiesTestCategories;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.UUIDUtil;

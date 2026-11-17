@@ -1,6 +1,6 @@
 package net.kroia.modutilities.testing.categories;
 
-import net.kroia.modutilities.testing.TestCategory;
+import net.kroia.testkit.TestCategory;
 
 public class ModUtilitiesTestCategories {
     public static final TestCategory NETWORKING = new TestCategory(

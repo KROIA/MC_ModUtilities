@@ -66,6 +66,12 @@ public class ModUtilitiesMod {
      * release code must compile without it.
      */
     private static void initDevFeatures() {
+        // The dev code uses the dev-only TestKit mod (-Pwith_testkit=true); without it, loading DevBootstrap would
+        // fail with NoClassDefFoundError.
+        if (!Platform.isModLoaded("testkit")) {
+            LOGGER.warn("Dev features are enabled but the TestKit mod is not loaded; sandbox and tests are off");
+            return;
+        }
         try {
             Class.forName(DEV_BOOTSTRAP).getMethod("init").invoke(null);
         } catch (ReflectiveOperationException e) {
