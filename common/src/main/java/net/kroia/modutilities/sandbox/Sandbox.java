@@ -414,6 +414,7 @@ public class Sandbox {
             TestRegistry.register(new net.kroia.modutilities.testing.tests.LuckPermsRemovedTests());
         }
         TestRegistry.register(new net.kroia.modutilities.testing.tests.DiscordTests());
+        TestRegistry.register(new net.kroia.modutilities.testing.tests.CommandTests());
         if (inGame) { // fabric source set only (Patbox Placeholder API); absent on NeoForge
             try {
                 TestRegistry.register((TestSuite) Class.forName("net.kroia.modutilities.testing.fabric.PlaceholderApiTests")

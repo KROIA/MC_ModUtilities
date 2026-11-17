@@ -36,4 +36,7 @@ public class ModUtilitiesTestCategories {
     public static final TestCategory PLACEHOLDER = new TestCategory(
         "modutilities", "mu_placeholder", "PlaceholderRegistry resolved through Placeholder API (Fabric)",
         TestCategory.ServerType.BOTH, true);
+    public static final TestCategory COMMANDS = new TestCategory(
+        "modutilities", "mu_commands", "Commands run through TestKit's CommandRunner, replies checked",
+        TestCategory.ServerType.BOTH, true);
 }
