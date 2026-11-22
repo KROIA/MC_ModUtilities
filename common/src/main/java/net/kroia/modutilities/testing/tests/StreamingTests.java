@@ -5,9 +5,9 @@ import net.kroia.modutilities.networking.client_server.streaming.GenericStream;
 import net.kroia.modutilities.networking.client_server.streaming.StreamManager;
 import net.kroia.modutilities.networking.client_server.streaming.streamholder.ClientReceiverStreamHolder;
 import net.kroia.modutilities.networking.client_server.streaming.streamholder.ServerReceiverStreamHolder;
-import net.kroia.modutilities.testing.TestCategory;
-import net.kroia.modutilities.testing.TestResult;
-import net.kroia.modutilities.testing.TestSuite;
+import net.kroia.testkit.TestCategory;
+import net.kroia.testkit.TestResult;
+import net.kroia.testkit.TestSuite;
 import net.kroia.modutilities.testing.categories.ModUtilitiesTestCategories;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 

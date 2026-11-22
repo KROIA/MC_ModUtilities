@@ -561,9 +561,17 @@ public class TabElement extends GuiElement {
     @Override
     protected boolean mouseClickedOverElement(int button)
     {
-        if(button == InputConstants.MOUSE_BUTTON_LEFT && mouseOverTitleIndex > -1)
+        if(button != InputConstants.MOUSE_BUTTON_LEFT)
+            return false;
+        // Hit-test at the click position (Gui.mouseClicked stores it before dispatch),
+        // not mouseOverTitleIndex from the last rendered frame: synthetic clicks don't move the cursor.
+        for(int i = 0; i < tabs.size(); i++)
         {
-            selectTab(mouseOverTitleIndex);
+            if(tabs.get(i).titleElement.isMouseOver())
+            {
+                selectTab(i);
+                return true;
+            }
         }
         return false; // No tab title clicked
     }

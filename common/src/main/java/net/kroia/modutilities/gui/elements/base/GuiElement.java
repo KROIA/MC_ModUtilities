@@ -18,6 +18,7 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.item.ItemStack;
 import org.joml.Quaternionf;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Supplier;
 import java.util.function.ToIntFunction;
@@ -1464,6 +1465,18 @@ public abstract class GuiElement {
     public List<GuiElement> getChilds()
     {
         return childs;
+    }
+
+    /**
+     * @return a read-only view of the children this element actually draws and
+     *         routes input to (the render/input/layout tree). Unlike
+     *         {@link #getChilds()}, which subclasses may override to return a
+     *         logical view (e.g. a list's items or an empty list for tabs),
+     *         this always returns the real child list.
+     */
+    public List<GuiElement> getRenderedChilds()
+    {
+        return Collections.unmodifiableList(childs);
     }
 
     public List<GuiElement> getSerializableChildren() {
