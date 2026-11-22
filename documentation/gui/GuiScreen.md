@@ -201,6 +201,23 @@ The Gui Screen renders in different steps:
 2) Foreground which will be the `GuiElement.render()` for the child elements.
 3) Tooltips
 4) Gizmos (Used for drawing the Bounding boxes which gets toggled by the **F3** Key). For the GuiElement it is the `GuiElement.renderGizmos()` which can be overwritten to draw custom stuff for debugging.
+5) The [screen notice](#screen-notice), if one is shown.
+
+### Screen notice
+A chat message is easy to miss while a screen covers the chat. `ScreenNotice` (`net.kroia.modutilities.gui`) shows a
+short message in larger red text in the middle of the open `GuiScreen` / `GuiContainerScreen`, wrapped onto several
+lines to fit the screen, for 5 seconds (`ScreenNotice.DURATION_MS`). A new notice replaces the current one. Without an
+open library screen nothing is drawn, so keep sending the chat message as well.
+
+``` Java
+// Server: send it to a player (translatable keys are resolved in the player's language)
+player.sendSystemMessage(message);
+ScreenNotice.send(player, message);
+
+// Client: show it directly
+ScreenNotice.show(Component.translatable("gui.mymod.untrusted_server"));
+```
+The text is always red; the component's own colour is ignored.
 
 ### Overriding input and render methods across Minecraft versions
 Minecraft 1.21.9 moved screen input to event records (`mouseClicked(MouseButtonEvent, boolean)`, `keyPressed(KeyEvent)`, `charTyped(CharacterEvent)`), and 26.1 renamed screen rendering to `extractRenderState` / `extractBackground` with a `GuiGraphicsExtractor` parameter.

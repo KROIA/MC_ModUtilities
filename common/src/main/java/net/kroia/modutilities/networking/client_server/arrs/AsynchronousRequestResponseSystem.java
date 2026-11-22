@@ -131,8 +131,9 @@ public class AsynchronousRequestResponseSystem {
      * @param input   The input data for the request delivered to the receiver.
      * @param <IN>    The type of input data.
      * @param <OUT>   The type of output data provided by the responder.
-     * @return A future that completes with the response data once the server replies, or
-     *         completes exceptionally if the response handler fails or the request times out.
+     * @return A future that completes with the response data once the server replies, or with {@code null}
+     *         if nothing could be sent (no buffer). It completes exceptionally if the response handler fails,
+     *         and as described in {@link GenericRequest#sendRequestToServer(Object)} (timeout, slave forward failures).
      * @throws IllegalStateException If the ARRS has not been initialized via {@link #setup}.
      */
     public static <IN, OUT> CompletableFuture<OUT> sendRequestToServer(@NotNull GenericRequest<IN, OUT> request, IN input) {
