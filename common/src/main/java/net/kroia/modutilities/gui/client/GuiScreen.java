@@ -466,6 +466,7 @@ public abstract class GuiScreen extends Screen {
         if(enableGizmos)
             gui.renderGizmos();
         ClientGuiSettings.renderFeedback(clientGraphics, width);
+        net.kroia.modutilities.gui.ScreenNotice.render(clientGraphics, clientGraphics.getFont(), width, height);
     }
 
     // mc>=26.1: Screen renders through extractBackground/extractRenderState; forward to the methods above so
