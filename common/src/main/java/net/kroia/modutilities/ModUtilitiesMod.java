@@ -7,6 +7,7 @@ import dev.architectury.networking.NetworkManager;
 import dev.architectury.platform.Platform;
 import dev.architectury.utils.Env;
 import net.kroia.modutilities.discord.DiscordWebhooks;
+import net.kroia.modutilities.gui.ScreenNoticePacket;
 import net.kroia.modutilities.gui.display.DisplayNetworking;
 import net.kroia.modutilities.networking.client_server.NetworkPacket;
 import net.kroia.modutilities.networking.client_server.arrs.AsynchronousRequestResponseSystem;
@@ -65,6 +66,12 @@ public class ModUtilitiesMod {
      * release code must compile without it.
      */
     private static void initDevFeatures() {
+        // The dev code uses the dev-only TestKit mod (-Pwith_testkit=true); without it, loading DevBootstrap would
+        // fail with NoClassDefFoundError.
+        if (!Platform.isModLoaded("testkit")) {
+            LOGGER.warn("Dev features are enabled but the TestKit mod is not loaded; sandbox and tests are off");
+            return;
+        }
         try {
             Class.forName(DEV_BOOTSTRAP).getMethod("init").invoke(null);
         } catch (ReflectiveOperationException e) {
@@ -118,6 +125,14 @@ public class ModUtilitiesMod {
         // ARRS — MultiServer forwarding
         MultiServerPacketRegistry.register(GenericRequestPacket.TYPE, GenericRequestPacket.STREAM_CODEC);
         MultiServerPacketRegistry.register(GenericResponsePacket.TYPE, GenericResponsePacket.STREAM_CODEC);
+
+        // Screen notice (S2C only, sent by the server the player is on; never forwarded)
+        if (isClient) {
+            NetworkManager.registerReceiver(NetworkManager.Side.S2C, ScreenNoticePacket.TYPE,
+                    ScreenNoticePacket.STREAM_CODEC, NetworkPacket.HANDLER::handleClient);
+        } else {
+            NetworkManager.registerS2CPayloadType(ScreenNoticePacket.TYPE, ScreenNoticePacket.STREAM_CODEC);
+        }
     }
 
     private static boolean devClassesPresent() {
