@@ -103,6 +103,27 @@ if ((findProperty('with_luckperms') ?: 'false').toBoolean()) {
     }
 }
 
+// TestKit (dev-only test framework mod), read from its build/libs. Dev builds (enable_dev_features=true) compile
+// testing/fabric against it; dev runs (runClient/runServer) load it with -Pwith_testkit=true.
+// modLocalRuntime: dev runtime only, never in the mod jar or the published POM/Gradle module metadata.
+repositories {
+    flatDir {
+        dir "../../../MC_TestKit/mc_${minecraft_version}_MC_TestKit/fabric/build/libs"
+    }
+}
+if ((rootProject.findProperty('enable_dev_features') ?: 'false').toBoolean()) {
+    dependencies {
+        modCompileOnly "net.kroia:testkit-fabric:${rootProject.testkit_version}" // mc<=1.21.11
+        //compileOnly "net.kroia:testkit-fabric:${rootProject.testkit_version}" // mc>=26.1
+    }
+}
+if ((findProperty('with_testkit') ?: 'false').toBoolean()) {
+    dependencies {
+        modLocalRuntime "net.kroia:testkit-fabric:${rootProject.testkit_version}" // mc<=1.21.11
+        //localRuntime "net.kroia:testkit-fabric:${rootProject.testkit_version}" // mc>=26.1
+    }
+}
+
 processResources {
     inputs.property 'version', project.version
     inputs.property 'minecraft_version', rootProject.minecraft_version
