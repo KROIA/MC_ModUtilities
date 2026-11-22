@@ -85,10 +85,11 @@ public class RequestManager {
      * @param input   The input data for the request delivered to the receiver.
      * @param <IN>    The type of input data.
      * @param <OUT>   The type of output data provided by the responder.
-     * @return A future that completes with the response data, or with a completed-null future if
-     *         the client cannot allocate a buffer (e.g. not in an active world; nothing was sent).
-     *         Completes exceptionally with {@link RequestOutcomeUnknownException} when no response
-     *         arrives within {@link GenericRequest#getTimeoutMs()} (only while {@link #ENABLE_REQUEST_FAILURES} is on).
+     * @return See {@link GenericRequest#sendRequestToServer(Object)}: completes with the response data, or with
+     *         {@code null} if the client cannot allocate a buffer (e.g. not in an active world; nothing was sent).
+     *         While {@link #ENABLE_REQUEST_FAILURES} is on it fails with {@link RequestOutcomeUnknownException}
+     *         when no response arrives within {@link GenericRequest#getTimeoutMs()} or a forwarding slave loses its
+     *         master link, and with {@link RequestNotSentException} when a slave could not forward it to the master.
      */
     public <IN, OUT> CompletableFuture<OUT> sendRequestToServer(@NotNull GenericRequest<IN, OUT> request,
                                                                 IN input) {

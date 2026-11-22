@@ -110,11 +110,9 @@ Comprehensive networking library for client-server communication.
 - [Multi-Version Compatibility](development/MultiVersionCompat.md) - Compat helpers (`RegistryCompat`, `NbtCompat`, `InputCompat`, `PlayerCompat`, `PermissionCompat`, `ClientCompat`, `Tuple`) and the `// mc<=X` / `// mc>=X` source-toggle convention
 
 #### Testing
-- [Test Suite](testing/TestSuite.md) - In-game unit test framework (`TestSuite`, `TestRegistry`, `TestRunner`)
 - [Sandbox System](development/Sandbox.md) - Development sandbox with example blocks, screens and test commands
-- [Automated runs](testing/TestSuite.md#automated-runs) - Running every suite unattended with `-Dmodutilities.autotest=<label>`
 
-Dev-only code (sandbox, unit tests, autotest) is only compiled with `enable_dev_features=true`; see [Test Suite](testing/TestSuite.md#dev-builds-and-release-builds).
+Dev-only code (sandbox, ModUtilities' own tests) is only compiled with `enable_dev_features=true`; see [Dev Builds and Release Builds](development/Sandbox.md#dev-builds-and-release-builds). The in-game test framework is not part of ModUtilities.
 
 #### Contributing
 - JavaDoc documentation (in progress)
@@ -126,7 +124,7 @@ Dev-only code (sandbox, unit tests, autotest) is only compiled with `enable_dev_
 - **Need to send data?** Check the [Networking Overview](networking/Networking.md)
 - **Building UIs?** See the [GUI Library Overview](gui/GuiLibrary.md) and [GuiScreen](gui/GuiScreen.md)
 - **Multi-server setup?** See [Multi-Server Networking](networking/MultiServerNetworking.md)
-- **Testing features?** Use the [Sandbox System](development/Sandbox.md) and [Test Suite](testing/TestSuite.md)
+- **Testing features?** Use the [Sandbox System](development/Sandbox.md)
 - **Targeting several Minecraft versions?** See [Multi-Version Compatibility](development/MultiVersionCompat.md)
 
 ## Documentation Status
@@ -150,8 +148,6 @@ Legend:
 | Permissions | Complete | Permission nodes and LuckPermsBridge in Multi-Version Compatibility |
 | Utility Classes | Complete | Helper functions API reference documented |
 | Sandbox System | Complete | Development testing framework documented |
-| Test Suite | Complete | Automated test suite documented |
-| Automated in-game tests | Complete | `AutoTest` hook documented in Test Suite |
 | Multi-Version Compatibility | Complete | Compat helpers and source toggles documented |
 | RecipeImageExporter | Complete | Short reference in Utility Classes |
 
