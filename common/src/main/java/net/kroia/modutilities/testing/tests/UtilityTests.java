@@ -7,9 +7,9 @@ import net.kroia.modutilities.ColorUtilities;
 import net.kroia.modutilities.ItemUtilities;
 import net.kroia.modutilities.JsonUtilities;
 import net.kroia.modutilities.TimerMillis;
-import net.kroia.modutilities.testing.TestCategory;
-import net.kroia.modutilities.testing.TestResult;
-import net.kroia.modutilities.testing.TestSuite;
+import net.kroia.testkit.TestCategory;
+import net.kroia.testkit.TestResult;
+import net.kroia.testkit.TestSuite;
 import net.kroia.modutilities.testing.categories.ModUtilitiesTestCategories;
 
 public class UtilityTests extends TestSuite {
