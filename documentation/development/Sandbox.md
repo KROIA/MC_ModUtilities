@@ -11,7 +11,7 @@ The Sandbox is development-only. It is never disabled by editing Java code; it i
 The single switch is the Gradle property `enable_dev_features` in `gradle.properties` (default `false`):
 
 ```properties
-# Dev-only code (sandbox, unit tests, autotest). false = release: those packages are not compiled.
+# Dev-only code (sandbox and tests). false = release: those packages are not compiled.
 enable_dev_features = false
 ```
 
@@ -22,7 +22,7 @@ enable_dev_features = false
   ./gradlew build -Penable_dev_features=true
   ```
 
-At runtime `ModUtilitiesMod.ENABLE_DEV_FEATURES` is `true` exactly when the dev classes were compiled in. `ModUtilitiesMod.init()` then loads `net.kroia.modutilities.testing.DevBootstrap` via reflection, whose `init()` calls `Sandbox.init()` and `AutoTest.init()`. Do not call `Sandbox.init()` directly from release code: it would no longer compile with `enable_dev_features=false`.
+At runtime `ModUtilitiesMod.ENABLE_DEV_FEATURES` is `true` exactly when the dev classes were compiled in. `ModUtilitiesMod.init()` then loads `net.kroia.modutilities.testing.DevBootstrap` via reflection, whose `init()` calls `Sandbox.init()`. The dev code also needs the separate in-game test framework mod at runtime (the test framework is not part of ModUtilities); without it, sandbox and tests stay off. Do not call `Sandbox.init()` directly from release code: it would no longer compile with `enable_dev_features=false`.
 
 Sandbox assets (blockstates, models, lang entries under `assets/modutilities`) are data, not code, and are not excluded.
 
@@ -32,8 +32,6 @@ All Sandbox-related code is located in:
 ```
 common/src/main/java/net/kroia/modutilities/sandbox/
 ```
-
-The Sandbox also registers the ModUtilities [test suites](../testing/TestSuite.md) and the `/modutilities test` command. To run all suites unattended, start the game with `-Dmodutilities.autotest=<label>` (see [Automated runs](../testing/TestSuite.md#automated-runs)).
 
 ## Available Test Components
 
@@ -184,5 +182,3 @@ public static void init()
 - [Networking Library](../networking/Networking.md)
 - [GUI Library](../gui/GuiLibrary.md)
 - [Streaming System](../networking/StreamSystem.md)
-- [Test Suite](../testing/TestSuite.md)
-- [Automated runs](../testing/TestSuite.md#automated-runs)
