@@ -14,9 +14,9 @@ import net.kroia.modutilities.UtilitiesPlatform;
 import net.kroia.modutilities.networking.NetworkPacketManager;
 import net.kroia.modutilities.networking.client_server.streaming.StreamSystem;
 import net.kroia.modutilities.setting.parser.ItemStackJsonParser;
-import net.kroia.modutilities.testing.TestCommandRegistration;
-import net.kroia.modutilities.testing.TestRegistry;
-import net.kroia.modutilities.testing.TestSuite;
+import net.kroia.testkit.TestCommandRegistration;
+import net.kroia.testkit.TestRegistry;
+import net.kroia.testkit.TestSuite;
 import net.kroia.modutilities.testing.tests.CreativeTabTests;
 import net.kroia.modutilities.testing.tests.EventTests;
 import net.kroia.modutilities.testing.tests.GuiLogicTests;
@@ -401,6 +401,7 @@ public class Sandbox {
         if (inGame && UtilitiesPlatform.isClient()) {
             TestRegistry.register(new CreativeTabTests());
             TestRegistry.register(new GuiLogicTests());
+            TestRegistry.register(new net.kroia.modutilities.testing.tests.GuiLocatorTests());
         }
         TestRegistry.register(new ParserTests());
         TestRegistry.register(new PersistenceTests());
@@ -414,6 +415,7 @@ public class Sandbox {
             TestRegistry.register(new net.kroia.modutilities.testing.tests.LuckPermsRemovedTests());
         }
         TestRegistry.register(new net.kroia.modutilities.testing.tests.DiscordTests());
+        TestRegistry.register(new net.kroia.modutilities.testing.tests.CommandTests());
         if (inGame) { // fabric source set only (Patbox Placeholder API); absent on NeoForge
             try {
                 TestRegistry.register((TestSuite) Class.forName("net.kroia.modutilities.testing.fabric.PlaceholderApiTests")

@@ -5,9 +5,9 @@ import eu.pb4.placeholders.api.Placeholders;
 //import eu.pb4.placeholders.api.ServerPlaceholderContext; // mc>=26.1 (Placeholder API 3)
 import net.fabricmc.loader.api.FabricLoader;
 import net.kroia.modutilities.placeholder.PlaceholderRegistry;
-import net.kroia.modutilities.testing.TestCategory;
-import net.kroia.modutilities.testing.TestResult;
-import net.kroia.modutilities.testing.TestSuite;
+import net.kroia.testkit.TestCategory;
+import net.kroia.testkit.TestResult;
+import net.kroia.testkit.TestSuite;
 import net.kroia.modutilities.testing.categories.ModUtilitiesTestCategories;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
