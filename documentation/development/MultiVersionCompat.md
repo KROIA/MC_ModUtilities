@@ -307,5 +307,4 @@ Rules:
 - [GuiScreen](../gui/GuiScreen.md) - Input/render extension points across versions
 - [Display Block System](../gui/DisplayBlock.md) - Registration example using `RegistryCompat`
 - [Stream System](../networking/StreamSystem.md) - `Tuple` return types
-- [Automated runs](../testing/TestSuite.md#automated-runs) - Running the test suites unattended
 - [Documentation Index](../README.md)

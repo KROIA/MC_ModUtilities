@@ -1,9 +1,9 @@
 package net.kroia.modutilities.testing.tests;
 
 import net.kroia.modutilities.networking.multi_server.MultiServerManager;
-import net.kroia.modutilities.testing.TestCategory;
-import net.kroia.modutilities.testing.TestSuite;
-import net.kroia.modutilities.testing.autotest.AutoTest;
+import net.kroia.testkit.TestCategory;
+import net.kroia.testkit.TestSuite;
+import net.kroia.testkit.autotest.AutoTest;
 import net.kroia.modutilities.testing.categories.ModUtilitiesTestCategories;
 
 /**

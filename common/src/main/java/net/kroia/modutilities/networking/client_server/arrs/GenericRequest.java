@@ -189,11 +189,17 @@ public abstract class GenericRequest<IN, OUT>
      *
      * @param input           The input to send to the server.
      *
-     * @return                CompletableFuture object containing the response data;
-     *                        {@code null} if no buffer could be created (not in a world, nothing sent).
-     *                        Fails with {@link RequestOutcomeUnknownException} on timeout
-     *                        (only while {@link RequestManager#ENABLE_REQUEST_FAILURES} is on).
-     *                        Never fails with {@link RequestNotSentException} (client sends are not checked).
+     * @return                A future that completes with the response data. Other outcomes:
+     *                        <ul>
+     *                            <li>completes with {@code null}: no buffer could be created (not in a world); nothing was sent.</li>
+     *                            <li>fails with {@link RequestOutcomeUnknownException}: no response within {@link #getTimeoutMs()},
+     *                                or a slave forwarded the request to its master and then lost the master link.
+     *                                The server may have applied it.</li>
+     *                            <li>fails with {@link RequestNotSentException}: a slave could not forward the request
+     *                                to its master, so it was never applied. The client's own send is not checked.</li>
+     *                        </ul>
+     *                        The failure cases only happen while {@link RequestManager#ENABLE_REQUEST_FAILURES} is on
+     *                        (on the client for the timeout, on the slave for the forward failures).
      *
      * @apiNote
      * This methode can be called manually on the clientside only (when the client is the requestor).
@@ -257,7 +263,7 @@ public abstract class GenericRequest<IN, OUT>
      * @param slaveID The identifier of the target slave server.
      * @param input   The input to send to the slave server.
      * @return A future that completes with the response data produced by the slave. Other outcomes are the
-     *         same as for {@link #sendRequestToMaster(Object)}: {@code null} = not sent (no buffer);
+     *         same as for {@link #sendRequestToMaster(Object)}: completes with {@code null} = not sent (no buffer);
      *         {@link RequestOutcomeUnknownException} = sent, then timeout or slave disconnect (slave may have
      *         applied it); {@link RequestNotSentException} = never sent (slave not connected), refunding is safe.
      * @throws IllegalStateException If the {@link RequestManager} has not been set

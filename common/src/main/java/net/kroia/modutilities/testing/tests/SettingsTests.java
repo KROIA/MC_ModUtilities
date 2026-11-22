@@ -7,9 +7,9 @@ import net.kroia.modutilities.setting.Setting;
 import net.kroia.modutilities.setting.SettingsGroup;
 import net.kroia.modutilities.setting.SettingsStore;
 import net.kroia.modutilities.setting.parser.NBTJsonParser;
-import net.kroia.modutilities.testing.TestCategory;
-import net.kroia.modutilities.testing.TestResult;
-import net.kroia.modutilities.testing.TestSuite;
+import net.kroia.testkit.TestCategory;
+import net.kroia.testkit.TestResult;
+import net.kroia.testkit.TestSuite;
 import net.kroia.modutilities.testing.categories.ModUtilitiesTestCategories;
 import net.minecraft.nbt.*;
 
