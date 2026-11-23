@@ -143,7 +143,10 @@ public final class LuckPermsBridge {
         // LuckPerms creates a fresh API (and event bus) on every server start, so subscribe on each start.
         // check() reads LISTENERS per event, so listeners added later need no extra subscribe.
         LifecycleEvent.SERVER_STARTED.register(server -> Lp.subscribe());
-        LifecycleEvent.SERVER_STOPPED.register(server -> Lp.LAST_SEEN.clear());
+        LifecycleEvent.SERVER_STOPPED.register(server -> {
+            Lp.LAST_SEEN.clear();
+            Lp.QUEUE.clear(); // a check queued for a stopped server never runs; don't let it block the next session
+        });
     }
 
     private static boolean classPresent() {
@@ -271,17 +274,23 @@ public final class LuckPermsBridge {
             subscribedTo = api;
             // Fired (async) after every user data invalidation: node edits, web editor, cross-server sync, login.
             api.getEventBus().subscribe(UserDataRecalculateEvent.class,
-                    e -> onServerThread(() -> check(e.getUser().getUniqueId(), e.getData())));
+                    e -> queuedCheck(e.getUser().getUniqueId(), e.getData()));
             // Group edits invalidate member caches silently; re-check every loaded (online) user.
             api.getEventBus().subscribe(GroupDataRecalculateEvent.class,
-                    e -> onServerThread(() -> api.getUserManager().getLoadedUsers()
-                            .forEach(u -> check(u.getUniqueId(), u.getCachedData()))));
+                    e -> api.getUserManager().getLoadedUsers().forEach(u -> queuedCheck(u.getUniqueId(), u.getCachedData())));
         }
 
-        private static void onServerThread(Runnable r) {
-            MinecraftServer server = UtilitiesPlatform.getServer();
-            if (server != null)
-                server.execute(r);
+        /**
+         * Runs {@link #check} on the server thread inside the player's queue slot. A queued write's modifyUser reloads
+         * the user, and LuckPerms' reload clears the node map before refilling it (readers do not lock): a check in that
+         * window saw the node unset and fired false, which a write-back listener then persisted (MU-174).
+         */
+        private static void queuedCheck(UUID player, CachedDataManager data) {
+            enqueue(player, () -> {
+                MinecraftServer server = UtilitiesPlatform.getServer();
+                return server == null ? CompletableFuture.completedFuture(null)
+                        : CompletableFuture.runAsync(() -> check(player, data), server);
+            });
         }
 
         // Reads the live cache when it runs, so out-of-order async events still end on the latest state.
