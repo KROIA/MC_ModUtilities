@@ -159,7 +159,7 @@ public class InventoryView extends GuiElement {
 
     protected void onLeftMouseClickOnSlot(int slotIndex)
     {
-        boolean isShiftDown = Screen.hasShiftDown();
+        boolean isShiftDown = InputCompat.hasShiftDown();
         if (dragingStack.isEmpty()) {
             if(isShiftDown)
             {

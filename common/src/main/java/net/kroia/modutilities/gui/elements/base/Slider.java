@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui.elements.base;
 
+import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.gui.InputConstants;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Point;
@@ -19,8 +20,8 @@ import java.util.function.Supplier;
  * {@link #sliderMovedToPos(int, int)} to translate handle motion into a value
  * update and to lay the handle out within the slider's bounds.
  *
- * @apiNote The {@code gui/} package is client-only
- *          ({@code @Environment(EnvType.CLIENT)}); slider widgets must only be
+ * @apiNote The {@code gui/} package is client-only;
+ *          slider widgets must only be
  *          used on the client.
  */
 public abstract class Slider extends GuiElement {
@@ -127,7 +128,7 @@ public abstract class Slider extends GuiElement {
     public void deserializeState(CompoundTag tag) {
         super.deserializeState(tag);
         if(tag.contains("value"))
-            setSliderValue(tag.getDouble("value"));
+            setSliderValue(NbtCompat.getDouble(tag, "value"));
     }
 
     /**

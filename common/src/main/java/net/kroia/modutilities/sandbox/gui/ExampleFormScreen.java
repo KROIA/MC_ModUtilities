@@ -1,7 +1,5 @@
 package net.kroia.modutilities.sandbox.gui;
 
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.client.GuiScreen;
@@ -28,7 +26,6 @@ import net.minecraft.network.chat.Component;
  * calls setText("") externally), then press Backspace/Delete. Before the fix
  * this threw StringIndexOutOfBoundsException; after the fix it is a no-op.
  */
-@Environment(EnvType.CLIENT)
 public class ExampleFormScreen extends GuiScreen {
 
     private static final int FIELD_HEIGHT = 18;

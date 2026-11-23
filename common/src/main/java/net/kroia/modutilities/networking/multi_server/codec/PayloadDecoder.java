@@ -8,7 +8,8 @@ import net.kroia.modutilities.networking.ExtraCodecUtils;
 import net.kroia.modutilities.networking.multi_server.payload.*;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+//import net.minecraft.resources.Identifier; // mc>=1.21.11
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -49,7 +50,9 @@ public class PayloadDecoder extends ByteToMessageDecoder {
         {
             case PacketIds.HANDSHAKE -> new HandshakePayload(
                     readString(in),  // serverId
-                    readString(in)   // token
+                    readString(in),  // token
+                    in.isReadable() ? readString(in) : "", // mcVersion, absent from older slaves
+                    in.isReadable() ? UUIDUtil.STREAM_CODEC.decode(in) : null // serverUid, absent from older slaves
             );
             case PacketIds.HANDSHAKE_RESULT ->  HandshakeResultPayload.STREAM_CODEC.decode(in);
             case PacketIds.BROADCAST -> new BroadcastPayload(
@@ -60,13 +63,16 @@ public class PayloadDecoder extends ByteToMessageDecoder {
             case PacketIds.MANUAL_DISCONNECT ->  ManualDisconnectionPayload.STREAM_CODEC.decode(in);
             case PacketIds.FORWARD_PACKET -> new ForwardPacketPayload(
                     ExtraCodecUtils.nullable(UUIDUtil.STREAM_CODEC).decode(in),
-                    ResourceLocation.STREAM_CODEC.decode(in),
+                    ResourceLocation.STREAM_CODEC.decode(in), // mc<=1.21.10
+                    //Identifier.STREAM_CODEC.decode(in), // mc>=1.21.11
                     ByteBufCodecs.BYTE_ARRAY.decode(in)
             );
             default -> throw new DecoderException(
                     "Unknown hub packet ID: 0x" + Integer.toHexString(packetId));
         };
 
+        // One frame = one payload: drop fields appended by newer peers instead of decoding them as the next packet.
+        in.skipBytes(in.readableBytes());
         out.add(payload); // passes decoded object to the next pipeline handler
     }
 

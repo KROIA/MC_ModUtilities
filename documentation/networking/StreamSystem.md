@@ -45,11 +45,11 @@ Save the returned instance in a static member.
 You can find an example here: [NetworkManager](NetworkManager.md#stream-system-usage)
 
 ``` Java
-public class MyExampleModNetworking extends NetworkManager {
+public class MyExampleModNetworking extends NetworkPacketManager {
     ... // Instance blabla
 
     // Creating and registring a Streaming object
-    public static SineStream SIN_STREAM = (SinusStream) StreamSystem.register(new SinusStream());
+    public static SineStream SINE_STREAM = (SineStream) StreamSystem.register(new SineStream());
 
     ... // Packet registration blabla
 }
@@ -109,6 +109,29 @@ public class ExampleScreen extends GuiScreen {
 }
 
 ```
+
+When a slave loses its master link, every stream it relays from the master to a client is stopped. The client is told
+through the stream's normal stop handler, like a refused start, so it does not wait forever.
+
+If `StreamSystem.setup()` runs again (for example on an integrated-server restart), the previous stream manager is shut down
+and its streams are dropped, not moved to the new manager.
+
+---
+### Listing active streams
+`StreamSystem` (and `StreamManager`, reachable from a stream via `GenericStream.getManager()`) can list the currently running streams:
+
+- `getActiveServerSenderStreams()`
+- `getActiveClientSenderStreams()`
+- `getActiveServerReceiverStreams()`
+- `getActiveClientReceiverStreams()`
+
+Each returns a `List<Tuple<UUID, String>>`: `getA()` is the stream ID, `getB()` the stream type ID (usable with `StreamSystem.getRegisteredStream(...)`).
+
+> **Breaking change (2.2.0):** the `Tuple` here is `net.kroia.modutilities.Tuple`, not `net.minecraft.util.Tuple` (removed in Minecraft 26.2). It has the same API (`getA`/`setA`/`getB`/`setB`); update the import:
+> ```java
+> import net.kroia.modutilities.Tuple; // was net.minecraft.util.Tuple
+> ```
+> See [Multi-Version Compatibility](../development/MultiVersionCompat.md#tuple).
 
 ---
 ## See Also

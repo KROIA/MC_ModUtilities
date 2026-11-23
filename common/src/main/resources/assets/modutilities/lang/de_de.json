@@ -2,5 +2,10 @@
   "gui.modutilities.item_selection.title": "Item auswahl Fenster",
   "gui.modutilities.cancel": "Abbrechen",
   "gui.modutilities.search": "Suchen",
-  "gui.modutilities.items": "Items"
+  "gui.modutilities.items": "Items",
+  "gui.modutilities.feature_section.restart_required": "⟳ Neustart erforderlich",
+  "gui.modutilities.feature_section.restart_required.tooltip": "Dieser Wert weicht vom seit dem Serverstart aktiven Wert ab.\nEr ist gespeichert, wird aber erst\nnach einem Serverneustart wirksam.",
+  "gui.modutilities.feature_section.master_only": "Läuft nur auf dem Master-Server",
+  "gui.modutilities.feature_section.expand": "Klicken, um Einstellungen anzuzeigen",
+  "gui.modutilities.feature_section.collapse": "Klicken, um Einstellungen auszublenden"
 }

@@ -1,5 +1,6 @@
 package net.kroia.modutilities.sandbox;
 
+import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.display.AbstractDisplayBlockEntity;
 import net.kroia.modutilities.gui.display.ContentBuilder;
@@ -63,7 +64,7 @@ public class DisplayDemoBackPanelBlockEntity extends AbstractDisplayBlockEntity 
 
     @Override
     protected void loadCustomData(CompoundTag tag, HolderLookup.Provider registries) {
-        tick = tag.getInt("tick");
+        tick = NbtCompat.getInt(tag, "tick");
     }
 
     private static void buildContent(Gui gui, int w, int h) {

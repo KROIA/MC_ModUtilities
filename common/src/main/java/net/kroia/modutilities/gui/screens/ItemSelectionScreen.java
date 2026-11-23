@@ -31,10 +31,10 @@ public class ItemSelectionScreen extends GuiScreen {
 
         itemSelectionView = new ItemSelectionView(allowedItemsIDs, (s) -> {
             onItemSelected.accept(s);
-            minecraft.setScreen(parentScreen);
+            net.kroia.modutilities.gui.client.ClientCompat.setScreen(parentScreen);
         });
         backButton = new Button(CANCEL_BUTTON.getString());
-        backButton.setOnFallingEdge(() -> minecraft.setScreen(parentScreen));
+        backButton.setOnFallingEdge(() -> net.kroia.modutilities.gui.client.ClientCompat.setScreen(parentScreen));
 
         addElement(itemSelectionView);
         addElement(backButton);

@@ -1,5 +1,7 @@
 package net.kroia.modutilities.gui.display;
 
+import net.kroia.modutilities.gui.InputConstants;
+import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.display.client.DisplayClientHooks;
 import net.minecraft.core.BlockPos;
@@ -73,6 +75,16 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
 
     public String getChannelId() { return "default"; }
 
+    // MC 1.21.5: capture the group state before this block entity is removed; consumed by
+    // AbstractDisplayBlock.affectNeighborsAfterRemoval (replaces the pre-1.21.5 capture in onRemove).
+    //@Override // mc>=1.21.5
+    //public void preRemoveSideEffects(BlockPos pos, BlockState state) { // mc>=1.21.5
+        //super.preRemoveSideEffects(pos, state); // mc>=1.21.5
+        //AbstractDisplayBlockEntity ctrl = getControllerEntity(); // mc>=1.21.5
+        //AbstractDisplayBlock.PENDING_REMOVALS.put(pos.immutable(), new AbstractDisplayBlock.PendingRemoval( // mc>=1.21.5
+                //getChannelId(), ctrl != null ? ctrl.captureTransferState() : null)); // mc>=1.21.5
+    //} // mc>=1.21.5
+
     /**
      * Whether right-clicking the display block opens the built-in synced interaction screen.
      * Override and return {@code false} to disable the default screen — useful for
@@ -141,7 +153,7 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
         if (gui != null) {
             if (!mouseDown.contains(playerId)) {
                 mouseDown.add(playerId);
-                gui.mouseClicked(guiX, guiY, 0);
+                gui.mouseClicked(guiX, guiY, InputConstants.MOUSE_BUTTON_LEFT);
                 lastMousePos.put(playerId, new double[]{guiX, guiY});
                 syncToClient();
             } else {
@@ -152,7 +164,7 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
 
     public void handleMouseRelease(Player player, double guiX, double guiY) {
         if (gui != null && interactingPlayers.contains(player.getUUID())) {
-            gui.mouseReleased(guiX, guiY, 0);
+            gui.mouseReleased(guiX, guiY, InputConstants.MOUSE_BUTTON_LEFT);
             syncToClient();
         }
     }
@@ -161,7 +173,7 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
         interactingPlayers.remove(playerId);
         double[] last = lastMousePos.remove(playerId);
         if (gui != null && last != null) {
-            gui.mouseReleased(last[0], last[1], 0);
+            gui.mouseReleased(last[0], last[1], InputConstants.MOUSE_BUTTON_LEFT);
         }
     }
 
@@ -274,9 +286,32 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
     // NBT save/load + client sync
     // -------------------------------------------------------------------------
 
-    @Override
-    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.saveAdditional(tag, registries);
+    @Override // mc<=1.21.5
+    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) { // mc<=1.21.5
+        super.saveAdditional(tag, registries); // mc<=1.21.5
+        writeState(tag, registries); // mc<=1.21.5
+    } // mc<=1.21.5
+    //@Override // mc>=1.21.6
+    //protected void saveAdditional(net.minecraft.world.level.storage.ValueOutput output) { // mc>=1.21.6 (ValueOutput replaces CompoundTag)
+        //super.saveAdditional(output); // mc>=1.21.6
+        //CompoundTag tag = new CompoundTag(); // mc>=1.21.6
+        //writeState(tag, level != null ? level.registryAccess() : net.kroia.modutilities.UtilitiesPlatform.getRegistryAccess()); // mc>=1.21.6
+        //NbtCompat.writeAll(output, tag); // mc>=1.21.6 (same keys at the same level as before)
+    //} // mc>=1.21.6
+
+    @Override // mc<=1.21.5
+    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) { // mc<=1.21.5
+        super.loadAdditional(tag, registries); // mc<=1.21.5
+        readState(tag, registries); // mc<=1.21.5
+    } // mc<=1.21.5
+    //@Override // mc>=1.21.6
+    //protected void loadAdditional(net.minecraft.world.level.storage.ValueInput input) { // mc>=1.21.6 (ValueInput replaces CompoundTag)
+        //super.loadAdditional(input); // mc>=1.21.6
+        //readState(NbtCompat.readAll(input), input.lookup()); // mc>=1.21.6
+    //} // mc>=1.21.6
+
+    /** Writes this display block's state; shared by save and the client update tag. */
+    private void writeState(CompoundTag tag, HolderLookup.Provider registries) {
         if (controllerPos != null) {
             tag.putInt("ctrlX", controllerPos.getX());
             tag.putInt("ctrlY", controllerPos.getY());
@@ -295,16 +330,15 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
         saveCustomData(tag, registries);
     }
 
-    @Override
-    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.loadAdditional(tag, registries);
+    /** Reads this display block's state; shared by load and the client update tag. */
+    private void readState(CompoundTag tag, HolderLookup.Provider registries) {
         if (tag.contains("ctrlX")) {
-            controllerPos = new BlockPos(tag.getInt("ctrlX"), tag.getInt("ctrlY"), tag.getInt("ctrlZ"));
+            controllerPos = new BlockPos(NbtCompat.getInt(tag, "ctrlX"), NbtCompat.getInt(tag, "ctrlY"), NbtCompat.getInt(tag, "ctrlZ"));
         }
-        groupWidth = tag.getInt("gw");
-        groupHeight = tag.getInt("gh");
-        gridX = tag.getInt("gx");
-        gridY = tag.getInt("gy");
+        groupWidth = NbtCompat.getInt(tag, "gw");
+        groupHeight = NbtCompat.getInt(tag, "gh");
+        gridX = NbtCompat.getInt(tag, "gx");
+        gridY = NbtCompat.getInt(tag, "gy");
         loadCustomData(tag, registries);
 
         if (isActive() && isController()) {
@@ -316,12 +350,12 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
                 guiBuiltWidth = neededW;
                 guiBuiltHeight = neededH;
             }
-            if (tag.contains("guiTree") && tag.getCompound("guiTree").getInt("structureVersion") > 0) {
-                gui.deserializeTree(tag.getCompound("guiTree"));
+            if (tag.contains("guiTree") && NbtCompat.getInt(NbtCompat.getCompound(tag, "guiTree"), "structureVersion") > 0) {
+                gui.deserializeTree(NbtCompat.getCompound(tag, "guiTree"));
                 gui.init();
             }
             if (tag.contains("guiInput")) {
-                GuiInputSerializer.applyInput(tag.getCompound("guiInput"), gui);
+                GuiInputSerializer.applyInput(NbtCompat.getCompound(tag, "guiInput"), gui);
             }
         } else {
             gui = null;
@@ -333,7 +367,7 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
     @Override
     public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
         CompoundTag tag = super.getUpdateTag(registries);
-        saveAdditional(tag, registries);
+        writeState(tag, registries);
         return tag;
     }
 
@@ -594,7 +628,7 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
                 if (lastUse != null && now - lastUse > RELEASE_TIMEOUT_MS) {
                     double[] last = lastMousePos.get(playerId);
                     if (gui != null && last != null) {
-                        gui.mouseReleased(last[0], last[1], 0);
+                        gui.mouseReleased(last[0], last[1], InputConstants.MOUSE_BUTTON_LEFT);
                         syncToClient();
                     }
                     mouseDown.remove(playerId);
@@ -624,7 +658,7 @@ public abstract class AbstractDisplayBlockEntity extends BlockEntity {
         it.remove();
         double[] last = lastMousePos.remove(playerId);
         if (gui != null && last != null) {
-            gui.mouseReleased(last[0], last[1], 0);
+            gui.mouseReleased(last[0], last[1], InputConstants.MOUSE_BUTTON_LEFT);
             syncToClient();
         }
         mouseDown.remove(playerId);

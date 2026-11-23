@@ -49,6 +49,28 @@ public abstract class GenericRequest<IN, OUT>
      */
     public boolean needsRoutingToMaster() { return false; }
 
+    /**
+     * @return how long the requester waits for a response before the future fails with a
+     *         {@link RequestOutcomeUnknownException}. Default {@link RequestManager#DEFAULT_TIMEOUT_MS} (30 s).
+     * @apiNote Override for requests that legitimately take longer. Only used while
+     *          {@link RequestManager#ENABLE_REQUEST_FAILURES} is on.
+     */
+    public long getTimeoutMs() { return RequestManager.DEFAULT_TIMEOUT_MS; }
+
+    /**
+     * Lets a slave change the master's response before relaying it to the client that sent the request,
+     * e.g. to drop entries this slave cannot resolve. Called on a slave only, for client requests it forwarded
+     * to the master ({@link #needsRoutingToMaster()}), and only for regular responses (not for failures).
+     *
+     * @param response     The master's encoded output; read it with {@link #decodeOutput}. Do not release it.
+     * @param playerSender The UUID of the player the response is relayed to.
+     * @return The buffer to relay: {@code response} itself to relay it unchanged (its reader index is reset),
+     *         or a new buffer, e.g. from {@code UtilitiesPlatform.createRegistryFriendlyByteBufServerSide()},
+     *         holding the filtered output written with {@link #encodeOutput}.
+     * @apiNote Default: relays the master's bytes unchanged, without decoding them.
+     */
+    public RegistryFriendlyByteBuf transformResponseOnSlave(RegistryFriendlyByteBuf response, UUID playerSender) { return response; }
+
 
     /**
      * Handles the request on the client side.
@@ -167,7 +189,17 @@ public abstract class GenericRequest<IN, OUT>
      *
      * @param input           The input to send to the server.
      *
-     * @return                CompletableFuture object containing the response data
+     * @return                A future that completes with the response data. Other outcomes:
+     *                        <ul>
+     *                            <li>completes with {@code null}: no buffer could be created (not in a world); nothing was sent.</li>
+     *                            <li>fails with {@link RequestOutcomeUnknownException}: no response within {@link #getTimeoutMs()},
+     *                                or a slave forwarded the request to its master and then lost the master link.
+     *                                The server may have applied it.</li>
+     *                            <li>fails with {@link RequestNotSentException}: a slave could not forward the request
+     *                                to its master, so it was never applied. The client's own send is not checked.</li>
+     *                        </ul>
+     *                        The failure cases only happen while {@link RequestManager#ENABLE_REQUEST_FAILURES} is on
+     *                        (on the client for the timeout, on the slave for the forward failures).
      *
      * @apiNote
      * This methode can be called manually on the clientside only (when the client is the requestor).
@@ -192,7 +224,18 @@ public abstract class GenericRequest<IN, OUT>
      * Intended for use on a slave server in a multi-server topology.
      *
      * @param input The input to send to the master server.
-     * @return A future that completes with the response data produced by the master.
+     * @return A future that completes with the response data produced by the master. Other outcomes:
+     *         <ul>
+     *             <li>completes with {@code null}: no server buffer could be created (server not running); nothing was sent.</li>
+     *             <li>fails with {@link RequestOutcomeUnknownException} (a {@link java.util.concurrent.TimeoutException}):
+     *                 the request was sent, then timed out ({@link #getTimeoutMs()}) or the connection was lost.
+     *                 The master may have applied it: do not refund or retry blindly, ask for the status.</li>
+     *             <li>fails with {@link RequestNotSentException}: the request was never sent (not connected);
+     *                 refunding is safe. Treat any other exception like an unknown outcome.</li>
+     *         </ul>
+     *         The two failure cases only happen while {@link RequestManager#ENABLE_REQUEST_FAILURES} is on;
+     *         otherwise such a future never completes. Futures complete on the server thread.
+     *         {@code CompletableFuture} callbacks may wrap the cause in a {@link java.util.concurrent.CompletionException}.
      * @throws IllegalStateException If the {@link RequestManager} has not been set
      *                               (i.e. the ARRS has not been initialized via
      *                               {@link AsynchronousRequestResponseSystem#setup} or
@@ -219,7 +262,10 @@ public abstract class GenericRequest<IN, OUT>
      *
      * @param slaveID The identifier of the target slave server.
      * @param input   The input to send to the slave server.
-     * @return A future that completes with the response data produced by the slave.
+     * @return A future that completes with the response data produced by the slave. Other outcomes are the
+     *         same as for {@link #sendRequestToMaster(Object)}: completes with {@code null} = not sent (no buffer);
+     *         {@link RequestOutcomeUnknownException} = sent, then timeout or slave disconnect (slave may have
+     *         applied it); {@link RequestNotSentException} = never sent (slave not connected), refunding is safe.
      * @throws IllegalStateException If the {@link RequestManager} has not been set
      *                               (i.e. the ARRS has not been initialized via
      *                               {@link AsynchronousRequestResponseSystem#setup} or

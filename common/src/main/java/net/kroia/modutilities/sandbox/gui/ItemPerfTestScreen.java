@@ -1,7 +1,5 @@
 package net.kroia.modutilities.sandbox.gui;
 
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 import net.kroia.modutilities.ItemUtilities;
 import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.client.GuiScreen;
@@ -11,7 +9,8 @@ import net.kroia.modutilities.gui.elements.Label;
 import net.kroia.modutilities.gui.elements.VerticalListView;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.layout.LayoutGrid;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphics; // mc<=1.21.11
+//import net.minecraft.client.gui.GuiGraphicsExtractor; // mc>=26.1
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 
@@ -27,7 +26,6 @@ import java.util.List;
  *
  * Open via: /modutilities openItemPerfScreen
  */
-@Environment(EnvType.CLIENT)
 public class ItemPerfTestScreen extends GuiScreen {
 
     /** Lowpass smoothing factor for the running averages: avg = avg*FILTER + sample*(1-FILTER). */
@@ -140,7 +138,8 @@ public class ItemPerfTestScreen extends GuiScreen {
     }
 
     @Override
-    public void render(GuiGraphics g, int mx, int my, float pt) {
+    public void render(GuiGraphics g, int mx, int my, float pt) { // mc<=1.21.11
+    //public void render(GuiGraphicsExtractor g, int mx, int my, float pt) { // mc>=26.1
         long now = System.nanoTime();
         if (fpsSeeded && now > lastFrameNanos) {
             instFps = 1_000_000_000.0 / (now - lastFrameNanos);

@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui.elements.base;
 
+import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.ClientPlayerUtilities;
 import net.kroia.modutilities.TimerMillis;
 import net.kroia.modutilities.gui.IGraphics;
@@ -11,13 +12,16 @@ import net.kroia.modutilities.gui.geometry.Rectangle;
 import net.kroia.modutilities.gui.layout.Layout;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+//import net.minecraft.resources.Identifier; // mc>=1.21.11
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.item.ItemStack;
 import org.joml.Quaternionf;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Supplier;
+import java.util.function.ToIntFunction;
 
 /**
  * Abstract base class for every widget in the GUI framework.
@@ -82,6 +86,20 @@ public abstract class GuiElement {
         public int backgroundPadding = DEFAULT_TOOLTIP_BACKGROUND_PADDING;
         public float fontScale = 1.0f;
         public Alignment mousePositionAlignment = Alignment.TOP_LEFT;
+        /**
+         * When {@code true}, the horizontal side of {@link #mousePositionAlignment}
+         * follows the mouse: in the left half of the screen the tooltip opens to the
+         * right of the cursor, in the right half to the left. The vertical part of
+         * {@link #mousePositionAlignment} is kept. Default {@code false}.
+         */
+        public boolean autoSide = false;
+        /**
+         * When {@code > 0}, the tooltip text is word-wrapped so its width (after
+         * {@link #fontScale}) is at most this fraction of the screen width. Existing
+         * {@code '\n'} line breaks are kept; words longer than a line are split.
+         * Default {@code 0} (no wrapping).
+         */
+        public float maxWidthFraction = 0f;
     }
 
 
@@ -95,6 +113,8 @@ public abstract class GuiElement {
     public static int DEFAULT_HOVER_BACKGROUND_COLOR = 0xFFAAAAAA;
     public static int DEFAULT_OUTLINE_COLOR = 0xFF333333;
     public static int DEFAULT_HOVER_TOOLTIP_MOUSE_OFFSET = 5;
+    /** Dimming overlay drawn over a {@linkplain #setInteractive(boolean) non-interactive} element. */
+    public static int DEFAULT_NON_INTERACTIVE_OVERLAY_COLOR = 0x99303030;
 
     private Gui root;
     private GuiElement parent = null;
@@ -107,6 +127,7 @@ public abstract class GuiElement {
     private final List<GuiElement> childs = new ArrayList<>();
 
     private boolean isEnabled = true;
+    private boolean isInteractive = true;
     private boolean checkOverlapForRendering = true; // If true, the element will only be rendered if it is visible (overlaps with the parent)
     private int gizmoColor = 0x55FF0000;
     private int backgroundColor = DEFAULT_BACKGROUND_COLOR;
@@ -144,6 +165,10 @@ public abstract class GuiElement {
         public int backgroundPadding = tooltipBackgroundPadding;
         public Alignment alignment = tooltipPositionAlingment;
         public float fontScale = tooltipFontScale;
+        /** See {@link HoverTooltipData#autoSide}. */
+        public boolean autoSide = false;
+        /** See {@link HoverTooltipData#maxWidthFraction}. */
+        public float maxWidthFraction = 0f;
     }
     private final List<TooltipData> drawTooltipLater = new ArrayList<>();
 
@@ -274,6 +299,28 @@ public abstract class GuiElement {
         return isEnabled;
     }
 
+    /**
+     * Makes this element (and its whole subtree) non-interactive while keeping it
+     * visible: mouse/keyboard input is no longer dispatched to the branch and a
+     * dimming overlay ({@link #DEFAULT_NON_INTERACTIVE_OVERLAY_COLOR}) is drawn on
+     * top of it. Hover tooltips keep working. Unlike {@link #setEnabled(boolean)}
+     * the element still renders and takes part in layout.
+     *
+     * @param interactive {@code false} to grey out and block input
+     */
+    public void setInteractive(boolean interactive)
+    {
+        isInteractive = interactive;
+    }
+
+    /**
+     * @return {@code false} if this element was greyed out via {@link #setInteractive(boolean)}
+     */
+    public boolean isInteractive()
+    {
+        return isInteractive;
+    }
+
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
 
@@ -291,7 +338,7 @@ public abstract class GuiElement {
 
     public void deserializeState(CompoundTag tag) {
         if (tag.contains("enabled")) {
-            setEnabled(tag.getBoolean("enabled"));
+            setEnabled(NbtCompat.getBoolean(tag, "enabled"));
         }
     }
 
@@ -684,6 +731,8 @@ public abstract class GuiElement {
                 continue;
             child.renderInternal();
         }
+        if(!isInteractive)
+            drawRect(0, 0, getWidth(), getHeight(), DEFAULT_NON_INTERACTIVE_OVERLAY_COLOR);
         graphics.popPose();
 
     }
@@ -718,6 +767,8 @@ public abstract class GuiElement {
                     data.alignment = hoverTooltipData.mousePositionAlignment;
                     data.textColor = hoverTooltipData.textColor;
                     data.fontScale = hoverTooltipData.fontScale;
+                    data.autoSide = hoverTooltipData.autoSide;
+                    data.maxWidthFraction = hoverTooltipData.maxWidthFraction;
                     drawTooltip(data);
                 }
             }
@@ -737,12 +788,19 @@ public abstract class GuiElement {
             else if(data.component != null)
                 drawText(data.component, data.x, data.y, data.textColor, data.fontScale);
             else if(data.customString != null) {
+                int areaWidth = root.getScreenWidth();
+                int areaHeight = root.getScreenHeight();
+                String text = data.customString;
+                if(data.maxWidthFraction > 0 && areaWidth > 0)
+                    text = wrapText(text, (int)(data.maxWidthFraction * areaWidth / data.fontScale), graphics::getTextWidth);
+                Alignment alignment = data.autoSide && areaWidth > 0
+                        ? autoSideAlignment(data.alignment, globalPositon.x + data.x, areaWidth)
+                        : data.alignment;
 
-
-                Point size = getTextBounds(data.customString, data.fontScale);
+                Point size = getTextBounds(text, data.fontScale);
                 int x = 0;
                 int y = 0;
-                switch(data.alignment)
+                switch(alignment)
                 {
                     case CENTER:
                     case LEFT:
@@ -775,8 +833,11 @@ public abstract class GuiElement {
                         break;
                 }
 
-                Rectangle rect = getAlignedBounds(0,0, size.x, size.y, data.alignment,
+                Rectangle rect = getAlignedBounds(0,0, size.x, size.y, alignment,
                         data.x+x, data.y+y,0,0);
+                // Screen bounds in this element's local space (pose is translated by globalPositon)
+                if(areaWidth > 0 && areaHeight > 0)
+                    clampToArea(rect, data.backgroundPadding, -globalPositon.x, -globalPositon.y, areaWidth, areaHeight);
                 if(data.createBackground)
                 {
                     drawRect(rect.x - data.backgroundPadding,
@@ -784,7 +845,7 @@ public abstract class GuiElement {
                             size.x + data.backgroundPadding * 2,
                             size.y + data.backgroundPadding * 2, data.backgroundColor);
                 }
-                drawText(data.customString, rect.x, rect.y, data.textColor, data.fontScale);
+                drawText(text, rect.x, rect.y, data.textColor, data.fontScale);
             }
         }
         drawTooltipLater.clear();
@@ -1132,7 +1193,7 @@ public abstract class GuiElement {
 
     public boolean mouseClickedInternal(int button, boolean isOverParent)
     {
-        if(!isEnabled)
+        if(!isEnabled || !isInteractive)
             return false;
         isOverParent &= isMouseOver();
         boolean consumed = false;
@@ -1149,7 +1210,7 @@ public abstract class GuiElement {
     }
     public boolean mouseReleasedInternal(int button, boolean isOverParent)
     {
-        if(!isEnabled)
+        if(!isEnabled || !isInteractive)
             return false;
         isOverParent &= isMouseOver();
         boolean consumed = false;
@@ -1167,7 +1228,7 @@ public abstract class GuiElement {
     }
     public boolean mouseDraggedInternal(int button, double deltaX, double deltaY)
     {
-        if(!isEnabled)
+        if(!isEnabled || !isInteractive)
             return false;
         for(GuiElement child : childs)
         {
@@ -1178,7 +1239,7 @@ public abstract class GuiElement {
     }
     public boolean mouseScrolledInternal(double delta, boolean isOverParent)
     {
-        if(!isEnabled)
+        if(!isEnabled || !isInteractive)
             return false;
         isOverParent &= isMouseOver();
         boolean consumed = false;
@@ -1194,7 +1255,7 @@ public abstract class GuiElement {
     }
     public boolean keyPressedInternal(int keyCode, int scanCode, int modifiers)
     {
-        if(!isEnabled)
+        if(!isEnabled || !isInteractive)
             return false;
         for(GuiElement child : childs)
         {
@@ -1205,7 +1266,7 @@ public abstract class GuiElement {
     }
     public boolean charTypedInternal(char codePoint, int modifiers)
     {
-        if(!isEnabled)
+        if(!isEnabled || !isInteractive)
             return false;
         for(GuiElement child : childs)
         {
@@ -1404,6 +1465,18 @@ public abstract class GuiElement {
     public List<GuiElement> getChilds()
     {
         return childs;
+    }
+
+    /**
+     * @return a read-only view of the children this element actually draws and
+     *         routes input to (the render/input/layout tree). Unlike
+     *         {@link #getChilds()}, which subclasses may override to return a
+     *         logical view (e.g. a list's items or an empty list for tabs),
+     *         this always returns the real child list.
+     */
+    public List<GuiElement> getRenderedChilds()
+    {
+        return Collections.unmodifiableList(childs);
     }
 
     public List<GuiElement> getSerializableChildren() {
@@ -1774,6 +1847,78 @@ public abstract class GuiElement {
         return bounds;
     }
 
+    /**
+     * Tooltip side for {@link HoverTooltipData#autoSide}: keeps the vertical part of
+     * {@code alignment} and opens the tooltip to the right of {@code anchorX} when it
+     * lies in the left half of {@code areaWidth}, to the left otherwise.
+     *
+     * @param alignment the configured tooltip alignment
+     * @param anchorX   the anchor (mouse) x, in the same space as {@code areaWidth}
+     * @param areaWidth the width of the area the anchor lies in (starting at 0)
+     * @return the alignment with the horizontal part replaced
+     */
+    public static Alignment autoSideAlignment(Alignment alignment, int anchorX, int areaWidth) {
+        boolean openLeft = anchorX > areaWidth / 2;
+        return switch (alignment) {
+            case TOP, TOP_LEFT, TOP_RIGHT -> openLeft ? Alignment.TOP_RIGHT : Alignment.TOP_LEFT;
+            case BOTTOM, BOTTOM_LEFT, BOTTOM_RIGHT -> openLeft ? Alignment.BOTTOM_RIGHT : Alignment.BOTTOM_LEFT;
+            default -> openLeft ? Alignment.RIGHT : Alignment.LEFT;
+        };
+    }
+
+    /**
+     * Shifts {@code rect} so that it, grown by {@code padding} on every side, lies
+     * inside the given area. A box larger than the area is pinned to its top/left edge.
+     *
+     * @param rect       the rectangle to move (modified in place)
+     * @param padding    extra margin around {@code rect} that must stay inside too
+     * @param areaX      the x position of the area
+     * @param areaY      the y position of the area
+     * @param areaWidth  the width of the area
+     * @param areaHeight the height of the area
+     */
+    public static void clampToArea(Rectangle rect, int padding, int areaX, int areaY, int areaWidth, int areaHeight) {
+        rect.x = Math.max(areaX, Math.min(rect.x - padding, areaX + areaWidth - rect.width - 2 * padding)) + padding;
+        rect.y = Math.max(areaY, Math.min(rect.y - padding, areaY + areaHeight - rect.height - 2 * padding)) + padding;
+    }
+
+    /**
+     * Greedy word wrap: breaks each line of {@code text} at spaces so no line is wider
+     * than {@code maxWidth}. Existing {@code '\n'} breaks are kept; a word wider than
+     * {@code maxWidth} is split by character (at least one character per line).
+     *
+     * @param text     the text to wrap (may contain {@code '\n'})
+     * @param maxWidth the maximum line width, in the units of {@code width}
+     * @param width    measures a single line
+     * @return the wrapped text, lines joined with {@code '\n'}
+     */
+    public static String wrapText(String text, int maxWidth, ToIntFunction<String> width) {
+        StringBuilder out = new StringBuilder();
+        String[] paragraphs = text.split("\n", -1);
+        for (int p = 0; p < paragraphs.length; p++) {
+            if (p > 0) out.append('\n');
+            String line = null;
+            for (String word : paragraphs[p].split(" ", -1)) {
+                String candidate = line == null ? word : line + " " + word;
+                if (width.applyAsInt(candidate) <= maxWidth) {
+                    line = candidate;
+                    continue;
+                }
+                if (line != null) out.append(line).append('\n');
+                line = word;
+                // ponytail: splits by UTF-16 char, so a surrogate pair or a §-format code can be cut at a forced break
+                while (line.length() > 1 && width.applyAsInt(line) > maxWidth) {
+                    int cut = 1;
+                    while (cut < line.length() - 1 && width.applyAsInt(line.substring(0, cut + 1)) <= maxWidth) cut++;
+                    out.append(line, 0, cut).append('\n');
+                    line = line.substring(cut);
+                }
+            }
+            out.append(line);
+        }
+        return out.toString();
+    }
+
 
 
     public void drawText(String text, int x, int y, int color)
@@ -2135,7 +2280,8 @@ public abstract class GuiElement {
     {
         root.drawTexture(texture.getResourceLocation(), x, y, texture.getUVOffsetX(), texture.getUVOffsetY(), width, height, width, height);
     }
-    public void drawTexture(ResourceLocation atlasLocation, int x, int y, float uOffset, float vOffset, int width, int height, int textureWidth, int textureHeight)
+    public void drawTexture(ResourceLocation atlasLocation, int x, int y, float uOffset, float vOffset, int width, int height, int textureWidth, int textureHeight) // mc<=1.21.10
+    //public void drawTexture(Identifier atlasLocation, int x, int y, float uOffset, float vOffset, int width, int height, int textureWidth, int textureHeight) // mc>=1.21.11
     {
         root.drawTexture(atlasLocation, x, y, uOffset, vOffset, width, height, textureWidth, textureHeight);
     }

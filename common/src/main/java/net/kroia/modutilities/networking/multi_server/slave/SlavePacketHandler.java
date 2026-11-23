@@ -6,12 +6,15 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.networking.multi_server.ForwardPacketContext;
+import net.kroia.modutilities.networking.multi_server.MultiServerManager;
 import net.kroia.modutilities.networking.multi_server.MultiServerPacketRegistry;
+import net.kroia.modutilities.networking.multi_server.ServerIdentity;
 import net.kroia.modutilities.networking.multi_server.master.MasterTCPServer;
 import net.kroia.modutilities.networking.multi_server.payload.*;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+//import net.minecraft.resources.Identifier; // mc>=1.21.11
 import net.minecraft.server.MinecraftServer;
 
 import java.io.IOException;
@@ -77,13 +80,17 @@ public class SlavePacketHandler extends SimpleChannelInboundHandler<Payload> {
         switch (payload) {
             case HandshakeResultPayload hp ->
             {
-                info("HandshakeResultPayload received from master '"+hp.result()+"'");
+                ModUtilitiesMod.LOGGER.debug("[SlavePacketHandler]: HandshakeResultPayload received from master '"+hp.result()+"'");
                 switch(hp.result())
                 {
                     case SlaveServerClient.ConnectionEstablishState.SUCCESS:
+                        if (hp.masterUid() != null && MultiServerManager.getIdentity() instanceof ServerIdentity identity)
+                            identity.setMasterUid(hp.masterUid());
                         break;
                     case SlaveServerClient.ConnectionEstablishState.INVALID_SHARED_SECRET,
-                         SlaveServerClient.ConnectionEstablishState.SLAVE_ID_ALREADY_USED:
+                         SlaveServerClient.ConnectionEstablishState.SLAVE_ID_ALREADY_USED,
+                         SlaveServerClient.ConnectionEstablishState.MC_VERSION_MISMATCH,
+                         SlaveServerClient.ConnectionEstablishState.DUPLICATE_SERVER_UID:
                         ctx.close();
                         break;
                 }
@@ -109,7 +116,8 @@ public class SlavePacketHandler extends SimpleChannelInboundHandler<Payload> {
                 connector.onMasterDisconnected(dp.reason());
             }
             case ForwardPacketPayload bb -> {
-                ResourceLocation packetResouceLoc = bb.packetType();
+                ResourceLocation packetResouceLoc = bb.packetType(); // mc<=1.21.10
+                //Identifier packetResouceLoc = bb.packetType(); // mc>=1.21.11
                 ByteBuf buf = ctx.alloc().buffer();
                 buf.writeBytes(bb.data());
                 RegistryFriendlyByteBuf dataBuf = new RegistryFriendlyByteBuf(buf, mcServer.registryAccess());
@@ -132,17 +140,22 @@ public class SlavePacketHandler extends SimpleChannelInboundHandler<Payload> {
      * Called by Netty when the underlying channel becomes inactive.
      * <p>
      * If the owning {@link SlaveServerClient} is not shutting down, schedules a
-     * reconnect attempt; otherwise the inactivity is treated as part of an
+     * reconnect attempt and reports an established link's loss once via
+     * {@code onConnectionLost}; otherwise the inactivity is treated as part of an
      * orderly disconnect and ignored.
      *
      * @param ctx The Netty channel context whose channel just went inactive.
      */
     @Override
     public void channelInactive(ChannelHandlerContext ctx) {
+        // Requests sent over this channel get no response any more (clean disconnect too).
+        net.kroia.modutilities.networking.client_server.arrs.AsynchronousRequestResponseSystem.onConnectionLost(mcServer, null);
+        // Streams redirected over this channel get no data or stop any more: stop them for their clients.
+        if(mcServer != null)
+            mcServer.execute(net.kroia.modutilities.networking.client_server.streaming.StreamSystem::onMasterLinkLost);
         if(connector.isShuttingDown())
             return;
-        warn("Lost connection to master - scheduling reconnect...");
-        connector.scheduleReconnect();
+        connector.onChannelInactive();
     }
 
     /**

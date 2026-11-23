@@ -11,6 +11,8 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
 import net.kroia.modutilities.ModUtilitiesMod;
+import net.kroia.modutilities.networking.multi_server.IServerIdentity;
+import net.kroia.modutilities.networking.multi_server.MultiServerManager;
 import net.kroia.modutilities.networking.multi_server.MultiServerPacketRegistry;
 import net.kroia.modutilities.networking.multi_server.codec.PayloadDecoder;
 import net.kroia.modutilities.networking.multi_server.codec.PayloadEncoder;
@@ -22,8 +24,10 @@ import net.minecraft.server.MinecraftServer;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.time.LocalTime;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -57,7 +61,11 @@ public class SlaveServerClient {
         /** The shared secret presented by the slave does not match the master's configuration. */
         INVALID_SHARED_SECRET,
         /** Another slave is already registered with the same {@code serverId}. */
-        SLAVE_ID_ALREADY_USED
+        SLAVE_ID_ALREADY_USED,
+        /** The slave runs a different Minecraft version than the master. */
+        MC_VERSION_MISMATCH,
+        /** The slave's server uid belongs to the master or another known slave (copied world). Keep this constant last: the wire format is ordinal-based. */
+        DUPLICATE_SERVER_UID
     }
 
 
@@ -69,10 +77,18 @@ public class SlaveServerClient {
     private final MinecraftServer  mcServer;
 
     private final NioEventLoopGroup group;
-    private Channel channel;
+    private volatile Channel channel;
     private volatile boolean shuttingDown = false;
+    /** Test-only: while set, the master is treated as unreachable (see {@link #setSimulatedDown}). */
+    private volatile boolean simulatedDown = false;
+    /** True between an accepted handshake and the loss of that channel; reports each drop once. */
+    private volatile boolean linkEstablished = false;
 
     private @Nullable Throwable connectionFailReason = null;
+    /** Failed connect attempts since the last successful connect, and when the first of them failed (retry warning throttle). */
+    private volatile int failedAttempts = 0;
+    private volatile LocalTime firstFailTime;
+    private volatile long lastFailWarnMillis = 0;
 
     private final Runnable onConnectionAccepted;
     private final Consumer<ConnectionEstablishState> onConnectionFailed;
@@ -134,7 +150,11 @@ public class SlaveServerClient {
     {
         if (shuttingDown)
             return;
-        info("Connecting to " + masterHost + ":" + masterPort);
+        if (simulatedDown) {
+            connectFailed(new ConnectException("simulated master down"));
+            return;
+        }
+        ModUtilitiesMod.LOGGER.debug("[SlaveServerClient]: Connecting to " + masterHost + ":" + masterPort); // per reconnect attempt
 
         SlaveServerClient client = this;
         Consumer<SlaveServerClient.ConnectionEstablishState> onConnectionSuccess = this::onConnectionEstablishedResult;
@@ -160,7 +180,9 @@ public class SlaveServerClient {
                 });
 
         bootstrap.connect(masterHost, masterPort).addListener((ChannelFuture future) -> {
-            if (future.isSuccess()) {
+            if (future.isSuccess() && simulatedDown) {
+                future.channel().close(); // went down while dialling; channelInactive schedules the retry
+            } else if (future.isSuccess()) {
                 channel = future.channel();
                 connectionFailReason = null;
 
@@ -179,15 +201,68 @@ public class SlaveServerClient {
                 }
 
                 info("Connected to master at "+masterHost+":" + masterPort);
+                if (failedAttempts > 0)
+                    info("Connected to master after " + failedAttempts + " attempts");
+                failedAttempts = 0;
                 // Immediately authenticate with the master
-                sendToMaster(new HandshakePayload(serverId, sharedSecret));
+                IServerIdentity identity = MultiServerManager.getIdentity();
+                sendToMaster(new HandshakePayload(serverId, sharedSecret, HandshakePayload.localMcVersion(),
+                        identity != null ? identity.serverUid() : null));
             } else {
-                connectionFailReason =  future.cause();
-                warn("Could not connect to master — retrying in 5s... Reason: "+connectionFailReason);
-                scheduleReconnect();
-                onConnectionLost.accept(connectionFailReason);
+                connectFailed(future.cause());
             }
         });
+    }
+
+    private void connectFailed(Throwable cause) {
+        connectionFailReason = cause;
+        // Throttled: warn on the first failed attempt, then at most once a minute while the master stays unreachable.
+        long now = System.currentTimeMillis();
+        if (failedAttempts++ == 0)
+            firstFailTime = LocalTime.now().withNano(0);
+        if (failedAttempts == 1 || now - lastFailWarnMillis >= 60_000) {
+            lastFailWarnMillis = now;
+            warn("Could not connect to master at " + masterHost + ":" + masterPort + ", still retrying ("
+                    + failedAttempts + " attempts since " + firstFailTime + "). Reason: " + cause);
+        }
+        scheduleReconnect();
+        onConnectionLost.accept(cause);
+    }
+
+    /**
+     * Called by {@link SlavePacketHandler} when the channel to the master went inactive while not
+     * shutting down: schedules a reconnect and, if the master had accepted this link, reports the
+     * loss once via {@code onConnectionLost} (Netty thread).
+     */
+    void onChannelInactive() {
+        warn("Lost connection to master - scheduling reconnect...");
+        scheduleReconnect();
+        if (!linkEstablished)
+            return; // never accepted (e.g. rejected handshake): onConnectionFailed already reported it
+        linkEstablished = false;
+        try {
+            onConnectionLost.accept(new IOException("Connection to master lost"));
+        } catch (Exception e) {
+            error("Failed to call callback: onConnectionLost. Reason: "+e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Test only: simulates an unreachable master. {@code true} closes the live channel (the regular
+     * channelInactive, disconnect sweep and reconnect path runs) and makes every reconnect attempt fail
+     * with a {@link ConnectException} without dialling; {@code false} lets the next scheduled attempt
+     * reconnect for real. Use {@code MultiServerManager.setSimulatedMasterDown}.
+     */
+    public void setSimulatedDown(boolean down) {
+        simulatedDown = down;
+        Channel ch = channel;
+        if (down && ch != null)
+            ch.close();
+    }
+
+    /** @return whether {@link #setSimulatedDown} currently simulates an unreachable master */
+    public boolean isSimulatedDown() {
+        return simulatedDown;
     }
 
     /**
@@ -303,7 +378,8 @@ public class SlaveServerClient {
         if (channel != null && channel.isActive()) {
             channel.writeAndFlush(payload).addListener(f -> {
                 if (!f.isSuccess()) {
-                    error("Failed to send "+payload.getClass().getSimpleName()+" to master", f.cause());
+                    // Usually a write racing the channel close; the disconnect path handles the rest.
+                    warn("Failed to send "+payload.getClass().getSimpleName()+" to master: "+f.cause());
                 }
             });
         } else {
@@ -358,6 +434,7 @@ public class SlaveServerClient {
         {
             case ConnectionEstablishState.SUCCESS ->  {
                 info("Master accepts connection");
+                linkEstablished = true;
                 try {
                     onConnectionAccepted.run();
                 }catch (Exception e) {
@@ -374,6 +451,23 @@ public class SlaveServerClient {
             }
             case ConnectionEstablishState.SLAVE_ID_ALREADY_USED -> {
                 info("Can't connect to master. A slave with the same slave ID: '"+getServerID()+"' is already connected to the master.");
+                try {
+                    onConnectionFailed.accept(state);
+                }catch (Exception e) {
+                    error("Failed to call callback: onConnectionFailed. Reason: "+e.getMessage(),e);
+                }
+            }
+            case ConnectionEstablishState.MC_VERSION_MISMATCH -> {
+                info("Can't connect to master. The master runs a different Minecraft version than this server ("+HandshakePayload.localMcVersion()+"). See the master log for its version.");
+                try {
+                    onConnectionFailed.accept(state);
+                }catch (Exception e) {
+                    error("Failed to call callback: onConnectionFailed. Reason: "+e.getMessage(),e);
+                }
+            }
+            case ConnectionEstablishState.DUPLICATE_SERVER_UID -> {
+                info("Can't connect to master. The master already knows this server's uid from another server (copied world?). "
+                        +"Delete data/ModUtilities/server_identity.json in the copied world to give it a new uid.");
                 try {
                     onConnectionFailed.accept(state);
                 }catch (Exception e) {

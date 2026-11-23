@@ -10,7 +10,8 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+//import net.minecraft.resources.Identifier; // mc>=1.21.11
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.UUID;
@@ -23,15 +24,24 @@ public final class GenericResponsePacket extends NetworkPacket
 {
 
     /** The {@link CustomPacketPayload.Type} identifier for this packet. */
-    public static final Type<GenericResponsePacket> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "generic_response_packet"));
+    public static final Type<GenericResponsePacket> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "generic_response_packet")); // mc<=1.21.10
+    //public static final Type<GenericResponsePacket> TYPE = new Type<>(Identifier.fromNamespaceAndPath(ModUtilitiesMod.MOD_ID, "generic_response_packet")); // mc>=1.21.11
 
     /** Stream codec used to (de)serialize the packet over the network. */
     public static final StreamCodec<RegistryFriendlyByteBuf, GenericResponsePacket> STREAM_CODEC = StreamCodec.composite(
             UUIDUtil.STREAM_CODEC, p -> p.requestID,
             ByteBufCodecs.STRING_UTF8, p -> p.requestTypeID,
             ExtraCodecUtils.REGISTRY_FRIENDLY_BYTE_BUF_CODEC, p -> p.data,
+            ByteBufCodecs.BYTE, p -> p.status,
             GenericResponsePacket::new
     );
+
+    /** {@link #getStatus()}: a regular response, {@link #getData()} holds the encoded output. */
+    public static final byte STATUS_OK = 0;
+    /** {@link #getStatus()}: a slave could not forward the request to the master; the client raises {@link RequestNotSentException}. */
+    public static final byte STATUS_NOT_SENT = 1;
+    /** {@link #getStatus()}: a slave lost the master link after forwarding; the client raises {@link RequestOutcomeUnknownException}. */
+    public static final byte STATUS_OUTCOME_UNKNOWN = 2;
 
     @Override
     protected void handleOnClient(NetworkManager.PacketContext context) {
@@ -101,6 +111,9 @@ public final class GenericResponsePacket extends NetworkPacket
      */
     RegistryFriendlyByteBuf data;
 
+    /** One of the {@code STATUS_*} constants; failures carry an empty {@link #data} buffer. */
+    byte status;
+
     /**
      * Constructs a response packet correlated to a previously sent request.
      *
@@ -109,10 +122,25 @@ public final class GenericResponsePacket extends NetworkPacket
      * @param data          The encoded output payload.
      */
     public GenericResponsePacket(UUID requestID, String requestTypeID, RegistryFriendlyByteBuf data) {
+        this(requestID, requestTypeID, data, STATUS_OK);
+    }
+
+    /**
+     * @param status One of the {@code STATUS_*} constants.
+     */
+    public GenericResponsePacket(UUID requestID, String requestTypeID, RegistryFriendlyByteBuf data, byte status) {
         super();
         this.requestID = requestID;
         this.requestTypeID = requestTypeID;
         this.data = data;
+        this.status = status;
+    }
+
+    /**
+     * @return One of the {@code STATUS_*} constants.
+     */
+    public byte getStatus() {
+        return status;
     }
 
     /**

@@ -1,5 +1,6 @@
 package net.kroia.modutilities.sandbox;
 
+import net.kroia.modutilities.PlayerCompat;
 import com.google.gson.JsonElement;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.context.CommandContext;
@@ -7,13 +8,15 @@ import dev.architectury.event.events.common.CommandRegistrationEvent;
 import net.kroia.modutilities.gui.display.client.DisplayRenderProfiler;
 import net.kroia.modutilities.JsonUtilities;
 import net.kroia.modutilities.ModUtilitiesMod;
+import net.kroia.modutilities.PermissionCompat;
 import net.kroia.modutilities.ServerPlayerUtilities;
 import net.kroia.modutilities.UtilitiesPlatform;
 import net.kroia.modutilities.networking.NetworkPacketManager;
 import net.kroia.modutilities.networking.client_server.streaming.StreamSystem;
 import net.kroia.modutilities.setting.parser.ItemStackJsonParser;
-import net.kroia.modutilities.testing.TestCommandRegistration;
-import net.kroia.modutilities.testing.TestRegistry;
+import net.kroia.testkit.TestCommandRegistration;
+import net.kroia.testkit.TestRegistry;
+import net.kroia.testkit.TestSuite;
 import net.kroia.modutilities.testing.tests.CreativeTabTests;
 import net.kroia.modutilities.testing.tests.EventTests;
 import net.kroia.modutilities.testing.tests.GuiLogicTests;
@@ -76,7 +79,7 @@ public class Sandbox {
         public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
             dispatcher.register(
                     Commands.literal("modutilities")
-                            .requires(source -> source.hasPermission(2)) // Requires OP permission level
+                            .requires(source -> PermissionCompat.hasPermission(source, 2)) // Requires OP permission level
                             .then(Commands.literal("openTestScreen")
                                     .executes(context -> {
                                         ServerPlayer player = context.getSource().getPlayerOrException();
@@ -155,9 +158,7 @@ public class Sandbox {
                                     .executes(context -> {
                                         ServerPlayer player = context.getSource().getPlayerOrException();
                                         ItemStack displayBlock = new ItemStack(SandboxRegistration.DISPLAY_DEMO_BLOCK.get());
-                                        if (!player.getInventory().add(displayBlock)) {
-                                            player.drop(displayBlock, false);
-                                        }
+                                        PlayerCompat.giveOrDrop(player, displayBlock);
                                         player.sendSystemMessage(Component.literal("Gave DisplayBlock demo block"));
                                         return 1;
                                     }))
@@ -165,9 +166,7 @@ public class Sandbox {
                                     .executes(context -> {
                                         ServerPlayer player = context.getSource().getPlayerOrException();
                                         ItemStack perfBlock = new ItemStack(SandboxRegistration.DISPLAY_DEMO_PERF_BLOCK.get());
-                                        if (!player.getInventory().add(perfBlock)) {
-                                            player.drop(perfBlock, false);
-                                        }
+                                        PlayerCompat.giveOrDrop(player, perfBlock);
                                         player.sendSystemMessage(Component.literal("Gave DisplayBlock (Perf) demo block"));
                                         return 1;
                                     }))
@@ -175,9 +174,7 @@ public class Sandbox {
                                     .executes(context -> {
                                         ServerPlayer player = context.getSource().getPlayerOrException();
                                         ItemStack displayPanel = new ItemStack(SandboxRegistration.DISPLAY_DEMO_PANEL_BLOCK.get());
-                                        if (!player.getInventory().add(displayPanel)) {
-                                            player.drop(displayPanel, false);
-                                        }
+                                        PlayerCompat.giveOrDrop(player, displayPanel);
                                         player.sendSystemMessage(Component.literal("Gave DisplayPanel demo block"));
                                         return 1;
                                     }))
@@ -185,9 +182,7 @@ public class Sandbox {
                                     .executes(context -> {
                                         ServerPlayer player = context.getSource().getPlayerOrException();
                                         ItemStack backPanel = new ItemStack(SandboxRegistration.DISPLAY_DEMO_BACK_PANEL_BLOCK.get());
-                                        if (!player.getInventory().add(backPanel)) {
-                                            player.drop(backPanel, false);
-                                        }
+                                        PlayerCompat.giveOrDrop(player, backPanel);
                                         player.sendSystemMessage(Component.literal("Gave BackPanel demo block"));
                                         return 1;
                                     }))
@@ -195,9 +190,7 @@ public class Sandbox {
                                     .executes(context -> {
                                         ServerPlayer player = context.getSource().getPlayerOrException();
                                         ItemStack chartBlock = new ItemStack(SandboxRegistration.CHART_DEMO_BLOCK.get());
-                                        if (!player.getInventory().add(chartBlock)) {
-                                            player.drop(chartBlock, false);
-                                        }
+                                        PlayerCompat.giveOrDrop(player, chartBlock);
                                         player.sendSystemMessage(Component.literal("Gave ChartDemo block"));
                                         return 1;
                                     }))
@@ -365,6 +358,13 @@ public class Sandbox {
     {
         // Register sandbox blocks, items, and block entities
         SandboxRegistration.register();
+
+        // Placeholder examples: TAB %modutilities_sandbox_time% / %modutilities_sandbox_player%,
+        // Placeholder API %modutilities:sandbox_time% / %modutilities:sandbox_player%
+        net.kroia.modutilities.placeholder.PlaceholderRegistry.registerServer(ModUtilitiesMod.MOD_ID, "sandbox_time", 1000,
+                () -> String.valueOf(System.currentTimeMillis() / 1000));
+        net.kroia.modutilities.placeholder.PlaceholderRegistry.registerPlayer(ModUtilitiesMod.MOD_ID, "sandbox_player", 1000,
+                player -> net.kroia.modutilities.PlayerCompat.profileName(player.getGameProfile()));
         net.kroia.modutilities.gui.GuiElementRegistry.register(
                 "sandbox_line_chart", SandboxLineChart.class, SandboxLineChart::new);
 
@@ -376,19 +376,7 @@ public class Sandbox {
             });
         }
 
-        if (TestRegistry.ENABLE_TESTS) {
-            TestRegistry.register(new EventTests());
-            if (UtilitiesPlatform.isClient()) {
-                TestRegistry.register(new CreativeTabTests());
-                TestRegistry.register(new GuiLogicTests());
-            }
-            TestRegistry.register(new ParserTests());
-            TestRegistry.register(new PersistenceTests());
-            TestRegistry.register(new SettingsTests());
-            TestRegistry.register(new NetworkingTests());
-            TestRegistry.register(new StreamingTests());
-            TestRegistry.register(new UtilityTests());
-        }
+        registerTests(true);
 
         CommandRegistrationEvent.EVENT.register((dispatcher, registryAccess, environment) -> {
             SandboxCommand.register(dispatcher);
@@ -401,4 +389,41 @@ public class Sandbox {
 
     }
 
+
+    /**
+     * Registers ModUtilities' test suites. {@code inGame = false} is the offline JUnit run ({@code OfflineTestsTest}):
+     * no client suites, and none whose constructor needs the mod loader.
+     */
+    public static void registerTests(boolean inGame)
+    {
+        if (!TestRegistry.ENABLE_TESTS) return;
+        TestRegistry.register(new EventTests());
+        if (inGame && UtilitiesPlatform.isClient()) {
+            TestRegistry.register(new CreativeTabTests());
+            TestRegistry.register(new GuiLogicTests());
+            TestRegistry.register(new net.kroia.modutilities.testing.tests.GuiLocatorTests());
+        }
+        TestRegistry.register(new ParserTests());
+        TestRegistry.register(new PersistenceTests());
+        TestRegistry.register(new SettingsTests());
+        TestRegistry.register(new NetworkingTests());
+        TestRegistry.register(new StreamingTests());
+        TestRegistry.register(new UtilityTests());
+        TestRegistry.register(new net.kroia.modutilities.testing.tests.MasterDownTests());
+        if (inGame) { // constructors reach LuckPermsBridge -> @ExpectPlatform ModChecker, which throws without a loader
+            TestRegistry.register(new net.kroia.modutilities.testing.tests.LuckPermsBridgeTests());
+            TestRegistry.register(new net.kroia.modutilities.testing.tests.LuckPermsRemovedTests());
+        }
+        TestRegistry.register(new net.kroia.modutilities.testing.tests.DiscordTests());
+        TestRegistry.register(new net.kroia.modutilities.testing.tests.CommandTests());
+        if (inGame) { // fabric source set only (Patbox Placeholder API); absent on NeoForge
+            try {
+                TestRegistry.register((TestSuite) Class.forName("net.kroia.modutilities.testing.fabric.PlaceholderApiTests")
+                        .getDeclaredConstructor().newInstance());
+            } catch (ClassNotFoundException ignored) {
+            } catch (ReflectiveOperationException e) {
+                ModUtilitiesMod.LOGGER.error("PlaceholderApiTests failed to load", e);
+            }
+        }
+    }
 }

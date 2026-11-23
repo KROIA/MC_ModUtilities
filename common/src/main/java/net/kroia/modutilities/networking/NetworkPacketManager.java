@@ -15,6 +15,9 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.function.BiConsumer;
 
 /**
  * Per-mod registration entry point for the MC_ModUtilities networking layer.
@@ -30,6 +33,13 @@ import net.minecraft.server.level.ServerPlayer;
  */
 public abstract class NetworkPacketManager {
 
+    /**
+     * Test seam: when set, every server-to-client send of every manager ({@link #sendToClient},
+     * {@link #sendToClients}) first reports each receiver and the packet here. Null (the default) is one
+     * volatile read and changes nothing. Tests set it, then restore the previous value in a {@code finally};
+     * dependent mods' tests can use it to assert what a player was sent.
+     */
+    public static volatile @Nullable BiConsumer<ServerPlayer, NetworkPacket> sendToClientListener;
 
     /**
      * Creates a network packet manager bound to the given mod, using the default channel name.
@@ -263,6 +273,9 @@ public abstract class NetworkPacketManager {
      * @param packet The network packet to send.
      */
     public void sendToClient(ServerPlayer receiver, NetworkPacket packet) {
+        BiConsumer<ServerPlayer, NetworkPacket> listener = sendToClientListener;
+        if (listener != null)
+            listener.accept(receiver, packet);
         NetworkManager.sendToPlayer(receiver, packet);
     }
 
@@ -273,6 +286,9 @@ public abstract class NetworkPacketManager {
      * @param packet  the network packet to send.
      */
     public void sendToClients(Iterable<ServerPlayer> players, NetworkPacket packet) {
+        BiConsumer<ServerPlayer, NetworkPacket> listener = sendToClientListener;
+        if (listener != null)
+            players.forEach(p -> listener.accept(p, packet));
         NetworkManager.sendToPlayers(players, packet);
     }
 }

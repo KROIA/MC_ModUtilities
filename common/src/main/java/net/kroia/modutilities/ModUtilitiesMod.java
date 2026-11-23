@@ -1,35 +1,81 @@
 package net.kroia.modutilities;
 
+import dev.architectury.event.events.client.ClientTickEvent;
+import dev.architectury.event.events.common.LifecycleEvent;
+import dev.architectury.event.events.common.TickEvent;
 import dev.architectury.networking.NetworkManager;
 import dev.architectury.platform.Platform;
 import dev.architectury.utils.Env;
+import net.kroia.modutilities.discord.DiscordWebhooks;
+import net.kroia.modutilities.gui.ScreenNoticePacket;
 import net.kroia.modutilities.gui.display.DisplayNetworking;
 import net.kroia.modutilities.networking.client_server.NetworkPacket;
+import net.kroia.modutilities.networking.client_server.arrs.AsynchronousRequestResponseSystem;
 import net.kroia.modutilities.networking.client_server.arrs.GenericRequestPacket;
 import net.kroia.modutilities.networking.client_server.arrs.GenericResponsePacket;
 import net.kroia.modutilities.networking.client_server.streaming.GenericStreamPacket;
 import net.kroia.modutilities.networking.client_server.streaming.StreamStartPacket;
 import net.kroia.modutilities.networking.client_server.streaming.StreamStopClientSenderPacket;
 import net.kroia.modutilities.networking.client_server.streaming.StreamStopServerSenderPacket;
+import net.kroia.modutilities.networking.multi_server.MultiServerManager;
 import net.kroia.modutilities.networking.multi_server.MultiServerPacketRegistry;
-import net.kroia.modutilities.sandbox.Sandbox;
+import net.kroia.modutilities.permission.LuckPermsBridge;
+import net.kroia.modutilities.placeholder.TabPlaceholderBackend;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public class ModUtilitiesMod {
     public static final String MOD_ID = "modutilities";
+    private static final String DEV_BOOTSTRAP = "net.kroia.modutilities.testing.DevBootstrap";
     public static final Logger LOGGER = LogManager.getLogger(MOD_ID);
 
 
-    // Set to false for release builds to hide dev-only commands (exportrecipes, testScreen, etc.)
-    public static final boolean ENABLE_DEV_FEATURES = false;
+    // Dev-only code (sandbox, unit tests, autotest) is switched by enable_dev_features in gradle.properties:
+    // Gradle compiles the dev packages only when it is true, and this flag follows from their presence.
+    public static final boolean ENABLE_DEV_FEATURES = devClassesPresent();
 
     public static void init()
     {
         registerSharedPackets();
         DisplayNetworking.init();
+        DiscordWebhooks.init();
+        LuckPermsBridge.init();
+        MultiServerManager.init();
+        // ARRS request timeouts (no-op unless RequestManager.ENABLE_REQUEST_FAILURES is on)
+        TickEvent.SERVER_POST.register(server -> AsynchronousRequestResponseSystem.tick(false));
+        if (Platform.getEnvironment() == Env.CLIENT)
+            ClientTickEvent.CLIENT_POST.register(mc -> AsynchronousRequestResponseSystem.tick(true));
+        if (ModChecker.isModLoaded("tab")) {
+            // TabPlaceholderBackend is only class-loaded inside this guard (soft dependency).
+            LifecycleEvent.SERVER_STARTED.register(server -> {
+                try {
+                    TabPlaceholderBackend.onServerStarted();
+                } catch (Exception | LinkageError e) {
+                    LOGGER.error("[Placeholder] TAB bridge failed", e);
+                }
+            });
+        }
         if (ENABLE_DEV_FEATURES) {
-            Sandbox.init();
+            initDevFeatures();
+        }
+    }
+
+    /**
+     * Starts the dev-only code (sandbox, unit tests, autotest). It is compiled only when
+     * gradle.properties has {@code enable_dev_features=true}, so it is reached reflectively:
+     * release code must compile without it.
+     */
+    private static void initDevFeatures() {
+        // The dev code uses the dev-only TestKit mod (-Pwith_testkit=true); without it, loading DevBootstrap would
+        // fail with NoClassDefFoundError.
+        if (!Platform.isModLoaded("testkit")) {
+            LOGGER.warn("Dev features are enabled but the TestKit mod is not loaded; sandbox and tests are off");
+            return;
+        }
+        try {
+            Class.forName(DEV_BOOTSTRAP).getMethod("init").invoke(null);
+        } catch (ReflectiveOperationException e) {
+            LOGGER.error("Dev features are enabled but {} is missing or failed; check enable_dev_features in gradle.properties", DEV_BOOTSTRAP, e);
         }
     }
 
@@ -79,6 +125,23 @@ public class ModUtilitiesMod {
         // ARRS — MultiServer forwarding
         MultiServerPacketRegistry.register(GenericRequestPacket.TYPE, GenericRequestPacket.STREAM_CODEC);
         MultiServerPacketRegistry.register(GenericResponsePacket.TYPE, GenericResponsePacket.STREAM_CODEC);
+
+        // Screen notice (S2C only, sent by the server the player is on; never forwarded)
+        if (isClient) {
+            NetworkManager.registerReceiver(NetworkManager.Side.S2C, ScreenNoticePacket.TYPE,
+                    ScreenNoticePacket.STREAM_CODEC, NetworkPacket.HANDLER::handleClient);
+        } else {
+            NetworkManager.registerS2CPayloadType(ScreenNoticePacket.TYPE, ScreenNoticePacket.STREAM_CODEC);
+        }
+    }
+
+    private static boolean devClassesPresent() {
+        try {
+            Class.forName(DEV_BOOTSTRAP, false, ModUtilitiesMod.class.getClassLoader());
+            return true;
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
     }
 
     public static boolean isClientInitialized() {

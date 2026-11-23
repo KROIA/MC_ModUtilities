@@ -7,14 +7,17 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.networking.multi_server.ForwardPacketContext;
+import net.kroia.modutilities.networking.multi_server.MultiServerManager;
 import net.kroia.modutilities.networking.multi_server.MultiServerPacketRegistry;
+import net.kroia.modutilities.networking.multi_server.ServerIdentity;
 import net.kroia.modutilities.networking.multi_server.payload.HandshakePayload;
 import net.kroia.modutilities.networking.multi_server.payload.ForwardPacketPayload;
 import net.kroia.modutilities.networking.multi_server.payload.HandshakeResultPayload;
 import net.kroia.modutilities.networking.multi_server.payload.Payload;
 import net.kroia.modutilities.networking.multi_server.slave.SlaveServerClient;
 import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+//import net.minecraft.resources.Identifier; // mc>=1.21.11
 import net.minecraft.server.MinecraftServer;
 
 import java.io.IOException;
@@ -79,8 +82,8 @@ public class MasterPacketHandler extends SimpleChannelInboundHandler<Payload> {
     /**
      * Dispatches an incoming {@link Payload} based on its concrete type.
      * <p>
-     * Handles the slave handshake (validating the shared secret and rejecting
-     * duplicate slave IDs) and forwards data packets to the
+     * Handles the slave handshake (validating the shared secret, rejecting a
+     * Minecraft version mismatch, duplicate slave IDs and duplicate server uids) and forwards data packets to the
      * {@link MultiServerPacketRegistry}. Unknown payload types are logged and ignored.
      *
      * @param ctx     The Netty channel handler context for this connection.
@@ -97,12 +100,27 @@ public class MasterPacketHandler extends SimpleChannelInboundHandler<Payload> {
 
             // ── Handshake: child server identifies itself ─────────────────────
             case HandshakePayload hs -> {
-                info("HandshakePayload request received for server '"+hs.serverId()+"'.");
+                debug("HandshakePayload request received for server '"+hs.serverId()+"'.");
                 if (!java.security.MessageDigest.isEqual(
                         hs.token().getBytes(java.nio.charset.StandardCharsets.UTF_8),
                         masterTCPServer.getSharedSecret().getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
                     HandshakeResultPayload response = new HandshakeResultPayload(SlaveServerClient.ConnectionEstablishState.INVALID_SHARED_SECRET);
                     warn("Rejected connection from '"+hs.serverId()+"' ("+resolveRemoteAddress(ctx)+") - "+response.result());
+                    Channel channel = ctx.channel();
+                    if (channel != null && channel.isActive()) {
+                        channel.writeAndFlush(response);
+                    }
+                    ctx.close();
+                    return;
+                }
+
+                // Checked after the secret so unauthenticated peers learn nothing about this server.
+                String masterMcVersion = HandshakePayload.localMcVersion();
+                if (!masterMcVersion.equals(hs.mcVersion())) {
+                    HandshakeResultPayload response = new HandshakeResultPayload(SlaveServerClient.ConnectionEstablishState.MC_VERSION_MISMATCH);
+                    warn("Rejected connection from '"+hs.serverId()+"' ("+resolveRemoteAddress(ctx)+") - "+response.result()
+                            +": slave runs Minecraft '"+(hs.mcVersion().isEmpty() ? "unknown (outdated ModUtilities)" : hs.mcVersion())
+                            +"', master runs '"+masterMcVersion+"'");
                     Channel channel = ctx.channel();
                     if (channel != null && channel.isActive()) {
                         channel.writeAndFlush(response);
@@ -121,9 +139,29 @@ public class MasterPacketHandler extends SimpleChannelInboundHandler<Payload> {
                     ctx.close();
                     return;
                 }
+
+                // The uid is self-reported diagnostics: it can reject a copied world, but never grants anything.
+                ServerIdentity identity = MultiServerManager.getIdentity() instanceof ServerIdentity id ? id : null;
+                if (hs.serverUid() == null) {
+                    warn("Slave '"+hs.serverId()+"' ("+resolveRemoteAddress(ctx)+") sent no server uid (outdated ModUtilities); accepted without one.");
+                } else if (identity != null && identity.isDuplicateUid(hs.serverId(), hs.serverUid())) {
+                    HandshakeResultPayload response = new HandshakeResultPayload(SlaveServerClient.ConnectionEstablishState.DUPLICATE_SERVER_UID);
+                    warn("Rejected connection from '"+hs.serverId()+"' ("+resolveRemoteAddress(ctx)+") - "+response.result()
+                            +": server uid "+hs.serverUid()+" already belongs to this master or another slave (copied world?)");
+                    Channel channel = ctx.channel();
+                    if (channel != null && channel.isActive()) {
+                        channel.writeAndFlush(response);
+                    }
+                    ctx.close();
+                    return;
+                }
                 serverId = hs.serverId();
+                if (identity != null)
+                    identity.onSlaveSeen(serverId, hs.serverUid());
                 masterTCPServer.putChildConnection(serverId, ctx.channel());
-                masterTCPServer.sendToSlave(serverId, new HandshakeResultPayload(SlaveServerClient.ConnectionEstablishState.SUCCESS));
+                // Older slaves (no uid) get no trailing masterUid, which their decoder would misread.
+                masterTCPServer.sendToSlave(serverId, new HandshakeResultPayload(SlaveServerClient.ConnectionEstablishState.SUCCESS,
+                        hs.serverUid() != null && identity != null ? identity.serverUid() : null));
             }
             case ForwardPacketPayload bb -> {
                 if (serverId == null) {
@@ -132,7 +170,8 @@ public class MasterPacketHandler extends SimpleChannelInboundHandler<Payload> {
                     return;
                 }
 
-                ResourceLocation packetResouceLoc = bb.packetType();
+                ResourceLocation packetResouceLoc = bb.packetType(); // mc<=1.21.10
+                //Identifier packetResouceLoc = bb.packetType(); // mc>=1.21.11
                 ByteBuf buf = ctx.alloc().buffer();
                 buf.writeBytes(bb.data());
                 RegistryFriendlyByteBuf dataBuf = new RegistryFriendlyByteBuf(buf, mcServer.registryAccess());

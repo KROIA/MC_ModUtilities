@@ -1,11 +1,14 @@
 package net.kroia.modutilities.gui.screens;
 
+import net.kroia.modutilities.gui.client.ClientCompat;
+import net.kroia.modutilities.gui.client.InputCompat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.flag.FeatureFlagSet;
-import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.ClickType; // mc<=1.21.11
+//import net.minecraft.world.inventory.ContainerInput; // mc>=26.1
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
@@ -27,7 +30,8 @@ public class CreativeModeItemSelectionScreen extends CreativeModeInventoryScreen
     }
 
     @Override
-    protected void slotClicked(@Nullable Slot slot, int slotId, int mouseButton, ClickType type)
+    protected void slotClicked(@Nullable Slot slot, int slotId, int mouseButton, ClickType type) // mc<=1.21.11
+    //protected void slotClicked(@Nullable Slot slot, int slotId, int mouseButton, ContainerInput type) // mc>=26.1
     {
         if(slot != null)
         {
@@ -44,10 +48,17 @@ public class CreativeModeItemSelectionScreen extends CreativeModeInventoryScreen
 
     @Override
     public void onClose() {
+        // Closing passes through "no screen", which grabs + re-centers the mouse.
+        // Save the raw window cursor pos and restore it once the callback has shown its screen.
+        Minecraft mc = Minecraft.getInstance();
+        double mouseX = mc.mouseHandler.xpos();
+        double mouseY = mc.mouseHandler.ypos();
         super.onClose();
         if(onClosed != null)
         {
             onClosed.run();
         }
+        if(ClientCompat.screen() != null)
+            InputCompat.setCursorPos(mouseX, mouseY);
     }
 }

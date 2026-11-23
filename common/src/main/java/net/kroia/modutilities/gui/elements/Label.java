@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui.elements;
 
+import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Point;
 import net.kroia.modutilities.gui.geometry.Rectangle;
@@ -126,8 +127,8 @@ public class Label extends GuiElement {
     @Override
     public void deserializeState(CompoundTag tag) {
         super.deserializeState(tag);
-        if (tag.contains("text")) setText(tag.getString("text"));
-        if (tag.contains("textColor")) setTextColor(tag.getInt("textColor"));
+        if (tag.contains("text")) setText(NbtCompat.getString(tag, "text"));
+        if (tag.contains("textColor")) setTextColor(NbtCompat.getInt(tag, "textColor"));
     }
 
     /*@Override

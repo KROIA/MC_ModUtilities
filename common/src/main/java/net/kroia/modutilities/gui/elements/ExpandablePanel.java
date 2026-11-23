@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui.elements;
 
+import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.layout.Layout;
@@ -38,8 +39,8 @@ import java.util.function.Consumer;
  * {@link net.kroia.modutilities.gui.elements.base.ListView} expose their
  * children).
  *
- * @apiNote The {@code gui/} package is client-only
- *          ({@code @Environment(EnvType.CLIENT)}); expandable panels must only be
+ * @apiNote The {@code gui/} package is client-only;
+ *          expandable panels must only be
  *          used on the client.
  */
 public class ExpandablePanel extends GuiElement {
@@ -362,6 +363,21 @@ public class ExpandablePanel extends GuiElement {
         contentContainer.setEnableBackground(enabled);
     }
 
+    /** @return the clickable header row (for subclasses adding header widgets) */
+    protected EmptyButton getHeaderButton() {
+        return headerButton;
+    }
+
+    /** @return the header title label (for subclasses re-laying out the header) */
+    protected Label getTitleLabel() {
+        return titleLabel;
+    }
+
+    /** @return the container hosting the content children */
+    protected GuiElement getContentArea() {
+        return contentContainer;
+    }
+
     // ------------------------------------------------------------------
     // Child management (routed to the content container)
     // ------------------------------------------------------------------
@@ -440,7 +456,7 @@ public class ExpandablePanel extends GuiElement {
     public void deserializeState(CompoundTag tag) {
         super.deserializeState(tag);
         if (tag.contains("expanded")) {
-            setExpanded(tag.getBoolean("expanded"));
+            setExpanded(NbtCompat.getBoolean(tag, "expanded"));
         }
     }
 

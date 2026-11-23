@@ -1,5 +1,6 @@
 package net.kroia.modutilities.sandbox;
 
+import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.display.AbstractDisplayBlockEntity;
 import net.kroia.modutilities.gui.display.ContentBuilder;
@@ -13,9 +14,8 @@ import net.kroia.modutilities.gui.elements.TextBox;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.world.item.EnchantedBookItem;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.enchantment.EnchantmentInstance;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -105,10 +105,10 @@ public class DisplayDemoPanelBlockEntity extends AbstractDisplayBlockEntity {
 
     @Override
     protected void loadCustomData(CompoundTag tag, HolderLookup.Provider registries) {
-        clickCount = tag.getInt("clickCount");
-        notificationsEnabled = tag.getBoolean("notificationsEnabled");
+        clickCount = NbtCompat.getInt(tag, "clickCount");
+        notificationsEnabled = NbtCompat.getBoolean(tag, "notificationsEnabled");
         if (tag.contains("statusMessage")) {
-            statusMessage = tag.getString("statusMessage");
+            statusMessage = NbtCompat.getString(tag, "statusMessage");
         }
         syncStateToGui();
     }
@@ -185,10 +185,13 @@ public class DisplayDemoPanelBlockEntity extends AbstractDisplayBlockEntity {
         bookView.setBounds(margin, y, 16, 16);
         RegistryAccess registryAccess = UtilitiesPlatform.getRegistryAccess();
         if (registryAccess != null) {
-            var sharpness = registryAccess.registryOrThrow(Registries.ENCHANTMENT)
-                    .getHolder(Enchantments.SHARPNESS);
-            sharpness.ifPresent(holder ->
-                    bookView.setItemStack(EnchantedBookItem.createForEnchantment(new EnchantmentInstance(holder, 1))));
+            var sharpness = registryAccess.lookupOrThrow(Registries.ENCHANTMENT)
+                    .get(Enchantments.SHARPNESS);
+            sharpness.ifPresent(holder -> {
+                ItemStack book = new ItemStack(Items.ENCHANTED_BOOK);
+                book.enchant(holder, 1);
+                bookView.setItemStack(book);
+            });
         }
         gui.addElement(bookView);
     }

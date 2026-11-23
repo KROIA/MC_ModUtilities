@@ -6,7 +6,8 @@ import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Point;
 import net.kroia.modutilities.gui.jei.JeiOverlayControl;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics; // mc>=1.20.1
+import net.minecraft.client.gui.GuiGraphics; // mc>=1.20.1 mc<=1.21.11
+//import net.minecraft.client.gui.GuiGraphicsExtractor; // mc>=26.1
 //import com.mojang.blaze3d.vertex.PoseStack; // mc<=1.19.4
 
 import net.minecraft.client.gui.screens.Screen;
@@ -16,7 +17,6 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import org.lwjgl.glfw.GLFW;
 
 
 /**
@@ -34,7 +34,7 @@ import org.lwjgl.glfw.GLFW;
  * {@link #setDebugKeysEnabled(boolean) debug keys} are enabled.
  *
  * @param <T> the {@link AbstractContainerMenu} subtype this screen is bound to
- * @apiNote This class is client-only ({@code @Environment(EnvType.CLIENT)}).
+ * @apiNote This class is client-only.
  */
 public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extends AbstractContainerScreen<T> {
 
@@ -91,9 +91,9 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
      */
     private void injectClientDependencies() {
         gui.setGraphicsBackend(clientGraphics);
-        gui.setInputProvider(new ClientInputProvider(Minecraft.getInstance().getWindow().getWindow()));
+        gui.setInputProvider(new ClientInputProvider(InputCompat.windowHandle()));
         gui.setFont(Minecraft.getInstance().font);
-        gui.setDisplayScaleFactor(Minecraft.getInstance().getWindow().getGuiScale());
+        ClientGuiSettings.applyTo(gui);
         gui.setSoundPlayer((sound, volume, pitch) -> playLocalSound(sound, volume, pitch));
         clientGraphics.setFont(Minecraft.getInstance().font);
     }
@@ -116,9 +116,9 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     public static void setScreen(Screen screen)
     {
         Minecraft mc = Minecraft.getInstance();
-        if(mc.screen != screen)
+        if(ClientCompat.screen() != screen)
         {
-            mc.setScreen(screen);
+            ClientCompat.setScreen(screen);
         }
     }
 
@@ -234,7 +234,7 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     public final void init() {
         super.init();
         // Re-inject display scale (may have changed on resize)
-        gui.setDisplayScaleFactor(Minecraft.getInstance().getWindow().getGuiScale());
+        ClientGuiSettings.applyTo(gui);
         gui.init();
         updateLayout(gui);
         applyJeiOverlayHide();
@@ -387,7 +387,7 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
         if(this.minecraft != null) {
             int mousePosX = getMouseX();
             int mousePosY = getMouseY();
-            this.minecraft.setScreen(parent);
+            ClientCompat.setScreen(parent);
             setMousePos(mousePosX, mousePosY);
         }
     }
@@ -408,33 +408,59 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
 
 
     // mc>=1.20.1
-    @Override
-    public void renderBackground(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    @Override // mc<=1.21.11 (26.1: called from extractBackground)
+    public void renderBackground(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) { // mc<=1.21.11
+    //public void renderBackground(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) { // mc>=26.1
+        //if (!enableBackground) return; // mc>=1.21.6 (vanilla calls renderBackground itself now)
         clientGraphics.setGraphics(guiGraphics);
-        super.renderBackground(guiGraphics, mouseX, mouseY, partialTick);
+        super.renderBackground(guiGraphics, mouseX, mouseY, partialTick); // mc<=1.21.11
+        //super.extractBackground(guiGraphics, mouseX, mouseY, partialTick); // mc>=26.1
         //gui.storeMousePos((int)((float)pMouseX*invGuiScale), (int)((float)pMouseY*invGuiScale));
         gui.setPartialTick(partialTick);
         gui.renderBackground();
     }
-    @Override
-    protected void renderBg(GuiGraphics guiGraphics, float partialTick, int mouseX, int mouseY)
-    {
+    @Override // mc<=1.21.11
+    protected void renderBg(GuiGraphics guiGraphics, float partialTick, int mouseX, int mouseY) // mc<=1.21.11
+    { // mc<=1.21.11
+    } // mc<=1.21.11 (26.1 removed the abstract renderBg)
 
-    }
+    // mc>=26.1: Screen renders through extractBackground/extractRenderState; forward to the methods above so
+    // subclasses keep overriding render(...) and renderBackground(...).
+    //@Override // mc>=26.1
+    //public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) { // mc>=26.1
+        //renderBackground(graphics, mouseX, mouseY, partialTick); // mc>=26.1
+    //} // mc>=26.1
 
-    @Override
-    public void render(GuiGraphics pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) {
+    //@Override // mc>=26.1
+    //public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) { // mc>=26.1
+        //render(graphics, mouseX, mouseY, partialTick); // mc>=26.1
+    //} // mc>=26.1
+
+    @Override // mc<=1.21.11 (26.1: called from extractRenderState)
+    public void render(GuiGraphics pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) { // mc<=1.21.11
+    //public void render(GuiGraphicsExtractor pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) { // mc>=26.1
         clientGraphics.setGraphics(pGuiGraphics);
         gui.storeMousePos(pMouseX, pMouseY);
-        if(enableBackground)
-            renderBackground(pGuiGraphics, pMouseX, pMouseY, pPartialTick);
+        gui.storeScreenSize(width, height);
+        if(enableBackground) // mc<=1.21.5
+            renderBackground(pGuiGraphics, pMouseX, pMouseY, pPartialTick); // mc<=1.21.5
+        // mc>=1.21.6: Screen.renderWithTooltipAndSubtitles already called renderBackground (blur only once per frame)
         gui.setPartialTick(pPartialTick);
         if(enableForeground)
             gui.render();
+        // mc>=1.21.7: JEI draws its ingredient list only from inside vanilla's container render, which this
+        // screen skips (ContainerView draws slots + carried item itself), so fire that hook here, above our GUI.
+        //pGuiGraphics.nextStratum(); // mc>=1.21.7
+        //pGuiGraphics.pose().pushMatrix(); // mc>=1.21.7 mc<=1.21.11 (vanilla fires the hook inside its leftPos/topPos translation)
+        //pGuiGraphics.pose().translate(leftPos, topPos); // mc>=1.21.7 mc<=1.21.11
+        //ContainerForegroundHook.fire(this, pGuiGraphics, pMouseX, pMouseY, pPartialTick); // mc>=1.21.7
+        //pGuiGraphics.pose().popMatrix(); // mc>=1.21.7 mc<=1.21.11
         if(enableTooltip)
             gui.renderTooltip();
         if(enableGizmos)
             gui.renderGizmos();
+        ClientGuiSettings.renderFeedback(clientGraphics, width);
+        net.kroia.modutilities.gui.ScreenNotice.render(clientGraphics, clientGraphics.getFont(), width, height);
     }
 
 
@@ -462,18 +488,18 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
     }
     */
 
-    @Override
+    // Overrides Screen up to mc 1.21.8; called through the event bridges below on mc 1.21.9+.
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if(!gui.mouseClicked(mouseX, mouseY, button))
             return false; //return super.mouseClicked(mouseX, mouseY, button);
         return true;
     }
-    @Override
+    // Overrides Screen up to mc 1.21.8; called through the event bridges below on mc 1.21.9+.
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         return gui.mouseReleased(mouseX, mouseY, button);
     }
 
-    @Override
+    // Overrides Screen up to mc 1.21.8; called through the event bridges below on mc 1.21.9+.
     public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
         return gui.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
     }
@@ -570,43 +596,88 @@ public abstract class GuiContainerScreen<T extends AbstractContainerMenu> extend
         GuiScreen.playLocalSound(sound, volume, pitch);
     }
 
-    @Override
+    // Overrides Screen up to mc 1.21.8; called through the event bridges below on mc 1.21.9+.
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if(debugKeysEnabled) {
             switch (keyCode) {
-                case GLFW.GLFW_KEY_F3: {
+                case InputConstants.KEY_F3: {
                     enableGizmos = !enableGizmos;
                     return true;
                 }
-                case GLFW.GLFW_KEY_F4: {
+                case InputConstants.KEY_F4: {
                     enableBackground = !enableBackground;
                     return true;
                 }
-                case GLFW.GLFW_KEY_F5: {
+                case InputConstants.KEY_F5: {
                     enableForeground = !enableForeground;
                     return true;
                 }
-                case GLFW.GLFW_KEY_F6: {
+                case InputConstants.KEY_F6: {
                     enableTooltip = !enableTooltip;
                     return true;
                 }
             }
         }
 
+        // Library GUI scale shortcuts (Ctrl + '+' / '-' / '0'); never while a text box has focus
+        if(gui.getFocusedElement() == null && ClientGuiSettings.handleScaleKey(keyCode)) {
+            rebuildWidgets(); // same path as a window resize: init() re-applies the scale and re-lays out
+            return true;
+        }
         boolean ret = gui.keyPressed(keyCode, scanCode, modifiers);
         if(ret)
             return true;
         if(gui.getFocusedElement() == null)
-            return super.keyPressed(keyCode, scanCode, modifiers);
+            return super.keyPressed(keyCode, scanCode, modifiers); // mc<=1.21.8
+            //return super.keyPressed(new net.minecraft.client.input.KeyEvent(keyCode, scanCode, modifiers)); // mc>=1.21.9
         return true;
     }
 
-    @Override
+    // Overrides Screen up to mc 1.21.8; called through the event bridges below on mc 1.21.9+.
     public boolean charTyped(char codePoint, int modifiers) {
         if(!gui.charTyped(codePoint, modifiers))
-            return super.charTyped(codePoint, modifiers);
+            return super.charTyped(codePoint, modifiers); // mc<=1.21.8
+            //return super.charTyped(new net.minecraft.client.input.CharacterEvent(codePoint, modifiers)); // mc>=1.21.9 mc<=1.21.11
+            //return super.charTyped(new net.minecraft.client.input.CharacterEvent(codePoint)); // mc>=26.1
         return true;
     }
+
+    // mc>=1.21.9: vanilla input moved to event records. These bridges forward to the int-based
+    // methods above, which stay the extension points for subclasses on every Minecraft version.
+    //private int lastMouseModifiers; // mc>=1.21.9
+    //private boolean lastDoubleClick; // mc>=1.21.9
+
+    //@Override // mc>=1.21.9
+    //public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event, boolean doubleClick) { // mc>=1.21.9
+        //lastMouseModifiers = event.modifiers(); // mc>=1.21.9
+        //lastDoubleClick = doubleClick; // mc>=1.21.9
+        //return mouseClicked(event.x(), event.y(), event.button()); // mc>=1.21.9
+    //} // mc>=1.21.9
+
+    //@Override // mc>=1.21.9
+    //public boolean mouseReleased(net.minecraft.client.input.MouseButtonEvent event) { // mc>=1.21.9
+        //return mouseReleased(event.x(), event.y(), event.button()); // mc>=1.21.9
+    //} // mc>=1.21.9
+
+    //@Override // mc>=1.21.9
+    //public boolean mouseDragged(net.minecraft.client.input.MouseButtonEvent event, double deltaX, double deltaY) { // mc>=1.21.9
+        //return mouseDragged(event.x(), event.y(), event.button(), deltaX, deltaY); // mc>=1.21.9
+    //} // mc>=1.21.9
+
+    //@Override // mc>=1.21.9
+    //public boolean keyPressed(net.minecraft.client.input.KeyEvent event) { // mc>=1.21.9
+        //return keyPressed(event.key(), event.scancode(), event.modifiers()); // mc>=1.21.9 mc<=26.2
+        //return keyPressed(event.key(), event.keycode(), event.modifiers()); // mc>=26.3
+    //} // mc>=1.21.9
+
+    //@Override // mc>=1.21.9
+    //public boolean charTyped(net.minecraft.client.input.CharacterEvent event) { // mc>=1.21.9
+        //boolean handled = false; // mc>=1.21.9
+        //for (char c : Character.toChars(event.codepoint())) // mc>=1.21.9
+            //handled |= charTyped(c, event.modifiers()); // mc>=1.21.9 mc<=1.21.11
+            //handled |= charTyped(c, InputCompat.currentModifiers()); // mc>=26.1
+        //return handled; // mc>=1.21.9
+    //} // mc>=1.21.9
 
 
 }

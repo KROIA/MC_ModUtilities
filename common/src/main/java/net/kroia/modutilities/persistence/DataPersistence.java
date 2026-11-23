@@ -1,5 +1,6 @@
 package net.kroia.modutilities.persistence;
 
+import net.kroia.modutilities.NbtCompat;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
@@ -9,11 +10,14 @@ import net.minecraft.nbt.*;
 
 import java.io.*;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -50,6 +54,39 @@ public class DataPersistence {
 
     // Mojang default max (2 MB)
     private static final long MAX_NBT_SIZE = 2_097_152L;
+
+    // Crash-safe saves: data is written to "<name>.tmp" first; a replaced chunk folder is parked as "<name>.old"
+    // until the new one is in place. Loaders never read ".tmp"; they read ".old" only when "<name>" is missing.
+    static final String TEMP_SUFFIX = ".tmp";
+    static final String OLD_SUFFIX = ".old";
+    // Chunked list names: only this extension is dropped from the name, so a dotted name like "a.b" stays "a.b"
+    static final String NBT_EXTENSION = ".nbt";
+
+    private static String stripSuffix(String name, String suffix) {
+        return name.endsWith(suffix) ? name.substring(0, name.length() - suffix.length()) : name;
+    }
+
+    interface PathWriter {
+        void write(Path path) throws IOException;
+    }
+
+    /**
+     * Writes {@code target} crash-safely: the writer fills a sibling temp file, which then replaces
+     * {@code target} in one rename. On any failure the temp file is removed and {@code target} is untouched.
+     */
+    static void writeAtomically(Path target, PathWriter writer) throws IOException {
+        Path tmp = target.resolveSibling(target.getFileName() + TEMP_SUFFIX);
+        try {
+            writer.write(tmp); // every writer closes its stream before returning (required for the rename on Windows)
+            try {
+                Files.move(tmp, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            } catch (AtomicMoveNotSupportedException e) {
+                Files.move(tmp, target, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            try { Files.deleteIfExists(tmp); } catch (IOException ignored) {} // no-op after a successful move
+        }
+    }
 
 
     public Consumer<String> errorLogger = System.err::println;
@@ -433,12 +470,12 @@ public class DataPersistence {
         }
 
 
-        File file = new File(absolutePath.toUri());
         try {
+            // NbtIo's Path writers open with SYNC, so the temp file is on disk before the rename.
             if (nbtFormat == NbtFormat.COMPRESSED)
-                NbtIo.writeCompressed(data, file.toPath());
+                writeAtomically(absolutePath, tmp -> NbtIo.writeCompressed(data, tmp));
             else
-                NbtIo.write(data, file.toPath());
+                writeAtomically(absolutePath, tmp -> NbtIo.write(data, tmp));
         } catch(Exception e)
         {
             error("Failed to save data to file: " + absolutePath, e);
@@ -451,8 +488,9 @@ public class DataPersistence {
     /**
      * Saves a potentially oversized {@link ListTag} by splitting it into
      * multiple chunk files. The chunks are written into a sub-folder whose
-     * name is derived from {@code absolutePath} (extension stripped), and the
-     * folder is purged of any stale chunk files first.
+     * name is derived from {@code absolutePath} (a trailing {@code .nbt} stripped). The save is
+     * crash-safe: chunks go to {@code <name>.tmp} first and replace the old folder
+     * only after every chunk was written; on failure the old data stays in place.
      *
      * @param absolutePath the path used to derive the chunk folder name; its
      *                     parent directory is the location where the chunk
@@ -486,41 +524,10 @@ public class DataPersistence {
         }
 
 
-        String fileName = absolutePath.getFileName().toString();
-        if(fileName.lastIndexOf(".") != -1)
-        {
-            fileName = fileName.substring(0, fileName.lastIndexOf("."));
-        }
+        String fileName = stripSuffix(absolutePath.getFileName().toString(), NBT_EXTENSION);
         Path chunkFolderPath = absolutePath.getParent().resolve(fileName);
-
-        if(folderExists(chunkFolderPath))
-        {
-            // delete all files in the folder
-            AtomicBoolean deletionFailed = new AtomicBoolean(false);
-            try (var stream = Files.list(chunkFolderPath)) {
-                stream.forEach(file -> {
-                    try {
-                        Files.delete(file);
-                    } catch (IOException e) {
-                        error("Failed to delete file: " + file, e);
-                        deletionFailed.set(true);
-                    }
-                });
-            } catch (IOException e) {
-                error("Failed to list files in folder: " + chunkFolderPath, e);
-                return false;
-            }
-            if(deletionFailed.get()) {
-                error("Aborting save: not all old chunk files could be deleted in " + chunkFolderPath);
-                return false;
-            }
-        }
-        else {
-            if (!createFolder(chunkFolderPath)) {
-                error("Failed to create folder for large NBT data: " + chunkFolderPath);
-                return false;
-            }
-        }
+        Path tempFolderPath = chunkFolderPath.resolveSibling(fileName + TEMP_SUFFIX);
+        Path oldFolderPath = chunkFolderPath.resolveSibling(fileName + OLD_SUFFIX);
 
 
         // Pre-compute individual element sizes to avoid O(N²) re-serialization
@@ -539,7 +546,7 @@ public class DataPersistence {
             ListTag chunkList = new ListTag();
             if(firstChunk)
             {
-                byte dataType = dataList.getElementType();
+                byte dataType = NbtCompat.elementType(dataList);
                 chunk.putByte("elementType", dataType);
                 firstChunk = false;
             }
@@ -589,14 +596,55 @@ public class DataPersistence {
             }
             chunks.add(chunk);
         }
-        // Save each chunk to a file
-        for(int i = 0; i < chunks.size(); ++i) {
-            Path chunkPath = chunkFolderPath.resolve("chunk_" + i + ".nbt");
-            if(!saveDataCompound(chunkPath, chunks.get(i))) {
-                error("Failed to save chunk data to file: " + chunkPath);
-                success = false;
+        // Leftovers of an interrupted save: "<name>.old" holds the last good data only while "<name>" is missing.
+        if(!folderExists(chunkFolderPath) && folderExists(oldFolderPath)) {
+            try {
+                Files.move(oldFolderPath, chunkFolderPath);
+            } catch (IOException e) {
+                error("Failed to restore interrupted save " + oldFolderPath, e);
+                return false;
             }
         }
+        if(!deleteFolder(oldFolderPath) || !deleteFolder(tempFolderPath) || !createFolder(tempFolderPath)) {
+            error("Aborting save: could not prepare temp folder " + tempFolderPath);
+            return false;
+        }
+
+        // Write every chunk into the temp folder; the live folder stays untouched until all succeeded
+        for(int i = 0; i < chunks.size(); ++i) {
+            Path chunkPath = tempFolderPath.resolve("chunk_" + i + ".nbt");
+            if(!saveDataCompound(chunkPath, chunks.get(i))) {
+                error("Failed to save chunk data to file: " + chunkPath);
+                deleteFolder(tempFolderPath);
+                return false;
+            }
+        }
+
+        // Swap: <name> -> <name>.old, <name>.tmp -> <name>, delete <name>.old
+        boolean hadOld = folderExists(chunkFolderPath);
+        try {
+            if(hadOld)
+                Files.move(chunkFolderPath, oldFolderPath);
+        } catch (IOException e) {
+            error("Failed to move old data aside, keeping it: " + chunkFolderPath, e);
+            deleteFolder(tempFolderPath);
+            return false;
+        }
+        try {
+            Files.move(tempFolderPath, chunkFolderPath);
+        } catch (IOException e) {
+            error("Failed to move new data into place: " + chunkFolderPath, e);
+            if(hadOld) {
+                try {
+                    Files.move(oldFolderPath, chunkFolderPath);
+                } catch (IOException e2) {
+                    error("Failed to move old data back; it stays readable at " + oldFolderPath, e2);
+                }
+            }
+            return false;
+        }
+        if(!deleteFolder(oldFolderPath))
+            warn("Old data folder " + oldFolderPath + " is removed at the next save");
         long endMillis = System.currentTimeMillis();
         debug("Saving data to file: " + absolutePath + " took " + (endMillis - startMillis) + "ms");
         return success;
@@ -605,7 +653,7 @@ public class DataPersistence {
     /**
      * Reads a chunked {@link ListTag} previously saved via
      * {@link #saveDataCompoundList(Path, ListTag)}. Locates the chunk folder
-     * derived from {@code absolutePath} (extension stripped), reads each
+     * derived from {@code absolutePath} (a trailing {@code .nbt} stripped), reads each
      * {@code .nbt} chunk in name order, and concatenates their contents.
      *
      * @param absolutePath the path used to derive the chunk folder name.
@@ -620,12 +668,13 @@ public class DataPersistence {
         ListTag dataOut;
 
         // Check if the path is a file or folder containing chunks
-        String fileName = absolutePath.getFileName().toString();
-        if(fileName.lastIndexOf(".") != -1)
-        {
-            fileName = fileName.substring(0, fileName.lastIndexOf("."));
-        }
+        String fileName = stripSuffix(absolutePath.getFileName().toString(), NBT_EXTENSION);
         Path folderPath = absolutePath.getParent().resolve(fileName);
+        Path oldFolderPath = folderPath.resolveSibling(fileName + OLD_SUFFIX);
+        if(!folderExists(folderPath) && folderExists(oldFolderPath)) {
+            warn("Save of " + folderPath + " was interrupted; reading " + oldFolderPath);
+            folderPath = oldFolderPath;
+        }
 
         dataOut = new ListTag();
         // If it's a folder, read all chunk files
@@ -638,14 +687,14 @@ public class DataPersistence {
             for (Path chunkFile : chunkFiles) {
                 CompoundTag chunkData = readDataCompound(chunkFile);
                 if(firstChunk) {
-                    if(chunkData != null && chunkData.contains("elementType", Tag.TAG_BYTE))
+                    if(chunkData != null && NbtCompat.contains(chunkData, "elementType", Tag.TAG_BYTE))
                     {
-                        elementType = chunkData.getByte("elementType");
+                        elementType = NbtCompat.getByte(chunkData, "elementType");
                         firstChunk = false;
                     }
                 }
-                if (chunkData != null && chunkData.contains("data", Tag.TAG_LIST)) {
-                    dataOut.addAll(chunkData.getList("data", elementType));
+                if (chunkData != null && NbtCompat.contains(chunkData, "data", Tag.TAG_LIST)) {
+                    dataOut.addAll(NbtCompat.getList(chunkData, "data", elementType));
                 } else {
                     error("No valid 'data' list found in chunk file: " + chunkFile);
                 }
@@ -739,10 +788,11 @@ public class DataPersistence {
         List<Path> folderList = getFoldes(absolutePath);
         for(Path folder : folderList) {
             String fileName = folder.getFileName().toString();
-            if(fileName.lastIndexOf(".") != -1)
-            {
-                fileName = fileName.substring(0, fileName.lastIndexOf("."));
-            }
+            if(fileName.endsWith(TEMP_SUFFIX))
+                continue; // unfinished save, never data
+            fileName = stripSuffix(fileName, OLD_SUFFIX);
+            if(dataMap.containsKey(fileName))
+                continue; // "<name>" and "<name>.old" are the same entry
             Path absoluteListPath = absolutePath.resolve(fileName);
             ListTag listTag = readDataCompoundList(absoluteListPath);
             if (listTag != null) {
@@ -850,7 +900,7 @@ public class DataPersistence {
         String json = GSON.toJson(o);
         try {
             Files.createDirectories(absolutePath.getParent());
-            Files.writeString(absolutePath, json);
+            writeJsonAtomically(absolutePath, json);
         } catch (Exception e) {
             error("Failed to save JSON to file: " + absolutePath, e);
             return false;
@@ -869,12 +919,35 @@ public class DataPersistence {
     public boolean saveJson(JsonElement json, Path absolutePath) {
         try {
             Files.createDirectories(absolutePath.getParent());
-            Files.writeString(absolutePath, GSON.toJson(json));
+            writeJsonAtomically(absolutePath, GSON.toJson(json));
         } catch (Exception e) {
             error("Failed to save JSON to file: " + absolutePath, e);
             return false;
         }
         return true;
+    }
+    /** Writes {@code json} to {@code absolutePath} via {@link #writeAtomically}; the parent folder must exist. */
+    public static void writeJsonAtomically(Path absolutePath, String json) throws IOException {
+        writeAtomically(absolutePath, tmp -> Files.writeString(tmp, json, StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE, StandardOpenOption.SYNC));
+    }
+    /**
+     * Deletes a folder and everything in it. Missing folders count as deleted.
+     *
+     * @return {@code false} if anything could not be deleted (logged).
+     */
+    private boolean deleteFolder(Path folder) {
+        if(!Files.exists(folder))
+            return true;
+        try (var walk = Files.walk(folder)) {
+            // sorted() drains the walk first, so no directory handle is open while deleting
+            for(Path p : (Iterable<Path>) walk.sorted(Comparator.reverseOrder())::iterator)
+                Files.delete(p);
+            return true;
+        } catch (IOException | UncheckedIOException e) {
+            error("Failed to delete folder: " + folder, e);
+            return false;
+        }
     }
     /**
      * Loads and deserializes a JSON file into an instance of the given type

@@ -5,7 +5,7 @@ import net.kroia.modutilities.networking.NetworkPacketManager;
 import net.kroia.modutilities.networking.multi_server.MultiServerManager;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.util.Tuple;
+import net.kroia.modutilities.Tuple;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -45,6 +45,16 @@ public class StreamSystem {
      * @param networkManager The NetworkManager to use for packet handling.
      */
     public static void setup(@NotNull NetworkPacketManager networkManager) {
+        if (STREAM_MANAGER != null) {
+            // Old streams are dropped, not migrated: setup() runs at mod init (no streams yet) or on an
+            // integrated-server restart, where the old server and its players are gone. Their holders
+            // reference the old NetworkPacketManager, so moving them to the new manager would be wrong.
+            int active = STREAM_MANAGER.getActiveServerSenderStreams().size()
+                    + STREAM_MANAGER.getActiveClientReceiverStreams().size();
+            if (active > 0)
+                ModUtilitiesMod.LOGGER.warn("[StreamSystem] setup() replaced a StreamManager with {} active stream(s); they are dropped.", active);
+            STREAM_MANAGER.shutdown();
+        }
         STREAM_MANAGER = new StreamManager(networkManager);
 
         Map<String, StreamRegistry.RegistryData<?,?>> requests = REGISTRY.getRegistry();
@@ -234,7 +244,8 @@ public class StreamSystem {
      * Handles a StreamStartPacket on the server side. If the stream type is not registered
      * (mod version mismatch), a warning is logged and the packet is ignored. If the stream
      * needs routing to the master server and this node is a slave, the start request is
-     * forwarded to the master via the MultiServerManager; otherwise a new server-sender
+     * forwarded to the master via the MultiServerManager (if the master link is down, the stream is
+     * refused and the client receives a stop packet); otherwise a new server-sender
      * stream is started locally.
      *
      * @param packet           The StreamStartPacket to handle.
@@ -252,7 +263,8 @@ public class StreamSystem {
             ModUtilitiesMod.LOGGER.warn("[StreamSystem] Received StreamStartPacket for unregistered stream type '" + StreamType + "' (mod version mismatch?), ignoring");
             return;
         }
-        if(MultiServerManager.isRunning() && MultiServerManager.isSlave() && stream.needsRoutingToMaster())
+        // Route by role, not link state: a slave never runs a master-routed stream itself.
+        if(MultiServerManager.isSlave() && stream.needsRoutingToMaster())
         {
             // Save the buffer position before the redirected holder consumes the context
             // data, then restore it so the forwarded packet retains the full context for
@@ -261,8 +273,12 @@ public class StreamSystem {
             int savedReaderIndex = buf.readerIndex();
             STREAM_MANAGER.startRedirectedServerSenderStream(stream, streamID, buf, targetPlayerUUID);
             buf.readerIndex(savedReaderIndex);
-            ModUtilitiesMod.LOGGER.info("[StreamSystem] Redirecting packet: "+packet.streamTypeID+" to master");
-            MultiServerManager.sendToMaster(targetPlayerUUID,  packet);
+            ModUtilitiesMod.LOGGER.debug("[StreamSystem] Redirecting packet: "+packet.streamTypeID+" to master");
+            if(!MultiServerManager.sendToMaster(targetPlayerUUID,  packet))
+            {
+                // Master unreachable: refuse the stream; the client gets the normal stop notification.
+                STREAM_MANAGER.handlePacketOnServer(new StreamStopServerSenderPacket(streamID));
+            }
         }
         else {
             STREAM_MANAGER.startServerSenderStream(stream, streamID, slaveServerID, buf, targetPlayerUUID);
@@ -318,6 +334,19 @@ public class StreamSystem {
     public static void handleRedirectedPacket(StreamStopServerSenderPacket packet)
     {
         STREAM_MANAGER.handlePacketOnServer(packet);
+    }
+
+    /**
+     * INTERNAL METHODE, DO NOT CALL THIS METHOD MANUALLY!
+     *
+     * Called on the server thread when a slave's master link drops: stops every redirected stream,
+     * so their clients get the stop notification instead of waiting forever.
+     */
+    public static void onMasterLinkLost()
+    {
+        StreamManager manager = STREAM_MANAGER;
+        if(manager != null)
+            manager.stopRedirectedServerSenderStreams();
     }
 
     /**

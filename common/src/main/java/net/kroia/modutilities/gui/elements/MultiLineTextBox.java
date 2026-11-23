@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui.elements;
 
+import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.ColorUtilities;
 import net.kroia.modutilities.gui.InputConstants;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
@@ -231,7 +232,7 @@ public class MultiLineTextBox extends GuiElement {
     public void deserializeState(CompoundTag tag) {
         super.deserializeState(tag);
         if (tag.contains("text"))
-            setText(tag.getString("text"));
+            setText(NbtCompat.getString(tag, "text"));
     }
 
     // ---------------------------------------------------------------------
@@ -780,7 +781,7 @@ public class MultiLineTextBox extends GuiElement {
         cursorVisible = true;
         cursorBlinkCounter = 0;
 
-        switch (keyCode) {
+        switch (InputConstants.shortcutKey(keyCode, scanCode)) {
             case InputConstants.KEY_ESCAPE:
                 removeFocus();
                 return true;
@@ -963,7 +964,13 @@ public class MultiLineTextBox extends GuiElement {
     }
 
     @Override
+    public void focusGained() {
+        if (getRoot() != null) getRoot().getInputProvider().setTextInputFocus(this, true);
+    }
+
+    @Override
     public void focusLost() {
+        if (getRoot() != null) getRoot().getInputProvider().setTextInputFocus(this, false);
         cursorVisible = false;
         selecting = false;
         scrollbarDragging = false;

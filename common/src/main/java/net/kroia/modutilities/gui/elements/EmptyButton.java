@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui.elements;
 
+import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.ColorUtilities;
 import net.kroia.modutilities.gui.InputConstants;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
@@ -216,7 +217,7 @@ public class EmptyButton extends GuiElement {
     public void deserializeState(CompoundTag tag) {
         super.deserializeState(tag);
         if (tag.contains("clickCount")) {
-            syncClickCount(tag.getInt("clickCount"));
+            syncClickCount(NbtCompat.getInt(tag, "clickCount"));
         }
     }
 

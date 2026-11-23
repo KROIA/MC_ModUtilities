@@ -26,3 +26,5 @@ forge*changelog.txt
 
 .claude
 CLAUDE.md
+__pycache__/
+.architectury-transformer/

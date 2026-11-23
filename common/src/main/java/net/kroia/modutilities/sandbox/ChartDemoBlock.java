@@ -22,7 +22,8 @@ public class ChartDemoBlock extends AbstractDisplayBlock {
     }
 
     public ChartDemoBlock() {
-        super(BlockBehaviour.Properties.of().strength(1.0f).noOcclusion());
+        super(net.kroia.modutilities.RegistryCompat.blockProperties(
+                BlockBehaviour.Properties.of().strength(1.0f).noOcclusion(), SandboxRegistration.id("chart_demo_block")));
     }
 
     @Override

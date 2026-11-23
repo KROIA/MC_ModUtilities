@@ -10,7 +10,8 @@ import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+//import net.minecraft.resources.Identifier; // mc>=1.21.11
 import net.minecraft.server.MinecraftServer;
 import org.jetbrains.annotations.Nullable;
 
@@ -73,7 +74,8 @@ public class MultiServerPacketRegistry
         }
     }
 
-    private static final Map<ResourceLocation, RegistryObject<?>> registry = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final Map<ResourceLocation, RegistryObject<?>> registry = new java.util.concurrent.ConcurrentHashMap<>(); // mc<=1.21.10
+    //private static final Map<Identifier, RegistryObject<?>> registry = new java.util.concurrent.ConcurrentHashMap<>(); // mc>=1.21.11
     private static volatile RegistryAccess registryAccess;
 
     /**
@@ -109,7 +111,8 @@ public class MultiServerPacketRegistry
                                                                 StreamCodec<RegistryFriendlyByteBuf, T> codec,
                                                                 ForwardPacketHandler<? super T> handler)
     {
-        ResourceLocation loc = packetType.id();
+        ResourceLocation loc = packetType.id(); // mc<=1.21.10
+        //Identifier loc = packetType.id(); // mc>=1.21.11
         if(registry.containsKey(loc)) return;
 
         RegistryObject registryObject = new RegistryObject(codec, handler, packetType.id().toString());
@@ -127,7 +130,8 @@ public class MultiServerPacketRegistry
     public static <T extends CustomPacketPayload> void register(CustomPacketPayload.Type<T> packetType,
                                                                 StreamCodec<RegistryFriendlyByteBuf, T> codec)
     {
-        ResourceLocation loc = packetType.id();
+        ResourceLocation loc = packetType.id(); // mc<=1.21.10
+        //Identifier loc = packetType.id(); // mc>=1.21.11
         if(registry.containsKey(loc)) return;
 
         RegistryObject registryObject = new RegistryObject(codec, NetworkPacket.HANDLER, packetType.id().toString());
@@ -144,7 +148,8 @@ public class MultiServerPacketRegistry
      */
     public static <T extends CustomPacketPayload> void unregister(CustomPacketPayload.Type<T> packetType)
     {
-        ResourceLocation loc = packetType.id();
+        ResourceLocation loc = packetType.id(); // mc<=1.21.10
+        //Identifier loc = packetType.id(); // mc>=1.21.11
         registry.remove(loc);
     }
 
@@ -162,7 +167,8 @@ public class MultiServerPacketRegistry
      * @param loc The packet's {@link ResourceLocation} ID.
      * @return    {@code true} if a packet with this ID is registered, {@code false} otherwise.
      */
-    public static boolean isRegistered(ResourceLocation loc)
+    public static boolean isRegistered(ResourceLocation loc) // mc<=1.21.10
+    //public static boolean isRegistered(Identifier loc) // mc>=1.21.11
     {
         return registry.containsKey(loc);
     }
@@ -176,7 +182,8 @@ public class MultiServerPacketRegistry
      *
      * @throws RuntimeException If no packet is registered under the given ID.
      */
-    public static ByteBuf encode(ResourceLocation loc, CustomPacketPayload packet)
+    public static ByteBuf encode(ResourceLocation loc, CustomPacketPayload packet) // mc<=1.21.10
+    //public static ByteBuf encode(Identifier loc, CustomPacketPayload packet) // mc>=1.21.11
     {
         RegistryObject  registryObject = registry.get(loc);
         if(registryObject==null)
@@ -194,7 +201,8 @@ public class MultiServerPacketRegistry
      *
      * @throws RuntimeException If no packet is registered under the given ID.
      */
-    public static CustomPacketPayload decode(ResourceLocation loc, RegistryFriendlyByteBuf buf)
+    public static CustomPacketPayload decode(ResourceLocation loc, RegistryFriendlyByteBuf buf) // mc<=1.21.10
+    //public static CustomPacketPayload decode(Identifier loc, RegistryFriendlyByteBuf buf) // mc>=1.21.11
     {
         RegistryObject  registryObject = registry.get(loc);
         if(registryObject==null)
@@ -220,7 +228,8 @@ public class MultiServerPacketRegistry
      * via {@code server.execute()} so all downstream handlers run thread-safely.
      * Takes ownership of {@code buf} — the caller must NOT release it.
      */
-    public static void handleByteBufOnMasterSide(ResourceLocation loc, RegistryFriendlyByteBuf buf, ForwardPacketContext context)
+    public static void handleByteBufOnMasterSide(ResourceLocation loc, RegistryFriendlyByteBuf buf, ForwardPacketContext context) // mc<=1.21.10
+    //public static void handleByteBufOnMasterSide(Identifier loc, RegistryFriendlyByteBuf buf, ForwardPacketContext context) // mc>=1.21.11
     {
         RegistryObject  registryObject = registry.get(loc);
         if(registryObject==null)
@@ -258,7 +267,8 @@ public class MultiServerPacketRegistry
      * via {@code server.execute()} so all downstream handlers run thread-safely.
      * Takes ownership of {@code buf} — the caller must NOT release it.
      */
-    public static void handleByteBufOnSlaveSide(ResourceLocation loc, RegistryFriendlyByteBuf buf, ForwardPacketContext context)
+    public static void handleByteBufOnSlaveSide(ResourceLocation loc, RegistryFriendlyByteBuf buf, ForwardPacketContext context) // mc<=1.21.10
+    //public static void handleByteBufOnSlaveSide(Identifier loc, RegistryFriendlyByteBuf buf, ForwardPacketContext context) // mc>=1.21.11
     {
         RegistryObject  registryObject = registry.get(loc);
         if(registryObject==null)
@@ -297,7 +307,8 @@ public class MultiServerPacketRegistry
     public static ForwardPacketPayload createForwardPacketPayload(@Nullable UUID senderPlayerUUID,
                                                                   CustomPacketPayload packet)
     {
-        ResourceLocation packetType = packet.type().id();
+        ResourceLocation packetType = packet.type().id(); // mc<=1.21.10
+        //Identifier packetType = packet.type().id(); // mc>=1.21.11
         RegistryObject  registryObject = registry.get(packetType);
         if(registryObject==null)
             return null;

@@ -1,12 +1,15 @@
 package net.kroia.modutilities.gui;
 
+import net.kroia.modutilities.NbtCompat;
+import net.kroia.modutilities.gui.elements.DropDownMenu;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.elements.base.VertexBuffer;
 import net.kroia.modutilities.gui.geometry.Rectangle;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+//import net.minecraft.resources.Identifier; // mc>=1.21.11
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.item.ItemStack;
 import org.joml.Quaternionf;
@@ -43,7 +46,9 @@ public class Gui {
         void play(SoundEvent sound, float volume, float pitch);
     }
 
-    private static IGraphics fallbackGraphics = new IGraphics() {};
+    private static final IGraphics HEADLESS_GRAPHICS = new IGraphics() {};
+    private static IGraphics fallbackGraphics = HEADLESS_GRAPHICS;
+    private static Thread fallbackGraphicsThread;
 
     /**
      * Sets a static fallback graphics backend used by elements that are not
@@ -53,11 +58,20 @@ public class Gui {
      * works before the element is added to a Gui.
      */
     public static void setFallbackGraphics(IGraphics graphics) {
-        if (graphics != null) fallbackGraphics = graphics;
+        if (graphics != null) {
+            fallbackGraphics = graphics;
+            fallbackGraphicsThread = Thread.currentThread();
+        }
     }
 
+    /**
+     * The installed backend is only handed to the thread that installed it (the client render thread).
+     * Other threads, e.g. the integrated server building display GUIs while loading chunks, get the
+     * headless estimates a dedicated server uses: the client Font is not thread safe and bakes glyphs
+     * on the GPU, which throws off the render thread.
+     */
     public static IGraphics getFallbackGraphics() {
-        return fallbackGraphics;
+        return Thread.currentThread() == fallbackGraphicsThread ? fallbackGraphics : HEADLESS_GRAPHICS;
     }
 
     protected IGraphics graphics;
@@ -65,10 +79,13 @@ public class Gui {
     protected Object font;
     protected SoundPlayer soundPlayer;
     protected int mousePosX, mousePosY;
+    private int screenWidth, screenHeight; // hosting screen size, same units as storeMousePos input; 0 = unknown
 
-    private float guiScale = 1.0f; // Scale of the GUI, default is 1.0 (no scaling)
-    private float invGuiScale = 1.0f; // Inverse scale of the GUI, default is 1.0 (no scaling)
+    private float requestedGuiScale = 1.0f; // Scale requested via setGuiScale, default is 1.0 (no scaling)
+    private float guiScale = 1.0f; // Effective (pixel-snapped) scale used for rendering and input
+    private float invGuiScale = 1.0f; // Inverse of the effective scale
     private double displayScaleFactor = 1.0; // Minecraft GUI scale, set by hosting screen
+    private float baseGuiScale = 1.0f; // Host-wide factor (user "GUI scale" setting), multiplied with requestedGuiScale
     private int offscreenScissorScale = 0; // >0: use raw GL scissor with this scale instead of GuiGraphics
     private int offscreenFramebufferHeight = 0;
 
@@ -78,6 +95,30 @@ public class Gui {
     protected GuiElement focusedElement = null;
 
     private final List<GuiElement> elements = new ArrayList<>();
+    private DropDownMenu openDropDown = null; // expanded menu whose list receives clicks first
+
+    /**
+     * Registers or clears the expanded {@link DropDownMenu} whose open list gets clicks before
+     * any other element. Called by {@link DropDownMenu#setExpanded(boolean)}.
+     *
+     * @param menu the menu that expanded or collapsed
+     * @param open {@code true} if it expanded
+     */
+    public void setOpenDropDown(DropDownMenu menu, boolean open)
+    {
+        if(open)
+            openDropDown = menu;
+        else if(openDropDown == menu)
+            openDropDown = null;
+    }
+
+    /**
+     * @return the expanded {@link DropDownMenu} registered via {@link #setOpenDropDown}, or {@code null}
+     */
+    public DropDownMenu getOpenDropDown()
+    {
+        return openDropDown;
+    }
 
     private final List<GuiStructuralChange> structuralChanges = new ArrayList<>();
     private boolean trackStructuralChanges = false;
@@ -169,6 +210,7 @@ public class Gui {
     public void setDisplayScaleFactor(double factor)
     {
         this.displayScaleFactor = factor;
+        updateEffectiveGuiScale();
     }
 
     /**
@@ -192,15 +234,130 @@ public class Gui {
     }
 
     /**
-     * @return the GUI scale factor applied to this root (1.0 means no scaling)
+     * Returns the effective GUI scale factor applied to this root (1.0 means no
+     * scaling). This is the value actually used for rendering, mouse conversion
+     * and {@code getWidth()/getHeight()} of the hosting screen, so it is the one
+     * to use when converting GUI coordinates to screen coordinates. It can differ
+     * slightly from the value passed to {@link #setGuiScale(float)} because it is
+     * snapped to whole screen pixels (see {@link #snapGuiScale(float, double)}).
+     *
+     * @return the effective (pixel-snapped) GUI scale factor
      */
     public float getGuiScale() {
         return guiScale;
     }
 
     /**
-     * @return the inverse of the GUI scale factor, useful for converting from
-     *         window pixel space to GUI element space
+     * @return the GUI scale factor as passed to {@link #setGuiScale(float)},
+     *         before pixel snapping
+     */
+    public float getRequestedGuiScale() {
+        return requestedGuiScale;
+    }
+
+    /**
+     * Snaps a requested GUI scale so that one GUI unit covers a whole number of
+     * screen pixels: {@code round(requested * displayScaleFactor) / displayScaleFactor},
+     * with at least one pixel per unit.
+     * <p>
+     * WHY: with a fractional pixel ratio (e.g. 0.8 x GUI scale 3 = 2.4 px per
+     * unit) the NEAREST-sampled item sprites and GUI textures render texels as an
+     * uneven mix of 2 and 3 px columns, which looks pixelated/distorted. A scale
+     * of exactly 1.0 (or an invalid display factor) is returned unchanged.
+     * <p>
+     * Rounding to nearest never makes a requested scale {@code <= 1} larger than
+     * 1.0, so such a screen always keeps at least the GUI-unit area vanilla
+     * screens are designed for.
+     *
+     * @param requested          the requested GUI scale ({@code > 0})
+     * @param displayScaleFactor the Minecraft GUI scale (window pixels per GUI unit)
+     * @return the effective GUI scale
+     */
+    public static float snapGuiScale(float requested, double displayScaleFactor) {
+        if(requested == 1.0f || !(displayScaleFactor > 0.0))
+            return requested;
+        long pixels = Math.max(1L, Math.round(requested * displayScaleFactor));
+        return (float)(pixels / displayScaleFactor);
+    }
+
+    /**
+     * Window pixels per GUI unit for a library "GUI scale" setting:
+     * {@code 0} (auto) = {@code maxPixelScale}, {@code < 0} = {@code mcPixelScale} (follow Minecraft),
+     * {@code N > 0} = {@code min(N, maxPixelScale)}. Never less than 1.
+     *
+     * @param setting       the library GUI scale setting
+     * @param maxPixelScale the largest scale that still fits the window, i.e. what Minecraft's own
+     *                      "auto" GUI scale picks for it
+     * @param mcPixelScale  the Minecraft GUI scale
+     * @return window pixels per GUI unit
+     */
+    public static int pixelGuiScale(int setting, int maxPixelScale, int mcPixelScale) {
+        int max = Math.max(1, maxPixelScale);
+        if(setting < 0)
+            return Math.max(1, mcPixelScale);
+        return setting == 0 ? max : Math.min(setting, max);
+    }
+
+    /**
+     * Base factor that turns a library "GUI scale" setting into a factor relative to
+     * the Minecraft GUI scale: {@code pixelGuiScale(setting, maxPixelScale, -) / displayScaleFactor}.
+     * <p>
+     * {@code maxPixelScale} is the largest scale Minecraft's own "auto" GUI scale
+     * would pick for the window, so a large fixed scale on a small window never
+     * makes the screen smaller than vanilla screens are designed for.
+     *
+     * @param setting            {@code 0} = auto, the largest scale that fits the window;
+     *                           {@code < 0} = follow Minecraft (returns {@code 1.0});
+     *                           {@code N > 0} = N window pixels per GUI unit, capped to fit
+     * @param maxPixelScale      the largest scale that still fits the window ({@code >= 1})
+     * @param displayScaleFactor the Minecraft GUI scale (window pixels per GUI unit)
+     * @return the base factor to pass to {@link #setBaseGuiScale(float)}
+     */
+    public static float fixedBaseGuiScale(int setting, int maxPixelScale, double displayScaleFactor) {
+        if(setting < 0 || !(displayScaleFactor > 0.0))
+            return 1.0f;
+        return (float)(pixelGuiScale(setting, maxPixelScale, 1) / displayScaleFactor);
+    }
+
+    /**
+     * Steps a library "GUI scale" setting by {@code delta} pixels per GUI unit, starting
+     * from the scale it currently resolves to (see {@link #pixelGuiScale(int, int, int)}).
+     *
+     * @return the new fixed setting, clamped to {@code 1..maxPixelScale}
+     */
+    public static int stepGuiScaleSetting(int setting, int delta, int maxPixelScale, int mcPixelScale) {
+        int stepped = pixelGuiScale(setting, maxPixelScale, mcPixelScale) + delta;
+        return Math.max(1, Math.min(Math.max(1, maxPixelScale), stepped));
+    }
+
+    /**
+     * Sets the host-wide base factor that is multiplied with the value passed to
+     * {@link #setGuiScale(float)} before pixel snapping. Hosting screens use it for
+     * the user's library "GUI scale" setting (see {@link #fixedBaseGuiScale(int, int, double)});
+     * {@code 1.0} (default) keeps the Minecraft GUI scale.
+     *
+     * @param baseGuiScale the base factor; values {@code <= 0} are corrected to {@code 1.0}
+     */
+    public void setBaseGuiScale(float baseGuiScale) {
+        this.baseGuiScale = baseGuiScale > 0.0f ? baseGuiScale : 1.0f;
+        updateEffectiveGuiScale();
+    }
+
+    /**
+     * @return the host-wide base factor, see {@link #setBaseGuiScale(float)}
+     */
+    public float getBaseGuiScale() {
+        return baseGuiScale;
+    }
+
+    private void updateEffectiveGuiScale() {
+        this.guiScale = snapGuiScale(requestedGuiScale * baseGuiScale, displayScaleFactor);
+        this.invGuiScale = 1.0f / this.guiScale;
+    }
+
+    /**
+     * @return the inverse of the effective GUI scale factor, useful for
+     *         converting from window pixel space to GUI element space
      */
     public float getInvGuiScale() {
         return invGuiScale;
@@ -211,8 +368,9 @@ public class Gui {
      * coordinates.
      * <p>
      * Values that are zero or negative are treated as invalid and silently
-     * replaced with {@code 1.0}. The inverse scale is recomputed from the
-     * effective (corrected) value to keep both factors consistent.
+     * replaced with {@code 1.0}. The effective scale ({@link #getGuiScale()}) is
+     * the requested value snapped to whole screen pixels for the current display
+     * scale factor; it is recomputed whenever either value changes.
      *
      * @param guiScale the new scale factor; values {@code <= 0} are corrected
      *                 to {@code 1.0}
@@ -221,8 +379,8 @@ public class Gui {
         if(guiScale <= 0.0f) {
             guiScale = 1.0f;
         }
-        this.guiScale = guiScale;
-        this.invGuiScale = 1.0f / this.guiScale;
+        this.requestedGuiScale = guiScale;
+        updateEffectiveGuiScale();
     }
 
     public void setOffscreenScissorMode(int renderScale, int framebufferHeight) {
@@ -522,15 +680,15 @@ public class Gui {
 
         if (!tag.contains("elements")) {
             if (tag.contains("structureVersion")) {
-                structureVersion = tag.getInt("structureVersion");
+                structureVersion = NbtCompat.getInt(tag, "structureVersion");
             }
             trackStructuralChanges = wasTracking;
             return;
         }
 
-        ListTag elementsTag = tag.getList("elements", 10);
+        ListTag elementsTag = NbtCompat.getList(tag, "elements", 10);
         for (int i = 0; i < elementsTag.size(); i++) {
-            GuiElement element = deserializeElement(elementsTag.getCompound(i));
+            GuiElement element = deserializeElement(NbtCompat.getCompound(elementsTag, i));
             if (element != null) {
                 element.setRoot(this);
                 elements.add(element);
@@ -538,7 +696,7 @@ public class Gui {
         }
 
         if (tag.contains("structureVersion")) {
-            structureVersion = tag.getInt("structureVersion");
+            structureVersion = NbtCompat.getInt(tag, "structureVersion");
         }
         trackStructuralChanges = wasTracking;
     }
@@ -572,23 +730,23 @@ public class Gui {
     }
 
     private static GuiElement deserializeElement(CompoundTag tag) {
-        String typeKey = tag.getString("type");
+        String typeKey = NbtCompat.getString(tag, "type");
         GuiElement element = GuiElementRegistry.create(typeKey);
         if (element == null) return null;
 
-        if (tag.contains("id")) element.setId(tag.getString("id"));
+        if (tag.contains("id")) element.setId(NbtCompat.getString(tag, "id"));
 
-        element.setPosition(tag.getInt("x"), tag.getInt("y"));
-        element.setSize(tag.getInt("w"), tag.getInt("h"));
+        element.setPosition(NbtCompat.getInt(tag, "x"), NbtCompat.getInt(tag, "y"));
+        element.setSize(NbtCompat.getInt(tag, "w"), NbtCompat.getInt(tag, "h"));
 
         if (tag.contains("state")) {
-            element.deserializeState(tag.getCompound("state"));
+            element.deserializeState(NbtCompat.getCompound(tag, "state"));
         }
 
         if (tag.contains("children")) {
-            ListTag childrenTag = tag.getList("children", 10);
+            ListTag childrenTag = NbtCompat.getList(tag, "children", 10);
             for (int i = 0; i < childrenTag.size(); i++) {
-                GuiElement child = deserializeElement(childrenTag.getCompound(i));
+                GuiElement child = deserializeElement(NbtCompat.getCompound(childrenTag, i));
                 if (child != null) element.addChild(child);
             }
         }
@@ -647,6 +805,37 @@ public class Gui {
     {
         this.mousePosX = (int)(x*(double)invGuiScale);
         this.mousePosY = (int)(y*(double)invGuiScale);
+    }
+
+    /**
+     * Stores the hosting screen size (same units as {@link #storeMousePos(int, int)})
+     * so tooltips can stay inside it. Hosting screens call this every frame.
+     *
+     * @param width  the screen width
+     * @param height the screen height
+     */
+    public void storeScreenSize(int width, int height)
+    {
+        this.screenWidth = width;
+        this.screenHeight = height;
+    }
+
+    /**
+     * @return the hosting screen width in GUI element coordinates, or {@code 0}
+     *         if the host never reported it
+     */
+    public int getScreenWidth()
+    {
+        return (int)((float)screenWidth*invGuiScale);
+    }
+
+    /**
+     * @return the hosting screen height in GUI element coordinates, or {@code 0}
+     *         if the host never reported it
+     */
+    public int getScreenHeight()
+    {
+        return (int)((float)screenHeight*invGuiScale);
     }
 
     /**
@@ -746,6 +935,16 @@ public class Gui {
     public boolean mouseClicked(double mouseX, double mouseY, int button)
     {
         storeMousePos(mouseX, mouseY);
+        // An open drop-down list overlays elements that may come earlier in dispatch order: it gets
+        // the click first, the rest only sees a click elsewhere (focus loss etc.).
+        // ponytail: only DropDownMenu is treated as an overlay; general z-ordered hit-testing is still open (task #107)
+        DropDownMenu open = openDropDown;
+        if(open != null && open.getRoot() == this && open.clickOpenList(button))
+        {
+            for(GuiElement element : elements)
+                element.mouseClickedInternal(button, false);
+            return true;
+        }
         for(GuiElement element : elements)
         {
             if(element.mouseClickedInternal(button, true))
@@ -1240,7 +1439,8 @@ public class Gui {
      * @param width   the rendered width
      * @param height  the rendered height
      */
-    public void drawTexture(ResourceLocation texture, int x, int y,  int uOffset, int vOffset, int width, int height)
+    public void drawTexture(ResourceLocation texture, int x, int y,  int uOffset, int vOffset, int width, int height) // mc<=1.21.10
+    //public void drawTexture(Identifier texture, int x, int y,  int uOffset, int vOffset, int width, int height) // mc>=1.21.11
     {
         graphics.blit(texture, x, y, uOffset, vOffset, width, height);
     }
@@ -1259,7 +1459,8 @@ public class Gui {
      * @param textureWidth  the total texture width
      * @param textureHeight the total texture height
      */
-    public void drawTexture(ResourceLocation atlasLocation, int x, int y, float uOffset, float vOffset, int width, int height, int textureWidth, int textureHeight)
+    public void drawTexture(ResourceLocation atlasLocation, int x, int y, float uOffset, float vOffset, int width, int height, int textureWidth, int textureHeight) // mc<=1.21.10
+    //public void drawTexture(Identifier atlasLocation, int x, int y, float uOffset, float vOffset, int width, int height, int textureWidth, int textureHeight) // mc>=1.21.11
     {
         graphics.blit(atlasLocation, x, y, uOffset, vOffset, width, height, textureWidth, textureHeight);
     }
@@ -1272,9 +1473,11 @@ public class Gui {
      * @param path  the resource path under that namespace
      * @return a resource location for the given namespace and path
      */
-    public static ResourceLocation createResourceLocation(String modID, String path)
+    public static ResourceLocation createResourceLocation(String modID, String path) // mc<=1.21.10
+    //public static Identifier createResourceLocation(String modID, String path) // mc>=1.21.11
     {
-        return ResourceLocation.fromNamespaceAndPath(modID, path);
+        return ResourceLocation.fromNamespaceAndPath(modID, path); // mc<=1.21.10
+        //return Identifier.fromNamespaceAndPath(modID, path); // mc>=1.21.11
     }
 
     /**

@@ -6,11 +6,12 @@ It also provides functions which can be overwritten to process the received pack
 ---
 ## Content
 - [Example Implementation](#example-implementation)
-  - [Server :arrow_right: Client packet](#server-️-client-packett)
-  - [Client :arrow_right: Server packet](#client---server-packet)
+  - [Server :arrow_right: Client packet](#server-arrow_right-client-packet)
+  - [Client :arrow_right: Server packet](#client-arrow_right-server-packet)
 - [:link: Packet Registration](#packet-registration)
 - [:arrow_heading_up: Sending a Packet](#sending-a-packet)
 - [:arrow_heading_down: Receiving a Packet](#receiving-a-packet)
+- [Routing to the master server](#routing-to-the-master-server)
 
 
 ---
@@ -127,10 +128,9 @@ public class SimpleDataPacketToClient extends NetworkPacket {
 ```
 ---
 ### Receiving a Packet
-Receiving a packet is done automatically by the NetworkManager
-It automatically creates a instance of the packet that gets received on the target (client/server).
-It then calls the `fromBytes` function to parse the received byteBuf back to the member variables of the packet.
-After that, depending on the enviroment (client/server) one of the below functions get called.
+Receiving a packet is done automatically by the NetworkManager.
+It decodes the received bytes with the packet's `STREAM_CODEC`, which creates an instance of the packet on the target (client/server).
+After that, depending on the side (client/server), one of the below functions gets called on the main thread.
 Place the code here, that needs to be executed when the packet gets received.
 
 
@@ -139,7 +139,7 @@ public class SimpleDataPacketToClient extends NetworkPacket {
     ...
     // Called when the client has received a packet from the server
     @Override
-    protected void handleOnClient()
+    protected void handleOnClient(NetworkManager.PacketContext context)
     {
         System.out.println("[CLIENT SIDE] Received value from server: " + value);
     }
@@ -152,10 +152,43 @@ public class SimpleDataPacketToServer extends NetworkPacket {
     ...
     // Called when the server has received a packet from the client
     @Override
-    protected void handleOnServer(ServerPlayer sender)
+    protected void handleOnServer(NetworkManager.PacketContext context)
     {
-        System.out.println("[SERVER SIDE] Received value from client: " + value);
+        ServerPlayer sender = (ServerPlayer) context.getPlayer();
+        System.out.println("[SERVER SIDE] Received value from " + sender.getName().getString() + ": " + value);
     }
     ...
 }
 ```
+`NetworkManager.PacketContext` is Architectury's `dev.architectury.networking.NetworkManager.PacketContext`. On the server,
+`context.getPlayer()` is the sending `ServerPlayer`.
+
+---
+### Routing to the master server
+In a [multi-server setup](MultiServerNetworking.md), a client packet can be handled on the master instead of the slave
+the player is connected to. Override `needsRoutingToMaster()` to return `true`; the master then handles the packet in
+`handleOnMaster(ForwardPacketContext context)`.
+
+Routing goes by the server's role, not by the link state:
+- On a slave (`MultiServerManager.isSlave()`), a packet with `needsRoutingToMaster()` is passed to `routeToMaster(context)`.
+  The slave never handles such a packet in `handleOnServer`, not even while its master link is down.
+- On a standalone or master server, every client packet is handled in `handleOnServer`.
+
+The default `routeToMaster` sends the packet to the master with the sending player's UUID. While the master link is down,
+that send is refused and the packet is dropped with a rate-limited log line. Override `routeToMaster` to react to a refused
+send, for example to answer the client:
+``` Java
+@Override
+protected boolean needsRoutingToMaster() { return true; }
+
+@Override
+protected void routeToMaster(NetworkManager.PacketContext context) {
+    ServerPlayer player = (ServerPlayer) context.getPlayer(); // routeToMaster only runs on the server
+    if (!MultiServerManager.sendToMaster(player.getUUID(), this)) {
+        PlayerCompat.sendMessage(player, Component.literal("The main server is not reachable, try again later."), false);
+    }
+}
+```
+
+> [!NOTE]
+> The former `NetworkPacketC2S` and `NetworkPacketS2C` base classes were removed. Extend `NetworkPacket` for both directions.

@@ -124,6 +124,8 @@ public class Setting<T> {
 
     /**
      * Registers a listener that will be invoked whenever {@link #set(Object)} changes the value.
+     * Same deduplication rules as {@link DataEvent#addListener(Consumer)}: an already-registered
+     * instance is ignored, a lambda created per call is a new instance and must be removed explicitly.
      *
      * @param listener The {@link Consumer} that receives the new value when changed.
      */

@@ -6,14 +6,15 @@ import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.ByteBufferBuilder;
-import com.mojang.blaze3d.vertex.VertexSorting;
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
+import com.mojang.blaze3d.vertex.VertexSorting; // mc<=1.21.1
+//import com.mojang.blaze3d.ProjectionType; // mc>=1.21.2
+//import net.minecraft.client.renderer.FogParameters; // mc>=1.21.2 mc<=1.21.5
 import net.kroia.modutilities.ItemUtilities;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.gui.GuiGraphics; // mc<=1.21.11
+//import net.minecraft.client.gui.GuiGraphicsExtractor; // mc>=26.1
+import net.minecraft.client.renderer.MultiBufferSource; // mc<=26.1
 import net.minecraft.world.item.ItemStack;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
@@ -29,7 +30,6 @@ import java.util.Map;
  * Must be called from the main client thread (render thread).
  * Typical usage: server command sends S2C packet, client handler calls export method.
  */
-@Environment(EnvType.CLIENT)
 public class RecipeImageExporter {
 
     // Layout constants (logical GUI pixels)
@@ -78,22 +78,24 @@ public class RecipeImageExporter {
         Minecraft mc = Minecraft.getInstance();
 
         // --- Save GL state (mirrors AbstractDisplayBlockEntityRenderer lines 253-279) ---
-        RenderTarget prevTarget = mc.getMainRenderTarget();
-        Matrix4f prevProjection = new Matrix4f(RenderSystem.getProjectionMatrix());
-        VertexSorting prevSorting = RenderSystem.getVertexSorting();
-        int[] prevViewport = new int[4];
-        GL11.glGetIntegerv(GL11.GL_VIEWPORT, prevViewport);
-        boolean prevDepthTest = GL11.glIsEnabled(GL11.GL_DEPTH_TEST);
-        boolean prevBlend = GL11.glIsEnabled(GL11.GL_BLEND);
-        boolean prevCull = GL11.glIsEnabled(GL11.GL_CULL_FACE);
-        float[] prevShaderColor = RenderSystem.getShaderColor().clone();
-        float[] prevFogColor = new float[4];
-        prevFogColor[0] = RenderSystem.getShaderFogColor()[0];
-        prevFogColor[1] = RenderSystem.getShaderFogColor()[1];
-        prevFogColor[2] = RenderSystem.getShaderFogColor()[2];
-        prevFogColor[3] = RenderSystem.getShaderFogColor()[3];
-        float prevFogStart = RenderSystem.getShaderFogStart();
-        float prevFogEnd = RenderSystem.getShaderFogEnd();
+        RenderTarget prevTarget = ClientCompat.mainRenderTarget();
+        Matrix4f prevProjection = new Matrix4f(RenderSystem.getProjectionMatrix()); // mc<=1.21.5
+        VertexSorting prevSorting = RenderSystem.getVertexSorting(); // mc<=1.21.1
+        //ProjectionType prevSorting = RenderSystem.getProjectionType(); // mc>=1.21.2 mc<=1.21.5
+        int[] prevViewport = new int[4]; // mc<=1.21.4
+        GL11.glGetIntegerv(GL11.GL_VIEWPORT, prevViewport); // mc<=1.21.4
+        boolean prevDepthTest = GL11.glIsEnabled(GL11.GL_DEPTH_TEST); // mc<=1.21.4
+        boolean prevBlend = GL11.glIsEnabled(GL11.GL_BLEND); // mc<=1.21.4
+        boolean prevCull = GL11.glIsEnabled(GL11.GL_CULL_FACE); // mc<=1.21.4
+        float[] prevShaderColor = RenderSystem.getShaderColor().clone(); // mc<=1.21.5
+        float[] prevFogColor = new float[4]; // mc<=1.21.1
+        prevFogColor[0] = RenderSystem.getShaderFogColor()[0]; // mc<=1.21.1
+        prevFogColor[1] = RenderSystem.getShaderFogColor()[1]; // mc<=1.21.1
+        prevFogColor[2] = RenderSystem.getShaderFogColor()[2]; // mc<=1.21.1
+        prevFogColor[3] = RenderSystem.getShaderFogColor()[3]; // mc<=1.21.1
+        float prevFogStart = RenderSystem.getShaderFogStart(); // mc<=1.21.1
+        float prevFogEnd = RenderSystem.getShaderFogEnd(); // mc<=1.21.1
+        //FogParameters prevFog = RenderSystem.getShaderFog(); // mc>=1.21.2 mc<=1.21.5
 
         TextureTarget framebuffer = null;
         NativeImage image = null;
@@ -101,83 +103,121 @@ public class RecipeImageExporter {
 
         try {
             // --- Create and bind framebuffer ---
-            framebuffer = new TextureTarget(texW, texH, true, false);
-            framebuffer.bindWrite(false);
-            RenderSystem.viewport(0, 0, texW, texH);
+            framebuffer = new TextureTarget(texW, texH, true, false); // mc<=1.21.1
+            //framebuffer = new TextureTarget(texW, texH, true); // mc>=1.21.2 mc<=1.21.4
+            //framebuffer = new TextureTarget("modutilities recipe export", texW, texH, true); // mc>=1.21.5 mc<=26.1
+            //framebuffer = new TextureTarget("modutilities recipe export", texW, texH, true, com.mojang.blaze3d.GpuFormat.RGBA8_UNORM); // mc>=26.2 mc<=26.2
+            //framebuffer = new TextureTarget("modutilities recipe export", texW, texH, com.mojang.renderpearl.api.GpuFormat.RGBA8_UNORM, com.mojang.renderpearl.api.GpuFormat.D32_FLOAT); // mc>=26.3
+            framebuffer.bindWrite(false); // mc<=1.21.4
+            // 1.21.2+: GUI RenderTypes bind getMainRenderTarget() on every flush
+            //((net.kroia.mixin.MinecraftAccessor) mc).modutilities$setMainRenderTarget(framebuffer); // mc>=1.21.2 mc<=1.21.5
+            RenderSystem.viewport(0, 0, texW, texH); // mc<=1.21.4
 
             float bgR = ((BG_COLOR >> 16) & 0xFF) / 255f;
             float bgG = ((BG_COLOR >> 8) & 0xFF) / 255f;
             float bgB = (BG_COLOR & 0xFF) / 255f;
-            RenderSystem.clearColor(bgR, bgG, bgB, 1.0f);
-            RenderSystem.clear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT, false);
+            RenderSystem.clearColor(bgR, bgG, bgB, 1.0f); // mc<=1.21.4
+            RenderSystem.clear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT, false); // mc<=1.21.1
+            //RenderSystem.clear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT); // mc>=1.21.2 mc<=1.21.4
+            //RenderSystem.getDevice().createCommandEncoder().clearColorAndDepthTextures( // mc>=1.21.5
+                    //framebuffer.getColorTexture(), 0xFF000000 | (BG_COLOR & 0xFFFFFF), framebuffer.getDepthTexture(), 1.0); // mc>=1.21.5 mc<=26.1
+                    //framebuffer.getColorTexture(), net.minecraft.util.ARGB.vector4fFromARGB32(0xFF000000 | (BG_COLOR & 0xFFFFFF)), framebuffer.getDepthTexture(), 1.0); // mc>=26.2
 
             // --- Disable fog ---
-            RenderSystem.setShaderFogColor(0, 0, 0, 0);
-            RenderSystem.setShaderFogStart(Float.MAX_VALUE);
-            RenderSystem.setShaderFogEnd(Float.MAX_VALUE);
+            RenderSystem.setShaderFogColor(0, 0, 0, 0); // mc<=1.21.1
+            RenderSystem.setShaderFogStart(Float.MAX_VALUE); // mc<=1.21.1
+            RenderSystem.setShaderFogEnd(Float.MAX_VALUE); // mc<=1.21.1
+            //RenderSystem.setShaderFog(FogParameters.NO_FOG); // mc>=1.21.2 mc<=1.21.5
 
             // --- Set orthographic projection ---
             Matrix4f ortho = new Matrix4f().setOrtho(0, guiW, guiH, 0, 1000, 21000);
-            RenderSystem.setProjectionMatrix(ortho, VertexSorting.ORTHOGRAPHIC_Z);
+            RenderSystem.setProjectionMatrix(ortho, VertexSorting.ORTHOGRAPHIC_Z); // mc<=1.21.1
+            //RenderSystem.setProjectionMatrix(ortho, ProjectionType.ORTHOGRAPHIC); // mc>=1.21.2 mc<=1.21.5
             RenderSystem.getModelViewStack().pushMatrix();
             RenderSystem.getModelViewStack().identity();
-            RenderSystem.applyModelViewMatrix();
+            RenderSystem.applyModelViewMatrix(); // mc<=1.21.1
 
             // --- Create GuiGraphics ---
-            MultiBufferSource.BufferSource bufferSource = MultiBufferSource.immediate(
-                    new ByteBufferBuilder(786432));
-            GuiGraphics guiGraphics = new GuiGraphics(mc, bufferSource);
-            guiGraphics.pose().pushPose();
-            guiGraphics.pose().translate(0, 0, -11000);
+            MultiBufferSource.BufferSource bufferSource = MultiBufferSource.immediate( // mc<=26.1
+                    new ByteBufferBuilder(786432)); // mc<=26.1
+            GuiGraphics guiGraphics = new GuiGraphics(mc, bufferSource); // mc<=1.21.5
+            guiGraphics.pose().pushPose(); // mc<=1.21.5
+            guiGraphics.pose().translate(0, 0, -11000); // mc<=1.21.5
+            //net.kroia.modutilities.gui.client.OffscreenGuiRenderer offscreen = new net.kroia.modutilities.gui.client.OffscreenGuiRenderer(bufferSource); // mc>=1.21.6 mc<=26.1
+            //net.kroia.modutilities.gui.client.OffscreenGuiRenderer offscreen = new net.kroia.modutilities.gui.client.OffscreenGuiRenderer(); // mc>=26.2
+            //GuiGraphics guiGraphics = offscreen.begin(); // mc>=1.21.6 mc<=1.21.11
+            //GuiGraphicsExtractor guiGraphics = offscreen.begin(); // mc>=26.1
 
-            Lighting.setupForFlatItems();
+            Lighting.setupForFlatItems(); // mc<=1.21.5
 
             // --- Render recipe ---
             renderRecipe(guiGraphics, mc, grid, result, guiW, guiH);
 
-            guiGraphics.pose().popPose();
-            bufferSource.endBatch();
+            guiGraphics.pose().popPose(); // mc<=1.21.5
+            bufferSource.endBatch(); // mc<=26.1
+            //try { // mc>=1.21.6 (recorded GUI -> framebuffer)
+                //offscreen.render(guiGraphics, framebuffer, scale); // mc>=1.21.6
+            //} finally { // mc>=1.21.6
+                //offscreen.close(); // mc>=1.21.6
+            //} // mc>=1.21.6
 
             // --- Read pixels from framebuffer ---
-            image = new NativeImage(texW, texH, false);
-            RenderSystem.bindTexture(framebuffer.getColorTextureId());
-            image.downloadTexture(0, false);
-            image.flipY();
+            image = new NativeImage(texW, texH, false); // mc<=1.21.4
+            RenderSystem.bindTexture(framebuffer.getColorTextureId()); // mc<=1.21.4
+            image.downloadTexture(0, false); // mc<=1.21.4
+            image.flipY(); // mc<=1.21.4
 
             // --- Save PNG ---
-            Path parent = outputPath.getParent();
-            if (parent != null) {
-                Files.createDirectories(parent);
-            }
-            image.writeToFile(outputPath);
-            ModUtilitiesMod.LOGGER.info("Recipe image exported to: {}", outputPath);
+            Path parent = outputPath.getParent(); // mc<=1.21.4
+            if (parent != null) { // mc<=1.21.4
+                Files.createDirectories(parent); // mc<=1.21.4
+            } // mc<=1.21.4
+            image.writeToFile(outputPath); // mc<=1.21.4
+            ModUtilitiesMod.LOGGER.info("Recipe image exported to: {}", outputPath); // mc<=1.21.4
+            // mc>=1.21.5: GPU readback is asynchronous; the PNG is written (and the target freed) in the callback.
+            //final TextureTarget target = framebuffer; // mc>=1.21.5
+            //framebuffer = null; // mc>=1.21.5
+            //net.minecraft.client.Screenshot.takeScreenshot(target, img -> { // mc>=1.21.5
+                //try (img) { // mc>=1.21.5
+                    //Path parent = outputPath.getParent(); // mc>=1.21.5
+                    //if (parent != null) Files.createDirectories(parent); // mc>=1.21.5
+                    //img.writeToFile(outputPath); // mc>=1.21.5
+                    //ModUtilitiesMod.LOGGER.info("Recipe image exported to: {}", outputPath); // mc>=1.21.5
+                //} catch (Exception e) { // mc>=1.21.5
+                    //ModUtilitiesMod.LOGGER.error("Failed to export recipe image to: {}", outputPath, e); // mc>=1.21.5
+                //} finally { // mc>=1.21.5
+                    //target.destroyBuffers(); // mc>=1.21.5
+                //} // mc>=1.21.5
+            //}); // mc>=1.21.5
             success = true;
 
         } catch (Exception e) {
             ModUtilitiesMod.LOGGER.error("Failed to export recipe image to: {}", outputPath, e);
         } finally {
+            //((net.kroia.mixin.MinecraftAccessor) mc).modutilities$setMainRenderTarget(prevTarget); // mc>=1.21.2 mc<=1.21.5
             if (image != null) image.close();
             if (framebuffer != null) {
-                framebuffer.unbindWrite();
+                framebuffer.unbindWrite(); // mc<=1.21.4
                 framebuffer.destroyBuffers();
             }
 
             // --- Restore GL state (mirrors AbstractDisplayBlockEntityRenderer lines 335-347) ---
-            prevTarget.bindWrite(false);
+            prevTarget.bindWrite(false); // mc<=1.21.4
             RenderSystem.getModelViewStack().popMatrix();
-            RenderSystem.applyModelViewMatrix();
-            RenderSystem.viewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
-            RenderSystem.setProjectionMatrix(prevProjection, prevSorting);
-            RenderSystem.setShaderColor(prevShaderColor[0], prevShaderColor[1],
-                    prevShaderColor[2], prevShaderColor[3]);
-            RenderSystem.setShaderFogColor(prevFogColor[0], prevFogColor[1],
-                    prevFogColor[2], prevFogColor[3]);
-            RenderSystem.setShaderFogStart(prevFogStart);
-            RenderSystem.setShaderFogEnd(prevFogEnd);
-            if (prevDepthTest) RenderSystem.enableDepthTest(); else RenderSystem.disableDepthTest();
-            if (prevBlend) RenderSystem.enableBlend(); else RenderSystem.disableBlend();
-            if (prevCull) RenderSystem.enableCull(); else RenderSystem.disableCull();
-            Lighting.setupLevel();
+            RenderSystem.applyModelViewMatrix(); // mc<=1.21.1
+            RenderSystem.viewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]); // mc<=1.21.4
+            RenderSystem.setProjectionMatrix(prevProjection, prevSorting); // mc<=1.21.5
+            RenderSystem.setShaderColor(prevShaderColor[0], prevShaderColor[1], // mc<=1.21.5
+                    prevShaderColor[2], prevShaderColor[3]); // mc<=1.21.5
+            RenderSystem.setShaderFogColor(prevFogColor[0], prevFogColor[1], // mc<=1.21.1
+                    prevFogColor[2], prevFogColor[3]); // mc<=1.21.1
+            RenderSystem.setShaderFogStart(prevFogStart); // mc<=1.21.1
+            RenderSystem.setShaderFogEnd(prevFogEnd); // mc<=1.21.1
+            //RenderSystem.setShaderFog(prevFog); // mc>=1.21.2 mc<=1.21.5
+            if (prevDepthTest) RenderSystem.enableDepthTest(); else RenderSystem.disableDepthTest(); // mc<=1.21.4
+            if (prevBlend) RenderSystem.enableBlend(); else RenderSystem.disableBlend(); // mc<=1.21.4
+            if (prevCull) RenderSystem.enableCull(); else RenderSystem.disableCull(); // mc<=1.21.4
+            Lighting.setupLevel(); // mc<=1.21.5
         }
 
         return success;
@@ -254,7 +294,8 @@ public class RecipeImageExporter {
 
     // --- Private rendering ---
 
-    private static void renderRecipe(GuiGraphics g, Minecraft mc,
+    private static void renderRecipe(GuiGraphics g, Minecraft mc, // mc<=1.21.11
+    //private static void renderRecipe(GuiGraphicsExtractor g, Minecraft mc, // mc>=26.1
                                      ItemStack[][] grid, ItemStack result,
                                      int guiW, int guiH) {
         int gridW = 3 * SLOT_SIZE + 2 * SLOT_GAP;
@@ -272,7 +313,8 @@ public class RecipeImageExporter {
 
                 ItemStack stack = getGridItem(grid, row, col);
                 if (stack != null && !stack.isEmpty()) {
-                    g.renderItem(stack, sx + ITEM_INSET, sy + ITEM_INSET);
+                    g.renderItem(stack, sx + ITEM_INSET, sy + ITEM_INSET); // mc<=1.21.11
+                    //g.item(stack, sx + ITEM_INSET, sy + ITEM_INSET); // mc>=26.1
                 }
             }
         }
@@ -287,14 +329,17 @@ public class RecipeImageExporter {
         int resultY = PADDING + gridH / 2 - SLOT_SIZE / 2;
         renderSlot(g, resultX, resultY);
         if (!result.isEmpty()) {
-            g.renderItem(result, resultX + ITEM_INSET, resultY + ITEM_INSET);
+            g.renderItem(result, resultX + ITEM_INSET, resultY + ITEM_INSET); // mc<=1.21.11
+            //g.item(result, resultX + ITEM_INSET, resultY + ITEM_INSET); // mc>=26.1
             if (result.getCount() > 1) {
-                g.renderItemDecorations(mc.font, result, resultX + ITEM_INSET, resultY + ITEM_INSET);
+                g.renderItemDecorations(mc.font, result, resultX + ITEM_INSET, resultY + ITEM_INSET); // mc<=1.21.11
+                //g.itemDecorations(mc.font, result, resultX + ITEM_INSET, resultY + ITEM_INSET); // mc>=26.1
             }
         }
     }
 
-    private static void renderSlot(GuiGraphics g, int x, int y) {
+    private static void renderSlot(GuiGraphics g, int x, int y) { // mc<=1.21.11
+    //private static void renderSlot(GuiGraphicsExtractor g, int x, int y) { // mc>=26.1
         g.fill(x, y, x + SLOT_SIZE, y + SLOT_SIZE, SLOT_BG);
         // Dark border: top + left (inset effect)
         g.fill(x, y, x + SLOT_SIZE, y + 1, SLOT_DARK);
@@ -304,7 +349,8 @@ public class RecipeImageExporter {
         g.fill(x + SLOT_SIZE - 1, y, x + SLOT_SIZE, y + SLOT_SIZE, SLOT_LIGHT);
     }
 
-    private static void renderArrow(GuiGraphics g, int x, int centerY) {
+    private static void renderArrow(GuiGraphics g, int x, int centerY) { // mc<=1.21.11
+    //private static void renderArrow(GuiGraphicsExtractor g, int x, int centerY) { // mc>=26.1
         int shaftH = 1;
         int shaftW = ARROW_WIDTH - 8;
         // Shaft

@@ -1,5 +1,7 @@
 package net.kroia.modutilities.gui.elements;
 
+import net.kroia.modutilities.gui.InputConstants;
+import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Rectangle;
 import net.minecraft.nbt.CompoundTag;
@@ -33,7 +35,7 @@ public class CheckBox extends GuiElement {
     Rectangle hitboxRect;
     final Rectangle checkBoxRect = new Rectangle(0,0,0,0);
     final Rectangle checkBoxCheckedRect = new Rectangle(0,0,0,0);
-    int triggerButton = 0;
+    int triggerButton = InputConstants.MOUSE_BUTTON_LEFT;
     int checkBoxFrameColor = 0xff000000;
     int checkBoxCheckedColor = 0xff000000;
     /**
@@ -183,9 +185,9 @@ public class CheckBox extends GuiElement {
     public void deserializeState(CompoundTag tag) {
         super.deserializeState(tag);
         if(tag.contains("checked"))
-            setChecked(tag.getBoolean("checked"));
+            setChecked(NbtCompat.getBoolean(tag, "checked"));
         if(tag.contains("label"))
-            label.setText(tag.getString("label"));
+            label.setText(NbtCompat.getString(tag, "label"));
     }
     /**
      * Sets whether the user can toggle the checkbox by clicking it.
@@ -289,11 +291,11 @@ public class CheckBox extends GuiElement {
         checkBoxRect.width = height;
         checkBoxRect.height = height;
 
-        int checkedSize = height/2;
-        checkBoxCheckedRect.x = checkBoxRect.x + (checkBoxRect.width-checkedSize)/2;
-        checkBoxCheckedRect.y = checkBoxRect.y + (checkBoxRect.height-checkedSize)/2;
-        checkBoxCheckedRect.width = checkedSize;
-        checkBoxCheckedRect.height = checkedSize;
+        int inset = 2; // 1px frame + 1px empty gap on every side
+        checkBoxCheckedRect.x = checkBoxRect.x + inset;
+        checkBoxCheckedRect.y = checkBoxRect.y + inset;
+        checkBoxCheckedRect.width = Math.max(0, checkBoxRect.width - inset * 2);
+        checkBoxCheckedRect.height = Math.max(0, checkBoxRect.height - inset * 2);
 
 
 

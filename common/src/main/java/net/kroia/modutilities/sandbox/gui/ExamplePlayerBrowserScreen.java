@@ -1,7 +1,5 @@
 package net.kroia.modutilities.sandbox.gui;
 
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.client.GuiScreen;
 import net.kroia.modutilities.gui.elements.Button;
@@ -30,7 +28,6 @@ import java.util.List;
  *
  * Open via: /modutilities openExample playerBrowser
  */
-@Environment(EnvType.CLIENT)
 public class ExamplePlayerBrowserScreen extends GuiScreen {
 
     private final Label title;
@@ -93,7 +90,7 @@ public class ExamplePlayerBrowserScreen extends GuiScreen {
         }
 
         List<PlayerInfo> players = new ArrayList<>(connection.getOnlinePlayers());
-        players.sort(Comparator.comparing(p -> p.getProfile().getName().toLowerCase()));
+        players.sort(Comparator.comparing(p -> net.kroia.modutilities.PlayerCompat.profileName(p.getProfile()).toLowerCase()));
 
         for (PlayerInfo info : players) {
             listView.addChild(createPlayerRow(info));
@@ -112,7 +109,7 @@ public class ExamplePlayerBrowserScreen extends GuiScreen {
         row.setHeight(18);
         row.setOnFallingEdge(() -> select(info));
 
-        Label nameLabel = new Label(info.getProfile().getName());
+        Label nameLabel = new Label(net.kroia.modutilities.PlayerCompat.profileName(info.getProfile()));
         nameLabel.setAlignment(GuiElement.Alignment.LEFT);
         nameLabel.setPadding(4);
         row.addChild(nameLabel);
@@ -144,7 +141,7 @@ public class ExamplePlayerBrowserScreen extends GuiScreen {
             detailsGameMode.setText("Game mode: -");
             return;
         }
-        detailsName.setText("Name: " + info.getProfile().getName());
+        detailsName.setText("Name: " + net.kroia.modutilities.PlayerCompat.profileName(info.getProfile()));
         detailsLatency.setText("Ping: " + info.getLatency() + " ms");
         detailsGameMode.setText("Game mode: " + info.getGameMode().getName());
     }

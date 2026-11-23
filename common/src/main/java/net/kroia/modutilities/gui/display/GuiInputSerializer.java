@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui.display;
 
+import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.minecraft.nbt.CompoundTag;
@@ -93,7 +94,7 @@ public class GuiInputSerializer {
             GuiElement el = elements.get(i);
             String key = elementKey(el, prefix, i);
             if (tag.contains(key)) {
-                el.deserializeState(tag.getCompound(key));
+                el.deserializeState(NbtCompat.getCompound(tag, key));
             }
             List<GuiElement> children = el.getChilds();
             if (!children.isEmpty()) {

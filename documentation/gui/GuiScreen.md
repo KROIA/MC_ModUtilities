@@ -130,6 +130,43 @@ public class TestScreen extends GuiScreen {
 
 ---
 
+### GUI scale
+`setGuiScale(float)` (on `GuiScreen` / `GuiContainerScreen`, usually called in the constructor) scales the whole screen relative to the Minecraft GUI scale. Values below 1 make the screen smaller and give `updateLayout` more room in `getWidth()` / `getHeight()`.
+
+The requested value is snapped so that one GUI unit is a whole number of screen pixels: `round(scale * mcGuiScale) / mcGuiScale` (at least 1 px per unit). Example: 0.8 at Minecraft GUI scale 3 renders as 2/3 (2 px per unit instead of 2.4). This keeps items and textures sharp; without it nearest-sampled textures show uneven 2/3 px texel columns. The snapped value is recomputed on every `init()` (resize, GUI scale change), so always lay out from `getWidth()` / `getHeight()` instead of assuming a fixed size. `getGuiScale()` returns the effective (snapped) scale, `Gui.getRequestedGuiScale()` the value you passed. A scale of 1.0 is never changed.
+
+On 1.21.6+ items drawn under a custom scale stay crisp: they are rendered into an extra item atlas at the snapped pixel density instead of being resampled from vanilla's atlas.
+
+#### Library GUI scale setting (players)
+Library screens (`GuiScreen`, `GuiContainerScreen`) have their own GUI scale setting on the client, stored in
+`config/modutilities/ClientConfig.json`:
+```json
+{ "gui": { "guiScale": 0 } }
+```
+| Value | Effect |
+|---|---|
+| `0` (default) | Auto: ignore Minecraft's GUI scale and use the largest scale that fits the window (what Minecraft's own "auto" picks). Screens keep their size whatever the player's GUI scale is, and adapt when the window is resized |
+| `-1` | Follow Minecraft's GUI scale |
+| `N > 0` | N window pixels per GUI unit, capped to fit the window |
+
+In every library screen, **Ctrl + `+` / `-`** (numpad keys too) step the scale, and **Ctrl + `0`** switches to auto
+(pressed again: follow Minecraft). The shortcuts are ignored while a text box is focused. The change applies live, is saved
+to the file, and a hint such as "GUI scale: Auto (4)" is shown for 2 seconds. The setting is also available in code as
+`ClientGuiSettings.get().gui.guiScale` (client only).
+
+The screen's own `setGuiScale(...)` is multiplied on top of this setting before snapping. Internally the hosting screen passes
+the setting to the `Gui` as a base factor:
+
+| Method | Description |
+|---|---|
+| `Gui.setBaseGuiScale(float)` / `getBaseGuiScale()` | Host-wide factor multiplied with the `setGuiScale` value before pixel snapping. `1.0` (default) keeps the Minecraft GUI scale; values `<= 0` become `1.0` |
+| `Gui.snapGuiScale(float requested, double mcGuiScale)` | The snapping rule above, as a static helper |
+| `Gui.pixelGuiScale(int setting, int maxPixelScale, int mcPixelScale)` | Window pixels per GUI unit for a setting value (never less than 1) |
+| `Gui.fixedBaseGuiScale(int setting, int maxPixelScale, double mcGuiScale)` | The base factor for a setting value (`1.0` for "follow Minecraft") |
+| `Gui.stepGuiScaleSetting(int setting, int delta, int maxPixelScale, int mcPixelScale)` | The setting after stepping by `delta` pixels per unit, clamped to `1..maxPixelScale` |
+
+You only need these helpers if you host a `Gui` in your own screen class.
+
 ### Debuging
 There are multiple debug keys defined which can help finding bugs in layouting or drawing stuff.
 - **F3**: 
@@ -164,6 +201,36 @@ The Gui Screen renders in different steps:
 2) Foreground which will be the `GuiElement.render()` for the child elements.
 3) Tooltips
 4) Gizmos (Used for drawing the Bounding boxes which gets toggled by the **F3** Key). For the GuiElement it is the `GuiElement.renderGizmos()` which can be overwritten to draw custom stuff for debugging.
+5) The [screen notice](#screen-notice), if one is shown.
+
+### Screen notice
+A chat message is easy to miss while a screen covers the chat. `ScreenNotice` (`net.kroia.modutilities.gui`) shows a
+short message in larger red text in the middle of the open `GuiScreen` / `GuiContainerScreen`, wrapped onto several
+lines to fit the screen, for 5 seconds (`ScreenNotice.DURATION_MS`). A new notice replaces the current one. Without an
+open library screen nothing is drawn, so keep sending the chat message as well.
+
+``` Java
+// Server: send it to a player (translatable keys are resolved in the player's language)
+player.sendSystemMessage(message);
+ScreenNotice.send(player, message);
+
+// Client: show it directly
+ScreenNotice.show(Component.translatable("gui.mymod.untrusted_server"));
+```
+The text is always red; the component's own colour is ignored.
+
+### Overriding input and render methods across Minecraft versions
+Minecraft 1.21.9 moved screen input to event records (`mouseClicked(MouseButtonEvent, boolean)`, `keyPressed(KeyEvent)`, `charTyped(CharacterEvent)`), and 26.1 renamed screen rendering to `extractRenderState` / `extractBackground` with a `GuiGraphicsExtractor` parameter.
+
+`GuiScreen` and `GuiContainerScreen` bridge this for you: on every version the **int-based methods stay the extension points**:
+
+- `mouseClicked(double mouseX, double mouseY, int button)`, `mouseReleased(...)`, `mouseDragged(...)`, `mouseScrolled(...)`
+- `keyPressed(int keyCode, int scanCode, int modifiers)`
+- `charTyped(char codePoint, int modifiers)`
+
+On 1.21.9+ the event-record overrides forward to these methods, so override only the int-based ones and never the event-record variants. Compare `keyCode` / `button` against the named [`InputConstants`](GuiLibrary.md#inputconstants), never raw numbers (26.3 uses SDL3 key codes; there `scanCode` carries the layout key code, see `InputConstants.shortcutKey`).
+
+Overriding `render(...)` / `renderBackground(...)` directly is not version-neutral: the graphics parameter is `GuiGraphics` up to 1.21.11 and `GuiGraphicsExtractor` from 26.1. Draw through `GuiElement` render methods and `IGraphics` instead. See [Multi-Version Compatibility](../development/MultiVersionCompat.md) for the other compat helpers.
 
 ---
 ## See Also

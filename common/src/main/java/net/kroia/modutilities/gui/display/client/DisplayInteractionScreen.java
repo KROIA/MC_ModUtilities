@@ -1,8 +1,6 @@
 package net.kroia.modutilities.gui.display.client;
 
 import dev.architectury.networking.NetworkManager;
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 import net.kroia.modutilities.gui.Gui;
 import net.kroia.modutilities.gui.GuiStateSync;
 import net.kroia.modutilities.gui.client.GuiScreen;
@@ -24,7 +22,6 @@ import net.minecraft.world.level.block.entity.BlockEntity;
  * to the server via {@link DisplayInputSyncPacket}. Works on both
  * singleplayer and dedicated servers.
  */
-@Environment(EnvType.CLIENT)
 public class DisplayInteractionScreen extends GuiScreen {
 
     private BlockPos controllerPos;
@@ -38,7 +35,7 @@ public class DisplayInteractionScreen extends GuiScreen {
     }
 
     public static void open(BlockPos controllerPos) {
-        Minecraft.getInstance().setScreen(new DisplayInteractionScreen(controllerPos));
+        net.kroia.modutilities.gui.client.ClientCompat.setScreen(new DisplayInteractionScreen(controllerPos));
     }
 
     /**
@@ -88,7 +85,8 @@ public class DisplayInteractionScreen extends GuiScreen {
     }
 
     @Override
-    public void render(net.minecraft.client.gui.GuiGraphics guiGraphics,
+    public void render(net.minecraft.client.gui.GuiGraphics guiGraphics, // mc<=1.21.11
+    //public void render(net.minecraft.client.gui.GuiGraphicsExtractor guiGraphics, // mc>=26.1
                        int mouseX, int mouseY, float partialTick) {
         boolean inputDirty = gui != null && gui.hasAnyDirty();
         syncCounter++;

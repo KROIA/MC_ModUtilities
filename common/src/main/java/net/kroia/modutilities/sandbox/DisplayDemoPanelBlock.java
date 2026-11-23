@@ -31,7 +31,8 @@ public class DisplayDemoPanelBlock extends AbstractDisplayBlock {
     }
 
     public DisplayDemoPanelBlock() {
-        super(BlockBehaviour.Properties.of().strength(1.0f).noOcclusion());
+        super(net.kroia.modutilities.RegistryCompat.blockProperties(
+                BlockBehaviour.Properties.of().strength(1.0f).noOcclusion(), SandboxRegistration.id("display_demo_panel_block")));
     }
 
     @Override

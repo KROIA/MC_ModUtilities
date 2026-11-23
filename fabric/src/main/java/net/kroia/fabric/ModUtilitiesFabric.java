@@ -1,9 +1,9 @@
 package net.kroia.fabric;
 
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.loader.api.FabricLoader;
 
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.UtilitiesPlatform;
 import net.minecraft.server.level.ServerLevel;
@@ -18,11 +18,9 @@ public final class ModUtilitiesFabric implements ModInitializer {
         // Run our common setup.
         UtilitiesPlatform.setPlatform(new UtilitiesPlatformFabric());
         ServerLifecycleEvents.SERVER_STARTING.register(server -> {
-            ModUtilitiesMod.LOGGER.info("[FabricSetup] SERVER_STARTING");
             UtilitiesPlatformFabric.setServer(server);
         });
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
-            ModUtilitiesMod.LOGGER.info("[FabricSetup] SERVER_STOPPED");
             UtilitiesPlatformFabric.setServer(null);
         });
 
@@ -39,5 +37,9 @@ public final class ModUtilitiesFabric implements ModInitializer {
         });*/
 
         ModUtilitiesMod.init();
+
+        // Patbox Text Placeholder API: soft dependency, backend only class-loaded inside this guard.
+        if (FabricLoader.getInstance().isModLoaded("placeholder-api"))
+            PlaceholderApiBackend.attach();
     }
 }

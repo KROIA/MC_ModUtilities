@@ -18,7 +18,8 @@ public class DisplayDemoBackPanelBlock extends AbstractDisplayBlock {
     }
 
     public DisplayDemoBackPanelBlock() {
-        super(BlockBehaviour.Properties.of().strength(1.0f).noOcclusion());
+        super(net.kroia.modutilities.RegistryCompat.blockProperties(
+                BlockBehaviour.Properties.of().strength(1.0f).noOcclusion(), SandboxRegistration.id("display_demo_back_panel_block")));
     }
 
     @Override

@@ -1,5 +1,6 @@
 package net.kroia.modutilities.gui.elements;
 
+import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Point;
 import net.minecraft.nbt.CompoundTag;
@@ -385,17 +386,17 @@ public class Plot extends GuiElement
     public void deserializeState(CompoundTag tag) {
         super.deserializeState(tag);
         if (tag.contains("plots")) {
-            CompoundTag plotsTag = tag.getCompound("plots");
-            int count = plotsTag.getInt("count");
+            CompoundTag plotsTag = NbtCompat.getCompound(tag, "plots");
+            int count = NbtCompat.getInt(plotsTag, "count");
             plots.clear();
             for (int i = 0; i < count; i++) {
                 String key = "p" + i;
                 if (!plotsTag.contains(key)) continue;
-                CompoundTag pdTag = plotsTag.getCompound(key);
+                CompoundTag pdTag = NbtCompat.getCompound(plotsTag, key);
                 PlotData pd = new PlotData();
-                pd.color = pdTag.getInt("color");
-                pd.thickness = pdTag.getFloat("thickness");
-                int[] yArr = pdTag.getIntArray("yValues");
+                pd.color = NbtCompat.getInt(pdTag, "color");
+                pd.thickness = NbtCompat.getFloat(pdTag, "thickness");
+                int[] yArr = NbtCompat.getIntArray(pdTag, "yValues");
                 for (int bits : yArr)
                     pd.yValues.add(Float.intBitsToFloat(bits));
                 plots.add(pd);

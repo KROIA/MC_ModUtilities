@@ -4,14 +4,12 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.world.item.EnchantedBookItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.alchemy.Potion;
 import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.item.enchantment.Enchantment;
-import net.minecraft.world.item.enchantment.EnchantmentInstance;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -77,9 +75,11 @@ public class CreativeItemsGenerator {
         }
 
         // 3. Add all enchanted books for every enchantment and level
-        for (Holder<Enchantment> enchantment : registryAccess.registryOrThrow(Registries.ENCHANTMENT).holders().toList()) {
+        for (Holder<Enchantment> enchantment : registryAccess.lookupOrThrow(Registries.ENCHANTMENT).listElements().toList()) {
             for (int lvl = enchantment.value().getMinLevel(); lvl <= enchantment.value().getMaxLevel(); lvl++) {
-                results.add(EnchantedBookItem.createForEnchantment(new EnchantmentInstance(enchantment, lvl)));
+                ItemStack book = new ItemStack(Items.ENCHANTED_BOOK);
+                book.enchant(enchantment, lvl);
+                results.add(book);
             }
         }
         return results;

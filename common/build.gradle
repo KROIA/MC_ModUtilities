@@ -3,10 +3,17 @@ architectury {
 }
 
 repositories {
+    mavenCentral()
     maven {
         // Jared's maven hosts JEI since January 2023.
         name = "Jared's maven"
         url = "https://maven.blamejared.com/"
+    }
+    // NEZNAMY TAB API (https://github.com/NEZNAMY/TAB-API)
+    maven { url 'https://jitpack.io' }
+    // TestKit (dev-only test framework mod), built locally
+    flatDir {
+        dir "../../../MC_TestKit/mc_${minecraft_version}_MC_TestKit/common/build/libs"
     }
 }
 
@@ -14,13 +21,63 @@ dependencies {
     // We depend on Fabric Loader here to use the Fabric @Environment annotations,
     // which get remapped to the correct annotations on each platform.
     // Do NOT use other classes from Fabric Loader.
-    modImplementation "net.fabricmc:fabric-loader:$rootProject.fabric_loader_version"
+    modImplementation "net.fabricmc:fabric-loader:$rootProject.fabric_loader_version" // mc<=1.21.11
+    //implementation "net.fabricmc:fabric-loader:$rootProject.fabric_loader_version" // mc>=26.1 (no remapping, so no mod* configurations)
 
     // Architectury API. This is optional, and you can comment it out if you don't need it.
-    modImplementation "dev.architectury:architectury:$rootProject.architectury_api_version"
+    modImplementation "dev.architectury:architectury:$rootProject.architectury_api_version" // mc<=1.21.11
+    //implementation "dev.architectury:architectury:$rootProject.architectury_api_version" // mc>=26.1
 
     // JEI common API — compileOnly so JEI stays a soft dependency. The
     // ModUtilitiesJeiPlugin is only class-loaded when JEI is present
     // (annotation scan on NeoForge, jei_mod_plugin entrypoint on Fabric).
-    compileOnly("mezz.jei:jei-${rootProject.minecraft_version}-common-api:${rootProject.jei_version}")
+    compileOnly("mezz.jei:jei-${rootProject.jei_minecraft_version}-common-api:${rootProject.jei_version}")
+
+    // NEZNAMY TAB API - compileOnly soft dependency. TabPlaceholderBackend is only
+    // class-loaded when the "tab" mod is present (see ModUtilitiesMod.init).
+    compileOnly 'com.github.NEZNAMY:TAB-API:5.5.0'
+
+    // LuckPerms API (Maven Central) - compileOnly soft dependency, never bundled. Plain Java API, so no
+    // remapping. Only LuckPermsBridge.Lp references it, and that class loads only when LuckPerms is present.
+    compileOnly "net.luckperms:api:${rootProject.luckperms_api_version}"
+
+    // Offline unit tests (Task #98): TestKit's OfflineTests maps TestSuites to JUnit DynamicTests.
+    testImplementation "org.junit.jupiter:junit-jupiter:5.10.2"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher:1.10.2"
+}
+
+// TestKit (dev-only test framework mod, TK-1): the testing package compiles against it. Dev builds need its jar; release
+// builds use it only for the JUnit run below and skip that run without the jar (e.g. on JitPack). Never shipped.
+def devFeatures = (rootProject.findProperty('enable_dev_features') ?: 'false').toBoolean()
+def withTestKit = devFeatures || file("../../../MC_TestKit/mc_${minecraft_version}_MC_TestKit/common/build/libs/testkit-common-${rootProject.testkit_version}.jar").exists()
+if (withTestKit) {
+    dependencies {
+        modCompileOnly "net.kroia:testkit-common:${rootProject.testkit_version}" // mc<=1.21.11
+        //compileOnly "net.kroia:testkit-common:${rootProject.testkit_version}:dev" // mc>=26.1 (common jar carries the dev classifier on 26.1)
+    }
+    // The JUnit run needs TestKit on its runtime classpath: Loom's remapped jar (modCompileClasspathMainMapped is
+    // Loom-internal and created in afterEvaluate; Loom 1.7 has no modTest* configurations).
+    afterEvaluate { configurations.testRuntimeClasspath.extendsFrom configurations.modCompileClasspathMainMapped } // mc<=1.21.11
+    //configurations.testRuntimeClasspath.extendsFrom configurations.compileOnly // mc>=26.1 (no remapping: TestKit is plain compileOnly)
+} else {
+    compileTestJava.enabled = false
+    test.enabled = false
+}
+configurations.testCompileOnly.extendsFrom configurations.compileOnly // TestKit and the LuckPerms/JEI/TAB APIs the tests import
+
+// `gradlew :common:test` runs the TestSuites that need no game (TestSuite.needsGame() == false).
+// Release mode (enable_dev_features=false) keeps testing/** and sandbox/** out of main, so the test source set compiles
+// them itself; the include patterns also cover src/test/java, whose classes therefore live in the testing package.
+if (!devFeatures) {
+    sourceSets.test.java {
+        srcDir 'src/main/java'
+        include 'net/kroia/modutilities/testing/**', 'net/kroia/modutilities/sandbox/**'
+    }
+}
+
+test {
+    useJUnitPlatform()
+    workingDir = temporaryDir // Minecraft's log4j config writes logs/latest.log into the working directory
+    // test-topic selection (documentation/testing/TestSuite.md): gradlew :common:test -Dmodutilities.tests.exclude=<keys>
+    ['modutilities.tests.exclude', 'modutilities.tests.include', 'modutilities.tests.offline'].each { systemProperty it, System.getProperty(it, '') }
 }

@@ -1,5 +1,6 @@
 package net.kroia.modutilities.setting.parser;
 
+import net.kroia.modutilities.NbtCompat;
 import com.google.gson.*;
 import net.kroia.modutilities.ItemUtilities;
 import net.kroia.modutilities.persistence.ServerSaveable;
@@ -8,7 +9,8 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceLocation; // mc<=1.21.10
+//import net.minecraft.resources.Identifier; // mc>=1.21.11
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -43,7 +45,8 @@ public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
         JsonObject json = new JsonObject();
 
         // Item ID
-        ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()); // mc<=1.21.10
+        //Identifier itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()); // mc>=1.21.11
         json.addProperty("id", itemId.toString());
 
         // Count
@@ -90,12 +93,13 @@ public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
         if (!obj.has("id")) {
             throw new JsonParseException("ItemStack JSON missing 'id' field");
         }
-        ResourceLocation itemId = ResourceLocation.tryParse(obj.get("id").getAsString());
+        ResourceLocation itemId = ResourceLocation.tryParse(obj.get("id").getAsString()); // mc<=1.21.10
+        //Identifier itemId = Identifier.tryParse(obj.get("id").getAsString()); // mc>=1.21.11
         if (itemId == null) {
             throw new JsonParseException("Invalid item resource location: " + obj.get("id").getAsString());
         }
 
-        Item item = BuiltInRegistries.ITEM.get(itemId);
+        Item item = BuiltInRegistries.ITEM.getOptional(itemId).orElse(Items.AIR);
         if (item == Items.AIR && !itemId.toString().equals("minecraft:air")) {
             throw new JsonParseException("Unknown item: " + itemId);
         }
@@ -146,7 +150,7 @@ public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
      */
     public JsonObject nbtToJson(CompoundTag tag) {
         JsonObject json = new JsonObject();
-        for (String key : tag.getAllKeys()) {
+        for (String key : NbtCompat.keys(tag)) {
             Tag value = tag.get(key);
             json.add(key, nbtTagToJson(value));
         }
@@ -166,41 +170,41 @@ public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
             case Tag.TAG_BYTE: {
                 JsonObject wrapper = new JsonObject();
                 wrapper.addProperty(NBT_TYPE_KEY, "byte");
-                wrapper.addProperty(NBT_VALUE_KEY, ((net.minecraft.nbt.NumericTag) tag).getAsByte());
+                wrapper.addProperty(NBT_VALUE_KEY, NbtCompat.asByte((net.minecraft.nbt.NumericTag) tag));
                 return wrapper;
             }
             case Tag.TAG_SHORT: {
                 JsonObject wrapper = new JsonObject();
                 wrapper.addProperty(NBT_TYPE_KEY, "short");
-                wrapper.addProperty(NBT_VALUE_KEY, ((net.minecraft.nbt.NumericTag) tag).getAsShort());
+                wrapper.addProperty(NBT_VALUE_KEY, NbtCompat.asShort((net.minecraft.nbt.NumericTag) tag));
                 return wrapper;
             }
             case Tag.TAG_INT: {
                 JsonObject wrapper = new JsonObject();
                 wrapper.addProperty(NBT_TYPE_KEY, "int");
-                wrapper.addProperty(NBT_VALUE_KEY, ((net.minecraft.nbt.NumericTag) tag).getAsInt());
+                wrapper.addProperty(NBT_VALUE_KEY, NbtCompat.asInt((net.minecraft.nbt.NumericTag) tag));
                 return wrapper;
             }
             case Tag.TAG_LONG: {
                 JsonObject wrapper = new JsonObject();
                 wrapper.addProperty(NBT_TYPE_KEY, "long");
-                wrapper.addProperty(NBT_VALUE_KEY, ((net.minecraft.nbt.NumericTag) tag).getAsLong());
+                wrapper.addProperty(NBT_VALUE_KEY, NbtCompat.asLong((net.minecraft.nbt.NumericTag) tag));
                 return wrapper;
             }
             case Tag.TAG_FLOAT: {
                 JsonObject wrapper = new JsonObject();
                 wrapper.addProperty(NBT_TYPE_KEY, "float");
-                wrapper.addProperty(NBT_VALUE_KEY, ((net.minecraft.nbt.NumericTag) tag).getAsFloat());
+                wrapper.addProperty(NBT_VALUE_KEY, NbtCompat.asFloat((net.minecraft.nbt.NumericTag) tag));
                 return wrapper;
             }
             case Tag.TAG_DOUBLE: {
                 JsonObject wrapper = new JsonObject();
                 wrapper.addProperty(NBT_TYPE_KEY, "double");
-                wrapper.addProperty(NBT_VALUE_KEY, ((net.minecraft.nbt.NumericTag) tag).getAsDouble());
+                wrapper.addProperty(NBT_VALUE_KEY, NbtCompat.asDouble((net.minecraft.nbt.NumericTag) tag));
                 return wrapper;
             }
             case Tag.TAG_STRING:
-                return new JsonPrimitive(tag.getAsString());
+                return new JsonPrimitive(NbtCompat.asString(tag));
             case Tag.TAG_COMPOUND:
                 return nbtToJson((CompoundTag) tag);
             case Tag.TAG_LIST: {
@@ -230,7 +234,7 @@ public class ItemStackJsonParser implements CustomJsonParser<ItemStack>{
                 return arr;
             }
             default:
-                return new JsonPrimitive(tag.getAsString());
+                return new JsonPrimitive(NbtCompat.asString(tag));
         }
     }
 

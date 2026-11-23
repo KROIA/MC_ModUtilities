@@ -1,12 +1,16 @@
 package net.kroia.modutilities.gui.elements;
 
+import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.ColorUtilities;
 import net.kroia.modutilities.gui.InputConstants;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.minecraft.nbt.CompoundTag;
 
 import java.awt.event.InputEvent;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
+import java.util.Locale;
 import java.util.function.Consumer;
 
 /**
@@ -30,6 +34,9 @@ import java.util.function.Consumer;
  * against {@link #getText()}'s length and against the regex.
  */
 public class TextBox extends GuiElement {
+
+    /** Default maximum number of decimal places used by {@link #setText(double)}. */
+    public static final int DEFAULT_DECIMAL_PLACES = 4;
 
     String text = "";
 
@@ -338,15 +345,38 @@ public class TextBox extends GuiElement {
     public void deserializeState(CompoundTag tag) {
         super.deserializeState(tag);
         if(tag.contains("text"))
-            setText(tag.getString("text"));
+            setText(NbtCompat.getString(tag, "text"));
     }
     /**
-     * Sets the text to the string representation of the given double value.
+     * Sets the text to the given double value, rounded to at most {@link #DEFAULT_DECIMAL_PLACES}
+     * decimal places with trailing zeros stripped (e.g. {@code 0.3f} shows as "0.3", {@code 5.0} as "5").
      * @param value the value
      */
     public void setText(double value) {
-       // setAllowNumbers(true, true);
-        setText(String.valueOf(value));
+        setText(value, DEFAULT_DECIMAL_PLACES);
+    }
+    /**
+     * Sets the text to the given double value, rounded half-up to at most {@code maxDecimalPlaces}
+     * decimal places, with trailing zeros stripped and in plain notation (no exponent).
+     * NaN and infinite values fall back to {@link String#valueOf(double)}.
+     * @param value the value
+     * @param maxDecimalPlaces the maximum number of decimal places to show
+     */
+    public void setText(double value, int maxDecimalPlaces) {
+        if(Double.isNaN(value) || Double.isInfinite(value)) {
+            setText(String.valueOf(value));
+            return;
+        }
+        setText(BigDecimal.valueOf(value).setScale(maxDecimalPlaces, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString());
+    }
+    /**
+     * Sets the text to the given double value formatted with {@link String#format} using {@link Locale#ROOT},
+     * so the decimal separator is always '.'.
+     * @param value the value
+     * @param format the format string, e.g. {@code "%.2f"}
+     */
+    public void setText(double value, String format) {
+        setText(String.format(Locale.ROOT, format, value));
     }
     /**
      * Sets the text to the string representation of the given int value.
@@ -494,9 +524,11 @@ public class TextBox extends GuiElement {
 
     @Override
     public void focusGained() {
+        if (getRoot() != null) getRoot().getInputProvider().setTextInputFocus(this, true);
     }
     @Override
     public void focusLost() {
+        if (getRoot() != null) getRoot().getInputProvider().setTextInputFocus(this, false);
         cursorVisible = false;
         viewScrollX = 0;
         textLabel.setManualScrollOffsetX(0);
@@ -526,7 +558,7 @@ public class TextBox extends GuiElement {
 
 
 
-        switch(keyCode)
+        switch(InputConstants.shortcutKey(keyCode, scanCode))
         {
             case InputConstants.KEY_A:
             {

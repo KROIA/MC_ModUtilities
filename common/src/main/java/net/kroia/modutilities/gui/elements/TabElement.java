@@ -1,5 +1,7 @@
 package net.kroia.modutilities.gui.elements;
 
+import net.kroia.modutilities.gui.InputConstants;
+import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.ColorUtilities;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.geometry.Rectangle;
@@ -466,7 +468,7 @@ public class TabElement extends GuiElement {
     public void deserializeState(CompoundTag tag) {
         super.deserializeState(tag);
         if (tag.contains("selectedTab")) {
-            selectTab(tag.getInt("selectedTab"));
+            selectTab(NbtCompat.getInt(tag, "selectedTab"));
         }
     }
 
@@ -559,9 +561,17 @@ public class TabElement extends GuiElement {
     @Override
     protected boolean mouseClickedOverElement(int button)
     {
-        if(button == 0 && mouseOverTitleIndex > -1)
+        if(button != InputConstants.MOUSE_BUTTON_LEFT)
+            return false;
+        // Hit-test at the click position (Gui.mouseClicked stores it before dispatch),
+        // not mouseOverTitleIndex from the last rendered frame: synthetic clicks don't move the cursor.
+        for(int i = 0; i < tabs.size(); i++)
         {
-            selectTab(mouseOverTitleIndex);
+            if(tabs.get(i).titleElement.isMouseOver())
+            {
+                selectTab(i);
+                return true;
+            }
         }
         return false; // No tab title clicked
     }
