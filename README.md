@@ -4,7 +4,7 @@
 This is a comprehensive utilities library mod that provides common functionality for Minecraft mod development.
 It is a **required dependency** of BankSystem and StockMarket: install it alongside those mods on the client and the server.
 
-**Current Version**: v2.2.0 (in development)  
+**Current Version**: v2.2.0  
 **Supported Platforms**: Fabric, NeoForge  
 **Supported Minecraft Versions**: 1.21.1 – 1.21.11, 26.1 (26.1.2), 26.2, 26.3
 
@@ -92,8 +92,8 @@ Use a LuckPerms build made for your Minecraft and loader version: a build for an
 
 [CurseForge](https://www.curseforge.com/minecraft/mc-mods/kroiautilities)
 
-### Current Development Version
-v2.2.0 for Minecraft 1.21.1 – 1.21.11, 26.1, 26.2 and 26.3 (Fabric, NeoForge) is **in development**; download links follow with the release.
+### Current Version
+v2.2.0 for Minecraft 1.21.1 – 1.21.11, 26.1, 26.2 and 26.3 (Fabric, NeoForge).
 
 ### Legacy Versions
 | Minecraft | Quilt |
@@ -118,7 +118,7 @@ All notable changes are documented in version-specific files under `changelog/`.
 
 | Version | Date | Notes |
 |---|---|---|
-| [2.2.0](changelog/v2.2.0.md) | In Development | Multi-version support (1.21.1 – 26.3), compat helpers, placeholder registry, automated in-game tests |
+| [2.2.0](changelog/v2.2.0.md) | 2026-11-23 | Multi-version support (1.21.1 – 26.3), compat helpers, placeholder registry, LuckPerms bridge, Discord webhooks |
 | [2.1.2](changelog/v2.1.2.md) | 2026-10-25 | Test runs written to log files, setup/teardown failure handling |
 | [2.1.1](changelog/v2.1.1.md) | 2026-08-20 | `ListView` viewport culling, `shouldRenderChild` hook |
 | [2.1.0](changelog/v2.1.0.md) | 2026-08-15 | `MultiLineTextBox`, auto-scrolling `Label`, `TextBox` improvements |
