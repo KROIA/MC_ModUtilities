@@ -693,6 +693,18 @@ public abstract class GuiElement {
     }
 
     /**
+     * Public read-only view of {@link #shouldRenderChild(GuiElement)}, e.g. whether a list row is
+     * inside the list's scroll window (partially visible rows count as rendered).
+     *
+     * @param child one of this element's rendered children ({@link #getRenderedChilds()})
+     * @return {@code true} if the render passes draw {@code child}
+     */
+    public final boolean isChildRendered(GuiElement child)
+    {
+        return shouldRenderChild(child);
+    }
+
+    /**
      * Framework hook that runs the background render pass for this element and
      * its descendants, applying the local transform on the pose stack. Called
      * by the parent {@link Gui} or parent element; subclasses normally do not
