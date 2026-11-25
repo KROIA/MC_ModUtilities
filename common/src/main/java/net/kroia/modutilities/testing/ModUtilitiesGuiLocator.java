@@ -55,7 +55,7 @@ public final class ModUtilitiesGuiLocator implements GuiLocator {
             int x = Math.round(p.x * scale), y = Math.round(p.y * scale);
             int w = Math.round((p.x + el.getWidth()) * scale) - x, h = Math.round((p.y + el.getHeight()) * scale) - y;
             String text = text(el);
-            int textWidth = el instanceof Label && !text.isEmpty() ? Math.round(el.getTextWidth(text) * scale) : 0;
+            int textWidth = el instanceof Label l && !text.isEmpty() ? Math.round(el.getTextWidth(l.getDisplayedText()) * scale) : 0;
             nodes.add(new GuiNode(type(el), text, el.getId(), x, y, w, h, textWidth, visible,
                     nodes(el, el.getRenderedChilds(), scale, visible), el));
         }
