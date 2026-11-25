@@ -144,6 +144,7 @@ public class NetworkingTests extends TestSuite {
         addTest("request_forward_link_lost_replies_client", this::testForwardLinkLostRepliesClient);
         addTest("request_forward_relayed_reply_untracks", this::testForwardRelayedReplyUntracks);
         addTest("request_forward_failures_off", this::testForwardFailuresOff);
+        addTest("request_to_master_carries_player_uuid", this::testRequestToMasterCarriesPlayerUUID);
 
         // Slave with its master link down (simulated): routed traffic never runs locally
         addTest("slave_master_down_request_fails_fast", this::testSlaveMasterDownRequestFailsFast);
@@ -1196,6 +1197,33 @@ public class NetworkingTests extends TestSuite {
             m.forwardRequestToMaster(createDummyRequest("m2_off"), new GenericRequestPacket("m2_off", buf), UUID.randomUUID());
             return assertEquals("switch off: forwarded requests are not tracked", 0, m.failRequestsOnConnectionLost(null, Long.MAX_VALUE));
         });
+    }
+
+    /** MU-175: sendRequestToMaster(playerUUID, input) hands the UUID to the master link; the response completes on the slave. */
+    private TestResult testRequestToMasterCarriesPlayerUUID() {
+        List<UUID> senders = new ArrayList<>();
+        List<GenericRequestPacket> sent = new ArrayList<>();
+        RequestManager m = new RequestManager(capturingNetworkManager(new ArrayList<>())) {
+            @Override protected boolean sendToMaster(UUID senderPlayerUUID, GenericRequestPacket packet) {
+                senders.add(senderPlayerUUID);
+                sent.add(packet);
+                return true;
+            }
+        };
+        GenericRequest<String, String> req = createDummyRequest("mu175_player");
+        req.setManager(m);
+        UUID player = UUID.randomUUID();
+        CompletableFuture<String> f = req.sendRequestToMaster(player, "x");
+        if (sent.isEmpty()) return skip("no server buffer (server not running)");
+        req.sendRequestToMaster("x");
+        if (!Arrays.asList(player, null).equals(senders))
+            return fail("expected [player, null] passed to sendToMaster, got " + senders);
+        RegistryFriendlyByteBuf buf = net.kroia.modutilities.UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
+        if (buf == null) return skip("no server buffer (server not running)");
+        // The response carries the player UUID but matches the slave's own request: completes here, not relayed.
+        m.processResponseOnSlave(new GenericResponsePacket(sent.get(0).getRequestID(), "mu175_player", buf),
+                new ForwardPacketContext(null, "master", player));
+        return assertTrue("slave's own request must complete on the slave", f.isDone() && !f.isCompletedExceptionally());
     }
 
     // ------------------------------------------------------------------------
