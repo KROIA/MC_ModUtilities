@@ -244,6 +244,25 @@ public abstract class GenericRequest<IN, OUT>
      */
     public CompletableFuture<OUT> sendRequestToMaster(IN input)
     {
+        return sendRequestToMaster(null, input);
+    }
+
+    /**
+     * Sends this request to the master server on behalf of a player. The master's
+     * {@link #handleOnMasterServer(Object, String, UUID)} receives {@code playerUUID} as {@code playerSender},
+     * so player-bound requests work for slave-originated calls too.
+     *
+     * @param playerUUID The player to act for, or {@code null} for none (same as {@link #sendRequestToMaster(Object)}).
+     *                   The caller vouches for this UUID: the master trusts it like the player UUID a slave sends
+     *                   with a forwarded client request. The player may be offline.
+     * @param input      The input to send to the master server.
+     * @return Same outcomes as {@link #sendRequestToMaster(Object)}. The response completes the future on this
+     *         slave; it is not relayed to the player.
+     * @throws IllegalStateException If the {@link RequestManager} has not been set.
+     * @apiNote This method is intended to be called on the slave server side only.
+     */
+    public CompletableFuture<OUT> sendRequestToMaster(@Nullable UUID playerUUID, IN input)
+    {
         if(manager == null)
             throw new IllegalStateException("""
                     RequestManager is not set. Cannot send request to server.
@@ -254,7 +273,7 @@ public abstract class GenericRequest<IN, OUT>
                     once on the client and server side.
                     """);
 
-        return manager.sendRequestToMaster(this, input);
+        return manager.sendRequestToMaster(this, playerUUID, input);
     }
     /**
      * Sends this request to a specific slave server with the provided input.
