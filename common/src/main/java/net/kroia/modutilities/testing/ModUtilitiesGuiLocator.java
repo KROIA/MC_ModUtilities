@@ -27,7 +27,9 @@ import java.util.List;
  *       what the screen's mouse methods take, so TestKit's clicks land on the element;</li>
  *   <li>textWidth only for Labels (a Button's text lives in its Label child), so layout checks do not flag
  *       TextBox content that legitimately scrolls;</li>
- *   <li>visible = enabled and all ancestors enabled ({@link GuiElement#isVisible()}).</li>
+ *   <li>visible = enabled and all ancestors enabled ({@link GuiElement#isVisible()}), and drawn by every ancestor
+ *       ({@link GuiElement#isChildRendered}): a list row scrolled fully out of its list's window is not visible,
+ *       a partly scrolled-out row still is.</li>
  * </ul>
  */
 public final class ModUtilitiesGuiLocator implements GuiLocator {
@@ -42,20 +44,20 @@ public final class ModUtilitiesGuiLocator implements GuiLocator {
         Gui gui = screen instanceof GuiScreen s ? s.getGui()
                 : screen instanceof GuiContainerScreen<?> c ? c.getGui() : null;
         if (gui == null) return List.of();
-        return nodes(gui.getElements(), gui.getGuiScale(), true);
+        return nodes(null, gui.getElements(), gui.getGuiScale(), true);
     }
 
-    private static List<GuiNode> nodes(List<GuiElement> elements, float scale, boolean parentVisible) {
+    private static List<GuiNode> nodes(GuiElement parent, List<GuiElement> elements, float scale, boolean parentVisible) {
         List<GuiNode> nodes = new ArrayList<>(elements.size());
         for (GuiElement el : elements) {
-            boolean visible = parentVisible && el.isVisible();
+            boolean visible = parentVisible && el.isVisible() && (parent == null || parent.isChildRendered(el));
             Point p = el.getGlobalPosition();
             int x = Math.round(p.x * scale), y = Math.round(p.y * scale);
             int w = Math.round((p.x + el.getWidth()) * scale) - x, h = Math.round((p.y + el.getHeight()) * scale) - y;
             String text = text(el);
             int textWidth = el instanceof Label && !text.isEmpty() ? Math.round(el.getTextWidth(text) * scale) : 0;
             nodes.add(new GuiNode(type(el), text, el.getId(), x, y, w, h, textWidth, visible,
-                    nodes(el.getRenderedChilds(), scale, visible), el));
+                    nodes(el, el.getRenderedChilds(), scale, visible), el));
         }
         return nodes;
     }
