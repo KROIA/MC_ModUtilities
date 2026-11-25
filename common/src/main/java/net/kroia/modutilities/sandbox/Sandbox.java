@@ -402,6 +402,7 @@ public class Sandbox {
             TestRegistry.register(new CreativeTabTests());
             TestRegistry.register(new GuiLogicTests());
             TestRegistry.register(new net.kroia.modutilities.testing.tests.GuiLocatorTests());
+            TestRegistry.register(new net.kroia.modutilities.testing.tests.GuiWidgetTests());
         }
         TestRegistry.register(new ParserTests());
         TestRegistry.register(new PersistenceTests());

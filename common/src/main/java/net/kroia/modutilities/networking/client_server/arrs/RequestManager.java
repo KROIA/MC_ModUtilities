@@ -124,6 +124,25 @@ public class RequestManager {
      */
     public <IN, OUT> CompletableFuture<OUT> sendRequestToMaster(@NotNull GenericRequest<IN, OUT> request,
                                                                 IN input) {
+        return sendRequestToMaster(request, null, input);
+    }
+
+    /**
+     * Sends a request from a slave server to the master server on behalf of a player and tracks the pending response.
+     *
+     * @param request    The request to send.
+     * @param playerUUID The player the master's {@link GenericRequest#handleOnMasterServer} receives as
+     *                   {@code playerSender}, or {@code null} for none.
+     * @param input      The input data for the request delivered to the receiver.
+     * @param <IN>       The type of input data.
+     * @param <OUT>      The type of output data provided by the responder.
+     * @return See {@link GenericRequest#sendRequestToMaster(UUID, Object)}.
+     * @apiNote Intended to be called on the slave server only. The response completes the returned future here;
+     *          it is not relayed to the player.
+     */
+    public <IN, OUT> CompletableFuture<OUT> sendRequestToMaster(@NotNull GenericRequest<IN, OUT> request,
+                                                                @Nullable UUID playerUUID,
+                                                                IN input) {
         RegistryFriendlyByteBuf buf = UtilitiesPlatform.createRegistryFriendlyByteBufServerSide();
         if(buf == null)
         {
@@ -139,7 +158,7 @@ public class RequestManager {
         UUID requestId = requestPacket.getRequestID();
 
         pendingServerServerRequests.put(requestId, requestData);
-        if(!sendToMaster(null, requestPacket))
+        if(!sendToMaster(playerUUID, requestPacket))
             failNotSent(requestId, requestData);
         return requestData.responseFuture;
     }
