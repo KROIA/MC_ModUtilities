@@ -110,6 +110,22 @@ public class Button extends EmptyButton {
         return label.getAlignment();
     }
 
+    /**
+     * Ends overflowing label text with "..." instead of scrolling it, see {@link Label#setEllipsisEnabled(boolean)}.
+     * @param enabled {@code true} to cut overflowing text with "..."
+     */
+    public void setEllipsisEnabled(boolean enabled)
+    {
+        label.setEllipsisEnabled(enabled);
+    }
+    /**
+     * @return whether overflowing label text ends with "..."
+     */
+    public boolean isEllipsisEnabled()
+    {
+        return label.isEllipsisEnabled();
+    }
+
 
     @Override
     public List<GuiElement> getSerializableChildren() {
