@@ -12,7 +12,7 @@ import java.util.function.Consumer;
 
 /**
  * A boolean toggle element that displays a clickable square checkbox next to a text label.
- * The user toggles the checked state by clicking inside the checkbox hitbox.
+ * The user toggles the checked state by clicking the checkbox or its text.
  * <p>
  * Several callbacks let callers react to state changes:
  * <ul>
@@ -32,7 +32,6 @@ public class CheckBox extends GuiElement {
     boolean isChecked = false;
     boolean isCheckable = true;
     int colorHover = DEFAULT_HOVER_BACKGROUND_COLOR;
-    Rectangle hitboxRect;
     final Rectangle checkBoxRect = new Rectangle(0,0,0,0);
     final Rectangle checkBoxCheckedRect = new Rectangle(0,0,0,0);
     int triggerButton = InputConstants.MOUSE_BUTTON_LEFT;
@@ -46,7 +45,6 @@ public class CheckBox extends GuiElement {
         super();
         label = new Label(text);
         addChild(label);
-        hitboxRect = checkBoxRect;
     }
     /**
      * Creates a checkbox at the given position/size with the given label text.
@@ -60,7 +58,6 @@ public class CheckBox extends GuiElement {
         super(x, y, width, height);
         label = new Label(text);
         addChild(label);
-        hitboxRect = checkBoxRect;
     }
     /**
      * Creates a checkbox with default size, a label, and a state-change callback.
@@ -72,7 +69,6 @@ public class CheckBox extends GuiElement {
         label = new Label(text);
         addChild(label);
         this.onStateChanged = onStateChanged;
-        hitboxRect = checkBoxRect;
     }
     /**
      * Creates a checkbox at the given position/size with a label and a state-change callback.
@@ -88,7 +84,6 @@ public class CheckBox extends GuiElement {
         label = new Label(text);
         addChild(label);
         this.onStateChanged = onStateChanged;
-        hitboxRect = checkBoxRect;
     }
     /**
      * Sets the alignment of the label text within its bounds.
@@ -262,7 +257,7 @@ public class CheckBox extends GuiElement {
     @Override
     protected void renderBackground() {
         super.renderBackground();
-        if(hitboxRect.contains(getMouseX(),getMouseY()))
+        if(isMouseOver())
         {
             drawRect(checkBoxRect.x, checkBoxRect.y, checkBoxRect.width, checkBoxRect.height, colorHover);
         }
@@ -310,13 +305,9 @@ public class CheckBox extends GuiElement {
         if(!isCheckable || buttton != triggerButton)
             return false;
 
-        if(hitboxRect.contains(getMouseX(),getMouseY()))
-        {
-            setChecked(!isChecked);
-            playLocalSound(SoundEvents.UI_BUTTON_CLICK.value(),0.5F);
-            return true;
-        }
-        return false;
+        setChecked(!isChecked);
+        playLocalSound(SoundEvents.UI_BUTTON_CLICK.value(),0.5F);
+        return true;
     }
 
     @Override
