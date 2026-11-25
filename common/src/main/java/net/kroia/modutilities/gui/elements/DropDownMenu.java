@@ -3,12 +3,14 @@ package net.kroia.modutilities.gui.elements;
 import net.kroia.modutilities.NbtCompat;
 import net.kroia.modutilities.ModUtilitiesMod;
 import net.kroia.modutilities.gui.Gui;
+import net.kroia.modutilities.gui.InputConstants;
 import net.kroia.modutilities.gui.elements.base.GuiElement;
 import net.kroia.modutilities.gui.elements.base.ListView;
 import net.kroia.modutilities.gui.layout.Layout;
 import net.kroia.modutilities.gui.layout.LayoutHorizontal;
 import net.kroia.modutilities.gui.layout.LayoutVertical;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.sounds.SoundEvents;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -475,6 +477,16 @@ public class DropDownMenu extends GuiElement {
     protected void mouseClicked(int button) {
         if(!isMouseOverIgnoreParents() && isExpanded)
             collapse();
+    }
+
+    /** A left click on the label area toggles the menu like the arrow; a label element that consumes its clicks keeps them. */
+    @Override
+    protected boolean mouseClickedOverElement(int button) {
+        if(button != InputConstants.MOUSE_BUTTON_LEFT || !customLabelElement.isMouseOver())
+            return false;
+        playLocalSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.5F);
+        onExpandButtonClicked();
+        return true;
     }
 
     /** {@code true} if no ListView encloses {@code el}, else whether the point is visible in the nearest one. */
