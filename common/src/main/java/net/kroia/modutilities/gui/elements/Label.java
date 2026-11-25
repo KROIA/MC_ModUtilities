@@ -30,6 +30,7 @@ public class Label extends GuiElement {
     private int padding = GuiElement.DEFAULT_PADDING;
     private Point textPos = new Point(0,0);
     private boolean autoScrollEnabled = true;
+    private boolean ellipsisEnabled = false;
     private int currentScrollOffsetX = 0;
     private int manualScrollOffsetX = 0;
 
@@ -140,10 +141,11 @@ public class Label extends GuiElement {
     public void render() {
         int innerWidth = getWidth() - padding * 2;
         int innerHeight = getHeight() - padding * 2;
-        int textWidth = getTextWidth(text);
-        if (textWidth <= innerWidth || innerWidth <= 0) {
+        String shown = getDisplayedText();
+        int textWidth = getTextWidth(shown);
+        if (ellipsisEnabled || textWidth <= innerWidth || innerWidth <= 0) {
             currentScrollOffsetX = 0;
-            drawText(text, textPos);
+            drawText(shown, textPos);
             return;
         }
         int overflow = textWidth - innerWidth;
@@ -186,6 +188,34 @@ public class Label extends GuiElement {
     }
 
     /**
+     * Enables or disables ending overflowing text with "..." (default off). When on, text wider than the inner width
+     * (width minus padding) is cut to fit with "..." at the end and placed by the alignment, without scrolling.
+     * Local display setting, not synced.
+     */
+    public void setEllipsisEnabled(boolean enabled) {
+        this.ellipsisEnabled = enabled;
+        layoutChangedInternal();
+    }
+
+    public boolean isEllipsisEnabled() {
+        return ellipsisEnabled;
+    }
+
+    /**
+     * @return the text as drawn: {@link #getText()}, or with {@link #isEllipsisEnabled() ellipsis} on and the text
+     *         too wide, the text cut to fit the inner width with "..." at the end
+     */
+    public String getDisplayedText() {
+        int innerWidth = getWidth() - padding * 2;
+        if (!ellipsisEnabled || innerWidth <= 0 || getTextWidth(text) <= innerWidth)
+            return text;
+        // ponytail: linear scan of width measurements on every frame; cache per (text, width) if long ellipsized lists get slow
+        int end = text.length();
+        while (end > 0 && getTextWidth(text.substring(0, end) + "...") > innerWidth) end--;
+        return text.substring(0, end).stripTrailing() + "...";
+    }
+
+    /**
      * @return the current horizontal scroll offset in pixels applied to the text on the last render pass.
      *         Zero when the text fits or auto-scroll is disabled.
      */
@@ -212,7 +242,7 @@ public class Label extends GuiElement {
         if(isMouseOver() && !text.isEmpty())
         {
             int textHeight = getTextHeight();
-            int textWidth = getTextWidth(text);
+            int textWidth = getTextWidth(getDisplayedText());
             //drawCross(textPos.x, textPos.y, 3, 0xFFFF0000);
             //drawCross(textWidth+textPos.x, textHeight+textPos.y, 3, 0xFFFF0000);
             int cornerSize = 3;
@@ -227,7 +257,7 @@ public class Label extends GuiElement {
     @Override
     public void layoutChanged() {
         int textHeight = getTextHeight();
-        int textWidth = getTextWidth(text);
+        int textWidth = getTextWidth(getDisplayedText());
         int x = padding;
         int y = padding;
         int width = getWidth() - padding*2;
