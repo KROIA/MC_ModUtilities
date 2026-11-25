@@ -1,6 +1,7 @@
 package net.kroia.modutilities.testing.tests;
 
 import net.kroia.modutilities.gui.client.GuiScreen;
+import net.kroia.modutilities.gui.elements.CheckBox;
 import net.kroia.modutilities.gui.elements.DropDownMenu;
 import net.kroia.modutilities.gui.elements.Label;
 import net.kroia.modutilities.testing.categories.ModUtilitiesTestCategories;
@@ -27,6 +28,7 @@ public class GuiWidgetTests extends TestSuite {
     @Override
     public void registerTests() {
         addTest("dropdown_label_click_toggles", this::testDropDownLabelClickToggles);
+        addTest("checkbox_label_click_toggles", this::testCheckBoxLabelClickToggles);
         addTest("label_ellipsis_cuts_overflow", this::testLabelEllipsisCutsOverflow);
     }
 
@@ -44,6 +46,17 @@ public class GuiWidgetTests extends TestSuite {
         if (!Gui.onClient(screen.menu::isExpanded)) return fail("click on the label must expand the menu");
         Gui.click(label);
         return assertFalse("second click on the label must collapse the menu", Gui.onClient(screen.menu::isExpanded));
+    }
+
+    /** MU-182: a click on the check box's text (not the small box) toggles it, a second one untoggles it. */
+    private TestResult testCheckBoxLabelClickToggles() {
+        CheckBoxScreen screen = new CheckBoxScreen();
+        Gui.open(screen);
+        GuiNode label = Gui.find(n -> "Label".equals(n.type()) && "Tick me".equals(n.text()), "check box label 'Tick me'");
+        Gui.click(label);
+        if (!Gui.onClient(screen.box::isChecked)) return fail("click on the text must check the box");
+        Gui.click(label);
+        return assertFalse("second click on the text must uncheck the box", Gui.onClient(screen.box::isChecked));
     }
 
     /** MU-177: with ellipsis on, overflowing text is cut to fit and ends with "..."; off, the full text is drawn. */
@@ -77,6 +90,20 @@ public class GuiWidgetTests extends TestSuite {
         @Override
         protected void updateLayout(net.kroia.modutilities.gui.Gui gui) {
             menu.setBounds(10, 10, 100, 20);
+        }
+    }
+
+    private static final class CheckBoxScreen extends GuiScreen {
+        final CheckBox box = new CheckBox("Tick me");
+
+        CheckBoxScreen() {
+            super(Component.literal("Check box test"));
+            addElement(box);
+        }
+
+        @Override
+        protected void updateLayout(net.kroia.modutilities.gui.Gui gui) {
+            box.setBounds(10, 10, 120, 20);
         }
     }
 }
